@@ -136,7 +136,7 @@
         body:    JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const date = new Date().toISOString().slice(0, 10);
+      const date = today();
       await downloadResponse(res, `Maintenance_Schedule_${date}.docx`);
     } catch (/** @type {any} */ err) {
       downloadError = 'Download failed: ' + err.message;

@@ -7,6 +7,18 @@
 const GB = 'en-GB';
 
 /**
+ * The building's time zone. There is ONE building and it is in England
+ * (standing decision, CLAUDE.md), so dates and times are London's — not UTC,
+ * and not whatever zone the code happens to run in. The Word documents are
+ * made on a server that runs in UTC: until 2026-10-02 they printed times an
+ * hour behind London all summer, "Generated …" included.
+ */
+export const BUILDING_TIME_ZONE = 'Europe/London';
+
+/** Locale options every formatter shares: en-GB, in London. */
+const LONDON = { timeZone: BUILDING_TIME_ZONE };
+
+/**
  * "23 Feb 2026" — or "23 Feb 2026 (Stephen)" when userName is given.
  * @param {string|null} iso
  * @param {string|null} [userName]  Optional name appended in parentheses.
@@ -14,6 +26,7 @@ const GB = 'en-GB';
 export function fmtDate(iso, userName = null) {
   if (!iso) return '—';
   const formatted = new Date(iso).toLocaleDateString(GB, {
+    ...LONDON,
     day:   '2-digit',
     month: 'short',
     year:  'numeric'
@@ -28,6 +41,7 @@ export function fmtDate(iso, userName = null) {
 export function fmtDateLong(iso) {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString(GB, {
+    ...LONDON,
     day:   '2-digit',
     month: 'long',
     year:  'numeric'
@@ -40,7 +54,7 @@ export function fmtDateLong(iso) {
  */
 export function fmtTime(iso) {
   if (!iso) return '';
-  return new Date(iso).toLocaleTimeString(GB, { hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleTimeString(GB, { ...LONDON, hour: '2-digit', minute: '2-digit' });
 }
 
 /**
@@ -62,6 +76,7 @@ export function fmtDateTime(iso, userName = null) {
 export function fmtDateTimeSec(iso) {
   if (!iso) return '—';
   return new Date(iso).toLocaleString(GB, {
+    ...LONDON,
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit', second: '2-digit',
   });
@@ -73,6 +88,7 @@ export function fmtDateTimeSec(iso) {
  */
 export function fmtGenerated() {
   return new Date().toLocaleString(GB, {
+    ...LONDON,
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
@@ -91,16 +107,12 @@ export function fmtDuration(startIso, endIso) {
 }
 
 /**
- * True when the deadline is strictly before today (00:00 local).
- * @param {string|null} deadlineIso
+ * True when the deadline's calendar date is before today's, both in London.
+ * @param {string|null} deadlineIso  a 'YYYY-MM-DD' date or a timestamp
  */
 export function isOverdue(deadlineIso) {
   if (!deadlineIso) return false;
-  const deadline = new Date(deadlineIso);
-  const today    = new Date();
-  today.setHours(0, 0, 0, 0);
-  deadline.setHours(0, 0, 0, 0);
-  return deadline < today;
+  return daysUntil(deadlineIso) < 0;
 }
 
 /**
@@ -125,6 +137,7 @@ export function wasModified(createdAt, updatedAt) {
 export function fmtShortDate(iso) {
   if (!iso) return '';
   return new Date(iso).toLocaleDateString(GB, {
+    ...LONDON,
     day: 'numeric', month: 'short', year: 'numeric',
   });
 }
@@ -132,16 +145,20 @@ export function fmtShortDate(iso) {
 /**
  * "23 Feb 2026" for a DB `date` column value like "2026-02-23".
  *
- * `new Date('2026-02-23')` is parsed as UTC midnight and may render as the
- * previous day in negative-offset timezones. We append `T00:00:00` so it's
- * parsed as local midnight — the value the user actually picked.
+ * A calendar date has no time zone, so it is shown exactly as stored: read as
+ * UTC midnight and formatted in UTC, which no browser or server zone can move
+ * to the day before or after. (It used to parse at LOCAL midnight, which is
+ * right only where the code runs in London.)
  * Use this for any field whose DB type is `date` (not `timestamptz`).
  * @param {string|null} dateStr  "YYYY-MM-DD"
  */
 export function fmtDateOnly(dateStr) {
   if (!dateStr) return '—';
   try {
-    return new Date(dateStr + 'T00:00:00').toLocaleDateString(GB, {
+    // A calendar date shown as itself: UTC midnight, read back in UTC, so no
+    // zone — the browser's or the server's — can move it to another day.
+    return new Date(String(dateStr).slice(0, 10) + 'T00:00:00Z').toLocaleDateString(GB, {
+      timeZone: 'UTC',
       day: '2-digit', month: 'short', year: 'numeric',
     });
   } catch {
@@ -160,8 +177,8 @@ export function fmtToday() {
  * @param {Date} [date]  defaults to now
  */
 export function fmtMonthYearCompact(date = new Date()) {
-  const month = date.toLocaleDateString(GB, { month: 'short' });
-  const year  = date.toLocaleDateString(GB, { year:  '2-digit' });
+  const month = date.toLocaleDateString(GB, { ...LONDON, month: 'short' });
+  const year  = date.toLocaleDateString(GB, { ...LONDON, year:  '2-digit' });
   return `${month}${year}`;
 }
 
@@ -175,9 +192,140 @@ export function toDateString(value) {
   return d.toISOString().slice(0, 10);
 }
 
-/** Today as a YYYY-MM-DD string (UTC). */
-export function today() {
-  return toDateString(new Date());
+// ── Calendar days — the ONE owner of day arithmetic (2026-10-02) ─────────────
+//
+// Before this, "today" was written by hand 56 times as
+// `new Date().toISOString().slice(0, 10)`, `daysBetween` three times and
+// `addDaysISO` three times, with raw milliseconds-per-day maths in 17 files.
+// They mostly agreed, which is luck rather than design: Maintenance counted
+// from LOCAL midnight while the rest counted in UTC, and the BST infinite loop
+// of 2026-09-10 came from exactly that mix. Day arithmetic lives here now.
+
+/** Milliseconds in a calendar day, for date-only (UTC) arithmetic. */
+export const DAY_MS = 86_400_000;
+
+// en-CA formats a date as YYYY-MM-DD.
+const londonISO = new Intl.DateTimeFormat('en-CA', {
+  timeZone: BUILDING_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+});
+
+/**
+ * Today as 'YYYY-MM-DD' — the calendar date in London.
+ *
+ * ⚠ It used to be the UTC date, so between midnight and 1 am under BST it
+ * returned YESTERDAY: something due yesterday was not yet overdue, and a date
+ * stamped "today" was a day early.
+ *
+ * @param {Date} [now]  for tests; defaults to the current instant
+ */
+export function today(now = new Date()) {
+  return londonISO.format(now);
+}
+
+/**
+ * The London calendar date of a value, as 'YYYY-MM-DD'.
+ * A plain 'YYYY-MM-DD' (a DB `date` column) is already a calendar date and is
+ * returned as it is; a timestamp or a Date is an INSTANT, and its calendar
+ * date is the one in London — cutting a timestamp to its first ten characters
+ * would give its UTC date instead. '' when unreadable.
+ * @param {string|Date|null|undefined} value
+ */
+export function calendarDate(value) {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? '' : today(value);
+  const s = String(value ?? '');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const t = Date.parse(s);
+  return Number.isNaN(t) ? '' : today(new Date(t));
+}
+
+/** A value's London calendar date as UTC milliseconds; NaN when unreadable. */
+function dayMs(value) {
+  return Date.parse(`${calendarDate(value)}T00:00:00Z`);
+}
+
+/**
+ * Whole calendar days from `a` to `b` — 'YYYY-MM-DD' dates, or timestamps,
+ * which count as their London calendar date (calendarDate). Negative when `b`
+ * is earlier; NaN when either is unreadable.
+ * Counted in UTC, so no clock change can make a day 23 or 25 hours long.
+ * @param {string} a
+ * @param {string} b
+ */
+export function daysBetween(a, b) {
+  return Math.round((dayMs(b) - dayMs(a)) / DAY_MS);
+}
+
+// London wall-clock parts of an instant: y, m (1-12), d, h, mi, s.
+const londonPartsFmt = new Intl.DateTimeFormat('en-GB', {
+  timeZone: BUILDING_TIME_ZONE, hourCycle: 'h23',
+  year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit', second: '2-digit',
+});
+function londonParts(date) {
+  /** @type {Record<string, number>} */
+  const p = {};
+  for (const { type, value } of londonPartsFmt.formatToParts(date)) {
+    if (type !== 'literal') p[type] = Number(value);
+  }
+  return { y: p.year, m: p.month, d: p.day, h: p.hour, mi: p.minute, s: p.second };
+}
+/** How far London is ahead of UTC at an instant, in ms (0 in winter, 1 h under BST). */
+function londonOffsetMs(date) {
+  const p = londonParts(date);
+  const wall = Date.UTC(p.y, p.m - 1, p.d, p.h, p.mi, p.s);
+  return wall - (date.getTime() - date.getUTCMilliseconds());
+}
+
+/**
+ * The instant `days` calendar days later at the same LONDON wall-clock time —
+ * e.g. 09:00 on 20 Oct + 10 days is 09:00 on 30 Oct, though the clocks went
+ * back in between and that is 241 hours, not 240.
+ *
+ * This is what a person in London means by "within 10 days", and it is the
+ * same wherever the code runs. The MOR 10-day clock used local-calendar
+ * arithmetic, which is London's in a London browser but UTC's on the server —
+ * so the server's period summary and the app could disagree by an hour
+ * across a clock change (2026-10-02).
+ *
+ * @param {Date|string} instant
+ * @param {number} days
+ * @returns {Date}
+ */
+export function addDaysLondon(instant, days) {
+  const at = instant instanceof Date ? instant : new Date(instant);
+  const p = londonParts(at);
+  const wall = Date.UTC(p.y, p.m - 1, p.d + Number(days), p.h, p.mi, p.s, at.getUTCMilliseconds());
+  // The offset at the TARGET decides the instant; one correction settles it.
+  let t = wall - londonOffsetMs(at);
+  t = wall - londonOffsetMs(new Date(t));
+  return new Date(t);
+}
+
+/**
+ * Add whole months to a 'YYYY-MM-DD', returning the same shape, in UTC.
+ * A day that does not exist in the target month is clamped to its last day
+ * (31 Jan + 1 month = 28/29 Feb), rather than overflowing into the next month
+ * as JavaScript's setMonth does. null when unreadable.
+ * @param {string} dateStr
+ * @param {number} months  may be negative
+ */
+export function addMonthsISO(dateStr, months) {
+  const t = dayMs(dateStr);
+  if (Number.isNaN(t)) return null;
+  const d = new Date(t);
+  const first = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + Number(months), 1));
+  const last = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+  first.setUTCDate(Math.min(d.getUTCDate(), last));
+  return first.toISOString().slice(0, 10);
+}
+
+/**
+ * Whole days from today (London) until `dateISO` — negative once it has passed.
+ * @param {string} dateISO
+ * @param {string} [from]  'YYYY-MM-DD'; defaults to today()
+ */
+export function daysUntil(dateISO, from = today()) {
+  return daysBetween(from, dateISO);
 }
 
 /**
@@ -203,8 +351,7 @@ export function addDays(date, days) {
  * That is an infinite loop, not an off-by-one: it hung the maintenance job
  * generator for any daily obligation (found by test, 2026-09-10).
  *
- * Mirrors planner/utils/recurrence.js `addDaysISO`, which got this right;
- * worth consolidating on one of them if the two ever need to change together.
+ * The Planner and Parking each had their own copy; both use this one now.
  *
  * @param {string} dateStr 'YYYY-MM-DD'
  * @param {number} days    may be negative
@@ -212,9 +359,9 @@ export function addDays(date, days) {
  */
 export function addDaysISO(dateStr, days) {
   if (!dateStr) return null;
-  const t = Date.parse(`${String(dateStr).slice(0, 10)}T00:00:00Z`);
+  const t = dayMs(dateStr);
   if (Number.isNaN(t)) return null;
-  return new Date(t + days * 86_400_000).toISOString().slice(0, 10);
+  return new Date(t + Number(days) * DAY_MS).toISOString().slice(0, 10);
 }
 
 /**

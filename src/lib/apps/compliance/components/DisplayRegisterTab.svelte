@@ -34,7 +34,7 @@
   import { displayRegisterStore, SINGLETON_CATEGORIES } from '../stores/displayRegisterStore.js';
   import { attentionReason, attentionLabel } from '../utils/displayRegisterStatus.js';
   import { listCurrentDocuments } from '$lib/apps/golden_thread/public.js';
-  import { fmtDateOnly, fmtDate } from '$lib/utils/dates';
+  import { fmtDateOnly, fmtDate, today as todayLondon } from '$lib/utils/dates';
   import Button         from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ErrorDisplay   from '$lib/components/common/ErrorDisplay.svelte';
@@ -58,7 +58,7 @@
   $: otherItems        = items.filter(i => i.category === 'other');
 
   let gtDocUpdatedAt = {};   // gt_document id -> updated_at, for the attention check
-  let today = new Date().toISOString().slice(0, 10);
+  let today = todayLondon();
 
   onMount(async () => {
     if (items.length === 0) displayRegisterStore.load();

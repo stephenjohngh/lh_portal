@@ -37,7 +37,7 @@ import { fmtDateLong, fmtGenerated } from '$lib/utils/dates';
 import {
   STATUS_LABEL, OPEN_STATUSES, STATUS_ORDER,
   TRIAGE_LABEL, DECISION_LABEL,
-  CHANNEL_LABEL, MECHANISM_LABEL,
+  CHANNEL_LABEL, MECHANISM_LABEL, bsrReportClock,
 } from '$lib/apps/mor/utils/morHelpers';
 
 const logger = getLogger('mor/period-summary');
@@ -49,7 +49,6 @@ function getSvc() {
 }
 
 const OPEN_SET = new Set(OPEN_STATUSES);
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 // ── Stat helpers ─────────────────────────────────────────────────────────────
 
@@ -212,11 +211,14 @@ export async function POST({ request }) {
   const bsrReportsInPeriod = cases.filter(c => c.bsr_report_submitted_at &&
     c.bsr_report_submitted_at >= startIso && c.bsr_report_submitted_at <= endIso);
 
-  // 10-day BSR submission compliance among reports filed in the period.
+  // 10-day BSR submission compliance among reports filed in the period —
+  // judged by the SAME clock the app shows (morHelpers bsrReportClock). It
+  // counted 10 × 24 elapsed hours, which across a clock change is an hour off
+  // the app's deadline, so one report could be on time in one and late in the other.
   let withinDeadline = 0;
   for (const c of bsrReportsInPeriod) {
-    const ms = new Date(c.bsr_report_submitted_at).getTime() - new Date(c.identification_date).getTime();
-    if (ms <= 10 * DAY_MS) withinDeadline++;
+    const clock = bsrReportClock(c.identification_date);
+    if (clock && new Date(c.bsr_report_submitted_at).getTime() <= clock.deadline.getTime()) withinDeadline++;
   }
   const bsrCompliancePct = bsrReportsInPeriod.length
     ? Math.round((withinDeadline / bsrReportsInPeriod.length) * 100)

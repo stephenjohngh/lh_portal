@@ -20,6 +20,7 @@
 // the point: a register that quietly omitted them would look complete while the
 // building was missing statutory duties.
 
+import { today } from './dates.js';
 import { REGISTER } from './statutoryRegisterData.js';
 
 /** @typedef {typeof REGISTER[number]} TemplateEntry */
@@ -167,7 +168,7 @@ export function isUnhomed(entry) {
 export function isSuperseded(entry, asOf) {
   const on = entry?.supersededOn;
   if (!on) return false;
-  return on <= (asOf ?? new Date().toISOString().slice(0, 10));
+  return on <= (asOf ?? today());
 }
 
 /** One line describing the withdrawal, for the row that still shows it. */

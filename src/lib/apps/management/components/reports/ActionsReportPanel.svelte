@@ -6,7 +6,7 @@
   import Badge            from '$lib/components/common/Badge.svelte';
   import { profiles, profilesStore } from '$lib/stores/profiles';
   import { meetingsStore }           from '../../stores/meetingsStore';
-  import { fmtDate, fmtDateLong, isOverdue } from '$lib/utils/dates';
+  import { fmtDate, fmtDateLong, isOverdue, today as todayLondon, calendarDate } from '$lib/utils/dates';
   import { downloadResponse }        from '$lib/utils/download';
   import { getLogger }               from '$lib/utils/logger';
   import { sortActions }             from '$lib/utils/actionSort';
@@ -40,9 +40,9 @@
     if (hasA && !hasB) return -1;
     if (!hasA && hasB) return  1;
     if (hasA && hasB) {
-      const da = new Date(a.date_deadline).setHours(0, 0, 0, 0);
-      const db = new Date(b.date_deadline).setHours(0, 0, 0, 0);
-      if (da !== db) return da - db;
+      const da = calendarDate(a.date_deadline);
+      const db = calendarDate(b.date_deadline);
+      if (da !== db) return da < db ? -1 : 1;
     }
     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   }
@@ -50,7 +50,7 @@
   function earliestDeadline(actions) {
     return actions.reduce((min, a) => {
       if (!a.date_deadline) return min;
-      const t = new Date(a.date_deadline).setHours(0, 0, 0, 0);
+      const t = Date.parse(`${calendarDate(a.date_deadline)}T00:00:00Z`);
       return min === null ? t : Math.min(min, t);
     }, null);
   }
@@ -156,7 +156,7 @@
         }
         throw new Error(`Server error: ${response.status}`);
       }
-      const today  = new Date().toISOString().split('T')[0];
+      const today  = todayLondon();
       const suffix = selectedUser === 'all'         ? 'All_Users'
                    : selectedUser === 'unallocated' ? 'Unallocated'
                    :                                  selectedUser.replace(/\s+/g, '_');

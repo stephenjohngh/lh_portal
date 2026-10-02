@@ -11,6 +11,7 @@
 // (steps 4–5). Ingest (createDraft) is producer-side — see golden_thread/public.js
 // registerDocument (step 3).
 
+import { today as todayLondon, addDaysISO } from '../../../utils/dates.js';
 import { writable }  from 'svelte/store';
 import { api }       from '$lib/utils/api';
 import { logAudit }  from '$lib/utils/auditLogger';
@@ -29,15 +30,13 @@ const logger = getLogger('gtStore');
 
 /** Today as an ISO date string (YYYY-MM-DD), en-GB-safe (no locale parsing). */
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return todayLondon();
 }
 
 /** effective_from + cycleDays, as an ISO date string; null when no cycle set. */
 function reviewDueFrom(effectiveFromISO, cycleDays) {
   if (!cycleDays) return null;
-  const d = new Date(effectiveFromISO + 'T00:00:00Z');
-  d.setUTCDate(d.getUTCDate() + cycleDays);
-  return d.toISOString().slice(0, 10);
+  return addDaysISO(effectiveFromISO, cycleDays);
 }
 
 function createGtStore() {

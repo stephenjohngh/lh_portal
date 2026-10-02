@@ -1,6 +1,6 @@
 // src/lib/apps/management/components/reports/reportUtils.js
 import { ACTION_STATUS, ACTIVITY_TYPE, ISSUE_STATUS } from '$lib/utils/constants';
-import { fmtDate, fmtDateLong } from '$lib/utils/dates';
+import { fmtDate, fmtDateLong, addMonthsISO, today } from '$lib/utils/dates';
 
 
 /**
@@ -198,9 +198,7 @@ export function groupIssuesByStatus(issues) {
  * Get default filter date (one month ago)
  */
 export function getDefaultFilterDate() {
-  const date = new Date();
-  date.setMonth(date.getMonth() - 1);
-  return date.toISOString().split('T')[0];
+  return addMonthsISO(today(), -1);
 }
 
 /**

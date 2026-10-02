@@ -19,6 +19,7 @@
  */
 
 /** Newest decision wins; ties break on id so the answer is never arbitrary. */
+import { today as todayLondon, addDaysISO } from './dates.js';
 function newer(a, b) {
   const ta = Date.parse(a?.decided_at ?? '') || 0;
   const tb = Date.parse(b?.decided_at ?? '') || 0;
@@ -78,10 +79,9 @@ export function decisionHistory(rows, key) {
  * @param {{ today?: string, withinDays?: number }} [opts]
  */
 export function reviewsDue(rows, opts = {}) {
-  const today = opts.today ?? new Date().toISOString().slice(0, 10);
+  const today = opts.today ?? todayLondon();
   const withinDays = opts.withinDays ?? 0;
-  const horizon = new Date(Date.parse(`${today}T00:00:00Z`) + withinDays * 86_400_000)
-    .toISOString().slice(0, 10);
+  const horizon = addDaysISO(today, withinDays) ?? today;
 
   return [...currentDecisions(rows).values()]
     .filter(d => d.decision === 'not_applicable' && d.review_due && d.review_due <= horizon)
@@ -111,12 +111,11 @@ export const REVIEW_SOON_DAYS = 30;
  */
 export function reviewState(reviewDue, opts = {}) {
   if (!reviewDue) return 'none';
-  const today = opts.today ?? new Date().toISOString().slice(0, 10);
+  const today = opts.today ?? todayLondon();
   if (reviewDue <= today) return 'overdue';
 
   const withinDays = opts.withinDays ?? REVIEW_SOON_DAYS;
-  const horizon = new Date(Date.parse(`${today}T00:00:00Z`) + withinDays * 86_400_000)
-    .toISOString().slice(0, 10);
+  const horizon = addDaysISO(today, withinDays) ?? today;
   return reviewDue <= horizon ? 'due_soon' : 'scheduled';
 }
 

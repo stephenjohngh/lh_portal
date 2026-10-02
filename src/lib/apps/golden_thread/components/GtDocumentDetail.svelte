@@ -24,7 +24,7 @@
   import FormSelect      from '$lib/components/common/FormSelect.svelte';
   import FormTextarea    from '$lib/components/common/FormTextarea.svelte';
   import AttachedDocuments from '$lib/components/common/documents/AttachedDocuments.svelte';
-  import { fmtDate, fmtDateTime } from '$lib/utils/dates';
+  import { fmtDate, fmtDateTime, today } from '$lib/utils/dates';
   import { logAudit } from '$lib/utils/auditLogger';
   import { shouldLogView } from '$lib/apps/golden_thread/utils/gtAccessLog.js';
 
@@ -36,7 +36,7 @@
 
   // Review band — only for a current document with a review date (else null).
   $: reviewBadge = (doc?.status === 'current' && doc?.review_due)
-    ? reviewBand(daysToReview(doc, new Date().toISOString().slice(0, 10)))
+    ? reviewBand(daysToReview(doc, today()))
     : null;
 
   // ── Links / citations ──────────────────────────────────────────────────────

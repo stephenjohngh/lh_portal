@@ -32,6 +32,7 @@
 // register renders as "no requirements", which is the most dangerous thing a
 // compliance screen could say.
 
+import { today } from '../utils/dates.js';
 import { writable, get } from 'svelte/store';
 import { api } from '$lib/utils/api';
 import { supabase } from '$lib/supabaseClient';
@@ -455,7 +456,7 @@ function createStatutoryRegisterStore() {
     const uid = await currentUserId();
     await api.updateMany('statutory_register', { template_key: key }, {
       citation_verified_against: evidence.url.trim(),
-      citation_verified_on:      evidence.on || new Date().toISOString().slice(0, 10),
+      citation_verified_on:      evidence.on || today(),
       citation_verified_by:      uid,
       updated_by: uid, updated_at: new Date().toISOString(),
     }, false);

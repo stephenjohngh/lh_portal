@@ -40,7 +40,7 @@
     sessionFloorLabel,
   } from '$lib/apps/inspection/utils/inspectionHelpers.js';
   import { resultBadgeColor } from '$lib/utils/resultConstants.js';
-  import { fmtDate, fmtTime, fmtDateTime, fmtDuration } from '$lib/utils/dates';
+  import { fmtDate, fmtTime, fmtDateTime, fmtDuration, calendarDate } from '$lib/utils/dates';
   import Badge           from '$lib/components/common/Badge.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import LoadingSpinner  from '$lib/components/common/LoadingSpinner.svelte';
@@ -142,12 +142,10 @@
     if (filterStatus      && sessionState(s) !== filterStatus)     return false;
     if (filterSessionType && s.session_type !== filterSessionType) return false;
     if (filterDefinition  && s.definition_id !== filterDefinition) return false;
-    if (filterDateFrom && new Date(s.started_at) < new Date(filterDateFrom)) return false;
-    if (filterDateTo) {
-      const to = new Date(filterDateTo);
-      to.setHours(23, 59, 59, 999);
-      if (new Date(s.started_at) > to) return false;
-    }
+    // Calendar days in London: the From box read as UTC midnight and the To
+    // box as LOCAL end of day, so the two ends of one range disagreed.
+    if (filterDateFrom && calendarDate(s.started_at) < filterDateFrom) return false;
+    if (filterDateTo   && calendarDate(s.started_at) > filterDateTo)   return false;
     return true;
   });
 

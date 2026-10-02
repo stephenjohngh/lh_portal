@@ -10,7 +10,7 @@ import {
   VerticalAlign
 } from 'docx';
 import { getLogger } from '$lib/utils/logger';
-import { fmtDateLong, fmtShortDate } from '$lib/utils/dates';
+import { fmtDateLong, fmtShortDate, today as todayLondon } from '$lib/utils/dates';
 import { buildFieldSummary } from '$lib/apps/management/components/reports/reportUtils.js';
 import { htmlToText } from '$lib/server/richTextDocx.js';
 
@@ -49,7 +49,7 @@ export async function POST({ request }) {
 
     const buffer = await Packer.toBuffer(doc);
     const safe   = (meeting.title ?? 'Minutes').replace(/[^a-zA-Z0-9]+/g, '_');
-    const today  = new Date().toISOString().split('T')[0];
+    const today  = todayLondon();
     const filename = `Minutes_${safe}_${today}.docx`;
 
     logger('✅ Generated', filename, buffer.length, 'bytes');

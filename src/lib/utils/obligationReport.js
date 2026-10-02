@@ -16,6 +16,7 @@
 // No I/O — Type-1 testable, and the same functions feed the screen and the
 // Word export so the printed report can never disagree with what was on it.
 
+import { today } from './dates.js';
 import {
   activeRegister, templateEntry, isSchedulable, isUnhomed, isSuperseded,
   supersededNote, BASIS_RANK, GROUPS,
@@ -25,7 +26,7 @@ import { currentDecisions } from './statutoryExclusions.js';
 
 const BAND_RANK = { never_run: 0, overdue: 1, due_soon: 2, ok: 3, on_demand: 4 };
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
+const todayISO = () => today();
 
 /** Row status, worst first — the order the summary counts read in. */
 export const ROW_STATUS = [

@@ -21,23 +21,28 @@
 // Everything here is pure (no store / DB / Date.now hidden state — `today` is an
 // injectable option) so it is Type-1 unit tested (tenYearPlan.test.js).
 
+import { addMonthsISO } from '../../../utils/dates.js';
 /** @typedef {{ id:string, name:string, last_renewal_date:string|null, lifetime_years:number|null, expected_cost:number|null }} PlanGroup */
 
 /**
- * Advance a date by a fractional number of years (whole years + rounded months),
- * matching TenYearPlanTab.expectedRenewal so the tab's per-group "next renewal"
- * and this forecast agree to the month.
- * @param {Date} date
+ * Advance a 'YYYY-MM-DD' by a fractional number of years (whole years + rounded
+ * months), in UTC. The ONE renewal-date rule: the Capital Plan tab's "next
+ * renewal", this forecast and the Word plan all use it.
+ *
+ * ⛔ There used to be three, and they disagreed. The tab and the forecast built
+ * the date at LOCAL midnight and read it back in UTC, so under BST every
+ * renewal falling in summer showed a day early (1 Jun 2020 + 10 years read
+ * 31 May 2030) — while the Word plan, which formatted locally, said 1 June.
+ * The tests checked only the year, which is why it passed (2026-10-02).
+ *
+ * @param {string} iso  'YYYY-MM-DD'
  * @param {number} years
- * @returns {Date}
+ * @returns {string|null}
  */
-export function addYearsFractional(date, years) {
-  const d = new Date(date);
+export function addYearsFractionalISO(iso, years) {
   const whole  = Math.floor(years);
   const months = Math.round((years - whole) * 12);
-  d.setFullYear(d.getFullYear() + whole);
-  d.setMonth(d.getMonth() + months);
-  return d;
+  return addMonthsISO(iso, whole * 12 + months);
 }
 
 /**
@@ -78,23 +83,23 @@ export function renewalOccurrences(g, startYear, endYear) {
   if (!g.last_renewal_date || life <= 0 || cost <= 0) return [];
 
   const occ = [];
-  let d = addYearsFractional(new Date(g.last_renewal_date + 'T00:00:00'), life);
+  let d = addYearsFractionalISO(g.last_renewal_date, life);
   let seenOverdue = false;
   let guard = 0;
 
-  while (guard++ < 1000) {
-    const yActual = d.getFullYear();
+  while (d && guard++ < 1000) {
+    const yActual = Number(d.slice(0, 4));
     if (yActual > endYear) break;
     if (yActual < startYear) {
       // Outstanding renewal → count once, in the first plan year.
       if (!seenOverdue) {
         seenOverdue = true;
-        occ.push({ date: d.toISOString().split('T')[0], year: startYear, cost, overdue: true });
+        occ.push({ date: d, year: startYear, cost, overdue: true });
       }
     } else {
-      occ.push({ date: d.toISOString().split('T')[0], year: yActual, cost, overdue: false });
+      occ.push({ date: d, year: yActual, cost, overdue: false });
     }
-    d = addYearsFractional(d, life);
+    d = addYearsFractionalISO(d, life);
   }
   return occ;
 }

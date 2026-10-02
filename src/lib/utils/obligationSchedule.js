@@ -36,8 +36,8 @@
 // construction, not merely by assertion. That is the P2 gate, and
 // inspectionSchedule.test.js is its regression net.
 
-const DAY_MS = 86_400_000;
 
+import { DAY_MS } from './dates.js';
 /**
  * @typedef {'completed'|'attempted'|'planned'} EvidenceStatus
  *   completed — it was done, at `at`. Resets the clock.

@@ -4,6 +4,7 @@
      Photo capture/display is delegated to PhotoPanel; this component owns
      pendingPhotos state so uploadAllPending() can run at save time. -->
 <script>
+  import { today } from '$lib/utils/dates';
   import { createEventDispatcher } from 'svelte';
   import { deriveChecklistOutcome } from '../utils/checklistRules.js';
   import { NO_ACCESS_REASONS } from '$lib/utils/resultConstants.js';
@@ -111,7 +112,7 @@
     // Folder: "Inspections / 2026-06-08 Inspection Ground Floor"
     const sessionDate = session?.started_at
       ? session.started_at.slice(0, 10)           // "YYYY-MM-DD"
-      : new Date().toISOString().slice(0, 10);
+      : today();
     const sessionTypeLabel = session?.session_type
       ? session.session_type.charAt(0).toUpperCase() + session.session_type.slice(1)
       : 'Inspection';

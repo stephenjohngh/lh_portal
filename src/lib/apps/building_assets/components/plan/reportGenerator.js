@@ -36,6 +36,7 @@
 // Returns { filename } on success (download is triggered as a side-effect).
 // Throws on validation failure or network error.
 
+import { today } from '../../../../utils/dates.js';
 import { drawAnnotatedPlanImage } from './planImageRenderer.js';
 import { authHeaders }            from '$lib/utils/authHeaders';
 import { downloadResponse }       from '$lib/utils/download.js';
@@ -175,7 +176,7 @@ export async function generateReportDocument(params) {
   }
 
   // -- Trigger download --------------------------------------------------
-  const filename = `components-${new Date().toISOString().slice(0, 10)}.docx`;
+  const filename = `components-${today()}.docx`;
   await downloadResponse(res, filename);
 
   return { filename };

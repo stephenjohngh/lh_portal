@@ -4,7 +4,7 @@
   import { inspectionStore }  from '../stores/inspectionStore.js';
   import { online } from '$lib/stores/online.js';
   import { syncState } from '../utils/syncRunner.js';
-  import { fmtDate, fmtTime, fmtDuration } from '$lib/utils/dates';
+  import { fmtDate, fmtTime, fmtDuration, DAY_MS } from '$lib/utils/dates';
   import { sessionKindLabel, sessionFloorLabel, sessionDefinitionName } from '../utils/inspectionHelpers.js';
   import WalkBadge from '$lib/apps/inspection/components/common/WalkBadge.svelte';
 
@@ -25,8 +25,8 @@
     const ms = Date.now() - new Date(d).getTime();
     if (ms < 60_000)    return 'just now';
     if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
-    if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
-    return `${Math.floor(ms / 86_400_000)}d ago`;
+    if (ms < DAY_MS) return `${Math.floor(ms / 3_600_000)}h ago`;
+    return `${Math.floor(ms / DAY_MS)}d ago`;
   }
 
   // "LH Fire Doors · All Floors" — building, definition name (if any), scope.

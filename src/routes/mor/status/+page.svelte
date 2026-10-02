@@ -4,6 +4,7 @@
      page can link straight here. The resident still has to enter their
      verification code, which acts as a bearer token. -->
 <script>
+  import { fmtDateTime } from '$lib/utils/dates';
   import { onMount } from 'svelte';
   import { page }     from '$app/stores';
   import lhLogo       from '$lib/assets/LH_services_logo.png';
@@ -40,16 +41,9 @@
     if (q) reference = q.trim().toUpperCase();
   });
 
+  // The shared formatter, in London time (dates.js).
   function fmtDate(iso) {
-    if (!iso) return '';
-    try {
-      const d = new Date(iso);
-      return d.toLocaleDateString('en-GB', {
-        day: '2-digit', month: 'short', year: 'numeric',
-      }) + ' ' + d.toLocaleTimeString('en-GB', {
-        hour: '2-digit', minute: '2-digit',
-      });
-    } catch { return iso; }
+    return iso ? fmtDateTime(iso) : '';
   }
 
   function validate() {

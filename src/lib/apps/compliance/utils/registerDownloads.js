@@ -33,7 +33,7 @@ import { downloadResponse } from '$lib/utils/download.js';
 import { describeFilters } from '$lib/components/common/filterSummary.js';
 import { buildRegisterSheet, STATUS_FILL } from './registerExport.js';
 import { REGISTER_STATUS_LABEL } from './registerFilter.js';
-import { fmtGenerated } from '$lib/utils/dates.js';
+import { fmtGenerated, today } from '$lib/utils/dates.js';
 
 /**
  * @param {Object} params
@@ -89,7 +89,7 @@ export async function downloadRegisterXlsx(params) {
     throw new Error(body.error || `Server error ${res.status}`);
   }
 
-  const filename = `periodic-register-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const filename = `periodic-register-${today()}.xlsx`;
   await downloadResponse(res, filename);
   return { filename };
 }
@@ -136,7 +136,7 @@ export async function downloadRegisterDocx(params) {
   // ⚠ The SERVER names the file, from the same rule that titles it. A download
   // called "extract" holding the full statement is the confusion one document
   // was meant to end, and a filename outlives the covering email.
-  const fallback = `register-${new Date().toISOString().slice(0, 10)}.docx`;
+  const fallback = `register-${today()}.docx`;
   await downloadResponse(res, fallback);
   return { filename: fallback };
 }

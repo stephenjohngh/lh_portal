@@ -34,7 +34,7 @@ import {
 } from '$lib/server/docxHelpers.js';
 import { sortBySystemInspectionAsset } from '$lib/utils/componentSorting.js';
 import { buildStatusPivot } from '$lib/apps/building_assets/utils/reportModel.js';
-import { fmtGenerated, fmtShortDate } from '$lib/utils/dates.js';
+import { fmtGenerated, fmtShortDate, today } from '$lib/utils/dates.js';
 
 const logger = getLogger('generateReport');
 
@@ -663,7 +663,7 @@ export async function POST({ request }) {
     logger('✅ Report generated, size:', buffer.byteLength, 'bytes');
 
     const safeBuilding = building.replace(/[^a-z0-9]/gi, '_');
-    const dateSlug     = new Date().toISOString().slice(0, 10);
+    const dateSlug     = today();
     const filename     = `${safeBuilding}_Components_${dateSlug}.docx`;
 
     return new Response(buffer, {

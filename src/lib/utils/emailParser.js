@@ -7,6 +7,7 @@
 // ActivityItem. Returns null for text that doesn't look like an email, so
 // the default paste behaviour is preserved for all other input.
 
+import { calendarDate, today as todayLondon, addDaysISO } from './dates.js';
 /**
  * Attempt to parse pasted text as an email (possibly a thread excerpt).
  *
@@ -17,6 +18,14 @@
  * @param {string} text - Raw pasted text
  * @returns {{ from, to, subject, email_date, body, wasThread } | null}
  */
+
+/** A calendar date built from its parts, as 'YYYY-MM-DD' — no Date, no time zone. null when invalid. */
+function ymd(y, m0, d) {
+  if (!Number.isInteger(y) || !Number.isInteger(d) || d < 1 || d > 31) return null;
+  const iso = `${y}-${String(m0 + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  return addDaysISO(iso, 0) === iso ? iso : null;   // rejects 31 Feb and the like
+}
+
 export function parseEmailPaste(text) {
   if (!text || text.trim().length < 20) return null;
 
@@ -178,16 +187,18 @@ function toISODate(raw) {
   s = s.replace(/\s+(?:[A-Z]{2,5}|[+-]\d{4})$/, '').trim();
 
   // Try native Date first (handles ISO 8601, RFC 2822, "Month DD YYYY", etc.)
+  // An instant: its calendar date is the London one (dates.js), not the UTC
+  // one, or an email sent between midnight and 1 am in summer is dated the day before.
   let d = new Date(s);
-  if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+  if (!isNaN(d.getTime())) return calendarDate(d);
 
   // Fallback: "DD Month YYYY" European layout ("26 April 2016 12:36:11")
   const mFull = s.match(/^(\d{1,2})\s+([a-z]+)\s+(\d{4})/i);
   if (mFull) {
     const month = MONTH_INDEX[mFull[2].toLowerCase().slice(0, 3)];
     if (month !== undefined) {
-      d = new Date(parseInt(mFull[3]), month, parseInt(mFull[1]));
-      if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+      const iso = ymd(parseInt(mFull[3]), month, parseInt(mFull[1]));
+      if (iso) return iso;
     }
   }
 
@@ -197,11 +208,11 @@ function toISODate(raw) {
   if (mShort) {
     const month = MONTH_INDEX[mShort[2].toLowerCase().slice(0, 3)];
     if (month !== undefined) {
-      const today = new Date();
-      let year = today.getFullYear();
-      d = new Date(year, month, parseInt(mShort[1]));
-      if (d > today) d = new Date(year - 1, month, parseInt(mShort[1]));
-      if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+      const now = todayLondon();
+      const year = Number(now.slice(0, 4));
+      let iso = ymd(year, month, parseInt(mShort[1]));
+      if (iso && iso > now) iso = ymd(year - 1, month, parseInt(mShort[1]));
+      if (iso) return iso;
     }
   }
 

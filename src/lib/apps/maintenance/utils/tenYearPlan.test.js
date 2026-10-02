@@ -9,7 +9,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  buildTenYearForecast, renewalOccurrences, addYearsFractional, normaliseOverrides,
+  buildTenYearForecast, renewalOccurrences, addYearsFractionalISO, normaliseOverrides,
 } from './tenYearPlan.js';
 
 const group = (over) => ({
@@ -19,14 +19,23 @@ const group = (over) => ({
 // A fixed window used by most tests: 2026..2035 inclusive.
 const WIN = { startYear: 2026, years: 10 };
 
-describe('addYearsFractional', () => {
+describe('addYearsFractionalISO', () => {
   it('adds whole years', () => {
-    expect(addYearsFractional(new Date(2020, 0, 1), 10).getFullYear()).toBe(2030);
+    expect(addYearsFractionalISO('2020-01-01', 10)).toBe('2030-01-01');
   });
   it('adds the fractional part as rounded months', () => {
-    const d = addYearsFractional(new Date(2025, 0, 1), 7.5); // +7yr 6mo
-    expect(d.getFullYear()).toBe(2032);
-    expect(d.getMonth()).toBe(6); // July (0-indexed)
+    expect(addYearsFractionalISO('2025-01-01', 7.5)).toBe('2032-07-01');   // +7yr 6mo
+  });
+  // ⛔ The bug this replaced: built at local midnight and read back in UTC, a
+  // summer date came out a day early under BST. The old tests checked only
+  // the year, so they passed. Assert the whole date.
+  it('keeps a summer date on its day', () => {
+    expect(addYearsFractionalISO('2020-06-01', 10)).toBe('2030-06-01');
+    expect(addYearsFractionalISO('2020-08-15', 2.5)).toBe('2023-02-15');
+  });
+  it('clamps a day the target month lacks, rather than spilling into the next', () => {
+    expect(addYearsFractionalISO('2020-01-31', 1 / 12)).toBe('2020-02-29');
+    expect(addYearsFractionalISO('2024-02-29', 1)).toBe('2025-02-28');
   });
 });
 
@@ -41,7 +50,7 @@ describe('renewalOccurrences', () => {
     const occ = renewalOccurrences(
       group({ last_renewal_date: '2020-06-01', lifetime_years: 10, expected_cost: 50000 }), 2026, 2035);
     expect(occ).toHaveLength(1);
-    expect(occ[0]).toMatchObject({ year: 2030, cost: 50000, overdue: false });
+    expect(occ[0]).toMatchObject({ date: '2030-06-01', year: 2030, cost: 50000, overdue: false });
   });
 
   it('repeats the cycle across the window', () => {

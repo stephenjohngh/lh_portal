@@ -37,7 +37,7 @@ import {
   CONTENT_W, CONTENT_W_L, PAGE_W_L, PAGE_H_L,
   COLOURS, BORDERS, CELL_PAD,
 } from '$lib/server/docxHelpers.js';
-import { fmtGenerated, fmtDate, fmtDateTime, fmtTime, fmtDuration } from '$lib/utils/dates';
+import { fmtGenerated, fmtDate, fmtDateTime, fmtTime, fmtDuration, today } from '$lib/utils/dates';
 
 const logger = getLogger('generateInspectionsReport');
 
@@ -644,7 +644,7 @@ export async function POST({ request }) {
     logger('✅ Generated', reportType, 'report | sessions:', sessions.length, '| size:', buffer.byteLength);
 
     const slug     = reportType === 'summary' ? 'Summary' : 'Detailed';
-    const dateSlug = new Date().toISOString().slice(0, 10);
+    const dateSlug = today();
     const filename = `Inspections_${slug}_${dateSlug}.docx`;
 
     return new Response(buffer, {

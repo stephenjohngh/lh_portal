@@ -9,7 +9,7 @@ import {
   AlignmentType, BorderStyle, WidthType, ShadingType
 } from 'docx';
 import { getLogger }    from '$lib/utils/logger';
-import { fmtShortDate } from '$lib/utils/dates';
+import { fmtShortDate, today as todayLondon } from '$lib/utils/dates';
 
 const logger = getLogger('GenerateActionsDocx');
 
@@ -62,7 +62,7 @@ export async function POST({ request }) {
     });
 
     const buffer = await Packer.toBuffer(doc);
-    const today  = new Date().toISOString().split('T')[0];
+    const today  = todayLondon();
     const suffix = selectedUser === 'all'         ? 'All_Users'
                  : selectedUser === 'unallocated' ? 'Unallocated'
                  : (userName ?? '').replace(/\s+/g, '_');

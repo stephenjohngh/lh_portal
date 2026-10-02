@@ -29,11 +29,11 @@
   import GtRisks       from '$lib/apps/golden_thread/components/GtRisks.svelte';
   import { buildSafetyCaseModel } from '$lib/apps/golden_thread/utils/gtSafetyCase.js';
   import { listCases as listMorCases } from '$lib/apps/mor/public.js';
-  import { fmtDate }   from '$lib/utils/dates';
+  import { fmtDate, today }   from '$lib/utils/dates';
 
   $: userId  = $auth.user?.id;
 
-  const todayISO = new Date().toISOString().slice(0, 10);
+  const todayISO = today();
   // Review band for a document — only meaningful for current documents with a
   // review date; null (no badge) otherwise. Uses the pure gtReview logic.
   function docReviewBand(doc) {
@@ -103,7 +103,7 @@
     scExportError = '';
     try {
       await downloadAuthedPost('/api/golden-thread/safety-case',
-        `golden-thread-safety-case-${new Date().toISOString().slice(0, 10)}.docx`, safetyCaseModel);
+        `golden-thread-safety-case-${today()}.docx`, safetyCaseModel);
     } catch (e) {
       scExportError = e instanceof Error ? e.message : String(e);
     } finally {
@@ -140,7 +140,7 @@
     packError = '';
     try {
       await downloadAuthedPost('/api/golden-thread/share-pack',
-        `golden-thread-share-pack-${new Date().toISOString().slice(0, 10)}.zip`);
+        `golden-thread-share-pack-${today()}.zip`);
     } catch (e) {
       packError = e instanceof Error ? e.message : String(e);
     } finally {

@@ -6,6 +6,7 @@ import {
   fmtDate, fmtDateLong, fmtTime, fmtDateTime, fmtDuration,
   isOverdue, wasModified, fmtShortDate, fmtDateOnly,
   toDateString, addDays, addDaysISO, fmtMonthYearCompact,
+  today, calendarDate, daysBetween, daysUntil, addMonthsISO, addDaysLondon, fmtGenerated,
 } from './dates.js';
 
 const NOON = '2026-02-23T12:00:00Z';
@@ -164,5 +165,111 @@ describe('addDaysISO', () => {
     expect(addDaysISO(null, 1)).toBeNull();
     expect(addDaysISO('', 1)).toBeNull();
     expect(addDaysISO('not-a-date', 1)).toBeNull();
+  });
+});
+
+// ── Calendar days, in London (2026-10-02) ──────────────────────────────────
+// The building is in England, so "today" is the London calendar date wherever
+// the code runs. It used to be the UTC date, which under BST is YESTERDAY
+// between midnight and 1 am.
+describe('today (London)', () => {
+  it('is the London date in the first hour of a BST day, not the UTC one', () => {
+    // 00:30 on 2 Oct in London is 23:30 on 1 Oct in UTC.
+    expect(today(new Date('2026-10-01T23:30:00Z'))).toBe('2026-10-02');
+  });
+
+  it('matches UTC in winter, when London is on GMT', () => {
+    expect(today(new Date('2026-12-01T23:30:00Z'))).toBe('2026-12-01');
+    expect(today(new Date('2026-12-02T00:30:00Z'))).toBe('2026-12-02');
+  });
+
+  it('is shaped YYYY-MM-DD', () => {
+    expect(today()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe('calendarDate', () => {
+  it('leaves a plain date alone — it is already a calendar date', () => {
+    expect(calendarDate('2026-03-29')).toBe('2026-03-29');
+  });
+  it('gives a timestamp its London date, not the first ten characters', () => {
+    expect(calendarDate('2026-07-01T23:30:00Z')).toBe('2026-07-02');
+    expect(calendarDate(new Date('2026-07-01T23:30:00Z'))).toBe('2026-07-02');
+  });
+  it('is empty when unreadable', () => {
+    expect(calendarDate('not a date')).toBe('');
+    expect(calendarDate(null)).toBe('');
+    expect(calendarDate(new Date('x'))).toBe('');
+  });
+});
+
+describe('daysBetween / daysUntil', () => {
+  it('counts whole calendar days, either way', () => {
+    expect(daysBetween('2026-06-29', '2026-06-29')).toBe(0);
+    expect(daysBetween('2026-06-29', '2026-07-09')).toBe(10);
+    expect(daysBetween('2026-07-09', '2026-06-29')).toBe(-10);
+  });
+  it('is not moved by a clock change', () => {
+    expect(daysBetween('2026-03-28', '2026-03-30')).toBe(2);   // spring forward
+    expect(daysBetween('2026-10-24', '2026-10-26')).toBe(2);   // fall back
+  });
+  it('is NaN, not a number of days, when a date is unreadable', () => {
+    expect(daysBetween('2026-01-01', 'nope')).toBeNaN();
+  });
+  it('daysUntil counts from a given today, negative once passed', () => {
+    expect(daysUntil('2026-10-12', '2026-10-02')).toBe(10);
+    expect(daysUntil('2026-09-30', '2026-10-02')).toBe(-2);
+  });
+});
+
+describe('isOverdue (London calendar)', () => {
+  it('is overdue from the day after the deadline, not on it', () => {
+    const t = today();
+    expect(isOverdue(t)).toBe(false);
+    expect(isOverdue(addDaysISO(t, -1))).toBe(true);
+    expect(isOverdue(addDaysISO(t, 1))).toBe(false);
+  });
+});
+
+describe('addMonthsISO', () => {
+  it('adds months, clamping a day the target month lacks', () => {
+    expect(addMonthsISO('2026-01-15', 1)).toBe('2026-02-15');
+    expect(addMonthsISO('2026-01-31', 1)).toBe('2026-02-28');
+    expect(addMonthsISO('2024-01-31', 1)).toBe('2024-02-29');
+    expect(addMonthsISO('2026-03-31', -1)).toBe('2026-02-28');
+    expect(addMonthsISO('2026-11-30', 2)).toBe('2027-01-30');
+    expect(addMonthsISO('nope', 1)).toBeNull();
+  });
+});
+
+// The MOR 10-day clock. A person in London means London wall-clock time, and
+// the answer must not depend on where the code runs (the server is in UTC).
+describe('addDaysLondon', () => {
+  it('keeps the London clock time across the autumn change (241 hours)', () => {
+    // 09:00 BST on 20 Oct = 08:00 UTC → 09:00 GMT on 30 Oct = 09:00 UTC.
+    expect(addDaysLondon(new Date('2026-10-20T08:00:00Z'), 10).toISOString()).toBe('2026-10-30T09:00:00.000Z');
+  });
+  it('keeps the London clock time across the spring change (239 hours)', () => {
+    // 09:00 GMT on 25 Mar = 09:00 UTC → 09:00 BST on 4 Apr = 08:00 UTC.
+    expect(addDaysLondon(new Date('2026-03-25T09:00:00Z'), 10).toISOString()).toBe('2026-04-04T08:00:00.000Z');
+  });
+  it('is plain 10 x 24 hours when no clock change intervenes', () => {
+    expect(addDaysLondon('2026-07-01T10:30:00Z', 10).toISOString()).toBe('2026-07-11T10:30:00.000Z');
+  });
+});
+
+// Formatting is London's wherever it runs — the Word documents are made on a
+// UTC server, and printed every summer time an hour behind until 2026-10-02.
+describe('formatting in London time', () => {
+  it('prints the London time of an instant, not the zone the code runs in', () => {
+    expect(fmtTime('2026-07-01T13:35:00Z')).toBe('14:35');   // BST
+    expect(fmtTime('2026-12-01T13:35:00Z')).toBe('13:35');   // GMT
+  });
+  it('shows a calendar date as itself, whatever the zone', () => {
+    expect(fmtDateOnly('2026-03-29')).toBe('29 Mar 2026');
+    expect(fmtDateOnly('2026-10-25')).toBe('25 Oct 2026');
+  });
+  it('stamps a generated document', () => {
+    expect(fmtGenerated()).toMatch(/^\d{2} [A-Z][a-z]{2} \d{4}, \d{2}:\d{2}$/);
   });
 });

@@ -20,7 +20,7 @@ import {
   BorderStyle
 } from 'docx';
 import { getLogger } from '$lib/utils/logger';
-import { fmtDateOnly, fmtToday } from '$lib/utils/dates';
+import { fmtDateOnly, fmtToday, today } from '$lib/utils/dates';
 import {
   CONTENT_W, COLOURS, BORDERS, CELL_PAD,
   hCell, dCell, run, para,
@@ -253,7 +253,7 @@ export async function POST({ request }) {
     logger('✅ Certificate generated:', buffer.byteLength, 'bytes');
 
     const safe     = (job.title ?? 'job').replace(/[^a-z0-9]/gi, '_').slice(0, 40);
-    const dateSlug = new Date().toISOString().slice(0, 10);
+    const dateSlug = today();
     return new Response(buffer, {
       headers: {
         'Content-Type':        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

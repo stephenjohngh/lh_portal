@@ -13,7 +13,7 @@
 
 import { authHeaders } from '$lib/utils/authHeaders';
 import { downloadResponse } from '$lib/utils/download.js';
-import { fmtGenerated, fmtDate } from '$lib/utils/dates.js';
+import { fmtGenerated, fmtDate, today } from '$lib/utils/dates.js';
 import { BAY_STATE, TENURE_LABEL } from './bayModel.js';
 import {
   STATUS_LABEL, BASIS_LABEL, HOLDER_TYPE_LABEL, VAT_TREATMENTS, LIVE,
@@ -162,7 +162,7 @@ export async function downloadParkingReport(key, state, { building = 'Lancaster 
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || `Server error ${res.status}`);
   }
-  const filename = `${r.stem}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const filename = `${r.stem}_${today()}.xlsx`;
   await downloadResponse(res, filename);
   return { filename, rows: sheet.rows.length };
 }

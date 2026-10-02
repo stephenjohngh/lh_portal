@@ -28,7 +28,7 @@
   import FormTextarea from '$lib/components/common/FormTextarea.svelte';
   import Checkbox from '$lib/components/common/Checkbox.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
-  import { fmtDate } from '$lib/utils/dates.js';
+  import { fmtDate, today } from '$lib/utils/dates.js';
   import {
     GROUPS, GROUP_LABEL, BASIS, BASIS_LABEL, BASIS_DESCRIPTION,
     HANDLED_BY_LABEL, TRIGGER_TYPE_LABEL,
@@ -50,7 +50,7 @@
   // date, append-only — the same shape `statutory_exclusions` uses.
   let verifying = false;
   let verifyUrl = '';
-  let verifyOn = new Date().toISOString().slice(0, 10);
+  let verifyOn = today();
 
   const isNew = !entry;
   let e = {

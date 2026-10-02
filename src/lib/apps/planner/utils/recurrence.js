@@ -23,10 +23,18 @@
 // see `expandSeries`, which takes the anchor as an argument rather than
 // assuming one.
 
+import { addDaysISO as sharedAddDaysISO, daysBetween } from '$lib/utils/dates.js';
+
+/**
+ * The shared helper, typed for what the Planner gives it: dates it has
+ * already parsed, so never the unreadable input that makes it return null.
+ * @type {(iso: string, days: number) => string}
+ */
+const addDaysISO = /** @type {any} */ (sharedAddDaysISO);
+
 /** How many occurrences one expansion will ever return. */
 export const MAX_OCCURRENCES = 400;
 
-const DAY_MS = 86400000;
 
 /** 'YYYY-MM-DD' → { y, m, d } with m 1-12. */
 export function parseISO(iso) {
@@ -51,22 +59,9 @@ export function weekdayOf(iso) {
   return p ? new Date(Date.UTC(p.y, p.m - 1, p.d)).getUTCDay() : null;
 }
 
-/** Add days to a 'YYYY-MM-DD', returning the same shape. */
-export function addDaysISO(iso, days) {
-  const p = parseISO(iso);
-  if (!p) return null;
-  const t = Date.UTC(p.y, p.m - 1, p.d) + days * DAY_MS;
-  const d = new Date(t);
-  return formatISO(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
-}
-
-/** Whole days from a to b. Negative when b is earlier. */
-export function daysBetween(a, b) {
-  const pa = parseISO(a);
-  const pb = parseISO(b);
-  if (!pa || !pb) return 0;
-  return Math.round((Date.UTC(pb.y, pb.m - 1, pb.d) - Date.UTC(pa.y, pa.m - 1, pa.d)) / DAY_MS);
-}
+// Adding days and counting them have one owner (dates.js, 2026-10-02) —
+// re-exported so the Planner's modules keep their import.
+export { addDaysISO, daysBetween };
 
 /**
  * The day-of-month an event falls on in a given month.
@@ -168,7 +163,7 @@ export function expandRule(input, anchor, from, to) {
     const days = rule.weekdays?.length ? [...rule.weekdays].sort((a, b) => a - b)
                                        : [weekdayOf(anchor)];
     // Start from the Sunday of the anchor's week, then step whole intervals.
-    const weekStart = addDaysISO(anchor, -weekdayOf(anchor));
+    const weekStart = addDaysISO(anchor, -(weekdayOf(anchor) ?? 0));
 
     for (let w = weekStart; w <= limit; w = addDaysISO(w, 7 * interval)) {
       for (const day of days) {

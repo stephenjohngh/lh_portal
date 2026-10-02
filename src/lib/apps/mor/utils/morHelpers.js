@@ -3,6 +3,7 @@
 
 // ── Status ────────────────────────────────────────────────────────────────────
 
+import { DAY_MS, addDaysLondon } from '../../../utils/dates.js';
 export const STATUS_LABEL = {
   submitted:        'Submitted',
   acknowledged:     'Acknowledged',
@@ -144,12 +145,13 @@ export function clockTextClass(status) {
 export function bsrReportClock(identificationDate) {
   if (!identificationDate) return null;
   const identified = new Date(identificationDate);
-  const deadline   = new Date(identified);
-  deadline.setDate(deadline.getDate() + 10);
+  // Ten days of London wall-clock time, wherever this runs (dates.js) — it
+  // used local-calendar arithmetic, which is UTC's on the server.
+  const deadline   = addDaysLondon(identified, 10);
 
   const now         = new Date();
   const msRemaining = deadline - now;
-  const daysLeft    = msRemaining / (1000 * 60 * 60 * 24);
+  const daysLeft    = msRemaining / DAY_MS;
   const hoursLeft   = Math.floor(msRemaining / (1000 * 60 * 60));
 
   let status, label;
@@ -345,7 +347,6 @@ export const CONTACT_KIND_LABEL = {
 const HAS_REPORTER_CONTACT_INFO = (c) =>
   !!c && !c.is_anonymous && typeof c.reporter_contact === 'string' && c.reporter_contact.trim().length > 0;
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Latest timeline entry of entry_type='reporter_contact' matching `kind`. */
 export function latestReporterContact(timeline, kind) {

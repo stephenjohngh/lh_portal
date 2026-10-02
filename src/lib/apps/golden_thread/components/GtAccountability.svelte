@@ -15,7 +15,7 @@
   import Button       from '$lib/components/common/Button.svelte';
   import Badge        from '$lib/components/common/Badge.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-  import { fmtDate }  from '$lib/utils/dates';
+  import { fmtDate, today }  from '$lib/utils/dates';
 
   export let saving = false;
 
@@ -63,7 +63,7 @@
   async function confirmClose() {
     if (!pendingClose) return;
     closing = true;
-    await gtStore.editAccountablePerson(pendingClose.id, { ended_on: new Date().toISOString().slice(0, 10) });
+    await gtStore.editAccountablePerson(pendingClose.id, { ended_on: today() });
     closing = false;
     pendingClose = null;
   }

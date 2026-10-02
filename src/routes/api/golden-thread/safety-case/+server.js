@@ -13,7 +13,7 @@ import {
 } from '$lib/server/docxHelpers.js';
 import { REVIEW_BAND_LABEL, AP_ROLE_LABEL } from '$lib/apps/golden_thread/utils/gtConstants.js';
 import { getLogger } from '$lib/utils/logger';
-import { fmtDate, fmtDateTime } from '$lib/utils/dates';
+import { fmtDate, fmtDateTime, today } from '$lib/utils/dates';
 
 const logger = getLogger('GtSafetyCase');
 
@@ -151,7 +151,7 @@ export async function POST({ request }) {
     });
 
     const buffer = await Packer.toBuffer(doc);
-    const stamp = new Date().toISOString().slice(0, 10);
+    const stamp = today();
     return new Response(buffer, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

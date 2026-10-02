@@ -10,7 +10,7 @@
 
 import { authHeaders } from '$lib/utils/authHeaders';
 import { downloadResponse } from '$lib/utils/download.js';
-import { fmtGenerated } from '$lib/utils/dates.js';
+import { fmtGenerated, today } from '$lib/utils/dates.js';
 import { BAY_STATES, BAY_STATE } from './bayModel.js';
 
 const short = (s, n = 18) => (s && s.length > n ? `${s.slice(0, n - 1)}…` : s ?? '');
@@ -157,7 +157,7 @@ export async function downloadBayPlan(state, { building = 'Lancaster House' } = 
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || `Server error ${res.status}`);
   }
-  const filename = `Parking_Bay_Plan_${new Date().toISOString().slice(0, 10)}.docx`;
+  const filename = `Parking_Bay_Plan_${today()}.docx`;
   await downloadResponse(res, filename);
   return { filename, levels: levels.length };
 }

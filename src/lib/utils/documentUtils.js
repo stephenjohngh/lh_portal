@@ -1,6 +1,7 @@
 // src/lib/utils/documentUtils.js
 // Client-side constants and helpers for the document library.
 
+import { DAY_MS } from './dates.js';
 export const MIME_ICONS = {
   'application/pdf':                                                         '📄',
   'application/msword':                                                      '📝',
@@ -113,7 +114,6 @@ export function isUnclassifiedDocType(docType) {
   return !docType || docType === 'other';
 }
 
-const MS_DAY = 86_400_000;
 
 /**
  * @param {string|null} expiryDate  ISO date string
@@ -123,7 +123,7 @@ export function getExpiryStatus(expiryDate) {
   if (!expiryDate) return null;
   const diff = new Date(expiryDate).getTime() - Date.now();
   if (diff < 0)           return 'expired';
-  if (diff < 30 * MS_DAY) return 'expiring-soon';
+  if (diff < 30 * DAY_MS) return 'expiring-soon';
   return 'ok';
 }
 

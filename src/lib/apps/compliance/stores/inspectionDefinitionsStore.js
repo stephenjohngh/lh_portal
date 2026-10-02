@@ -7,6 +7,7 @@
 // via computeInspectionSchedule / obligationSchedule.
 // Writes are admin-only at RLS (migration 153).
 
+import { today } from '../../../utils/dates.js';
 import { writable }  from 'svelte/store';
 import { api }       from '$lib/utils/api';
 import { supabase }  from '$lib/supabaseClient';
@@ -169,7 +170,7 @@ function createInspectionDefinitionsStore() {
       throw new Error('A reason is required — say what withdrew this requirement.');
     }
     const uid = await userId();
-    const on = retiredOn || new Date().toISOString().slice(0, 10);
+    const on = retiredOn || today();
     const updated = await api.update('statutory_obligations', id, {
       retired_on: on,
       retired_reason: reason.trim(),

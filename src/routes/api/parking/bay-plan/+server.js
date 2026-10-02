@@ -3,6 +3,7 @@
 // is built by $lib/server/parkingBayPlanDocx.js, which is tested; the plan
 // images arrive already drawn by the browser (parking/utils/bayPlanImage.js).
 
+import { today } from '../../../../lib/utils/dates.js';
 import { json } from '@sveltejs/kit';
 import { requireAuth } from '$lib/server/requireAuth';
 import { getLogger } from '$lib/utils/logger';
@@ -18,7 +19,7 @@ export async function POST({ request }) {
   try {
     const body = await request.json();
     const buffer = await buildBayPlanBuffer(body);
-    const date = new Date().toISOString().slice(0, 10);
+    const date = today();
     return new Response(buffer, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

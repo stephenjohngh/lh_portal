@@ -9,7 +9,7 @@
   import Button from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-  import { fmtDate } from '$lib/utils/dates';
+  import { fmtDate, isOverdue } from '$lib/utils/dates';
   import { ISSUE_STATUS, ACTION_STATUS, ACTIVITY_TYPE, getPriorityLabel } from '$lib/utils/constants';
 
   export let issue;
@@ -42,11 +42,7 @@
 
   $: overdueActionsCount = issue.actions?.filter(action => {
     if (!action.date_deadline || action.status === ACTION_STATUS.COMPLETED) return false;
-    const deadline = new Date(action.date_deadline);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    deadline.setHours(0, 0, 0, 0);
-    return deadline < today;
+    return isOverdue(action.date_deadline);
   }).length || 0;
 
   function handleDelete() {

@@ -6,6 +6,7 @@
 // it hasn't lapsed. Type-1 testable (gtCompetence.test.js). No I/O.
 
 /** Controlled competence vocabulary (author/reviewer domains). */
+import { today as todayLondon } from '../../../utils/dates.js';
 export const COMPETENCIES = [
   'fire', 'structural', 'fire_door', 'electrical', 'mechanical',
   'facade_cladding', 'water_hygiene', 'lifts', 'general',
@@ -47,7 +48,7 @@ export function requiredCompetenceForDoc(documentType) {
 /** Has this person's competence lapsed as at `todayISO`? */
 export function competenceExpired(person, todayISO) {
   if (!person?.competence_expiry) return false;
-  const today = todayISO ?? new Date().toISOString().slice(0, 10);
+  const today = todayISO ?? todayLondon();
   return person.competence_expiry < today;
 }
 

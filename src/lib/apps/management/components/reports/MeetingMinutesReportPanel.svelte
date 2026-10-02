@@ -6,7 +6,7 @@
   import MeetingMinutesView from '../meetings/MeetingMinutesView.svelte';
   import { meetingsStore }  from '../../stores/meetingsStore';
   import { profiles, profilesStore } from '$lib/stores/profiles';
-  import { fmtDate }     from '$lib/utils/dates';
+  import { fmtDate, today }     from '$lib/utils/dates';
   import { downloadResponse } from '$lib/utils/download';
   import { getLogger }   from '$lib/utils/logger';
 
@@ -73,7 +73,7 @@
         throw new Error(`Server error: ${response.status}`);
       }
       const safe     = (selectedMeeting.title ?? 'Minutes').replace(/[^a-zA-Z0-9]+/g, '_');
-      const filename = `Minutes_${safe}_${new Date().toISOString().split('T')[0]}.docx`;
+      const filename = `Minutes_${safe}_${today()}.docx`;
       await downloadResponse(response, filename);
       logger('✅ Downloaded:', filename);
     } catch (/** @type {any} */ err) {

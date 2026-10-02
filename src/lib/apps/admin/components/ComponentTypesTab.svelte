@@ -4,6 +4,7 @@
      All CRUD is handled in child panels; this component manages
      selection state and calls reload() after any save. -->
 <script>
+  import { today } from '$lib/utils/dates';
   import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
   import SystemPanel      from './SystemPanel.svelte';
   import TypePanel        from './TypePanel.svelte';
@@ -106,7 +107,7 @@
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
-    a.download = `component-types-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `component-types-${today()}.csv`;
     document.body.appendChild(a);
     a.click();
     URL.revokeObjectURL(url);

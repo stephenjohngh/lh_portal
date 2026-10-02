@@ -10,7 +10,7 @@
   // Read-only; tap a row to open detail.
 
   import { createEventDispatcher } from 'svelte';
-  import { fmtDate } from '$lib/utils/dates.js';
+  import { fmtDate, isOverdue } from '$lib/utils/dates.js';
   import MeetingChip from './MeetingChip.svelte';
 
   export let issues         = [];
@@ -54,11 +54,9 @@
   function actionSummary(issue) {
     const acts = issue.actions ?? [];
     const outstanding = acts.filter(a => a.status !== 'completed').length;
-    const today = new Date(); today.setHours(0,0,0,0);
     const overdue = acts.filter(a => {
       if (!a.date_deadline || a.status === 'completed') return false;
-      const d = new Date(a.date_deadline); d.setHours(0,0,0,0);
-      return d < today;
+      return isOverdue(a.date_deadline);
     }).length;
     return { outstanding, overdue };
   }

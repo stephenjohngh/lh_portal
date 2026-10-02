@@ -10,12 +10,10 @@
 
 /** @typedef {'overdue'|'due_30'|'due_60'|'due_90'|null} ReviewBand */
 
-/** Whole days between two ISO dates (YYYY-MM-DD), b - a. UTC, calendar-day based. */
-export function daysBetween(aISO, bISO) {
-  const a = Date.parse(aISO + 'T00:00:00Z');
-  const b = Date.parse(bISO + 'T00:00:00Z');
-  return Math.round((b - a) / 86_400_000);
-}
+// Day arithmetic has one owner (dates.js, 2026-10-02); re-exported so this
+// module's callers keep their import.
+import { daysBetween } from '$lib/utils/dates.js';
+export { daysBetween };
 
 /**
  * Band a document falls into given days-until-review. null = not due soon (>90)

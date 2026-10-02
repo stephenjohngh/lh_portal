@@ -6,6 +6,7 @@
      time from the store (membership + area), reusing buildSpacesRegister() +
      spaceReport.js — the same helpers the sidebar used to expose as CSV. -->
 <script>
+  import { today } from '$lib/utils/dates';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
   import { buildSpacesRegisterRows, spacesRegisterCsvRows } from '../utils/spaceReport.js';
   import { KIND_LABEL } from '$lib/utils/spaceRef.js';
@@ -72,7 +73,7 @@
   );
 
   function exportCsv() {
-    downloadCsvRows(`spaces-register-${new Date().toISOString().slice(0, 10)}.csv`,
+    downloadCsvRows(`spaces-register-${today()}.csv`,
       spacesRegisterCsvRows(filteredRows));
   }
 

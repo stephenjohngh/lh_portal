@@ -20,6 +20,17 @@
    * caller owns the <datalist> element.
    */
   export let list = null;
+  /**
+   * Number and date bounds. Callers passed min="1" for weeks and the input
+   * never received it: a prop the component does not declare is dropped
+   * silently, so the Planner's "every N" accepted 0 and negatives (2026-10-02).
+   */
+  /** @type {string|number|null} */
+  export let min = null;
+  /** @type {string|number|null} */
+  export let max = null;
+  /** @type {string|number|null} */
+  export let step = null;
 
   // Generate ID if not provided
   $: elementId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
@@ -50,6 +61,9 @@
     {maxlength}
     {pattern}
     {list}
+    {min}
+    {max}
+    {step}
     class="w-full px-3 py-2 bg-slate-700 border rounded-lg text-white placeholder-gray-400 
            focus:outline-none focus:ring-2 transition-all
            {error ? 'border-red-500 focus:ring-red-500' : 'border-slate-600 focus:ring-purple-500'}

@@ -18,7 +18,7 @@
     shouldShowBsrNotifyNudge, shouldShowClosureNudge, shouldShowStalenessNudge,
     isAwaitingMyApproval, isMyProposalAwaitingApproval, isMineAndOpen,
   } from '$lib/apps/mor/utils/morHelpers';
-  import { fmtDate } from '$lib/utils/dates';
+  import { fmtDate, today, DAY_MS } from '$lib/utils/dates';
 
   const dispatch = createEventDispatcher();
 
@@ -56,7 +56,7 @@
 
   // Cases closed in the last 30 days. Reactive so the window slides as the
   // page stays open, not snapshotted at mount time.
-  $: thirtyDaysAgo = (tick, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+  $: thirtyDaysAgo = (tick, new Date(Date.now() - 30 * DAY_MS).toISOString());
   $: recentlyClosed = [...cases]
     .filter(c => c.status === 'closed' && c.closed_at && c.closed_at >= thirtyDaysAgo)
     .sort((a, b) => new Date(b.closed_at ?? 0).getTime() - new Date(a.closed_at ?? 0).getTime())
@@ -114,11 +114,14 @@
   // ── Period summary report ──────────────────────────────────────────────────
   function defaultPeriodStart() {
     // Default to the start of the current quarter.
-    const now = new Date();
-    const q   = Math.floor(now.getMonth() / 3);
-    return new Date(now.getFullYear(), q * 3, 1).toISOString().slice(0, 10);
+    // Built as a string: the old version made LOCAL midnight on the 1st and
+    // read it back in UTC, so a quarter starting under BST (April, July)
+    // started the day before.
+    const t = today();
+    const q = Math.floor((Number(t.slice(5, 7)) - 1) / 3);
+    return `${t.slice(0, 4)}-${String(q * 3 + 1).padStart(2, '0')}-01`;
   }
-  function todayIso() { return new Date().toISOString().slice(0, 10); }
+  function todayIso() { return today(); }
 
   let periodStart = defaultPeriodStart();
   let periodEnd   = todayIso();

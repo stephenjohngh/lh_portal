@@ -9,6 +9,7 @@
 // Time is injected everywhere. A gate that reads the clock itself cannot be
 // tested at its own boundary, and the boundary is the only interesting part.
 
+import { DAY_MS } from '../../../utils/dates.js';
 /** @typedef {'live'|'expired'|'revoked'} PublicationState */
 
 /**
@@ -83,7 +84,7 @@ export function daysUntilExpiry(publication, now = Date.now()) {
   if (!publication?.expires_at) return null;
   const expires = new Date(publication.expires_at).getTime();
   if (Number.isNaN(expires)) return null;
-  return Math.ceil((expires - toMillis(now)) / 86_400_000);
+  return Math.ceil((expires - toMillis(now)) / DAY_MS);
 }
 
 /**
@@ -120,5 +121,5 @@ export const EXPIRY_CHOICES = [
  */
 export function expiryFromDays(days, now = Date.now()) {
   if (days == null) return null;
-  return new Date(toMillis(now) + days * 86_400_000).toISOString();
+  return new Date(toMillis(now) + days * DAY_MS).toISOString();
 }

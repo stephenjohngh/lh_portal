@@ -15,6 +15,7 @@
 //   • an authenticated ADMIN session (the in-app "Run review tick now" dev harness).
 // Anything else gets 401/403.
 
+import { today } from '../../../../lib/utils/dates.js';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { json }                 from '@sveltejs/kit';
 import { createClient }         from '@supabase/supabase-js';
@@ -28,7 +29,7 @@ const logger = getLogger('gt-review-tick');
 
 /** Today as an ISO date (YYYY-MM-DD), en-GB-safe (no locale parsing). */
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return today();
 }
 
 /**

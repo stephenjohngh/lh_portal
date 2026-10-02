@@ -38,7 +38,7 @@
   import { buildSpaceRef, KIND_LABEL } from '$lib/utils/spaceRef.js';
   import { generateXlsxDocument } from './plan/xlsxReportGenerator.js';
   import { filterComponents, describeComponentFilters } from '../utils/componentsFilter.js';
-  import { fmtGenerated }   from '$lib/utils/dates.js';
+  import { fmtGenerated, today }   from '$lib/utils/dates.js';
   import { downloadCsvRows } from '$lib/utils/download.js';
 
   // -- Store bindings ------------------------------------------------
@@ -396,7 +396,7 @@
   function generateCSV() {
     if (filteredComponents.length === 0) return;
     const rows = buildComponentsCsvRows(filteredComponents, filteredByFloor, matrixCtx);
-    downloadCsvRows(`components-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+    downloadCsvRows(`components-${today()}.csv`, rows);
   }
 
   // -- XLSX export (server-styled, multi-sheet) ----------------------

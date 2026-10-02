@@ -10,7 +10,7 @@
   import { downloadResponse } from '$lib/utils/download';
   import { getJSON, setJSON } from '$lib/utils/prefs';
   import { getLogger }        from '$lib/utils/logger';
-  import { fmtDate }          from '$lib/utils/dates';
+  import { fmtDate, today }          from '$lib/utils/dates';
 
   const logger = getLogger('IssuesReportPanel');
 
@@ -132,7 +132,7 @@
         }
         throw new Error(`Server error: ${response.status}`);
       }
-      const filename = `Issues_Report_${new Date().toISOString().split('T')[0]}.docx`;
+      const filename = `Issues_Report_${today()}.docx`;
       await downloadResponse(response, filename);
       logger('✅ Downloaded:', filename);
     } catch (/** @type {any} */ err) {

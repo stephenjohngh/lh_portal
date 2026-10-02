@@ -14,6 +14,7 @@
 // The DETAIL sheet is generic — `{headers, rows}` in, styled grid out, serving
 // any list. The SUMMARY sheets are the component status pivot and nothing else.
 
+import { today } from '../utils/dates.js';
 import ExcelJS from 'exceljs';
 
 const HEADER_FILL = 'FF1E293B';   // slate-800
@@ -149,5 +150,5 @@ export function buildWorkbook(payload = {}) {
 /** `Building_Stem_YYYY-MM-DD.xlsx`, with anything awkward replaced. */
 export function xlsxFilename(building = 'Lancaster House', filenameStem = 'Components') {
   const safe = (s) => String(s).replace(/[^a-z0-9]/gi, '_');
-  return `${safe(building)}_${safe(filenameStem)}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  return `${safe(building)}_${safe(filenameStem)}_${today()}.xlsx`;
 }

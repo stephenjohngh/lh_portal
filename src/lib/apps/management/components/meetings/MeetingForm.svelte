@@ -13,6 +13,7 @@
   Dispatches 'submit' with the cleaned form payload, or 'close' on cancel.
 -->
 <script>
+  import { today } from '$lib/utils/dates';
   import { onMount, createEventDispatcher } from 'svelte';
   import { profiles, profilesStore } from '$lib/stores/profiles';
   import { meetingsStore }  from '../../stores/meetingsStore';
@@ -92,7 +93,7 @@
         type_custom = mt;
       }
     } else {
-      meeting_date    = new Date().toISOString().split('T')[0];
+      meeting_date    = today();
       title           = fmtTitleDate(meeting_date);
       type_key        = typeOptions[0] ?? '';
       type_custom     = '';

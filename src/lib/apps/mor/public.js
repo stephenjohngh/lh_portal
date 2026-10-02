@@ -71,9 +71,10 @@ export async function listBsrReportDeadlines() {
       && c.decision_outcome !== 'internal' && c.decision_outcome !== 'no_action')
     .map((c) => {
       const clock = bsrReportClock(c.identification_date);
-      // UTC date of the deadline, like the portal's own `today()`. Near
-      // midnight in BST that can read a day EARLY — the safe direction for a
-      // statutory deadline, and never late.
+      // ⚠ Deliberately the UTC date of the deadline INSTANT, not its London
+      // date (dates.js calendarDate). Near midnight in BST it can read a day
+      // EARLY — the safe direction for a statutory deadline, and never late.
+      // dateHandlingGuard.test.js allows this one cut by name.
       return {
         id: c.id,
         reference: c.reference,

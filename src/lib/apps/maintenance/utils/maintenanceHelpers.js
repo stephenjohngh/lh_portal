@@ -1,6 +1,8 @@
 // src/lib/apps/maintenance/utils/maintenanceHelpers.js
 // Pure helpers for RAG status, display labels, and date arithmetic.
 
+import { daysUntil } from '../../../utils/dates.js';
+
 // -- RAG / status --------------------------------------------------------------
 
 /**
@@ -13,16 +15,15 @@ export function jobRag(job) {
   if (job.status === 'completed')   return 'completed';
   if (job.status === 'cancelled')   return 'cancelled';
   if (job.status === 'in_progress') return 'in_progress';
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-
-  // Effective due date: use the earlier of scheduled_date and hard_expiry_date (when set)
-  const scheduled = new Date(job.scheduled_date + 'T00:00:00');
-  const hard      = job.hard_expiry_date ? new Date(job.hard_expiry_date + 'T00:00:00') : null;
+  // Effective due date: use the earlier of scheduled_date and hard_expiry_date (when set).
+  // Calendar days in London (dates.js) — it used to count from LOCAL midnight.
+  const scheduled = job.scheduled_date;
+  const hard      = job.hard_expiry_date;
   const due       = (hard && hard < scheduled) ? hard : scheduled;
 
-  if (due < today) return 'overdue';
-  const soon = new Date(today); soon.setDate(soon.getDate() + 30);
-  if (due <= soon) return 'due_soon';
+  const days = daysUntil(due);
+  if (days < 0) return 'overdue';
+  if (days <= 30) return 'due_soon';
   return 'scheduled';
 }
 
@@ -81,9 +82,7 @@ export function docTypeIcon(t) {
 
 /** Human-readable relative date string. */
 export function daysRelative(dateStr) {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const due   = new Date(dateStr + 'T00:00:00');
-  const diff  = Math.round((due - today) / 86400000);
+  const diff  = daysUntil(dateStr);
   if (diff < -1)  return `${Math.abs(diff)} days overdue`;
   if (diff === -1) return '1 day overdue';
   if (diff === 0) return 'Due today';
@@ -106,11 +105,9 @@ export function fmtBytes(bytes) {
 /** Is an expiry date past or within N days? */
 export function expiryRag(dateStr, warningDays = 60) {
   if (!dateStr) return null;
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const exp   = new Date(dateStr + 'T00:00:00');
-  if (exp < today) return 'expired';
-  const warn = new Date(today); warn.setDate(warn.getDate() + warningDays);
-  if (exp <= warn) return 'expiring';
+  const days = daysUntil(dateStr);
+  if (days < 0) return 'expired';
+  if (days <= warningDays) return 'expiring';
   return 'valid';
 }
 

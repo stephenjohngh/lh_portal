@@ -26,7 +26,7 @@
   import FormInput from '$lib/components/common/FormInput.svelte';
   import FormTextarea from '$lib/components/common/FormTextarea.svelte';
   import { isRecordableReason } from '$lib/utils/statutoryExclusions.js';
-  import { fmtDate } from '$lib/utils/dates.js';
+  import { fmtDate, today } from '$lib/utils/dates.js';
   import PlannedObligationModal from './PlannedObligationModal.svelte';
   import FilterBar from '$lib/components/common/FilterBar.svelte';
   import {
@@ -56,7 +56,7 @@
   // jobs done under it are still evidence, and deleting would orphan them.
   let retiring = null;
   let unretiring = null;
-  let retireOn = new Date().toISOString().slice(0, 10);
+  let retireOn = today();
   let retireReason = '';
   let retireBusy = false;
   let retireError = '';
@@ -65,7 +65,7 @@
 
   function askRetire(d) {
     retiring = d; retireReason = ''; retireError = '';
-    retireOn = new Date().toISOString().slice(0, 10);
+    retireOn = today();
   }
   function askUnretire(d) { unretiring = d; retireReason = ''; retireError = ''; }
 

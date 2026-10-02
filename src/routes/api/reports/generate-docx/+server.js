@@ -7,7 +7,7 @@ import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
 import { getLogger }       from '$lib/utils/logger';
 import { getPriorityLabel } from '$lib/utils/constants';
 import { buildFieldSummary } from '$lib/apps/management/components/reports/reportUtils';
-import { fmtShortDate, fmtDateLong } from '$lib/utils/dates';
+import { fmtShortDate, fmtDateLong, today } from '$lib/utils/dates';
 import { parseHtmlToDocxParagraphs } from '$lib/server/richTextDocx.js';
 
 const logger = getLogger('GenerateDocx');
@@ -138,7 +138,7 @@ export async function POST({ request }) {
     logger('✅ Buffer generated successfully');
     logger('Buffer size:', buffer.length, 'bytes (', (buffer.length / 1024).toFixed(2), 'KB)');
 
-    const filename = `Issues_Report_${new Date().toISOString().split('T')[0]}.docx`;
+    const filename = `Issues_Report_${today()}.docx`;
     logger('Filename:', filename);
 
     logger('✅ Sending response');

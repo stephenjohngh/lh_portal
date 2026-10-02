@@ -14,6 +14,7 @@
 // them, and nothing here re-derives any of it, so the document can never
 // disagree with the list the user was looking at.
 
+import { today } from '../../../../lib/utils/dates.js';
 import { json } from '@sveltejs/kit';
 import { requireAuth } from '$lib/server/requireAuth';
 import { getLogger } from '$lib/utils/logger';
@@ -42,7 +43,7 @@ export async function POST({ request }) {
     logger('✅', whole ? 'obligations statement:' : 'register extract:',
       (payload.rows ?? []).length, 'of', payload.total, 'rows');
 
-    const dateSlug = new Date().toISOString().slice(0, 10);
+    const dateSlug = today();
     const stem = whole ? 'Obligations_Statement' : 'Register_Extract';
     return new Response(buf, {
       headers: {

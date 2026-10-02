@@ -15,7 +15,7 @@
   import { meetingsStore }      from '../../stores/meetingsStore';
   import { permissions }        from '$lib/stores/permissions';
   import { profiles, profilesStore } from '$lib/stores/profiles';
-  import { fmtDate, fmtDateTime } from '$lib/utils/dates';
+  import { fmtDate, fmtDateTime, today } from '$lib/utils/dates';
   import { ACTIVITY_TYPE }      from '$lib/utils/constants';
   import { downloadResponse }   from '$lib/utils/download';
   import { getLogger }          from '$lib/utils/logger';
@@ -187,7 +187,7 @@
         throw new Error(`Server error: ${response.status}`);
       }
       const safe     = (selectedMeeting.title ?? 'Minutes').replace(/[^a-zA-Z0-9]+/g, '_');
-      const filename = `Minutes_${safe}_${new Date().toISOString().split('T')[0]}.docx`;
+      const filename = `Minutes_${safe}_${today()}.docx`;
       await downloadResponse(response, filename);
       logger('✅ Downloaded:', filename);
     } catch (/** @type {any} */ err) {

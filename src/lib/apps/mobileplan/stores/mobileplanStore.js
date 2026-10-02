@@ -5,6 +5,7 @@
 //
 // No create / update / delete methods — this app is view-only.
 
+import { DAY_MS } from '../../../utils/dates.js';
 import { writable, get } from 'svelte/store';
 import { api }           from '$lib/utils/api';
 import { getLogger }     from '$lib/utils/logger';
@@ -22,7 +23,7 @@ const CACHE_KEY_FLOOR       = id => `mobileplan_cache_floor_${id}_v${CACHE_VERSI
 const CACHE_KEY_ALLCOMPS    = `mobileplan_cache_all_components_v${CACHE_VERSION}`;
 const CACHE_KEY_FILTER      = 'mobileplan_filter';
 const CACHE_KEY_LAST_FLOOR  = 'mobileplan_last_floor_id';
-const TTL_HIERARCHY_MS    = 24 * 60 * 60 * 1000;   // 24 h
+const TTL_HIERARCHY_MS    = DAY_MS;   // 24 h
 const TTL_FLOOR_MS        =  1 * 60 * 60 * 1000;   //  1 h
 const FETCH_TIMEOUT_MS    = 8000;
 

@@ -9,7 +9,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import Badge from '$lib/components/common/Badge.svelte';
-  import { fmtDate } from '$lib/utils/dates';
+  import { fmtDate, daysBetween, today } from '$lib/utils/dates';
   import { statusMeta } from '../utils/complaintLifecycle.js';
   import { categoryLabel } from '../utils/complaintOptions.js';
 
@@ -18,11 +18,10 @@
 
   const dispatch = createEventDispatcher();
 
-  /** Days since it arrived — the only ageing P0 has. */
+  /** Calendar days since it arrived (London) — the only ageing P0 has. */
   function daysOld(iso) {
     if (!iso) return null;
-    const ms = Date.now() - new Date(iso).getTime();
-    return Math.max(0, Math.floor(ms / 86_400_000));
+    return Math.max(0, daysBetween(iso, today()) || 0);
   }
 </script>
 

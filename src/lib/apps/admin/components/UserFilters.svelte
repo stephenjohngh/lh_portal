@@ -4,6 +4,7 @@
   
   export let searchTerm = '';
   /** null while the users are still loading: no count is shown, not "0". */
+  /** @type {number|null} */
   export let resultCount = null;
 </script>
 

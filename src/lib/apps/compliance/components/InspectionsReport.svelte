@@ -22,7 +22,7 @@
     flattenInspectionRows,
     sessionKindLabel,
   } from '$lib/apps/inspection/utils/inspectionHelpers.js';
-  import { fmtDateTime } from '$lib/utils/dates';
+  import { fmtDateTime, today } from '$lib/utils/dates';
   import { downloadResponse } from '$lib/utils/download';
   import { conditionChecklistDisplay, readingsDisplay } from '$lib/apps/building_assets/lookups.js';
 
@@ -225,7 +225,7 @@
         throw new Error(body.error ?? `HTTP ${response.status}`);
       }
 
-      const date     = new Date().toISOString().slice(0, 10);
+      const date     = today();
       const slug     = reportType === 'summary' ? 'Summary' : 'Detailed';
       const filename = `Inspections_${slug}_${date}.docx`;
       await downloadResponse(response, filename);

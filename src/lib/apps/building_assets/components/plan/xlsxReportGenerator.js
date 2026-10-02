@@ -13,6 +13,7 @@
 // }
 // Returns { filename }; throws on error.
 
+import { today } from '../../../../utils/dates.js';
 import { buildComponentsMatrix, buildStatusPivot } from '../../utils/reportModel.js';
 import { authHeaders }      from '$lib/utils/authHeaders';
 import { downloadResponse } from '$lib/utils/download.js';
@@ -71,7 +72,7 @@ export async function generateXlsxDocument(params) {
     throw new Error(body.error || `Server error ${res.status}`);
   }
 
-  const filename = `components-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const filename = `components-${today()}.xlsx`;
   await downloadResponse(res, filename);
   return { filename };
 }

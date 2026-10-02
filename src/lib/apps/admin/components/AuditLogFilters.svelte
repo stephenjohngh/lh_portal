@@ -1,6 +1,7 @@
 <!-- src/lib/apps/admin/components/AuditLogFilters.svelte -->
 <!-- Advanced filtering for audit logs -->
 <script>
+  import { today, addDaysISO, addMonthsISO } from '$lib/utils/dates';
   import { createEventDispatcher } from 'svelte';
   import FormInput from '$lib/components/common/FormInput.svelte';
   import FormSelect from '$lib/components/common/FormSelect.svelte';
@@ -85,19 +86,17 @@
   function setQuickFilter(type) {
     switch(type) {
       case 'today':
-        filters.startDate = new Date().toISOString().split('T')[0];
-        filters.endDate   = new Date().toISOString().split('T')[0];
+        filters.startDate = today();
+        filters.endDate   = today();
         break;
       case 'week': {
-        const d = new Date(); d.setDate(d.getDate() - 7);
-        filters.startDate = d.toISOString().split('T')[0];
-        filters.endDate   = new Date().toISOString().split('T')[0];
+        filters.startDate = addDaysISO(today(), -7);
+        filters.endDate   = today();
         break;
       }
       case 'month': {
-        const d = new Date(); d.setMonth(d.getMonth() - 1);
-        filters.startDate = d.toISOString().split('T')[0];
-        filters.endDate   = new Date().toISOString().split('T')[0];
+        filters.startDate = addMonthsISO(today(), -1);
+        filters.endDate   = today();
         break;
       }
       case 'auth':     filters.eventCategory = 'auth';     break;

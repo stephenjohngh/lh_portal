@@ -16,7 +16,7 @@ import {
   WidthType, TableLayoutType
 } from 'docx';
 import { getLogger } from '$lib/utils/logger';
-import { fmtToday } from '$lib/utils/dates';
+import { fmtToday, today } from '$lib/utils/dates';
 import {
   CONTENT_W, COLOURS, BORDERS,
   hCell, dCell, run, para,
@@ -246,7 +246,7 @@ export async function POST({ request }) {
     const buffer = await Packer.toBuffer(doc);
     logger('✅ Schedule report generated:', buffer.byteLength, 'bytes');
 
-    const dateSlug = new Date().toISOString().slice(0, 10);
+    const dateSlug = today();
     return new Response(buffer, {
       headers: {
         'Content-Type':        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

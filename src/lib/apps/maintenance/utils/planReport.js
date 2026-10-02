@@ -9,13 +9,7 @@
 // is what makes a reserve-fund plan credible and R0-honest (these are the planner's
 // assumptions, surfaced, not a machine's decision).
 
-import { addYearsFractional } from './tenYearPlan.js';
-
-// Local YYYY-MM-DD (never via toISOString — that shifts a date across the UTC
-// boundary, e.g. a June date reads as May 31 under BST).
-function toLocalYMD(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
+import { addYearsFractionalISO } from './tenYearPlan.js';
 
 /**
  * The first renewal after a group's last renewal (last + lifetime). May be in the
@@ -24,7 +18,7 @@ function toLocalYMD(d) {
  */
 export function nextRenewalDate(lastRenewal, lifetimeYears) {
   if (!lastRenewal || !lifetimeYears) return null;
-  return toLocalYMD(addYearsFractional(new Date(lastRenewal + 'T00:00:00'), Number(lifetimeYears)));
+  return addYearsFractionalISO(lastRenewal, Number(lifetimeYears));
 }
 
 /**

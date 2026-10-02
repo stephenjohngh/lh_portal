@@ -2,6 +2,7 @@
 // Client-side store for audit logs
 // UPDATED: getStats() counts plan events; app_id selected in all queries
 
+import { today, DAY_MS } from '../../../utils/dates.js';
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
 import { sanitizeIlikeTerm } from '$lib/utils/pgFilter.js';
@@ -175,7 +176,7 @@ function createAuditLogsStore() {
         const url  = window.URL.createObjectURL(blob);
         const a    = document.createElement('a');
         a.href     = url;
-        a.download = `audit_logs_${new Date().toISOString().split('T')[0]}.csv`;
+        a.download = `audit_logs_${today()}.csv`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -259,8 +260,7 @@ function createAuditLogsStore() {
     async getStats(days = 30) {
       logger('Fetching stats for last', days, 'days');
       try {
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - days);
+        const startDate = new Date(Date.now() - days * DAY_MS);   // elapsed: the last N x 24 h
 
         const { data, error } = await supabase
           .from('audit_logs')

@@ -22,7 +22,7 @@
   import { DOC_TYPES, CATEGORIES, DOC_FOLDERS } from '$lib/utils/documentUtils';
   import { checkDocuments }  from '$lib/utils/documentApi';
   import { checkSummary }    from '$lib/utils/documentCheckLabels.js';
-  import { fmtTime }         from '$lib/utils/dates';
+  import { fmtTime, DAY_MS }         from '$lib/utils/dates';
 
   $: ({ docs, loading, error } = $documentsStore);
 
@@ -114,7 +114,7 @@
   $: expiring  = docs.filter(d => {
     if (!d.expiry_date) return false;
     const diff = new Date(d.expiry_date) - Date.now();
-    return diff >= 0 && diff < 30 * 86_400_000;
+    return diff >= 0 && diff < 30 * DAY_MS;
   }).length;
   $: expired   = docs.filter(d => d.expiry_date && new Date(d.expiry_date) < new Date()).length;
 </script>

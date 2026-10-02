@@ -6,6 +6,7 @@
 // so the heat-map reflects current reality; nothing derived is stored. No I/O —
 // Type-1 testable (gtRiskScoring.test.js).
 
+import { today as todayLondon } from '../../../utils/dates.js';
 export const RISK_DOMAINS = ['fire', 'structural', 'other'];
 export const RISK_DOMAIN_LABELS = { fire: 'Fire', structural: 'Structural', other: 'Other' };
 export const RISK_SOURCES = ['fra', 'mor', 'inspection', 'safety_case', 'survey', 'manual'];
@@ -59,7 +60,7 @@ export function escalateBand(band, bands = DEFAULT_RISK_BANDS) {
  * @param {string} todayISO  YYYY-MM-DD
  */
 export function riskAlertSignals(ctx = {}, todayISO) {
-  const today = todayISO ?? new Date().toISOString().slice(0, 10);
+  const today = todayISO ?? todayLondon();
   const MOR_TERMINAL = new Set(['closed', 'reclassified']);
   const openMor = (ctx.morCases ?? []).some((c) => c.status && !MOR_TERMINAL.has(c.status));
   const failedInspection = (ctx.inspections ?? []).some((i) => i.inspection_result === 'failed' || i.inspection_result === 'problem');

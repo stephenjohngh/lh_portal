@@ -14,7 +14,7 @@ import {
   HeadingLevel, WidthType, TableLayoutType,
 } from 'docx';
 import { getLogger } from '$lib/utils/logger';
-import { fmtShortDate } from '$lib/utils/dates';
+import { fmtShortDate, today as todayLondon } from '$lib/utils/dates';
 import {
   CONTENT_W, CONTENT_W_L, COLOURS, BORDERS,
   hCell, dCell, run, para,
@@ -44,7 +44,7 @@ export async function POST({ request }) {
     }
 
     const buffer   = await Packer.toBuffer(_buildPlanDocument(plan));
-    const today    = new Date().toISOString().split('T')[0];
+    const today    = todayLondon();
     const filename = `10_Year_Capital_Plan_${today}.docx`;
     logger('✅ Generated', filename, buffer.length, 'bytes');
 

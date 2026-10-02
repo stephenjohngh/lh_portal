@@ -8,6 +8,7 @@
 //
 // Pure function — non-mutating; returns a new array.
 
+import { calendarDate } from './dates.js';
 const STATUS_ORDER = {
   'in-progress': 1,
   'pending':     2,
@@ -33,9 +34,9 @@ export function sortActions(actions) {
     if (hasA && !hasB) return -1;
     if (!hasA && hasB) return 1;
     if (hasA && hasB) {
-      const da = new Date(a.date_deadline).setHours(0, 0, 0, 0);
-      const db = new Date(b.date_deadline).setHours(0, 0, 0, 0);
-      if (!isNaN(da) && !isNaN(db) && da !== db) return da - db;
+      const da = calendarDate(a.date_deadline);
+      const db = calendarDate(b.date_deadline);
+      if (da && db && da !== db) return da < db ? -1 : 1;
     }
 
     // 3. Created (earliest first)

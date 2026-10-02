@@ -307,12 +307,10 @@ export function endingProblem(agreement, endDate, vehicles = []) {
 
 // ── Notice (P2) ────────────────────────────────────────────────────────────
 
-/** Add days to a YYYY-MM-DD date, in UTC so no clock change moves it. */
-export function addDaysISO(iso, days) {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + Number(days));
-  return d.toISOString().slice(0, 10);
-}
+// Add days to a YYYY-MM-DD date: one owner (dates.js, 2026-10-02), re-exported
+// so this module's callers keep their import.
+import { addDaysISO } from '$lib/utils/dates.js';
+export { addDaysISO };
 
 /**
  * The end date notice produces: served date plus the notice period, unless
@@ -321,7 +319,7 @@ export function addDaysISO(iso, days) {
  */
 export function noticeEndDate(agreement, servedOn) {
   if (!servedOn || agreement?.notice_days == null) return null;
-  const byNotice = addDaysISO(servedOn, agreement.notice_days);
+  const byNotice = /** @type {string} */ (addDaysISO(servedOn, agreement.notice_days));
   return agreement.ends_on && agreement.ends_on < byNotice ? agreement.ends_on : byNotice;
 }
 

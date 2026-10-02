@@ -7,7 +7,7 @@
 <script>
   import { onMount } from 'svelte';
   import { maintenanceGroupsStore } from '../stores/maintenanceGroupsStore.js';
-  import { buildTenYearForecast, renewalOccurrences } from '../utils/tenYearPlan.js';
+  import { buildTenYearForecast, renewalOccurrences, addYearsFractionalISO } from '../utils/tenYearPlan.js';
   import { makeGroupMembershipResolver } from '../utils/groupMembership.js';
   import { suggestLastRenewal }     from '../utils/jobHistorySuggest.js';
   import { buildPlanReportPayload } from '../utils/planReport.js';
@@ -15,7 +15,7 @@
   import Button       from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
-  import { fmtDate, fmtToday } from '$lib/utils/dates.js';
+  import { fmtDate, fmtToday, today, daysUntil } from '$lib/utils/dates.js';
   import { authHeaders }   from '$lib/utils/authHeaders.js';
   import { downloadResponse } from '$lib/utils/download.js';
 
@@ -125,21 +125,17 @@
   }
 
   // ── Calculated fields (setup table) ───────────────────────────────────
+  // The one renewal-date rule, shared with the forecast and the Word plan
+  // (utils/tenYearPlan.js). This tab used to compute its own, at local midnight
+  // read back in UTC, and showed summer renewals a day early.
   function expectedRenewal(lastDate, lifetimeYears) {
     if (!lastDate || lifetimeYears == null) return null;
-    const d = new Date(lastDate + 'T00:00:00');
-    const yrs   = Math.floor(lifetimeYears);
-    const extra = Math.round((lifetimeYears - yrs) * 12);   // fractional → months
-    d.setFullYear(d.getFullYear() + yrs);
-    d.setMonth(d.getMonth() + extra);
-    return d.toISOString().split('T')[0];
+    return addYearsFractionalISO(lastDate, lifetimeYears);
   }
 
   function renewalStatus(renewalDate) {
     if (!renewalDate) return 'none';
-    const now  = new Date();
-    const due  = new Date(renewalDate + 'T00:00:00');
-    const days = Math.ceil((due - now) / 86400000);
+    const days = daysUntil(renewalDate);
     if (days < 0)   return 'overdue';
     if (days < 365) return 'soon';
     return 'ok';
@@ -181,7 +177,7 @@
         body:    JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const date = new Date().toISOString().slice(0, 10);
+      const date = today();
       await downloadResponse(res, `10_Year_Capital_Plan_${date}.docx`);
     } catch (/** @type {any} */ err) {
       exportError = 'Export failed: ' + err.message;

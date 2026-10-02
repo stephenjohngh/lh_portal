@@ -13,6 +13,7 @@
 // report the user was looking at when they pressed the button. `options` only
 // ever NARROWS what prints — it can never add a row the screen did not show.
 
+import { fmtDate } from '../utils/dates.js';
 import {
   Document, Packer, Paragraph,
   Table, TableRow, HeadingLevel, WidthType, TableLayoutType, PageBreak, AlignmentType,
@@ -59,13 +60,11 @@ const GROUP_LABEL = {
   unlisted: 'Not in the register',
 };
 
-// Server code cannot import the client date helpers (they reach for $app), and
-// the project rule is en-GB everywhere — never toLocaleDateString('en-US').
+// The shared formatter (dates.js imports nothing, so server code may use it).
+// This used to be its own copy, formatting in the SERVER's time zone (UTC).
 export function d(iso) {
-  if (!iso) return '—';
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return '—';
-  return new Date(t).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  if (!iso || Number.isNaN(Date.parse(iso))) return '—';
+  return fmtDate(iso);
 }
 
 // Column widths must each sum to the landscape content width, or Word silently

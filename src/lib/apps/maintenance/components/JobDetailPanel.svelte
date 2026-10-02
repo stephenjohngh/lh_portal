@@ -10,7 +10,7 @@
     ragConfig, resultConfig, scopeTypeLabel, docTypeLabel,
     docTypeIcon, fmtBytes, frequencyLabel, daysRelative, expiryRag,
   } from '../utils/maintenanceHelpers.js';
-  import { fmtDate, fmtDateTime, fmtToday } from '$lib/utils/dates.js';
+  import { fmtDate, fmtDateTime, fmtToday, today } from '$lib/utils/dates.js';
   import { downloadResponse }  from '$lib/utils/download.js';
   import DocumentUpload    from './DocumentUpload.svelte';
   import JobForm           from './JobForm.svelte';
@@ -125,7 +125,7 @@
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const safe  = (job.title ?? 'job').replace(/[^a-z0-9]/gi, '_');
-      const date  = new Date().toISOString().slice(0, 10);
+      const date  = today();
       await downloadResponse(res, `Maintenance_Certificate_${safe}_${date}.docx`);
     } catch (/** @type {any} */ err) {
       downloadError = 'Download failed: ' + err.message;
