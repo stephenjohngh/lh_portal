@@ -35,8 +35,7 @@
   import { listComponentsByStatus, listWorksLinesFor } from '$lib/apps/building_assets/public.js';
   import { correctiveSummary, faultLabel, FAULT_STATUSES } from '../utils/correctiveWork.js';
   import { permissions } from '$lib/stores/permissions';
-  import { authHeaders } from '$lib/utils/authHeaders';
-  import { downloadResponse } from '$lib/utils/download';
+  import { requestDownload } from '$lib/utils/download';
   import { walkEventsFromSessions, jobEventsFromJobs } from '$lib/utils/obligationSchedule.js';
   import {
     compliancePosition, positionSummary, filterRows, sortRows, groupRows,
@@ -205,10 +204,9 @@
   async function download() {
     downloading = true; downloadError = '';
     try {
-      const res = await fetch('/api/maintenance/generate-compliance-report', {
-        method: 'POST',
-        headers: await authHeaders(),
-        body: JSON.stringify({
+      await requestDownload('/api/maintenance/generate-compliance-report', {
+        filename: `Compliance_Position_${today()}.docx`,
+        body: {
           building: 'Lonsdale House',
           generatedAt: fmtToday(),
           report,
@@ -238,10 +236,8 @@
             notes: optNotes.trim(),
             evidenceNotes: [walkEvidenceNote, jobEvidenceNote].filter(Boolean),
           },
-        }),
+        },
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      await downloadResponse(res, `Compliance_Position_${today()}.docx`);
       showExport = false;
     } catch (/** @type {any} */ err) {
       downloadError = `Download failed: ${err.message}`;

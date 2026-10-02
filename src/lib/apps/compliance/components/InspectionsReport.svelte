@@ -5,7 +5,6 @@
 -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import { authHeaders } from '$lib/utils/authHeaders';
   import { auth }        from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
   import { logAudit }    from '$lib/utils/auditLogger';
@@ -23,7 +22,7 @@
     sessionKindLabel,
   } from '$lib/apps/inspection/utils/inspectionHelpers.js';
   import { fmtDateTime, today } from '$lib/utils/dates';
-  import { downloadResponse } from '$lib/utils/download';
+  import { requestDownload } from '$lib/utils/download';
   import { conditionChecklistDisplay, readingsDisplay } from '$lib/apps/building_assets/lookups.js';
 
   const logger   = getLogger('InspectionsReport');
@@ -214,21 +213,11 @@
 
       genProgress = 'Generating document…';
 
-      const response = await fetch('/api/generate-inspections-report', {
-        method:  'POST',
-        headers: await authHeaders(),
-        body:    JSON.stringify({ sessions: sessionsWithInspections, reportType, includePhotos }),
+      const slug = reportType === 'summary' ? 'Summary' : 'Detailed';
+      await requestDownload('/api/generate-inspections-report', {
+        body: { sessions: sessionsWithInspections, reportType, includePhotos },
+        filename: `Inspections_${slug}_${today()}.docx`,
       });
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new Error(body.error ?? `HTTP ${response.status}`);
-      }
-
-      const date     = today();
-      const slug     = reportType === 'summary' ? 'Summary' : 'Detailed';
-      const filename = `Inspections_${slug}_${date}.docx`;
-      await downloadResponse(response, filename);
 
       dispatch('close');
     } catch (/** @type {any} */ err) {

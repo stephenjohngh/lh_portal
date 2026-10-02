@@ -15,8 +15,7 @@
 
 import { today } from '../../../../utils/dates.js';
 import { buildComponentsMatrix, buildStatusPivot } from '../../utils/reportModel.js';
-import { authHeaders }      from '$lib/utils/authHeaders';
-import { downloadResponse } from '$lib/utils/download.js';
+import { requestDownload } from '$lib/utils/download.js';
 
 export async function generateXlsxDocument(params) {
   const {
@@ -57,22 +56,13 @@ export async function generateXlsxDocument(params) {
   // needed the same sheet builder; leaving this caller on the defaults would
   // have meant the route could never change them without silently changing
   // this document too.
-  const res = await fetch('/api/generate-xlsx', {
-    method:  'POST',
-    headers: await authHeaders(),
-    body:    JSON.stringify({
+  const filename = await requestDownload('/api/generate-xlsx', {
+    filename: `components-${today()}.xlsx`,
+    body: {
       building, filterSummary, generatedAt, detail, floorSummaries, fullSummary,
       sheetName: 'Components', reportTitle: 'Component Report', filenameStem: 'Components',
       statusFill: { ok: 'FF15803D', problem: 'FFB45309', failed: 'FFB91C1C', inactive: 'FF6B7280' },
-    }),
+    },
   });
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Server error ${res.status}`);
-  }
-
-  const filename = `components-${today()}.xlsx`;
-  await downloadResponse(res, filename);
   return { filename };
 }

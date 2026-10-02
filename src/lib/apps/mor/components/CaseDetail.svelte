@@ -7,7 +7,6 @@
   import { createEventDispatcher } from 'svelte';
   import { auth }        from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
-  import { supabase }    from '$lib/supabaseClient';
   import { morStore }    from '$lib/apps/mor/stores/morStore';
   import Badge          from '$lib/components/common/Badge.svelte';
   import Button         from '$lib/components/common/Button.svelte';
@@ -35,7 +34,7 @@
   import { formatVerificationCode } from '$lib/utils/caseVerificationCode';
   import { GT_STATUS_LABELS, GT_STATUS_BADGE } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
   import { fmtDate, fmtDateTime } from '$lib/utils/dates';
-  import { downloadResponse, filenameFromResponse } from '$lib/utils/download';
+  import { requestDownload } from '$lib/utils/download';
   import { errMessage } from '$lib/utils/errors';
 
   const dispatch = createEventDispatcher();
@@ -192,19 +191,7 @@
     exporting = true;
     exportError = '';
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) { exportError = 'Not signed in.'; return; }
-      const r = await fetch(`/api/mor/${encodeURIComponent(caseId)}/case-report`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      });
-      if (!r.ok) {
-        const j = await r.json().catch(() => ({}));
-        exportError = j.error ?? 'Could not generate the report.';
-        return;
-      }
-      await downloadResponse(r, filenameFromResponse(r, fallbackName));
+      await requestDownload(`/api/mor/${encodeURIComponent(caseId)}/case-report`, { filename: fallbackName });
     } catch (/** @type {any} */ err) {
       exportError = `Could not export: ${errMessage(err)}`;
     } finally {

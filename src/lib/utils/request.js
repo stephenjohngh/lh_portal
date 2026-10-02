@@ -11,7 +11,7 @@
 //
 // Use this for JSON endpoints. NOT for:
 //   • multipart uploads  → use $lib/utils/documentApi or $lib/utils/mediaUpload
-//   • file downloads     → use $lib/utils/download (downloadResponse)
+//   • file downloads     → use $lib/utils/download (requestDownload)
 //
 // @example
 //   import { postJson } from '$lib/utils/request';

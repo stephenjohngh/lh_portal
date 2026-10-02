@@ -27,9 +27,7 @@
 // holding the document, so its internal section numbering is vocabulary from
 // somewhere they cannot see. The same fault as the import buttons — machinery
 // shown to someone who never sees the machinery.
-
-import { authHeaders } from '$lib/utils/authHeaders';
-import { downloadResponse } from '$lib/utils/download.js';
+import { requestDownload } from '$lib/utils/download.js';
 import { describeFilters } from '$lib/components/common/filterSummary.js';
 import { buildRegisterSheet, STATUS_FILL } from './registerExport.js';
 import { REGISTER_STATUS_LABEL } from './registerFilter.js';
@@ -69,10 +67,9 @@ export async function downloadRegisterXlsx(params) {
     `${describeFilters(fields, values, query)} — ${rows.length} of ${total}`,
   ].filter(Boolean).join('  ·  ');
 
-  const res = await fetch('/api/generate-xlsx', {
-    method: 'POST',
-    headers: await authHeaders(),
-    body: JSON.stringify({
+  const filename = await requestDownload('/api/generate-xlsx', {
+    filename: `periodic-register-${today()}.xlsx`,
+    body: {
       building,
       filterSummary,
       generatedAt: fmtGenerated(),
@@ -81,16 +78,8 @@ export async function downloadRegisterXlsx(params) {
       reportTitle: 'Periodic activity register',
       filenameStem: 'Periodic_Register',
       statusFill: STATUS_FILL,
-    }),
+    },
   });
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Server error ${res.status}`);
-  }
-
-  const filename = `periodic-register-${today()}.xlsx`;
-  await downloadResponse(res, filename);
   return { filename };
 }
 
@@ -100,10 +89,14 @@ export async function downloadRegisterDocx(params) {
     sections = {}, items = {}, fromSeed = false,
   } = params;
 
-  const res = await fetch('/api/reports/generate-register-extract', {
-    method: 'POST',
-    headers: await authHeaders(),
-    body: JSON.stringify({
+  // ⚠ The SERVER names the file, from the same rule that titles it. A download
+  // called "extract" holding the full statement is the confusion one document
+  // was meant to end, and a filename outlives the covering email. Until
+  // 2026-10-02 this said so and then saved as "register-<date>.docx" anyway;
+  // requestDownload takes the server's name, and this is only the fallback.
+  const filename = await requestDownload('/api/reports/generate-register-extract', {
+    filename: `register-${today()}.docx`,
+    body: {
       building,
       total,
       generatedAt: fmtGenerated(),
@@ -125,18 +118,7 @@ export async function downloadRegisterDocx(params) {
         entry,
         statusLabel: REGISTER_STATUS_LABEL[status] ?? status,
       })),
-    }),
+    },
   });
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Server error ${res.status}`);
-  }
-
-  // ⚠ The SERVER names the file, from the same rule that titles it. A download
-  // called "extract" holding the full statement is the confusion one document
-  // was meant to end, and a filename outlives the covering email.
-  const fallback = `register-${today()}.docx`;
-  await downloadResponse(res, fallback);
-  return { filename: fallback };
+  return { filename };
 }

@@ -1,13 +1,12 @@
 <!-- src/lib/apps/management/components/reports/ActionsReportPanel.svelte -->
 <script>
   import { onMount }      from 'svelte';
-  import { authHeaders } from '$lib/utils/authHeaders';
   import Button           from '$lib/components/common/Button.svelte';
   import Badge            from '$lib/components/common/Badge.svelte';
   import { profiles, profilesStore } from '$lib/stores/profiles';
   import { meetingsStore }           from '../../stores/meetingsStore';
   import { fmtDate, fmtDateLong, isOverdue, today as todayLondon, calendarDate } from '$lib/utils/dates';
-  import { downloadResponse }        from '$lib/utils/download';
+  import { requestDownload } from '$lib/utils/download.js';
   import { getLogger }               from '$lib/utils/logger';
   import { sortActions }             from '$lib/utils/actionSort';
 
@@ -136,33 +135,19 @@
     isGenerating  = true;
     downloadError = '';
     try {
-      const response = await fetch('/api/reports/generate-actions-docx', {
-        method:  'POST',
-        headers: await authHeaders(),
-        body: JSON.stringify({
-          groups:   sortedGroups,
+      const saved = await requestDownload('/api/reports/generate-actions-docx', {
+        body: {
+          groups: sortedGroups,
           sortMode,
           selectedUser,
           userName: selectedUser === 'all'         ? 'All Users'
                   : selectedUser === 'unallocated' ? 'Unallocated'
-                  :                                  selectedUser
-        })
+                  :                                  selectedUser,
+        },
+        filename: `Actions_Report_${todayLondon()}.docx`,
       });
-      if (!response.ok) {
-        const ct = response.headers.get('content-type');
-        if (ct?.includes('application/json')) {
-          const { error } = await response.json();
-          throw new Error(error || 'Failed to generate document');
-        }
-        throw new Error(`Server error: ${response.status}`);
-      }
-      const today  = todayLondon();
-      const suffix = selectedUser === 'all'         ? 'All_Users'
-                   : selectedUser === 'unallocated' ? 'Unallocated'
-                   :                                  selectedUser.replace(/\s+/g, '_');
-      const filename = `Actions_Report_${suffix}_${today}.docx`;
-      await downloadResponse(response, filename);
-      logger('✅ Downloaded:', filename);
+      if (saved) logger('✅ Downloaded:', saved);
+      else downloadError = 'There is nothing to report for this selection.';
     } catch (/** @type {any} */ err) {
       logger('❌', err.message);
       downloadError = err.message;

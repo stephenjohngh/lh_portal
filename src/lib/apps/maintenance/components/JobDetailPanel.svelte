@@ -2,7 +2,6 @@
 <!-- Modal showing full job detail, documents, component results, history chain and actions. -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import { authHeaders } from '$lib/utils/authHeaders';
   import { maintenanceStore }  from '../stores/maintenanceStore.js';
   import { permissions }       from '$lib/stores/permissions';
   import { normalisePhotoUrl } from '$lib/utils/driveUtils.js';
@@ -11,7 +10,7 @@
     docTypeIcon, fmtBytes, frequencyLabel, daysRelative, expiryRag,
   } from '../utils/maintenanceHelpers.js';
   import { fmtDate, fmtDateTime, fmtToday, today } from '$lib/utils/dates.js';
-  import { downloadResponse }  from '$lib/utils/download.js';
+  import { requestDownload } from '$lib/utils/download.js';
   import DocumentUpload    from './DocumentUpload.svelte';
   import JobForm           from './JobForm.svelte';
   import RecordCompletionForm from './RecordCompletionForm.svelte';
@@ -119,15 +118,10 @@
         building: 'Lonsdale House',
         generatedAt: fmtToday(),
       };
-      const res = await fetch('/api/maintenance/generate-certificate', {
-        method: 'POST',
-        headers: await authHeaders(),
-        body: JSON.stringify(payload),
+      await requestDownload('/api/maintenance/generate-certificate', {
+        body: payload,
+        filename: `Maintenance_Certificate_${today()}.docx`,
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const safe  = (job.title ?? 'job').replace(/[^a-z0-9]/gi, '_');
-      const date  = today();
-      await downloadResponse(res, `Maintenance_Certificate_${safe}_${date}.docx`);
     } catch (/** @type {any} */ err) {
       downloadError = 'Download failed: ' + err.message;
     } finally {

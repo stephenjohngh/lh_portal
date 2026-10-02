@@ -17,8 +17,7 @@
   import Badge            from '$lib/components/common/Badge.svelte';
   import { fmtDate }      from '$lib/utils/dates';
   import { buildComponentRef } from '$lib/utils/componentRef.js';
-  import { downloadResponse } from '$lib/utils/download';
-  import { authHeaders }  from '$lib/utils/authHeaders';
+  import { requestDownload } from '$lib/utils/download';
 
   import { buildingAssetsStore } from '../../stores/buildingAssetsStore.js';
   import { worksSchedulesStore } from '../../stores/worksSchedulesStore.js';
@@ -275,13 +274,12 @@
   async function exportDocument() {
     exporting = true;
     try {
-      const res = await fetch('/api/reports/generate-works-schedule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+      await requestDownload('/api/reports/generate-works-schedule', {
+        filename: `${openSchedule.title || 'works-schedule'}.docx`,
         // Resolved here rather than on the server: the names live in the
         // store the author is looking at, and a contractor's document must
         // never say "light_led_batten" where a person would say "LED Batten".
-        body: JSON.stringify({
+        body: {
           schedule: openSchedule,
           items: items.map(i => ({
             ...i,
@@ -291,10 +289,8 @@
             target_type_name: i.target_type_code ? typeName(i.target_type_code) : '',
             target_attrs:     targetAttrText(i),
           })),
-        }),
+        },
       });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error ?? 'Export failed');
-      await downloadResponse(res, `${openSchedule.title || 'works-schedule'}.docx`);
     } catch (err) { error = errMessage(err); }
     finally { exporting = false; }
   }

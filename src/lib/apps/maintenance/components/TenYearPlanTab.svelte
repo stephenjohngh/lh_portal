@@ -17,8 +17,7 @@
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import { fmtDate, fmtToday, today, daysUntil } from '$lib/utils/dates.js';
-  import { authHeaders }   from '$lib/utils/authHeaders.js';
-  import { downloadResponse } from '$lib/utils/download.js';
+  import { requestDownload } from '$lib/utils/download.js';
 
   // Building-assets reference data (from AdminApp) — drives the live membership
   // roll-up. All optional: with none loaded, every group reads as a manual line.
@@ -172,14 +171,10 @@
         building:    'Lonsdale House',
         generatedAt: fmtToday(),
       });
-      const res = await fetch('/api/reports/generate-ten-year-plan', {
-        method:  'POST',
-        headers: await authHeaders(),
-        body:    JSON.stringify(payload),
+      await requestDownload('/api/reports/generate-ten-year-plan', {
+        body: payload,
+        filename: `10_Year_Capital_Plan_${today()}.docx`,
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const date = today();
-      await downloadResponse(res, `10_Year_Capital_Plan_${date}.docx`);
     } catch (/** @type {any} */ err) {
       exportError = 'Export failed: ' + err.message;
     } finally {

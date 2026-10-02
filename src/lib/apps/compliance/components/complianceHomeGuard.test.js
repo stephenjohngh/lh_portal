@@ -140,7 +140,10 @@ describe('corrective work stays beside the position, never inside it', () => {
   });
 
   it('the exported document carries the obligation rows only', () => {
-    const body = src.match(/body: JSON\.stringify\(\{[\s\S]*?\}\),/)?.[0];
+    // Found by the route it is sent to, not by how the call is wrapped: the
+    // payload runs from the route's URL to the end of that call.
+    const start = src.indexOf("'/api/maintenance/generate-compliance-report'");
+    const body = start < 0 ? null : src.slice(start, src.indexOf('\n      });', start));
     expect(body, 'the export payload has moved').toBeTruthy();
     expect(body).not.toMatch(/corrective|faults\b/);
   });

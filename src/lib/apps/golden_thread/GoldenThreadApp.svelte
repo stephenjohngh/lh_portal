@@ -17,7 +17,7 @@
   import { reviewBand, daysToReview } from '$lib/apps/golden_thread/utils/gtReview.js';
   import { documentsCurrentOn } from '$lib/apps/golden_thread/public.js';
   import { postJson }   from '$lib/utils/request';
-  import { downloadAuthedPost } from '$lib/utils/download';
+  import { requestDownload } from '$lib/utils/download.js';
   import Badge         from '$lib/components/common/Badge.svelte';
   import Button        from '$lib/components/common/Button.svelte';
   import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
@@ -104,8 +104,10 @@
     scExporting = true;
     scExportError = '';
     try {
-      await downloadAuthedPost('/api/golden-thread/safety-case',
-        `golden-thread-safety-case-${today()}.docx`, safetyCaseModel);
+      await requestDownload('/api/golden-thread/safety-case', {
+        body: safetyCaseModel,
+        filename: `golden-thread-safety-case-${today()}.docx`,
+      });
     } catch (e) {
       scExportError = errMessage(e);
     } finally {
@@ -141,8 +143,9 @@
     packRunning = true;
     packError = '';
     try {
-      await downloadAuthedPost('/api/golden-thread/share-pack',
-        `golden-thread-share-pack-${today()}.zip`);
+      await requestDownload('/api/golden-thread/share-pack', {
+        filename: `golden-thread-share-pack-${today()}.zip`,
+      });
     } catch (e) {
       packError = errMessage(e);
     } finally {

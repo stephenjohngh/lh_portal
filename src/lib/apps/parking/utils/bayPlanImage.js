@@ -7,9 +7,7 @@
 // (building_assets/components/plan/planImageRenderer.js): only the browser
 // can load the plan image and draw on it. The labels and the list are pure
 // and tested; the canvas is not, because jsdom has none.
-
-import { authHeaders } from '$lib/utils/authHeaders';
-import { downloadResponse } from '$lib/utils/download.js';
+import { requestDownload } from '$lib/utils/download.js';
 import { fmtGenerated, today } from '$lib/utils/dates.js';
 import { BAY_STATES, BAY_STATE } from './bayModel.js';
 
@@ -142,22 +140,15 @@ export async function downloadBayPlan(state, { building = 'Lancaster House' } = 
   }
   if (!levels.length) throw new Error('No basement plan could be drawn. Check the plans have images.');
 
-  const res = await fetch('/api/parking/bay-plan', {
-    method: 'POST',
-    headers: await authHeaders(),
-    body: JSON.stringify({
+  const filename = await requestDownload('/api/parking/bay-plan', {
+    filename: `Parking_Bay_Plan_${today()}.docx`,
+    body: {
       building,
       generatedAt: fmtGenerated(),
       levels,
       rows: bayPlanRows(state.bays, state.holders, state.agreements, state.vehicles),
       legend: BAY_STATES.map(s => ({ label: s.label, colour: s.colour })),
-    }),
+    },
   });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Server error ${res.status}`);
-  }
-  const filename = `Parking_Bay_Plan_${today()}.docx`;
-  await downloadResponse(res, filename);
   return { filename, levels: levels.length };
 }

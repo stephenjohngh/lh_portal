@@ -38,8 +38,7 @@
 
 import { today } from '../../../../utils/dates.js';
 import { drawAnnotatedPlanImage } from './planImageRenderer.js';
-import { authHeaders }            from '$lib/utils/authHeaders';
-import { downloadResponse }       from '$lib/utils/download.js';
+import { requestDownload } from '$lib/utils/download.js';
 
 export async function generateReportDocument(params) {
   const {
@@ -160,24 +159,14 @@ export async function generateReportDocument(params) {
     : [];
 
   // -- POST to API -------------------------------------------------------
-  const res = await fetch('/api/generate-report', {
-    method:  'POST',
-    headers: await authHeaders(),
-    body:    JSON.stringify({
+  const filename = await requestDownload('/api/generate-report', {
+    filename: `components-${today()}.docx`,
+    body: {
       options:       { reportTypes, building, filterSummary, generatedAt, showNotes, showLinked, showInspectionNotes, showAttributes, showConditions, showSpaces },
       floors:        floorsPayload,
       allComponents: allComponentsPayload,
-    }),
+    },
   });
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Server error ${res.status}`);
-  }
-
-  // -- Trigger download --------------------------------------------------
-  const filename = `components-${today()}.docx`;
-  await downloadResponse(res, filename);
 
   return { filename };
 }

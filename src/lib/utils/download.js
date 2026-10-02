@@ -1,29 +1,49 @@
 // src/lib/utils/download.js
-// Browser file download helper — shared by all report modal components.
+// Browser file downloads — the one place a file is saved (download.test.js).
 
 import { authHeaders } from './authHeaders.js';
+import { SESSION_EXPIRED } from './request.js';
 
 /**
- * POST to an authenticated endpoint that returns a file, and download the
- * result. Carries the bearer token (authHeaders), throws Error(server.error)
- * on a non-2xx, and streams the body to the browser as `filename`. Callers wrap
- * in try/catch for their own loading/error state.
+ * Ask one of the portal's own routes for a file, and save it — the ONE way a
+ * report reaches the browser (2026-10-02).
+ *
+ * Sixteen report buttons each did this by hand and disagreed:
+ *   · some showed the server's reason for failing, others "HTTP 500";
+ *   · two routes answer "nothing to report" with an empty 204, which every
+ *     screen took for success and saved as an empty file;
+ *   · most named the file themselves while the server had already named it —
+ *     and the register export threw away the name that says whether the file
+ *     is the obligations statement or an extract.
+ *
+ * Here: the bearer token goes with it; a 401 or a missing session reads as
+ * SESSION_EXPIRED; any other failure throws the server's own `error`; a 204
+ * saves nothing and returns null; otherwise the file is saved under the
+ * SERVER's name, `filename` being only the fallback.
+ *
  * @param {string} url
- * @param {string} filename
- * @param {any}    [body]  JSON body; omit for a bodyless POST
+ * @param {{ body?: any, method?: 'GET'|'POST', filename?: string }} [opts]
+ *        body — JSON; omit for a bodyless request
+ * @returns {Promise<string|null>} the name it was saved as, or null when the
+ *          server had nothing to send
  */
-export async function downloadAuthedPost(url, filename, body) {
+export async function requestDownload(url, { body, method = 'POST', filename = 'download' } = {}) {
+  let headers;
+  try { headers = await authHeaders(); } catch { throw new Error(SESSION_EXPIRED); }
   const res = await fetch(url, {
-    method: 'POST',
-    headers: await authHeaders(),           // already sets Content-Type: application/json
+    method,
+    headers,                                // already sets Content-Type: application/json
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
+  if (res.status === 401) throw new Error(SESSION_EXPIRED);
   if (!res.ok) {
-    let msg = `HTTP ${res.status}`;
-    try { const j = await res.json(); msg = j.error ?? msg; } catch { /* non-JSON body */ }
-    throw new Error(msg);
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.error || `The file could not be produced (HTTP ${res.status}).`);
   }
-  await downloadResponse(res, filename);
+  if (res.status === 204) return null;
+  const name = filenameFromResponse(res, filename);
+  downloadBlob(await res.blob(), name);
+  return name;
 }
 
 /**
@@ -59,23 +79,6 @@ export function filenameFromResponse(response, fallback) {
   const star = /filename\*=UTF-8''([^;]+)/i.exec(header);
   if (star) { try { return decodeURIComponent(star[1]); } catch { /* fall through */ } }
   return /filename="([^"]+)"/i.exec(header)?.[1] ?? fallback;
-}
-
-/**
- * Trigger a file download from a fetch Response object.
- *
- * Usage:
- *   const response = await fetch('/api/plans/generate-report', { ... });
- *   if (!response.ok) throw new Error(`HTTP ${response.status}`);
- *   await downloadResponse(response, 'MyReport.docx');
- *   // or, to keep the name the server gave it:
- *   await downloadResponse(response, filenameFromResponse(response, 'fallback.docx'));
- *
- * @param {Response} response  — A resolved fetch Response (caller must verify response.ok first)
- * @param {string}   filename  — The filename the browser will save as
- */
-export async function downloadResponse(response, filename) {
-  downloadBlob(await response.blob(), filename);
 }
 
 /**

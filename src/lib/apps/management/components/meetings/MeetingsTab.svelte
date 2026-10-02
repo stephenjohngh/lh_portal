@@ -11,13 +11,12 @@
 -->
 <script>
   import { onMount }            from 'svelte';
-  import { authHeaders } from '$lib/utils/authHeaders';
   import { meetingsStore }      from '../../stores/meetingsStore';
   import { permissions }        from '$lib/stores/permissions';
   import { profiles, profilesStore } from '$lib/stores/profiles';
   import { fmtDate, fmtDateTime, today } from '$lib/utils/dates';
   import { ACTIVITY_TYPE }      from '$lib/utils/constants';
-  import { downloadResponse }   from '$lib/utils/download';
+  import { requestDownload } from '$lib/utils/download.js';
   import { getLogger }          from '$lib/utils/logger';
   import Button                 from '$lib/components/common/Button.svelte';
   import ProtectedButton        from '$lib/components/common/ProtectedButton.svelte';
@@ -173,23 +172,11 @@
     isGenerating  = true;
     downloadError = '';
     try {
-      const response = await fetch('/api/reports/generate-minutes-docx', {
-        method:  'POST',
-        headers: await authHeaders(),
-        body: JSON.stringify({ meeting: selectedMeeting, issues: meetingIssues, attendees })
+      const saved = await requestDownload('/api/reports/generate-minutes-docx', {
+        body: { meeting: selectedMeeting, issues: meetingIssues, attendees },
+        filename: `Minutes_${today()}.docx`,
       });
-      if (!response.ok) {
-        const ct = response.headers.get('content-type');
-        if (ct?.includes('application/json')) {
-          const { error } = await response.json();
-          throw new Error(error || 'Failed to generate document');
-        }
-        throw new Error(`Server error: ${response.status}`);
-      }
-      const safe     = (selectedMeeting.title ?? 'Minutes').replace(/[^a-zA-Z0-9]+/g, '_');
-      const filename = `Minutes_${safe}_${today()}.docx`;
-      await downloadResponse(response, filename);
-      logger('✅ Downloaded:', filename);
+      logger('✅ Downloaded:', saved);
     } catch (/** @type {any} */ err) {
       logger('❌', err.message);
       downloadError = err.message;

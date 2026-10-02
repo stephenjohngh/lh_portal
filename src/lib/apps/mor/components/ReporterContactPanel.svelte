@@ -8,9 +8,8 @@
      "Skip with reason" pair that writes a `reporter_contact` timeline entry
      via the store. -->
 <script>
-  import { supabase } from '$lib/supabaseClient';
   import { morStore } from '$lib/apps/mor/stores/morStore';
-  import { downloadResponse, filenameFromResponse } from '$lib/utils/download';
+  import { requestDownload } from '$lib/utils/download';
   import { errMessage } from '$lib/utils/errors';
   import Button       from '$lib/components/common/Button.svelte';
   import RecordContactForm from '$lib/apps/mor/components/RecordContactForm.svelte';
@@ -58,27 +57,10 @@
     downloading = template;
     downloadError = '';
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) {
-        downloadError = 'Not signed in. Please refresh and try again.';
-        return;
-      }
-
-      const r = await fetch(`/api/mor/${encodeURIComponent(caseId)}/draft-letter`, {
-        method: 'POST',
-        headers: {
-          'Content-Type':   'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ template }),
+      await requestDownload(`/api/mor/${encodeURIComponent(caseId)}/draft-letter`, {
+        body: { template },
+        filename: fallbackName,
       });
-      if (!r.ok) {
-        const j = await r.json().catch(() => ({}));
-        downloadError = j.error ?? `Could not generate ${label}.`;
-        return;
-      }
-      await downloadResponse(r, filenameFromResponse(r, fallbackName));
     } catch (/** @type {any} */ err) {
       downloadError = `Could not generate ${label}: ${errMessage(err)}`;
     } finally {

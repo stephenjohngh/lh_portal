@@ -1,13 +1,12 @@
 <!-- src/lib/apps/management/components/reports/IssuesReportPanel.svelte -->
 <script>
   import Checkbox        from '$lib/components/common/Checkbox.svelte';
-  import { authHeaders } from '$lib/utils/authHeaders';
   import Button          from '$lib/components/common/Button.svelte';
   import ReportIssueCard from './ReportIssueCard.svelte';
   import {
     filterIssues, groupIssuesByStatus, getDefaultFilterDate, getTodayDate
   } from './reportUtils';
-  import { downloadResponse } from '$lib/utils/download';
+  import { requestDownload } from '$lib/utils/download.js';
   import { getJSON, setJSON } from '$lib/utils/prefs';
   import { getLogger }        from '$lib/utils/logger';
   import { fmtDate, today }          from '$lib/utils/dates';
@@ -111,30 +110,12 @@
     isGenerating  = true;
     downloadError = '';
     try {
-      const response = await fetch('/api/reports/generate-docx', {
-        method:  'POST',
-        headers: await authHeaders(),
-        body: JSON.stringify({
-          issues: displayedIssues,
-          filterDate,
-          includeCurrent,
-          includeParked,
-          includeCompleted,
-          sortOrder,
-          summaryOnly
-        })
+      const saved = await requestDownload('/api/reports/generate-docx', {
+        body: { issues: displayedIssues, filterDate, includeCurrent, includeParked, includeCompleted, sortOrder, summaryOnly },
+        filename: `Issues_Report_${today()}.docx`,
       });
-      if (!response.ok) {
-        const ct = response.headers.get('content-type');
-        if (ct?.includes('application/json')) {
-          const { error } = await response.json();
-          throw new Error(error || 'Failed to generate document');
-        }
-        throw new Error(`Server error: ${response.status}`);
-      }
-      const filename = `Issues_Report_${today()}.docx`;
-      await downloadResponse(response, filename);
-      logger('✅ Downloaded:', filename);
+      if (saved) logger('✅ Downloaded:', saved);
+      else downloadError = 'There is nothing to report for this selection.';
     } catch (/** @type {any} */ err) {
       logger('❌', err.message);
       downloadError = err.message;

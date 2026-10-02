@@ -6,7 +6,7 @@
   import { auth }        from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
   import { getPref, setPref } from '$lib/utils/prefs';
-  import { downloadResponse, filenameFromResponse } from '$lib/utils/download';
+  import { requestDownload } from '$lib/utils/download';
   import { logAudit }    from '$lib/utils/auditLogger';
   import AttachedDocuments from '$lib/components/common/documents/AttachedDocuments.svelte';
   import { DOC_FOLDERS, entityFolderPath } from '$lib/utils/documentUtils.js';
@@ -637,17 +637,7 @@
     archiving = true; treeError = '';
     try {
       await editorRef?.flushNow();        // a pending edit belongs in the archive
-      const { authHeaders } = await import('$lib/utils/authHeaders');
-      const res = await fetch(`/api/dossier/archive/${packId}`, {
-        headers: await authHeaders(),
-      });
-      if (!res.ok) {
-        treeError = (await res.json().catch(() => ({})))?.error
-          ?? 'The archive could not be prepared just now.';
-        return;
-      }
-
-      await downloadResponse(res, filenameFromResponse(res, fallbackName));
+      await requestDownload(`/api/dossier/archive/${packId}`, { method: 'GET', filename: fallbackName });
     } catch (/** @type {any} */ err) {
       treeError = err.message;
     } finally {
@@ -655,7 +645,6 @@
     }
   }
 
-  /** The server's name for the file, preferring the RFC 5987 form. */
   // ── Publishing (P3) ───────────────────────────────────────────────────────
 
   let showPublish   = false;

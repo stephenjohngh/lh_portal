@@ -6,7 +6,6 @@
   import { morStore } from '$lib/apps/mor/stores/morStore';
   import { auth }     from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
-  import { supabase } from '$lib/supabaseClient';
   import Badge from '$lib/components/common/Badge.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import {
@@ -19,7 +18,7 @@
     isAwaitingMyApproval, isMyProposalAwaitingApproval, isMineAndOpen,
   } from '$lib/apps/mor/utils/morHelpers';
   import { fmtDate, today, DAY_MS } from '$lib/utils/dates';
-  import { downloadResponse, filenameFromResponse } from '$lib/utils/download';
+  import { requestDownload } from '$lib/utils/download';
   import { errMessage } from '$lib/utils/errors';
 
   const dispatch = createEventDispatcher();
@@ -138,24 +137,10 @@
     }
     generating = true;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) { periodError = 'Not signed in.'; return; }
-
-      const r = await fetch('/api/mor/period-summary', {
-        method: 'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ start: periodStart, end: periodEnd }),
+      await requestDownload('/api/mor/period-summary', {
+        body: { start: periodStart, end: periodEnd },
+        filename: `mor-summary-${periodStart}-to-${periodEnd}.docx`,
       });
-      if (!r.ok) {
-        const j = await r.json().catch(() => ({}));
-        periodError = j.error ?? 'Could not generate the report.';
-        return;
-      }
-      await downloadResponse(r, filenameFromResponse(r, `mor-summary-${periodStart}-to-${periodEnd}.docx`));
     } catch (/** @type {any} */ err) {
       periodError = `Could not generate: ${errMessage(err)}`;
     } finally {

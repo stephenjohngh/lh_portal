@@ -5,12 +5,11 @@
      the contractor-evidenced ones with a cadence appear here. -->
 <script>
   import { maintenanceStore } from '../stores/maintenanceStore.js';
-  import { authHeaders } from '$lib/utils/authHeaders';
   import { frequencyLabel, scopeTypeLabel, addDaysISO, today } from '../utils/maintenanceHelpers.js';
   import { obligationJobScope, scopeSummary, plannedOccurrenceDates } from '../utils/obligationJobScope.js';
   import { planExceedsCeiling } from '$lib/utils/obligationSchedule.js';
   import { fmtDate, fmtToday } from '$lib/utils/dates.js';
-  import { downloadResponse } from '$lib/utils/download.js';
+  import { requestDownload } from '$lib/utils/download.js';
   import Button from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
 
@@ -130,14 +129,10 @@
         building:    'Lonsdale House',
         generatedAt: fmtToday(),
       };
-      const res = await fetch('/api/maintenance/generate-schedule', {
-        method:  'POST',
-        headers: await authHeaders(),
-        body:    JSON.stringify(payload),
+      await requestDownload('/api/maintenance/generate-schedule', {
+        body: payload,
+        filename: `Maintenance_Schedule_${today()}.docx`,
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const date = today();
-      await downloadResponse(res, `Maintenance_Schedule_${date}.docx`);
     } catch (/** @type {any} */ err) {
       downloadError = 'Download failed: ' + err.message;
     } finally {

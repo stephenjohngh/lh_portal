@@ -10,9 +10,7 @@
 // the `parking` grant protects, so each of those carries a line in its header
 // saying it contains personal data, and the filename says PARKING. That is the
 // control this portal has: it cannot follow a file once downloaded.
-
-import { authHeaders } from '$lib/utils/authHeaders';
-import { downloadResponse } from '$lib/utils/download.js';
+import { requestDownload } from '$lib/utils/download.js';
 import { fmtGenerated, fmtDate, today } from '$lib/utils/dates.js';
 import { BAY_STATE, TENURE_LABEL } from './bayModel.js';
 import {
@@ -145,10 +143,9 @@ export async function downloadParkingReport(key, state, { building = 'Lancaster 
   const r = REPORTS[key];
   if (!r) throw new Error(`No such report: ${key}`);
   const sheet = r.build(state);
-  const res = await fetch('/api/generate-xlsx', {
-    method: 'POST',
-    headers: await authHeaders(),
-    body: JSON.stringify({
+  const filename = await requestDownload('/api/generate-xlsx', {
+    filename: `${r.stem}_${today()}.xlsx`,
+    body: {
       building,
       filterSummary: reportSummary(key, sheet),
       generatedAt: fmtGenerated(),
@@ -156,13 +153,7 @@ export async function downloadParkingReport(key, state, { building = 'Lancaster 
       sheetName: r.sheetName,
       reportTitle: `Parking — ${r.label}`,
       filenameStem: r.stem,
-    }),
+    },
   });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Server error ${res.status}`);
-  }
-  const filename = `${r.stem}_${today()}.xlsx`;
-  await downloadResponse(res, filename);
   return { filename, rows: sheet.rows.length };
 }
