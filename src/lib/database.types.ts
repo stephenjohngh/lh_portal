@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema11.csv
+// Source: docs/ops/supabase_lhportal_schema12.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -821,15 +821,7 @@ export type Database = {
           updated_at?: string | null
           sort_order?: number | null
         }
-        Relationships: [
-            {
-              foreignKeyName: "component_presets_created_by_fkey"
-              columns: ["created_by"]
-              isOneToOne: false
-              referencedRelation: "null"
-              referencedColumns: ["null"]
-            }
-          ]
+        Relationships: []
       }
       component_types: {
         Row: {
@@ -3358,6 +3350,614 @@ export type Database = {
             }
           ]
       }
+      parking_access_devices: {
+        Row: {
+          id: string
+          agreement_id: string
+          device_type: string
+          serial: string
+          issued_on: string
+          returned_on: string | null
+          notes: string | null
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          agreement_id: string
+          device_type: string
+          serial: string
+          issued_on?: string
+          returned_on?: string | null
+          notes?: string | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          agreement_id?: string
+          device_type?: string
+          serial?: string
+          issued_on?: string
+          returned_on?: string | null
+          notes?: string | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "parking_access_devices_agreement_id_fkey"
+              columns: ["agreement_id"]
+              isOneToOne: false
+              referencedRelation: "parking_agreements"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_access_devices_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      parking_agreements: {
+        Row: {
+          id: string
+          reference: string
+          bay_id: string
+          holder_id: string
+          basis: string
+          unit_ref: string | null
+          starts_on: string
+          ends_on: string | null
+          notice_days: number | null
+          fee_amount: number | null
+          fee_period: string | null
+          vat_treatment: string
+          deposit_amount: number | null
+          status: string
+          ended_reason: string | null
+          max_vehicles: number
+          notes: string | null
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          updated_by: string | null
+          notice_served_on: string | null
+          notice_served_by: string | null
+          ends_on_before_notice: string | null
+          deposit_refunded_on: string | null
+          tariff_id: string | null
+          deposit_transferred_to: string | null
+        }
+        Insert: {
+          id?: string
+          reference?: string
+          bay_id: string
+          holder_id: string
+          basis: string
+          unit_ref?: string | null
+          starts_on: string
+          ends_on?: string | null
+          notice_days?: number | null
+          fee_amount?: number | null
+          fee_period?: string | null
+          vat_treatment?: string
+          deposit_amount?: number | null
+          status?: string
+          ended_reason?: string | null
+          max_vehicles?: number
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+          notice_served_on?: string | null
+          notice_served_by?: string | null
+          ends_on_before_notice?: string | null
+          deposit_refunded_on?: string | null
+          tariff_id?: string | null
+          deposit_transferred_to?: string | null
+        }
+        Update: {
+          id?: string
+          reference?: string
+          bay_id?: string
+          holder_id?: string
+          basis?: string
+          unit_ref?: string | null
+          starts_on?: string
+          ends_on?: string | null
+          notice_days?: number | null
+          fee_amount?: number | null
+          fee_period?: string | null
+          vat_treatment?: string
+          deposit_amount?: number | null
+          status?: string
+          ended_reason?: string | null
+          max_vehicles?: number
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+          notice_served_on?: string | null
+          notice_served_by?: string | null
+          ends_on_before_notice?: string | null
+          deposit_refunded_on?: string | null
+          tariff_id?: string | null
+          deposit_transferred_to?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "parking_agreements_bay_id_fkey"
+              columns: ["bay_id"]
+              isOneToOne: false
+              referencedRelation: "parking_bays"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_agreements_holder_id_fkey"
+              columns: ["holder_id"]
+              isOneToOne: false
+              referencedRelation: "parking_holders"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_agreements_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_agreements_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_agreements_tariff_id_fkey"
+              columns: ["tariff_id"]
+              isOneToOne: false
+              referencedRelation: "parking_tariffs"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_agreements_deposit_transferred_to_fkey"
+              columns: ["deposit_transferred_to"]
+              isOneToOne: false
+              referencedRelation: "parking_agreements"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      parking_applications: {
+        Row: {
+          id: string
+          holder_id: string
+          wanted_size: string
+          joined_on: string
+          status: string
+          offered_bay_id: string | null
+          offer_made_on: string | null
+          offer_expires_on: string | null
+          last_offer_outcome: string | null
+          offers_declined: number
+          agreement_id: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          holder_id: string
+          wanted_size?: string
+          joined_on?: string
+          status?: string
+          offered_bay_id?: string | null
+          offer_made_on?: string | null
+          offer_expires_on?: string | null
+          last_offer_outcome?: string | null
+          offers_declined?: number
+          agreement_id?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          holder_id?: string
+          wanted_size?: string
+          joined_on?: string
+          status?: string
+          offered_bay_id?: string | null
+          offer_made_on?: string | null
+          offer_expires_on?: string | null
+          last_offer_outcome?: string | null
+          offers_declined?: number
+          agreement_id?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "parking_applications_holder_id_fkey"
+              columns: ["holder_id"]
+              isOneToOne: false
+              referencedRelation: "parking_holders"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_applications_offered_bay_id_fkey"
+              columns: ["offered_bay_id"]
+              isOneToOne: false
+              referencedRelation: "parking_bays"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_applications_agreement_id_fkey"
+              columns: ["agreement_id"]
+              isOneToOne: false
+              referencedRelation: "parking_agreements"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_applications_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_applications_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      parking_bays: {
+        Row: {
+          id: string
+          space_id: string
+          tenure: string
+          unit_ref: string | null
+          is_accessible: boolean
+          is_tandem: boolean
+          planning_restricted: boolean
+          in_service: boolean
+          out_of_use_reason: string | null
+          out_of_use_until: string | null
+          max_height_m: number | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          space_id: string
+          tenure?: string
+          unit_ref?: string | null
+          is_accessible?: boolean
+          is_tandem?: boolean
+          planning_restricted?: boolean
+          in_service?: boolean
+          out_of_use_reason?: string | null
+          out_of_use_until?: string | null
+          max_height_m?: number | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          space_id?: string
+          tenure?: string
+          unit_ref?: string | null
+          is_accessible?: boolean
+          is_tandem?: boolean
+          planning_restricted?: boolean
+          in_service?: boolean
+          out_of_use_reason?: string | null
+          out_of_use_until?: string | null
+          max_height_m?: number | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "parking_bays_space_id_fkey"
+              columns: ["space_id"]
+              isOneToOne: false
+              referencedRelation: "spaces"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_bays_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_bays_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      parking_events: {
+        Row: {
+          id: string
+          agreement_id: string | null
+          bay_id: string | null
+          event_type: string
+          detail: Json
+          created_at: string
+          created_by: string | null
+          application_id: string | null
+        }
+        Insert: {
+          id?: string
+          agreement_id?: string | null
+          bay_id?: string | null
+          event_type: string
+          detail?: Json
+          created_at?: string
+          created_by?: string | null
+          application_id?: string | null
+        }
+        Update: {
+          id?: string
+          agreement_id?: string | null
+          bay_id?: string | null
+          event_type?: string
+          detail?: Json
+          created_at?: string
+          created_by?: string | null
+          application_id?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "parking_events_agreement_id_fkey"
+              columns: ["agreement_id"]
+              isOneToOne: false
+              referencedRelation: "parking_agreements"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_events_bay_id_fkey"
+              columns: ["bay_id"]
+              isOneToOne: false
+              referencedRelation: "parking_bays"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_events_application_id_fkey"
+              columns: ["application_id"]
+              isOneToOne: false
+              referencedRelation: "parking_applications"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      parking_holders: {
+        Row: {
+          id: string
+          holder_type: string
+          display_name: string
+          company_name: string | null
+          email: string | null
+          phone: string | null
+          correspondence_address: string | null
+          privacy_notice_version: string | null
+          privacy_notice_at: string | null
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          holder_type: string
+          display_name: string
+          company_name?: string | null
+          email?: string | null
+          phone?: string | null
+          correspondence_address?: string | null
+          privacy_notice_version?: string | null
+          privacy_notice_at?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          holder_type?: string
+          display_name?: string
+          company_name?: string | null
+          email?: string | null
+          phone?: string | null
+          correspondence_address?: string | null
+          privacy_notice_version?: string | null
+          privacy_notice_at?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "parking_holders_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_holders_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      parking_retention_runs: {
+        Row: {
+          id: string
+          ran_at: string
+          dry_run: boolean
+          counts: Json
+          run_by: string | null
+        }
+        Insert: {
+          id?: string
+          ran_at?: string
+          dry_run: boolean
+          counts: Json
+          run_by?: string | null
+        }
+        Update: {
+          id?: string
+          ran_at?: string
+          dry_run?: boolean
+          counts?: Json
+          run_by?: string | null
+        }
+        Relationships: []
+      }
+      parking_tariffs: {
+        Row: {
+          id: string
+          bay_size: string
+          holder_class: string
+          amount: number
+          period: string
+          vat_treatment: string
+          deposit_amount: number | null
+          effective_from: string
+          effective_to: string | null
+          notes: string | null
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          bay_size: string
+          holder_class?: string
+          amount: number
+          period: string
+          vat_treatment?: string
+          deposit_amount?: number | null
+          effective_from: string
+          effective_to?: string | null
+          notes?: string | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          bay_size?: string
+          holder_class?: string
+          amount?: number
+          period?: string
+          vat_treatment?: string
+          deposit_amount?: number | null
+          effective_from?: string
+          effective_to?: string | null
+          notes?: string | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "parking_tariffs_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      parking_vehicles: {
+        Row: {
+          id: string
+          agreement_id: string
+          registration: string
+          make: string | null
+          model: string | null
+          colour: string | null
+          is_ev: boolean
+          from_date: string | null
+          to_date: string | null
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          agreement_id: string
+          registration: string
+          make?: string | null
+          model?: string | null
+          colour?: string | null
+          is_ev?: boolean
+          from_date?: string | null
+          to_date?: string | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          agreement_id?: string
+          registration?: string
+          make?: string | null
+          model?: string | null
+          colour?: string | null
+          is_ev?: boolean
+          from_date?: string | null
+          to_date?: string | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "parking_vehicles_agreement_id_fkey"
+              columns: ["agreement_id"]
+              isOneToOne: false
+              referencedRelation: "parking_agreements"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_vehicles_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
       plan_annotations: {
         Row: {
           id: string
@@ -3863,15 +4463,7 @@ export type Database = {
           is_read_only?: boolean | null
           is_contractor?: boolean
         }
-        Relationships: [
-            {
-              foreignKeyName: "profiles_id_fkey"
-              columns: ["id"]
-              isOneToOne: false
-              referencedRelation: "null"
-              referencedColumns: ["null"]
-            }
-          ]
+        Relationships: []
       }
       public_upload_attempts: {
         Row: {
@@ -3953,6 +4545,7 @@ export type Database = {
           presentation_order: number
           created_at: string
           created_by: string | null
+          kind: string
         }
         Insert: {
           id?: string
@@ -3960,6 +4553,7 @@ export type Database = {
           presentation_order?: number
           created_at?: string
           created_by?: string | null
+          kind?: string
         }
         Update: {
           id?: string
@@ -3967,6 +4561,7 @@ export type Database = {
           presentation_order?: number
           created_at?: string
           created_by?: string | null
+          kind?: string
         }
         Relationships: []
       }
@@ -4061,54 +4656,54 @@ export type Database = {
       }
       statutory_exclusions: {
         Row: {
-          created_at: string
-          created_by: string | null
-          decided_at: string
-          decided_by: string | null
-          decision: string
           id: string
+          template_key: string
+          decision: string
           reason: string
           review_due: string | null
-          template_key: string
+          decided_by: string | null
+          decided_at: string
+          created_at: string
+          created_by: string | null
         }
         Insert: {
-          created_at?: string
-          created_by?: string | null
-          decided_at?: string
-          decided_by?: string | null
-          decision: string
           id?: string
+          template_key: string
+          decision: string
           reason: string
           review_due?: string | null
-          template_key: string
-        }
-        Update: {
+          decided_by?: string | null
+          decided_at?: string
           created_at?: string
           created_by?: string | null
-          decided_at?: string
-          decided_by?: string | null
-          decision?: string
+        }
+        Update: {
           id?: string
+          template_key?: string
+          decision?: string
           reason?: string
           review_due?: string | null
-          template_key?: string
+          decided_by?: string | null
+          decided_at?: string
+          created_at?: string
+          created_by?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "statutory_exclusions_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "statutory_exclusions_decided_by_fkey"
-            columns: ["decided_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+            {
+              foreignKeyName: "statutory_exclusions_decided_by_fkey"
+              columns: ["decided_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "statutory_exclusions_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
       }
       statutory_obligations: {
         Row: {
@@ -4130,12 +4725,6 @@ export type Database = {
           updated_at: string | null
           updated_by: string | null
           statutory_ref: string | null
-          template_key: string | null
-          basis: string | null
-          interval_basis: string | null
-          retired_on: string | null
-          retired_reason: string | null
-          retired_by: string | null
           test_type: string | null
           max_interval_days: number | null
           responsible_party: string | null
@@ -4143,6 +4732,12 @@ export type Database = {
           evidence_required: string | null
           retention_period_months: number | null
           evidenced_by: string
+          template_key: string | null
+          basis: string | null
+          interval_basis: string | null
+          retired_on: string | null
+          retired_reason: string | null
+          retired_by: string | null
         }
         Insert: {
           id?: string
@@ -4163,12 +4758,6 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           statutory_ref?: string | null
-          template_key?: string | null
-          basis?: string | null
-          interval_basis?: string | null
-          retired_on?: string | null
-          retired_reason?: string | null
-          retired_by?: string | null
           test_type?: string | null
           max_interval_days?: number | null
           responsible_party?: string | null
@@ -4176,6 +4765,12 @@ export type Database = {
           evidence_required?: string | null
           retention_period_months?: number | null
           evidenced_by?: string
+          template_key?: string | null
+          basis?: string | null
+          interval_basis?: string | null
+          retired_on?: string | null
+          retired_reason?: string | null
+          retired_by?: string | null
         }
         Update: {
           id?: string
@@ -4196,12 +4791,6 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           statutory_ref?: string | null
-          template_key?: string | null
-          basis?: string | null
-          interval_basis?: string | null
-          retired_on?: string | null
-          retired_reason?: string | null
-          retired_by?: string | null
           test_type?: string | null
           max_interval_days?: number | null
           responsible_party?: string | null
@@ -4209,6 +4798,12 @@ export type Database = {
           evidence_required?: string | null
           retention_period_months?: number | null
           evidenced_by?: string
+          template_key?: string | null
+          basis?: string | null
+          interval_basis?: string | null
+          retired_on?: string | null
+          retired_reason?: string | null
+          retired_by?: string | null
         }
         Relationships: [
             {
@@ -4224,8 +4819,183 @@ export type Database = {
               isOneToOne: false
               referencedRelation: "profiles"
               referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "statutory_obligations_retired_by_fkey"
+              columns: ["retired_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
             }
           ]
+      }
+      statutory_register: {
+        Row: {
+          template_key: string
+          name: string
+          description: string
+          group_key: string | null
+          basis: string | null
+          statutory_ref: string
+          applies_when: string
+          trigger_event: string | null
+          trigger_type: string | null
+          trigger_source: string | null
+          frequency_days: number | null
+          max_interval_days: number | null
+          interval_basis: string | null
+          source_interval_words: string | null
+          max_is_scheduling_tolerance: boolean
+          evidenced_by: string | null
+          handled_by: string | null
+          responsible_party: string | null
+          statutory_duty_holder: string | null
+          competency_required: string | null
+          evidence_required: string
+          retention_basis: string | null
+          retention_period_months: number | null
+          suggested_scope: Json | null
+          scope_note: string | null
+          operationally_incomplete: boolean
+          completion_action: string | null
+          assurance_only: string | null
+          reviewer_note: string | null
+          superseded_on: string | null
+          superseded_by: string | null
+          superseded_note: string
+          origin: string
+          citation_verified_on: string | null
+          citation_verified_against: string | null
+          seed_modified_at: string | null
+          active: boolean
+          created_at: string
+          created_by: string | null
+          updated_at: string | null
+          updated_by: string | null
+          handling_note: string
+          citation_verified_by: string | null
+          kind: string
+          action_category: string | null
+          priority: string | null
+          unblocks: string | null
+          consequence: string | null
+          owner: string | null
+          technical_authority: string | null
+          due_date: string | null
+          action_status: string
+          sort_order: number | null
+        }
+        Insert: {
+          template_key: string
+          name: string
+          description?: string
+          group_key?: string | null
+          basis?: string | null
+          statutory_ref?: string
+          applies_when?: string
+          trigger_event?: string | null
+          trigger_type?: string | null
+          trigger_source?: string | null
+          frequency_days?: number | null
+          max_interval_days?: number | null
+          interval_basis?: string | null
+          source_interval_words?: string | null
+          max_is_scheduling_tolerance?: boolean
+          evidenced_by?: string | null
+          handled_by?: string | null
+          responsible_party?: string | null
+          statutory_duty_holder?: string | null
+          competency_required?: string | null
+          evidence_required?: string
+          retention_basis?: string | null
+          retention_period_months?: number | null
+          suggested_scope?: Json | null
+          scope_note?: string | null
+          operationally_incomplete?: boolean
+          completion_action?: string | null
+          assurance_only?: string | null
+          reviewer_note?: string | null
+          superseded_on?: string | null
+          superseded_by?: string | null
+          superseded_note?: string
+          origin?: string
+          citation_verified_on?: string | null
+          citation_verified_against?: string | null
+          seed_modified_at?: string | null
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          handling_note?: string
+          citation_verified_by?: string | null
+          kind?: string
+          action_category?: string | null
+          priority?: string | null
+          unblocks?: string | null
+          consequence?: string | null
+          owner?: string | null
+          technical_authority?: string | null
+          due_date?: string | null
+          action_status?: string
+          sort_order?: number | null
+        }
+        Update: {
+          template_key?: string
+          name?: string
+          description?: string
+          group_key?: string | null
+          basis?: string | null
+          statutory_ref?: string
+          applies_when?: string
+          trigger_event?: string | null
+          trigger_type?: string | null
+          trigger_source?: string | null
+          frequency_days?: number | null
+          max_interval_days?: number | null
+          interval_basis?: string | null
+          source_interval_words?: string | null
+          max_is_scheduling_tolerance?: boolean
+          evidenced_by?: string | null
+          handled_by?: string | null
+          responsible_party?: string | null
+          statutory_duty_holder?: string | null
+          competency_required?: string | null
+          evidence_required?: string
+          retention_basis?: string | null
+          retention_period_months?: number | null
+          suggested_scope?: Json | null
+          scope_note?: string | null
+          operationally_incomplete?: boolean
+          completion_action?: string | null
+          assurance_only?: string | null
+          reviewer_note?: string | null
+          superseded_on?: string | null
+          superseded_by?: string | null
+          superseded_note?: string
+          origin?: string
+          citation_verified_on?: string | null
+          citation_verified_against?: string | null
+          seed_modified_at?: string | null
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          handling_note?: string
+          citation_verified_by?: string | null
+          kind?: string
+          action_category?: string | null
+          priority?: string | null
+          unblocks?: string | null
+          consequence?: string | null
+          owner?: string | null
+          technical_authority?: string | null
+          due_date?: string | null
+          action_status?: string
+          sort_order?: number | null
+        }
+        Relationships: []
       }
       type_attribute_options: {
         Row: {
@@ -4541,11 +5311,11 @@ export type Database = {
           notes: string | null
           issued_at: string | null
           completed_at: string | null
-          expected_completion: string | null
           created_at: string
           created_by: string | null
           updated_at: string | null
           updated_by: string | null
+          expected_completion: string | null
         }
         Insert: {
           id?: string
@@ -4558,11 +5328,11 @@ export type Database = {
           notes?: string | null
           issued_at?: string | null
           completed_at?: string | null
-          expected_completion?: string | null
           created_at?: string
           created_by?: string | null
           updated_at?: string | null
           updated_by?: string | null
+          expected_completion?: string | null
         }
         Update: {
           id?: string
@@ -4575,11 +5345,11 @@ export type Database = {
           notes?: string | null
           issued_at?: string | null
           completed_at?: string | null
-          expected_completion?: string | null
           created_at?: string
           created_by?: string | null
           updated_at?: string | null
           updated_by?: string | null
+          expected_completion?: string | null
         }
         Relationships: [
             {

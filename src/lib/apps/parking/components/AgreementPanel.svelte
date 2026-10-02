@@ -25,6 +25,7 @@
   import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
+  /** @type {import('../utils/bayModel.js').AgreementRow | null} */
   export let agreement = null;
   export let canEdit = false;
 

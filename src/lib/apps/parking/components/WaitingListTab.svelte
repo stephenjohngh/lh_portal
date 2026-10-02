@@ -35,7 +35,7 @@
     const h = s.holders.find(x => x.id === id);
     return h ? (h.company_name ? `${h.company_name} — ${h.display_name}` : h.display_name) : '—';
   };
-  $: holderKind = (id) => HOLDER_TYPE_LABEL[s.holders.find(x => x.id === id)?.holder_type] ?? '';
+  $: holderKind = (id) => HOLDER_TYPE_LABEL[s.holders.find(x => x.id === id)?.holder_type ?? ''] ?? '';
   $: bayOf = (bayId) => s.bays.find(b => b.bay_id === bayId) ?? null;
 
   // Open applications in queue order (offers first, then the queue itself);

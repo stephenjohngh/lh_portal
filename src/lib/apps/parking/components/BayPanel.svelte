@@ -17,6 +17,7 @@
   import { basesForTenure, LIVE, STATUS_LABEL, BASIS_LABEL } from '../utils/agreementModel.js';
   import { nextFor } from '../utils/waitingListModel.js';
 
+  /** @type {import('../utils/bayModel.js').MergedBay | null} */
   export let bay = null;
   export let canEdit = false;
 

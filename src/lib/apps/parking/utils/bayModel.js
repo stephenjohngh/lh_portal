@@ -109,6 +109,33 @@ export function measureBay(space, plan) {
 }
 
 /**
+ * @typedef {import('$lib/database.types').Tables<'parking_bays'>} BayRow
+ * @typedef {import('$lib/database.types').Tables<'parking_agreements'> & Record<string, any>} AgreementRow
+ * @typedef {import('$lib/database.types').Tables<'parking_applications'> & Record<string, any>} ApplicationRow
+ *
+ * A bay as every Parking screen sees it: the parking_bays facts (BAY_DEFAULTS
+ * where none have been saved yet, so every field may be absent) joined to its
+ * drawing and to what holds it today. Built ONLY by mergeBays below.
+ * ⚠ Intersected with Record<string, any> on purpose: the facts are spread in,
+ * so a bare Partial<BayRow> would refuse fields that genuinely arrive.
+ * @typedef {Partial<BayRow> & Record<string, any> & {
+ *   bay_id:   string|null,
+ *   space_id: string,
+ *   space:    Record<string, any>,
+ *   ref:      string,
+ *   number:   string|null,
+ *   size:     string|null,
+ *   floor_id: string|null,
+ *   plan_id:  string|null,
+ *   measured: { area: number|null, width: number|null, length: number|null } | null,
+ *   current:  AgreementRow|null,
+ *   reserved: AgreementRow|null,
+ *   offer:    ApplicationRow|null,
+ *   state:    string,
+ * }} MergedBay
+ */
+
+/**
  * Join the drawings to their parking facts.
  * @param {object[]} spaces  kind 'slot' spaces (building_assets public.js)
  * @param {object[]} rows    parking_bays rows
@@ -117,7 +144,7 @@ export function measureBay(space, plan) {
  * @param {object[]} [agreements]  to find the agreement holding each bay today
  * @param {string}   [today]       YYYY-MM-DD
  * @param {object[]} [applications] to find an open waiting-list offer on each bay
- * @returns {object[]} merged bays, in floor then bay-number order
+ * @returns {MergedBay[]} merged bays, in floor then bay-number order
  */
 export function mergeBays(spaces, rows, floors = [], plans = [], agreements = [], today = todayISO(), applications = []) {
   const bySpace = new Map((rows ?? []).map(r => [r.space_id, r]));

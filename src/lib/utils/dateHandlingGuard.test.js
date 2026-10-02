@@ -70,6 +70,9 @@ function codeLines(source) {
 }
 
 const FILES = sources('src');
+// Read once: re-reading every source for every rule ran one test past its
+// time limit when the whole suite runs in parallel (2026-10-02).
+const TEXT = new Map(FILES.map((f) => [f, readFileSync(f, 'utf8')]));
 
 describe('dates have one owner (dates.js)', () => {
   it('finds the sources it exists for', () => {
@@ -83,7 +86,7 @@ describe('dates have one owner (dates.js)', () => {
       const offenders = [];
       for (const file of FILES) {
         if (file === OWNER || ALLOWED[file]?.[rule]) continue;
-        for (const { text, line } of codeLines(readFileSync(file, 'utf8'))) {
+        for (const { text, line } of codeLines(TEXT.get(file))) {
           if (pattern.test(text)) offenders.push(`${file}:${line}  ${text.trim().slice(0, 90)}`);
         }
       }

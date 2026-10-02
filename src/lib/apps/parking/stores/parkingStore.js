@@ -33,10 +33,23 @@ const logger = getLogger('Parking');
 const AUDIT = { appId: 'parking', eventCategory: 'parking' };
 
 /**
- * @typedef {Record<string, any>} Row
+ * Each row type is the table's own, intersected with Record<string, any>
+ * because these rows are joined and extended after reading (CLAUDE.md, Type
+ * checking). Bays are not rows at all: mergeBays builds them.
+ * @template {import('$lib/database.types').TableName} T
+ * @typedef {import('$lib/database.types').Tables<T> & Record<string, any>} Row
+ */
+/**
  * @typedef {{
- *   bays: Row[], floors: Row[], plans: Row[],
- *   holders: Row[], agreements: Row[], vehicles: Row[], devices: Row[], applications: Row[], tariffs: Row[],
+ *   bays:         import('../utils/bayModel.js').MergedBay[],
+ *   floors:       Row<'floors'>[],
+ *   plans:        Row<'plans'>[],
+ *   holders:      Row<'parking_holders'>[],
+ *   agreements:   Row<'parking_agreements'>[],
+ *   vehicles:     Row<'parking_vehicles'>[],
+ *   devices:      Row<'parking_access_devices'>[],
+ *   applications: Row<'parking_applications'>[],
+ *   tariffs:      Row<'parking_tariffs'>[],
  *   loading: boolean, error: string|null
  * }} State
  */
@@ -243,7 +256,7 @@ function createParkingStore() {
     // An ended agreement's vehicles stop being authorised the same day.
     if (ending) {
       const live = state().vehicles.filter(v => v.agreement_id === id && !v.to_date);
-      for (const v of live) await endVehicle(v.id, endDate);
+      for (const v of live) await endVehicle(v.id, endDate ?? todayISO());   // always set when ending
     }
     remerge();
     logAudit('update', 'parking_agreement', id, saved.reference,
