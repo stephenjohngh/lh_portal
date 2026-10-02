@@ -26,11 +26,10 @@ export async function accessToken() {
 export async function authHeaders() {
   const token = await accessToken();
   if (!token) {
-    // DIAGNOSTIC (temporary): getSession() returned no session at request time —
-    // this is the exact point an authed call (AI / admin) fails. Correlate the
-    // timestamp with the authStore event trace. console.info so it's visible
-    // without enabling "Debug" log level. Remove once cause is identified.
-    console.info(`🔐 no session at request time — [${new Date().toISOString()}]`);
+    // (A temporary console.info stood here to trace unexpected sign-outs,
+    // beside an event trace in the auth store. That trace was removed on
+    // 2026-07-11 — the sign-out was never reproduced — and this half was
+    // missed until 2026-10-02.)
     throw new Error('Not authenticated');
   }
   return {

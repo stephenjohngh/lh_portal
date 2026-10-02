@@ -10,15 +10,7 @@
 // The module reads env at import time, so each case uses vi.resetModules() +
 // a fresh vi.doMock rather than one top-level mock.
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-// These cases import the REAL provider modules (that is the point — selection
-// is what is under test), which drags in googleapis and the Supabase client.
-// On a cold module cache the first import alone can exceed the default 5s
-// under full-suite load, so it fails as a timeout rather than as a wrong
-// answer. Slow, not flaky: give it room instead of mocking away the thing
-// being tested.
-vi.setConfig({ testTimeout: 30_000 });
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 
 /**
  * Import storage/index.js with STORAGE_PROVIDER set to `value`.
@@ -35,6 +27,17 @@ async function loadWith(value) {
   }));
   return import('./index.js');
 }
+
+// These cases import the REAL provider modules (that is the point — selection
+// is what is under test), which drags in googleapis and the Supabase client.
+// The FIRST import of those is the slow part: cold, under full-suite load, it
+// took up to 49 s, so whichever test ran first timed out — always "defaults to
+// Google Drive", the known flake (named 2026-09-17). It is paid ONCE here, in a
+// hook with its own stated budget, so every test below measures only what it
+// tests and runs on the ordinary 5 s limit. (This replaced a 30 s timeout on
+// every test, which still was not enough under load and hid any slow test.)
+const COLD_IMPORT_BUDGET_MS = 120_000;
+beforeAll(async () => { await loadWith('google_drive'); }, COLD_IMPORT_BUDGET_MS);
 
 beforeEach(() => { vi.resetModules(); });
 
