@@ -153,11 +153,11 @@
   </div>
 
   {#if !hasAccess && !permissionsChecked}
-    <LoadingSpinner />
+    <LoadingSpinner text="Loading parking…" />
   {:else if !hasAccess}
     <p class="text-sm text-slate-400">You do not have access to Parking. An administrator can grant it under Admin → Users.</p>
-  {:else if state.loading && !loaded}
-    <LoadingSpinner />
+  {:else if !loaded}
+    <LoadingSpinner text="Loading parking…" />
   {:else}
     {#if state.error}<ErrorDisplay message={state.error} />{/if}
     {#if acceptError}<ErrorDisplay message={acceptError} />{/if}

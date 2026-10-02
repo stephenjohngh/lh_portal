@@ -173,7 +173,16 @@
         <p class="duty-name">
           <span class="duty-k">Compliance obligation:</span> {dutyEntry.name}
         </p>
-        {#if dutyPlan.state === 'on'}
+        <!-- ⛔ "No planned obligation applies this duty" is a claim about the
+             planned obligations, so it waits for them: before they arrived,
+             or when they could not be read, it said so regardless. -->
+        {#if $inspectionDefinitionsStore.loading && !$inspectionDefinitionsStore.definitions.length}
+          <p class="duty-plan">Checking whether a planned obligation applies this duty…</p>
+        {:else if $inspectionDefinitionsStore.error && !$inspectionDefinitionsStore.definitions.length}
+          <p class="duty-plan warn">
+            Could not read the planned obligations, so whether this duty is scheduled is not known.
+          </p>
+        {:else if dutyPlan.state === 'on'}
           <p class="duty-plan ok">
             Planned obligation <strong>{plannedName}</strong> is switched on{plannedRoute ? ` (${plannedRoute.toLowerCase()})` : ''},
             so the check is scheduled. Whether the board is right today is what this tab records.

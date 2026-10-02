@@ -111,7 +111,7 @@
   {#if loading}
     <div class="inspection-loading">
       <div class="inspection-spinner"></div>
-      <p>Loading…</p>
+      <p>Loading inspections…</p>
     </div>
 
   {:else if initError}

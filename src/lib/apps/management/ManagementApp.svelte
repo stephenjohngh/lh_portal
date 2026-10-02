@@ -91,6 +91,9 @@
   }
 
   $: ({ issues, loading, error } = $issuesStore);
+  // The first load, before any issue has arrived: counts and empty messages
+  // would say "0 issues" / "No issues match" for something not yet read.
+  $: firstLoad = loading && issues.length === 0;
 
   $: if (loading && containerElement) {
     scrollPosition = window.scrollY;
@@ -349,7 +352,7 @@
       <!-- Desktop: single row (sm and above) -->
       <div class="hidden sm:flex items-center gap-2 py-2">
         <span class="text-xs text-slate-400 shrink-0 whitespace-nowrap">
-          {filteredIssues.length} {filteredIssues.length === 1 ? 'issue' : 'issues'}
+          {firstLoad ? 'Loading…' : `${filteredIssues.length} ${filteredIssues.length === 1 ? 'issue' : 'issues'}`}
         </span>
         <select
           bind:value={statusFilter}
@@ -388,7 +391,7 @@
         <!-- Row 1: count · status filter · New Issue -->
         <div class="flex items-center gap-2">
           <span class="text-xs text-slate-400 shrink-0 whitespace-nowrap">
-            {filteredIssues.length} {filteredIssues.length === 1 ? 'issue' : 'issues'}
+            {firstLoad ? 'Loading…' : `${filteredIssues.length} ${filteredIssues.length === 1 ? 'issue' : 'issues'}`}
           </span>
           <select
             bind:value={statusFilter}
@@ -434,12 +437,12 @@
 
     <ErrorDisplay message={error} onDismiss={() => issuesStore.clearError()} />
 
-    {#if loading && issues.length === 0}
+    {#if firstLoad}
       <!-- Spinner only on the FIRST load. On background refreshes (save →
            fetchIssues sets loading:true with issues already present) we must NOT
            swap the list for the spinner: doing so tears down and rebuilds every
            IssueCard, remounting open activity editors and losing their state. -->
-      <LoadingSpinner />
+      <LoadingSpinner text="Loading issues…" />
     {:else if filteredIssues.length === 0}
       <div class="empty-state">
         {#if searchTerm}
@@ -493,7 +496,11 @@
 
   <!-- ─── REPORTS TAB ─────────────────────────────────────────────────── -->
   {:else if activeTab === 'reports'}
-    <ReportsTab {issues} />
+    {#if firstLoad}
+      <LoadingSpinner text="Loading issues…" />
+    {:else}
+      <ReportsTab {issues} />
+    {/if}
   {/if}
 
 </div>

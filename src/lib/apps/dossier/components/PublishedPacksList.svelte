@@ -9,6 +9,7 @@
      Scoped by RLS, not by a filter here: publications inherit their pack's
      owner test, so this shows the caller's own and an admin sees all. -->
 <script>
+  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import { createEventDispatcher } from 'svelte';
   import Badge from '$lib/components/common/Badge.svelte';
   import Icon  from '$lib/components/icons/Icon.svelte';
@@ -38,10 +39,12 @@
         on:click={() => dispatch('back')}
       >← Packs</button>
       <h2 class="text-sm font-semibold text-white">Published links</h2>
-      <span class="text-xs text-slate-500">{rows.length}</span>
+      {#if !loading}<span class="text-xs text-slate-500">{rows.length}</span>{/if}
     </div>
     <p class="text-xs text-slate-500 mt-1">
-      {#if rows.length === 0}
+      {#if loading}
+        Reading the publications…
+      {:else if rows.length === 0}
         No pack has ever been published.
       {:else}
         <span class={liveCount ? 'text-amber-300' : ''}>{liveCount} live</span>
@@ -52,7 +55,7 @@
 
   <div class="flex-1 min-h-0 overflow-y-auto">
     {#if loading}
-      <p class="px-5 py-8 text-sm text-slate-500">Loading…</p>
+      <LoadingSpinner text="Loading published links…" />
     {:else if rows.length === 0}
       <div class="px-5 py-10 text-center text-slate-500">
         <Icon name="book" size={8} className="mx-auto mb-2 opacity-40" />

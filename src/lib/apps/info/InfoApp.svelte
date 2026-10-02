@@ -61,7 +61,20 @@
 
   // ── Boot ──────────────────────────────────────────────────────────────────
 
+  // Nothing reads as empty until the sections and notes have been read.
+  // Before it the store is empty because it has not been read, and "No
+  // sections yet" / "No notes yet" would be untrue for the moment they showed.
+  let ready = false;
+
   onMount(async () => {
+    try {
+      await boot();
+    } finally {
+      ready = true;
+    }
+  });
+
+  async function boot() {
     await permissions.init($auth.user.id, 'info');
     try {
       await infoStore.loadSections();
@@ -82,7 +95,7 @@
     } catch (/** @type {any} */ err) {
       appError = err.message;
     }
-  });
+  }
 
   // Section selection is a client-side filter — all notes stay loaded so the
   // sidebar counts (derived from the full `notes` array) remain correct.
@@ -270,9 +283,9 @@
     </div>
   {/if}
 
-  {#if $infoStore.loadingSections}
+  {#if !ready || $infoStore.loadingSections}
     <div class="flex-1 flex items-center justify-center">
-      <LoadingSpinner size="large" />
+      <LoadingSpinner size="large" text="Loading information…" />
     </div>
 
   {:else}

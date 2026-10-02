@@ -92,7 +92,9 @@
 
     <div>
       <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold mb-2">Meeting</p>
-      {#if $meetingsStore.list.length === 0}
+      {#if !$meetingsStore.loaded}
+        <p class="text-sm text-slate-500 italic">Loading meetings…</p>
+      {:else if $meetingsStore.list.length === 0}
         <p class="text-sm text-slate-500 italic">No meetings yet.</p>
       {:else}
         <select

@@ -8,6 +8,7 @@
 
   export let meetings = [];   // meetingsStore list (newest first)
   export let issues   = [];   // for the tagged-item counts
+  export let loaded   = true; // false until the meetings have been read
 
   const dispatch = createEventDispatcher();
 
@@ -40,11 +41,13 @@
   <header class="app-header">
     <button class="back-btn" on:click={() => dispatch('back')} aria-label="Back to issues">←</button>
     <span class="app-title">Meetings</span>
-    <span class="count">{meetings.length}</span>
+    {#if loaded}<span class="count">{meetings.length}</span>{/if}
   </header>
 
   <div class="list-scroll">
-    {#if meetings.length === 0}
+    {#if !loaded}
+      <p class="empty">Loading meetings…</p>
+    {:else if meetings.length === 0}
       <p class="empty">No meetings yet.</p>
     {:else}
       {#each meetings as m (m.id)}

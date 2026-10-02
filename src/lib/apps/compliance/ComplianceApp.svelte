@@ -155,7 +155,7 @@
   </div>
 
   {#if !hasAccess && !permissionsChecked}
-    <LoadingSpinner />
+    <LoadingSpinner text="Loading compliance…" />
   {:else if !hasAccess}
     <!-- ⚠ Not an error state: the app has not been granted to this account.
          It must read as a permission rather than as a fault. -->
@@ -186,8 +186,10 @@
         {focusKey}
       />
     {:else if isAdmin && activeTab === 'planned-obligations'}
-      {#if $buildingAssetsStore.loading}
-        <LoadingSpinner />
+      <!-- Waits for the components too: each row's match count is computed
+           from them, and drawn before they arrive it read 0 for every row. -->
+      {#if $buildingAssetsStore.loading || $buildingAssetsStore.loadingComponents}
+        <LoadingSpinner text="Loading planned obligations…" />
       {:else}
         <PlannedObligationsTab />
       {/if}
@@ -196,7 +198,7 @@
            shared reference data, so it waits on the same load the planned tab
            does — but NOT on the 1,092-component set, which it never touches. -->
       {#if $buildingAssetsStore.loading}
-        <LoadingSpinner />
+        <LoadingSpinner text="Loading inspection walks…" />
       {:else}
         <InspectionWalksTab />
       {/if}

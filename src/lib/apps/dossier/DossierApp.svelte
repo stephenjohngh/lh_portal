@@ -88,12 +88,21 @@
   $: packs    = $dossierStore.packs;
   $: openPack = openPackId ? (packs.find(p => p.id === openPackId) ?? null) : null;
 
+  // The pack list reads as loading until the packs have been read. Before
+  // that the store is empty because it has not been read, and "No packs yet"
+  // would be untrue for the moment it showed.
+  let ready = false;
+
   onMount(async () => {
-    await permissions.init($auth.user.id, 'dossier');
     try {
-      await dossierStore.loadPacks();
-    } catch (err) {
-      appError = errMessage(err);
+      await permissions.init($auth.user.id, 'dossier');
+      try {
+        await dossierStore.loadPacks();
+      } catch (err) {
+        appError = errMessage(err);
+      }
+    } finally {
+      ready = true;
     }
   });
 
@@ -262,7 +271,7 @@
     {:else}
       <PackList
         {packs}
-        loading={$dossierStore.loading}
+        loading={!ready || $dossierStore.loading}
         on:new={openNewPack}
         on:open={(e)    => handleOpen(e.detail)}
         on:edit={(e)    => openEditPack(e.detail)}

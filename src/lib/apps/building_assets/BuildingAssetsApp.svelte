@@ -3,6 +3,7 @@
      and delegates to the active tab component. -->
 <script>
   import { onMount } from 'svelte';
+  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import { get } from 'svelte/store';
   import { auth } from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
@@ -36,18 +37,22 @@
     // Data already present from a previous mount → render it immediately.
     if (!needsHierarchy && !needsComponents) initialized = true;
 
-    if ($auth.user) {
-      await permissions.init($auth.user.id, 'building_assets');
+    try {
+      if ($auth.user) {
+        await permissions.init($auth.user.id, 'building_assets');
+      }
+      if (needsHierarchy || needsComponents) {
+        // Independent fetch chains — run concurrently to halve startup latency.
+        await Promise.all([
+          needsHierarchy  ? buildingAssetsStore.load()           : Promise.resolve(),
+          needsComponents ? buildingAssetsStore.loadComponents() : Promise.resolve(),
+        ]);
+      }
+    } finally {
+      // Even on a failed load: the tabs then show the store's error rather
+      // than a spinner that never ends.
+      initialized = true;
     }
-
-    if (needsHierarchy || needsComponents) {
-      // Independent fetch chains — run concurrently to halve startup latency.
-      await Promise.all([
-        needsHierarchy  ? buildingAssetsStore.load()           : Promise.resolve(),
-        needsComponents ? buildingAssetsStore.loadComponents() : Promise.resolve(),
-      ]);
-    }
-    initialized = true;
   });
 
   // ⛔ THERE IS NO INSPECTIONS TAB HERE ANY MORE (C4, 2026-09-21) and it must
@@ -70,8 +75,9 @@
 
 <div class="text-white">
 
-  <!-- Loading state — shown until first load completes -->
-  {#if !initialized || store.loading}
+  <!-- A later reload (after an edit) keeps the tab on screen and says so here.
+       The FIRST load replaces the tab content instead — below. -->
+  {#if initialized && store.loading}
     <div class="text-slate-400 text-sm mb-4">Loading…</div>
   {/if}
 
@@ -106,8 +112,13 @@
     {/each}
   </div>
 
-  <!-- Tab content -->
-  {#if activeTab === 'types'}
+  <!-- Tab content. Nothing is drawn until the first load has finished: before
+       it every list is empty because it has not been read, and the tabs said
+       "No components yet" / "No spaces have been drawn yet" for the moment
+       they showed. -->
+  {#if !initialized}
+    <LoadingSpinner text="Loading building assets…" />
+  {:else if activeTab === 'types'}
     <TypeBrowser {systems} {types} {attrDefs} {attrOptions} />
   {:else if activeTab === 'components'}
     <ComponentsTab />

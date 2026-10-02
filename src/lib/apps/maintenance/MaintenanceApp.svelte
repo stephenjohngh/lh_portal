@@ -55,21 +55,39 @@
   // The capital-planning tabs need building-assets reference data (systems, types,
   // spaces, plans + components for the condition roll-up) and the group register.
   // Lazy-load it the first time either capital tab is opened.
+  // ⚠ Three loads, and the tab waits for all three: the building-assets
+  // `loading` flag clears after the first, and the groups tab then said "no
+  // groups" while the components and the group register were still arriving.
   let capitalDataLoaded = false;
+  let capitalLoading = false;
   async function activate(key) {
     activeTab = key;
     if (CAPITAL_TABS.includes(key) && !capitalDataLoaded) {
       capitalDataLoaded = true;
-      await buildingAssetsStore.load();
-      await buildingAssetsStore.loadComponents();
-      await maintenanceGroupsStore.load();
+      capitalLoading = true;
+      try {
+        await buildingAssetsStore.load();
+        await buildingAssetsStore.loadComponents();
+        await maintenanceGroupsStore.load();
+      } finally {
+        capitalLoading = false;
+      }
     }
   }
 
+  // Nothing reads as empty until the jobs have been read. Before it the store
+  // is empty because it has not been read, and "No maintenance jobs yet" and a
+  // row of zeros would be untrue for the moment they showed.
+  let ready = false;
+
   onMount(async () => {
-    if ($auth.user) {
-      await permissions.init($auth.user.id, 'maintenance');
-      await maintenanceStore.load();
+    try {
+      if ($auth.user) {
+        await permissions.init($auth.user.id, 'maintenance');
+        await maintenanceStore.load();
+      }
+    } finally {
+      ready = true;
     }
   });
 </script>
@@ -92,7 +110,7 @@
   {/if}
 
   <!-- Stats summary (hidden on documents/schedule tabs) -->
-  {#if activeTab === 'due' || activeTab === 'jobs'}
+  {#if ready && (activeTab === 'due' || activeTab === 'jobs')}
     <StatsBar {jobs} docs={allDocs} />
   {/if}
 
@@ -110,7 +128,9 @@
   </div>
 
   <!-- Tab content -->
-  {#if activeTab === 'due'}
+  {#if !ready && !CAPITAL_TABS.includes(activeTab)}
+    <LoadingSpinner text="Loading maintenance…" />
+  {:else if activeTab === 'due'}
     <DueWorkTab {jobs} docs={allDocs} />
   {:else if activeTab === 'jobs'}
     <JobsTab {jobs} />
@@ -119,8 +139,8 @@
   {:else if activeTab === 'schedule'}
     <SchedulerPanel {jobs} />
   {:else if activeTab === 'groups'}
-    {#if $buildingAssetsStore.loading}
-      <LoadingSpinner />
+    {#if capitalLoading || $buildingAssetsStore.loading}
+      <LoadingSpinner text="Loading the capital plan…" />
     {:else}
       <MaintenanceGroupsTab
         systems={$buildingAssetsStore.systems}
@@ -130,8 +150,8 @@
       />
     {/if}
   {:else if activeTab === 'capital'}
-    {#if $buildingAssetsStore.loading}
-      <LoadingSpinner />
+    {#if capitalLoading || $buildingAssetsStore.loading}
+      <LoadingSpinner text="Loading the capital plan…" />
     {:else}
       <TenYearPlanTab
         components={$buildingAssetsStore.components}

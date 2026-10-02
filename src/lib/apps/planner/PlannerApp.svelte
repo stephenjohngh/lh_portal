@@ -398,7 +398,20 @@
     } catch (err) { error = err instanceof Error ? err.message : String(err); }
   }
 
+  // Nothing reads as empty until the year has been read. Before it the store
+  // is empty because it has not been read, and "The year is empty" flashed on
+  // every open (reported 2026-10-02).
+  let ready = false;
+
   onMount(async () => {
+    try {
+      await startUp();
+    } finally {
+      ready = true;
+    }
+  });
+
+  async function startUp() {
     await permissions.init($auth.user.id, 'planner');
     profilesStore.load();
     try { await plannerStore.load(); }
@@ -413,7 +426,7 @@
     // that fills the store, so reading the derivation could ask before it had
     // caught up — and this one fails CLOSED, which would silently show nothing.
     plannerStore.loadLinked(from, to, visibleSources($permissions)).catch(() => {});
-  });
+  }
 </script>
 
 <!-- Closes an open toolbar menu when the click lands anywhere else. Both menus
@@ -568,8 +581,11 @@
     </p>
   {/if}
 
-  {#if state.loading && !state.events.length}
-    <div class="flex justify-center py-10"><LoadingSpinner /></div>
+  <!-- While other apps' items are still arriving, an empty year of our own
+       is not yet an empty year. -->
+  {#if !ready || (state.loading && !state.events.length)
+       || (state.loadingLinked && !state.events.length && !occurrences.length)}
+    <LoadingSpinner text="Loading the year…" />
 
   {:else if !state.events.length && !occurrences.length}
     <div class="text-center py-12 text-slate-500">

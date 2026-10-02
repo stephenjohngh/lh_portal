@@ -178,16 +178,41 @@
     }
   }
 
+  // Nothing reads as empty until it has been read. The register loads on
+  // open; the other tabs load the first time they are opened, and their
+  // loaders do not set the store's `loading`, so without these two flags
+  // each showed its "No … recorded" text until the rows arrived.
+  let ready = false;
+  let tabLoading = false;
+
   onMount(async () => {
-    if (userId) {
-      await permissions.init(userId, 'golden_thread');
-      await gtStore.load();
-      await gtStore.loadCompleteness();
+    try {
+      if (userId) {
+        await permissions.init(userId, 'golden_thread');
+        await gtStore.load();
+        await gtStore.loadCompleteness();
+      }
+    } finally {
+      ready = true;
     }
   });
 
   async function selectTab(tab) {
     activeTab = tab;
+    tabLoading = true;
+    try {
+      await loadTab(tab);
+    } finally {
+      tabLoading = false;
+    }
+    // Auto-run the read-only tick on first open so the admin sees the current
+    // summary without a click; the button remains for a manual refresh.
+    if (tab === 'review' && !reviewSummary && !reviewRunning) {
+      await runReviewTick();
+    }
+  }
+
+  async function loadTab(tab) {
     if (tab === 'completeness' && completeness.length === 0) {
       await gtStore.loadCompleteness();
     }
@@ -210,11 +235,6 @@
         try { morCases = await listMorCases(); } catch { morCases = []; }
       }
       if (safetyCaseNotifications.length === 0) await gtStore.loadSafetyCaseNotifications();
-    }
-    // Auto-run the read-only tick on first open so the admin sees the current
-    // summary without a click; the button remains for a manual refresh.
-    if (tab === 'review' && !reviewSummary && !reviewRunning) {
-      await runReviewTick();
     }
   }
 
@@ -293,8 +313,8 @@
     {/each}
   </div>
 
-  {#if loading}
-    <LoadingSpinner />
+  {#if loading || !ready || tabLoading}
+    <LoadingSpinner text="Loading the Golden Thread…" />
   {:else if activeTab === 'register'}
     <!-- ── Register list ─────────────────────────────────────────────────── -->
     <!-- Filter bar: status filter + time-travel ("current on" a date) -->

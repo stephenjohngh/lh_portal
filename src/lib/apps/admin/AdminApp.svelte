@@ -66,18 +66,27 @@
     user.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Nothing reads as empty until the users have been read. Before it the
+  // store is empty because it has not been read, and "No users found" with
+  // "0 users found" would be untrue for the moment they showed.
+  let ready = false;
+
   onMount(async () => {
-    // Initialize permissions for 'admin' app
-    if ($auth.user) {
-      await permissions.init($auth.user.id, 'admin');
+    try {
+      // Initialize permissions for 'admin' app
+      if ($auth.user) {
+        await permissions.init($auth.user.id, 'admin');
+      }
+
+      // ⚠ Admin opens on Users again. It used to default to the register, which
+      // has moved to the Compliance app — so there is nothing here worth
+      // defaulting to over the tab a non-admin also gets.
+
+      // Fetch users
+      await usersStore.fetchUsers();
+    } finally {
+      ready = true;
     }
-
-    // ⚠ Admin opens on Users again. It used to default to the register, which
-    // has moved to the Compliance app — so there is nothing here worth
-    // defaulting to over the tab a non-admin also gets.
-
-    // Fetch users
-    await usersStore.fetchUsers();
   });
 
   function handlePasswordReset(event) {
@@ -225,7 +234,7 @@
     <!-- Filters -->
     <UserFilters 
       bind:searchTerm 
-      resultCount={filteredUsers.length}
+      resultCount={ready && !loading ? filteredUsers.length : null}
     />
 
     <!-- Error Display -->
@@ -235,8 +244,8 @@
     />
 
     <!-- Loading State -->
-    {#if loading}
-      <LoadingSpinner />
+    {#if !ready || loading}
+      <LoadingSpinner text="Loading users…" />
 
     <!-- Empty State -->
     {:else if filteredUsers.length === 0}

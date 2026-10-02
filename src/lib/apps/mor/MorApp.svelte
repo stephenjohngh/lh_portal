@@ -6,6 +6,7 @@
   import { morStore }    from '$lib/apps/mor/stores/morStore';
   import Button       from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import CaseList      from '$lib/apps/mor/components/CaseList.svelte';
   import CaseDetail    from '$lib/apps/mor/components/CaseDetail.svelte';
   import CaseForm      from '$lib/apps/mor/components/CaseForm.svelte';
@@ -22,10 +23,19 @@
   $: saving  = $morStore.saving;
   $: error   = $morStore.error;
 
+  // Nothing reads as empty until the first load has finished: before it the
+  // store is empty because it has not been read, and "No cases match the
+  // current filters" would be untrue for the moment it showed.
+  let ready = false;
+
   onMount(async () => {
-    if (userId) {
-      await permissions.init(userId, 'mor');
-      await morStore.fetchCases();
+    try {
+      if (userId) {
+        await permissions.init(userId, 'mor');
+        await morStore.fetchCases();
+      }
+    } finally {
+      ready = true;
     }
   });
 
@@ -94,7 +104,9 @@
   {/if}
 
   <!-- ── Main content ─────────────────────────────────────────────────── -->
-  {#if selectedCaseId}
+  {#if !ready}
+    <LoadingSpinner text="Loading cases…" />
+  {:else if selectedCaseId}
     <CaseDetail on:back={goBack} />
   {:else if activeTab === 'dashboard'}
     <MorDashboard on:selectCase={e => selectCase(e.detail)} />

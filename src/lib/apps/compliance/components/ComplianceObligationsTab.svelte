@@ -22,6 +22,7 @@
      actually needs it. See ComplianceApp's activateTab. -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
+  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import { inspectionDefinitionsStore } from '../stores/inspectionDefinitionsStore.js';
   import StatutoryTemplatePanel from './StatutoryTemplatePanel.svelte';
 
@@ -35,17 +36,31 @@
   // on this tab.
   $: ({ definitions } = $inspectionDefinitionsStore);
 
-  onMount(() => {
+  // ⛔ No status is drawn until the planned obligations and the applicability
+  // decisions have been read. Every row's status is computed against them, so
+  // before they arrived every schedulable row read "Not covered", and the
+  // count strip with it, then flipped to the real answer — a compliance
+  // register showing the wrong status, however briefly, is the "reads
+  // plausibly while saying something untrue" failure. (2026-10-02)
+  let ready = false;
+
+  onMount(async () => {
     // ⚠ Both tabs load these, and that is deliberate rather than duplication:
     // either one can now be the first thing a person opens, and a tab that
     // depends on its sibling having been visited is a tab that is wrong half
     // the time. `load()` is guarded on the store already.
-    if (definitions.length === 0) inspectionDefinitionsStore.load();
+    const loads = [];
+    if (definitions.length === 0) loads.push(inspectionDefinitionsStore.load());
     // The recorded decisions about which entries apply to this building. Never
     // fatal — without them the gap report asks about everything, which is the
     // safe direction to fail in.
-    inspectionDefinitionsStore.loadExclusions();
+    loads.push(inspectionDefinitionsStore.loadExclusions());
+    try { await Promise.allSettled(loads); } finally { ready = true; }
   });
 </script>
 
-<StatutoryTemplatePanel {definitions} {focusKey} on:goto on:showDisplayRegister />
+{#if ready}
+  <StatutoryTemplatePanel {definitions} {focusKey} on:goto on:showDisplayRegister />
+{:else}
+  <LoadingSpinner text="Loading the compliance obligations register…" />
+{/if}

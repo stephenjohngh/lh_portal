@@ -28,6 +28,7 @@
   let loading = false;
   let error   = '';
   let meetings = [];
+  let meetingsLoaded = false;   // "No meetings yet" waits for the list to be read
   let currentMeeting = null;
 
   const unsub = issuesStore.subscribe(s => {
@@ -43,6 +44,7 @@
 
   const unsubMeetings = meetingsStore.subscribe(s => {
     meetings = s.list;
+    meetingsLoaded = s.loaded;
     currentMeeting = s.current;
     if (selectedMeeting) {
       selectedMeeting = s.list.find(m => m.id === selectedMeeting.id) ?? selectedMeeting;
@@ -106,7 +108,7 @@
     />
   {:else if screen === 'meetings'}
     <MeetingsScreen
-      {meetings} {issues}
+      {meetings} {issues} loaded={meetingsLoaded}
       on:select={(e) => openMeeting(e.detail.id, 'meetings')}
       on:back={goList}
     />

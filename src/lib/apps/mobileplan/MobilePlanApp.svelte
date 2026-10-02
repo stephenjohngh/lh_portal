@@ -69,15 +69,23 @@
 
   // -- Lifecycle -----------------------------------------------------------------
 
-  onMount(async () => {
-    if ($auth.user) {
-      await permissions.init($auth.user.id, 'mobileplan');
-    }
+  // Nothing is drawn until the plans have been read: before it the store is
+  // empty because it has not been read, and the plan said "No plan for this
+  // floor" for the moment it showed.
+  let ready = false;
 
+  onMount(async () => {
     window.addEventListener('online',  handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    await mobileplanStore.load();
+    try {
+      if ($auth.user) {
+        await permissions.init($auth.user.id, 'mobileplan');
+      }
+      await mobileplanStore.load();
+    } finally {
+      ready = true;
+    }
   });
 
   onDestroy(() => {
@@ -185,10 +193,10 @@
 
   <!-- Main content -->
   <main class="main-content">
-    {#if state.loading}
+    {#if !ready || state.loading}
       <div class="full-center">
         <div class="spinner"></div>
-        <p class="loading-msg">Loading…</p>
+        <p class="loading-msg">Loading the plans…</p>
       </div>
 
     {:else if state.error && !state.currentFloor}

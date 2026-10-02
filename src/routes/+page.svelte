@@ -1,6 +1,7 @@
 <!-- src/routes/+page.svelte -->
 <!-- Updated to use apps.js config from $lib/apps/apps -->
 <script>
+  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import { onMount } from 'svelte';
   import { auth } from '$lib/stores/auth';
   import { beforeNavigate, goto } from '$app/navigation';
@@ -256,7 +257,7 @@
 
 {#if $auth.loading || loading}
   <div class="min-h-screen bg-slate-900 flex items-center justify-center">
-    <div class="text-white text-xl">Loading...</div>
+    <LoadingSpinner text="Loading the portal…" />
   </div>
 {:else if $auth.user}
   <!-- `lh-shell` / `lh-chrome` / `lh-main` exist for ONE reason: print. The
@@ -403,7 +404,7 @@
             <p class="text-gray-400">Failed to load this app — check your connection and refresh the page.</p>
           </div>
         {:else if APP_LOADERS[activeApp]}
-          <div class="flex items-center justify-center py-16 text-gray-400">Loading…</div>
+          <LoadingSpinner text={`Opening ${displayedApps.find(a => a.id === activeApp)?.name ?? 'the app'}…`} />
         {:else}
           <div class="bg-slate-800 rounded-xl p-8 border border-slate-700">
             <h2 class="text-3xl font-bold mb-4">

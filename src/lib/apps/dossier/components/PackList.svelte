@@ -27,7 +27,7 @@
   <div class="flex items-center gap-3 px-5 py-3 border-b border-slate-700 shrink-0">
     <p class="text-sm font-semibold text-white">
       {showArchived ? 'Archived packs' : 'Packs'}
-      <span class="text-slate-500 font-normal">({visible.length})</span>
+      {#if !loading}<span class="text-slate-500 font-normal">({visible.length})</span>{/if}
     </p>
 
     <div class="flex-1"></div>
@@ -58,7 +58,7 @@
   <div class="flex-1 min-h-0 overflow-y-auto p-4">
     {#if loading}
       <div class="flex items-center justify-center py-16">
-        <LoadingSpinner size="large" />
+        <LoadingSpinner size="large" text="Loading packs…" />
       </div>
 
     {:else if visible.length === 0}

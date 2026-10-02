@@ -56,9 +56,18 @@
       : `${n} open`;
   })();
 
+  // Nothing reads as empty until the first load has finished. Before it the
+  // store is empty because it has not been read yet, and "No complaints
+  // recorded" or "0 open" would be untrue for the moment it showed.
+  let ready = false;
+
   onMount(async () => {
-    await permissions.init($auth.user.id, 'complaints');
-    try { await complaintsStore.load(); } catch { /* surfaced in state.error */ }
+    try {
+      await permissions.init($auth.user.id, 'complaints');
+      try { await complaintsStore.load(); } catch { /* surfaced in state.error */ }
+    } finally {
+      ready = true;
+    }
   });
 
   async function openCase(e) {
@@ -110,7 +119,7 @@
   <div class="flex items-center gap-3 mb-4 flex-wrap">
     <div class="min-w-0">
       <h2 class="text-sm font-semibold text-white">Complaints</h2>
-      <p class="text-xs text-slate-500 mt-0.5">{summary}</p>
+      <p class="text-xs text-slate-500 mt-0.5">{ready ? summary : ''}</p>
     </div>
 
     {#if !state.selected}
@@ -150,8 +159,8 @@
   {/if}
 
   <!-- ── Body ──────────────────────────────────────────────────────────── -->
-  {#if state.loading && !state.cases.length}
-    <div class="flex justify-center py-10"><LoadingSpinner /></div>
+  {#if !ready || (state.loading && !state.cases.length)}
+    <LoadingSpinner text="Loading complaints…" />
 
   {:else if state.selected}
     <ComplaintDetail

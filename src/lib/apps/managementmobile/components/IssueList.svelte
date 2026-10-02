@@ -97,7 +97,7 @@
     <button class="back-btn" on:click={() => dispatch('home')} aria-label="Back to home">←</button>
     <span class="app-title">Issues</span>
     <button class="meetings-btn" on:click={() => dispatch('meetings')} aria-label="Meetings">🗓 Meetings</button>
-    <span class="issue-count">{filtered.length}</span>
+    {#if !(loading && issues.length === 0)}<span class="issue-count">{filtered.length}</span>{/if}
   </header>
 
   <!-- Meeting-in-progress banner -->

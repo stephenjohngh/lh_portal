@@ -3,7 +3,8 @@
   import Icon from '$lib/components/icons/Icon.svelte';
   
   export let searchTerm = '';
-  export let resultCount = 0;
+  /** null while the users are still loading: no count is shown, not "0". */
+  export let resultCount = null;
 </script>
 
 <div class="mb-6">
@@ -32,7 +33,9 @@
   </div>
 
   <!-- Results Count -->
-  <div class="mt-2 text-muted-sm">
-    {resultCount} {resultCount === 1 ? 'user' : 'users'} found
-  </div>
+  {#if resultCount !== null}
+    <div class="mt-2 text-muted-sm">
+      {resultCount} {resultCount === 1 ? 'user' : 'users'} found
+    </div>
+  {/if}
 </div>
