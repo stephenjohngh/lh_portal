@@ -239,3 +239,18 @@ describe('building the document', () => {
     }));
   });
 });
+
+describe('the summary row', () => {
+  // ⛔ It kept its own list of statuses, written before `assured` existed, so
+  // assured rows were counted on screen and left out of the Word summary — the
+  // figures it printed did not add up to the total beside them (2026-10-02).
+  it('prints every status the screen counts, assured included', async () => {
+    const { ROW_STATUS, ROW_STATUS_LABEL } = await import('../utils/obligationReport.js');
+    const summary = Object.fromEntries(ROW_STATUS.map((s, i) => [s, i + 1]));
+    const text = await textOf(await packs(payload({ summary })));
+    expect(text).toContain('Assurance confirmed');
+    for (const s of ROW_STATUS) expect(ROW_STATUS_LABEL[s], s).toBeTruthy();
+    // Each count appears in the summary: 1..N, one per status.
+    for (let n = 1; n <= ROW_STATUS.length; n++) expect(text).toContain(String(n));
+  });
+});

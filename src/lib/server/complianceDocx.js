@@ -14,6 +14,7 @@
 // ever NARROWS what prints — it can never add a row the screen did not show.
 
 import { fmtDate } from '../utils/dates.js';
+import { ROW_STATUS } from '../utils/obligationReport.js';
 import {
   Document, Packer, Paragraph,
   Table, TableRow, HeadingLevel, WidthType, TableLayoutType, PageBreak, AlignmentType,
@@ -74,8 +75,10 @@ export const HISTORY_COLS   = [1900, 4400, 4400, 2200, 2498];
 export const EXCLUSION_COLS = [5000, 2000, 6398, 2000];
 
 export function summarySection(summary, total) {
-  const order = ['breach', 'gap', 'attention', 'ok', 'elsewhere', 'unhomed', 'excluded', 'superseded', 'retired'];
-  const present = order.filter(k => (summary?.[k] ?? 0) > 0);
+  // ⛔ The screen's own list, not a copy. A copy written before `assured`
+  // existed left those rows out of this table until 2026-10-02, so the Word
+  // summary did not add up to the total it printed beside it.
+  const present = ROW_STATUS.filter(k => (summary?.[k] ?? 0) > 0);
   if (present.length === 0) return para([run(`${total} requirements.`)]);
   const w = Math.floor(CONTENT_W_L / present.length);
 
