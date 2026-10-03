@@ -24,7 +24,7 @@ import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }                 from '$env/dynamic/private';
 import { hashToken, isWellFormedToken } from '$lib/apps/dossier/utils/publicationToken.js';
 import { isServable, READER_REFUSAL }   from '$lib/apps/dossier/utils/publicationState.js';
-import { buildSnapshot, buildManifest } from '$lib/apps/dossier/utils/snapshot.js';
+import { buildSnapshot, buildManifest, withCurrentFieldKeys } from '$lib/apps/dossier/utils/snapshot.js';
 
 let _svc = null;
 function svc() {
@@ -90,7 +90,9 @@ export async function findServablePublication(token, now = Date.now()) {
  * @returns {Promise<object|null>} a snapshot-shaped object
  */
 export async function readPublicationContent(publication) {
-  if (publication?.mode !== 'latest') return publication?.snapshot ?? null;
+  // A stored snapshot is served as frozen, with only renamed field KEYS brought
+  // up to date (withCurrentFieldKeys) so today's renderer can find them.
+  if (publication?.mode !== 'latest') return withCurrentFieldKeys(publication?.snapshot ?? null);
 
   const packId = publication.pack_id;      // from the row, never from the caller
   const db = svc();

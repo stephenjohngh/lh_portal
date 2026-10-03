@@ -11,6 +11,8 @@
 // the blocks, derivable and not needed to render), and anything about the
 // author. A recipient gets the pack, not the workings.
 
+import { migrateRecordFields } from './datasetTemplates.js';
+
 /** Bumped only when the reader must be able to refuse an older shape. */
 export const SNAPSHOT_FORMAT = 1;
 
@@ -68,6 +70,7 @@ export function buildSnapshot({
   pack, docs = [], datasets = [], records = [], files = [], generatedAt,
 } = {}) {
   const datasetIds = new Set(datasets.map(d => d.id));
+  const keyOf = new Map(datasets.map(d => [d.id, d.key]));
 
   return {
     format: SNAPSHOT_FORMAT,
@@ -90,7 +93,11 @@ export function buildSnapshot({
       .map(r => ({
         id:          r.id,
         dataset_id:  r.dataset_id,
-        fields:      r.fields ?? {},
+        // Current field names. The server reads live rows straight from the
+        // table, not through the store that renames old keys, so a row written
+        // before a column was renamed (correspondence `summary` → `body`)
+        // rendered empty in a follow-latest link (found 2026-10-03).
+        fields:      migrateRecordFields(keyOf.get(r.dataset_id), r.fields ?? {}),
         position:    r.position ?? 0,
         document_id: r.document_id ?? null,
         doc_id:      r.doc_id ?? null,
@@ -275,4 +282,26 @@ export function describeInclusion(snapshot, manifest) {
       count(files.length, 'file'),
     ].join(' · '),
   };
+}
+
+/**
+ * A stored snapshot, with each record's fields under its CURRENT names.
+ *
+ * A snapshot is frozen at publication and must stay that way — this changes no
+ * value, it only renames a key the templates have since renamed, so a pack
+ * published before the rename still shows its correspondence in today's
+ * reader. Records only; everything else is returned as stored.
+ * @param {object|null} content
+ */
+export function withCurrentFieldKeys(content) {
+  if (!content?.records?.length) return content;
+  const keyOf = new Map((content.datasets ?? []).map(d => [d.id, d.key]));
+  let changed = false;
+  const records = content.records.map(r => {
+    const fields = migrateRecordFields(keyOf.get(r.dataset_id), r.fields ?? {});
+    if (fields === r.fields) return r;
+    changed = true;
+    return { ...r, fields };
+  });
+  return changed ? { ...content, records } : content;
 }

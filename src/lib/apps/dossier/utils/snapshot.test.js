@@ -13,7 +13,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildSnapshot, buildManifest, referencedFileIds, manifestEntry,
-  describeInclusion, SNAPSHOT_FORMAT,
+  describeInclusion, SNAPSHOT_FORMAT, withCurrentFieldKeys,
 } from './snapshot.js';
 import { buildTree } from './docTree.js';
 
@@ -297,5 +297,34 @@ describe('describeInclusion', () => {
     const empty = buildSnapshot({ pack, generatedAt: AT });
     expect(describeInclusion(empty, buildManifest(empty)).summary)
       .toBe('0 pages · 0 tables · 0 files');
+  });
+});
+
+// ⛔ Correspondence renamed `summary` → `body` on 2026-08-13. The store renames
+// old keys when it loads records, but the public reader does not load through
+// the store: a follow-latest link read the table directly, and a stored
+// snapshot is served as published. Both showed old correspondence EMPTY.
+describe('records reach the reader under their current field names', () => {
+  const datasets = [{ id: 'ds1', key: 'correspondence', title: 'Correspondence' }];
+  const oldRow = { id: 'r1', dataset_id: 'ds1', position: 0,
+                   fields: { date: '2026-08-12', from: 'A', to: 'B', subject: 'Leak', summary: 'Water in flat 3' } };
+
+  it('buildSnapshot (publishing, and the live read) renames an old key', () => {
+    const snap = buildSnapshot({ pack: { id: 'p1', title: 'P' }, docs: [], datasets, records: [oldRow], files: [] });
+    expect(snap.records[0].fields.body).toBe('Water in flat 3');
+  });
+
+  it('a stored snapshot is served with current keys, and no value changes', () => {
+    const stored = { datasets, records: [oldRow], docs: [], files: [] };
+    const served = withCurrentFieldKeys(stored);
+    expect(served.records[0].fields.body).toBe('Water in flat 3');
+    expect(served.records[0].fields.subject).toBe('Leak');
+    expect(stored.records[0].fields.body).toBeUndefined();          // the stored copy is not mutated
+  });
+
+  it('returns the snapshot untouched when nothing is on an old key', () => {
+    const current = { datasets, records: [{ ...oldRow, fields: { body: 'x' } }] };
+    expect(withCurrentFieldKeys(current)).toBe(current);
+    expect(withCurrentFieldKeys(null)).toBeNull();
   });
 });
