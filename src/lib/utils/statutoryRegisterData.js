@@ -687,7 +687,9 @@ export const REGISTER = [
   }),
   entry({
     key: 'emergency_lighting_monthly',
-    suggestedScope: {'fixedAttrFilters': [{'name': 'Emergency', 'value': 'true'}]},
+    // ⛔ In the matcher's shape (defName/op). Until 2026-10-03 this read
+    // {name, value}, which the matcher does not read, so it matched NO component.
+    suggestedScope: {'fixedAttrFilters': [{'defName': 'Emergency', 'checkable': false, 'op': 'is_true'}]},
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Emergency lighting — monthly function test',

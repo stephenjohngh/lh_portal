@@ -534,11 +534,17 @@ describe('the proposed scopes', () => {
     }
   });
 
+  // ⛔ This used to assert `f.name` and `f.value` — the shape the data happened
+  // to be in, which is not a shape the matcher reads, so it guarded the fault
+  // that made emergency lighting's scope match nothing (2026-10-03). Portable
+  // means by NAME (defName), never by a per-type id (defId); that it actually
+  // matches is suggestedScope.test.js's job.
   it('name attribute filters by NAME, which is what makes them portable', () => {
     for (const e of scoped) {
       for (const f of e.suggestedScope.fixedAttrFilters ?? []) {
-        expect(f.name, e.key).toBeTruthy();
-        expect(f.value ?? f.values, e.key).toBeDefined();
+        expect(f.defName, e.key).toBeTruthy();
+        expect(f.defId, e.key).toBeUndefined();
+        expect(f.op, e.key).toBeTruthy();
       }
     }
   });

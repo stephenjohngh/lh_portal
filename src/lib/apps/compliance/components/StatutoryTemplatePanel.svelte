@@ -389,7 +389,13 @@
   function scopeSummary(scope) {
     const bits = [];
     if (scope?.typeCodes?.length) bits.push(scope.typeCodes.join(', '));
-    for (const f of scope?.fixedAttrFilters ?? []) bits.push(`${f.name} = ${f.value}`);
+    // The matcher's shape: defName + op (+ values). Read the same fields here,
+    // or this line describes a filter the walk does not apply.
+    for (const f of scope?.fixedAttrFilters ?? []) {
+      const what = f.op === 'is_true' ? 'yes' : f.op === 'is_false' ? 'no'
+        : Array.isArray(f.values) ? f.values.join(' or ') : `${f.op} ${f.values ?? ''}`.trim();
+      bits.push(`${f.defName} = ${what}`);
+    }
     if (scope?.systemIds?.length) bits.push(`${scope.systemIds.length} system(s)`);
     if (scope?.floorIds?.length)  bits.push(`${scope.floorIds.length} floor(s)`);
     return bits.join(' · ') || 'the whole building';
