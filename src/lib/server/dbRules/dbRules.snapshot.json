@@ -1,0 +1,860 @@
+{
+    "checks": {
+        "spaces.kind": [
+            "slot",
+            "space"
+        ],
+        "issues.status": [
+            "completed",
+            "current",
+            "parked"
+        ],
+        "gt_risks.domain": [
+            "fire",
+            "other",
+            "structural"
+        ],
+        "gt_risks.source": [
+            "fra",
+            "inspection",
+            "manual",
+            "mor",
+            "safety_case",
+            "survey"
+        ],
+        "gt_risks.status": [
+            "assessed",
+            "closed",
+            "controlled",
+            "identified",
+            "monitored",
+            "superseded"
+        ],
+        "meetings.status": [
+            "closed",
+            "open"
+        ],
+        "mor_cases.status": [
+            "acknowledged",
+            "awaiting_bsr",
+            "awaiting_reporter",
+            "bsr_notice",
+            "bsr_report",
+            "closed",
+            "decision_pending",
+            "in_assessment",
+            "in_remediation",
+            "in_triage",
+            "reclassified",
+            "remediated",
+            "reopened",
+            "submitted"
+        ],
+        "space_types.kind": [
+            "slot",
+            "space"
+        ],
+        "components.status": [
+            "failed",
+            "inactive",
+            "ok",
+            "problem"
+        ],
+        "gt_persons.status": [
+            "active",
+            "retired",
+            "under_review"
+        ],
+        "info_notes.status": [
+            "active",
+            "archived"
+        ],
+        "mor_cases.channel": [
+            "email",
+            "in_person",
+            "online",
+            "paper",
+            "phone",
+            "staff_logged"
+        ],
+        "audit_logs.severity": [
+            "critical",
+            "error",
+            "info",
+            "warning"
+        ],
+        "gt_documents.status": [
+            "current",
+            "draft",
+            "returned_to_author",
+            "superseded",
+            "under_review",
+            "withdrawn"
+        ],
+        "mor_cases.mechanism": [
+            "both",
+            "fire_smoke",
+            "structural",
+            "unknown"
+        ],
+        "parking_bays.tenure": [
+            "demised",
+            "lease_right",
+            "licensable",
+            "not_for_allocation"
+        ],
+        "display_items.status": [
+            "damaged",
+            "displayed",
+            "needs_refresh",
+            "not_set",
+            "obstructed",
+            "removed"
+        ],
+        "dossier_datasets.key": [
+            "chronology",
+            "correspondence",
+            "document_index"
+        ],
+        "dossier_packs.status": [
+            "active",
+            "archived"
+        ],
+        "mor_mitigations.type": [
+            "interim",
+            "permanent"
+        ],
+        "walk_sessions.status": [
+            "closed",
+            "open"
+        ],
+        "info_notes.visibility": [
+            "internal",
+            "public",
+            "registered"
+        ],
+        "app_permissions.app_id": [
+            "admin",
+            "building_assets",
+            "complaints",
+            "compliance",
+            "dossier",
+            "golden_thread",
+            "info",
+            "inspection",
+            "maintenance",
+            "management",
+            "managementmobile",
+            "mobileplan",
+            "mor",
+            "parking",
+            "planner",
+            "settings"
+        ],
+        "complaint_cases.status": [
+            "acknowledged",
+            "closed",
+            "escalated_to_bsr",
+            "investigating",
+            "received",
+            "responded",
+            "withdrawn"
+        ],
+        "display_items.category": [
+            "ap_notice",
+            "bac",
+            "compliance_notice",
+            "other"
+        ],
+        "gt_risk_links.relation": [
+            "affects",
+            "controlled_by",
+            "evidenced_by",
+            "located_at",
+            "mitigated_by",
+            "raised_by"
+        ],
+        "mor_mitigations.status": [
+            "complete",
+            "in_progress",
+            "open"
+        ],
+        "parking_tariffs.period": [
+            "month",
+            "quarter",
+            "week",
+            "year"
+        ],
+        "works_schedules.status": [
+            "cancelled",
+            "completed",
+            "draft",
+            "issued"
+        ],
+        "complaint_cases.channel": [
+            "email",
+            "in_person",
+            "online",
+            "paper",
+            "phone",
+            "staff_logged"
+        ],
+        "complaint_cases.outcome": [
+            "not_upheld",
+            "partly_upheld",
+            "redirected",
+            "upheld",
+            "withdrawn"
+        ],
+        "maintenance_jobs.result": [
+            "fail",
+            "n_a",
+            "partial",
+            "pass"
+        ],
+        "maintenance_jobs.status": [
+            "cancelled",
+            "completed",
+            "in_progress",
+            "scheduled"
+        ],
+        "mor_cases.reporter_type": [
+            "anonymous",
+            "ap",
+            "contractor",
+            "resident",
+            "staff",
+            "unknown",
+            "visitor"
+        ],
+        "statutory_register.kind": [
+            "absence",
+            "action",
+            "caveat",
+            "requirement"
+        ],
+        "works_schedules.purpose": [
+            "quote",
+            "works"
+        ],
+        "complaint_actions.status": [
+            "complete",
+            "in_progress",
+            "open"
+        ],
+        "complaint_cases.category": [
+            "ap_duties",
+            "fire_safety",
+            "out_of_scope",
+            "structural"
+        ],
+        "mor_cases.triage_outcome": [
+            "clearly_reportable",
+            "not_reportable",
+            "possibly_reportable"
+        ],
+        "parking_agreements.basis": [
+            "adjustment",
+            "demise_record",
+            "lease_right_record",
+            "licence"
+        ],
+        "parking_tariffs.bay_size": [
+            "Bicycle",
+            "Car",
+            "Large car",
+            "Motorcycle"
+        ],
+        "dossier_links.target_kind": [
+            "asset",
+            "doc"
+        ],
+        "dossier_publications.mode": [
+            "latest",
+            "snapshot"
+        ],
+        "gt_documents.access_scope": [
+            "internal",
+            "public",
+            "registered"
+        ],
+        "gt_risk_links.target_type": [
+            "action",
+            "component",
+            "component_inspection",
+            "gt_document",
+            "maintenance_job",
+            "mor_case",
+            "plan"
+        ],
+        "parking_agreements.status": [
+            "active",
+            "draft",
+            "ended",
+            "notice_given",
+            "terminated"
+        ],
+        "statutory_register.origin": [
+            "local",
+            "seed"
+        ],
+        "mor_cases.decision_outcome": [
+            "bsr",
+            "internal",
+            "no_action"
+        ],
+        "plan_annotations.font_size": [
+            "lg",
+            "md",
+            "sm",
+            "xl",
+            "xs"
+        ],
+        "planner_occurrences.status": [
+            "done",
+            "due",
+            "skipped"
+        ],
+        "statutory_obligations.mode": [
+            "rotating",
+            "standard"
+        ],
+        "walk_sessions.session_type": [
+            "inspection",
+            "repair",
+            "test"
+        ],
+        "component_types.marker_size": [
+            "lg",
+            "md",
+            "sm",
+            "xl"
+        ],
+        "gt_accountable_persons.role": [
+            "ap",
+            "pap"
+        ],
+        "maintenance_jobs.scope_type": [
+            "building",
+            "component",
+            "system",
+            "type"
+        ],
+        "parking_applications.status": [
+            "allocated",
+            "offered",
+            "waiting",
+            "withdrawn"
+        ],
+        "parking_holders.holder_type": [
+            "external_company",
+            "external_individual",
+            "leaseholder",
+            "occupier"
+        ],
+        "statutory_obligations.basis": [
+            "contract",
+            "management",
+            "standard",
+            "statute"
+        ],
+        "statutory_register.priority": [
+            "critical",
+            "high",
+            "medium"
+        ],
+        "walk_sessions.session_scope": [
+            "building",
+            "single_floor"
+        ],
+        "works_schedule_items.action": [
+            "leave",
+            "relocate",
+            "remove",
+            "repair",
+            "replace"
+        ],
+        "component_types.marker_shape": [
+            "circle",
+            "circle_inner",
+            "diamond",
+            "square",
+            "square_inner"
+        ],
+        "parking_tariffs.holder_class": [
+            "all",
+            "external",
+            "resident"
+        ],
+        "type_attributes.display_type": [
+            "checkbox",
+            "dropdown",
+            "number",
+            "radio",
+            "text",
+            "textarea"
+        ],
+        "component_types.priority_base": [
+            "critical",
+            "high",
+            "low",
+            "medium"
+        ],
+        "parking_agreements.fee_period": [
+            "month",
+            "quarter",
+            "week",
+            "year"
+        ],
+        "parking_tariffs.vat_treatment": [
+            "exempt",
+            "not_charged",
+            "not_decided",
+            "outside_scope",
+            "standard"
+        ],
+        "plans.security_classification": [
+            "official",
+            "official_sensitive"
+        ],
+        "public_upload_attempts.action": [
+            "ai_suggest",
+            "ai_summary",
+            "case_submit",
+            "photo_upload",
+            "status_lookup"
+        ],
+        "statutory_exclusions.decision": [
+            "applicable",
+            "not_applicable"
+        ],
+        "maintenance_documents.doc_type": [
+            "certificate",
+            "invoice",
+            "other",
+            "photo",
+            "report"
+        ],
+        "space_component_overrides.mode": [
+            "exclude",
+            "include"
+        ],
+        "mor_timeline_entries.entry_type": [
+            "approval",
+            "assessment",
+            "bsr_notice",
+            "bsr_report",
+            "closure",
+            "decision",
+            "mitigation",
+            "note",
+            "rejection",
+            "reopened",
+            "sla_pause",
+            "sla_resume",
+            "status_change",
+            "triage"
+        ],
+        "complaint_cases.complainant_type": [
+            "other",
+            "owner",
+            "resident",
+            "unknown"
+        ],
+        "parking_agreements.vat_treatment": [
+            "exempt",
+            "not_charged",
+            "not_decided",
+            "outside_scope",
+            "standard"
+        ],
+        "statutory_register.action_status": [
+            "answered",
+            "closed",
+            "in_progress",
+            "open"
+        ],
+        "maintenance_job_components.result": [
+            "fail",
+            "n_a",
+            "pass"
+        ],
+        "statutory_obligations.link_source": [
+            "component_links",
+            "self_only"
+        ],
+        "parking_access_devices.device_type": [
+            "card",
+            "fob",
+            "key",
+            "remote"
+        ],
+        "statutory_obligations.evidenced_by": [
+            "either",
+            "inspection",
+            "maintenance_job"
+        ],
+        "statutory_register.action_category": [
+            "duty_holder_decision",
+            "information",
+            "interface",
+            "process",
+            "record",
+            "software",
+            "technical_determination",
+            "testing"
+        ],
+        "parking_agreements.notice_served_by": [
+            "holder",
+            "licensor"
+        ],
+        "gt_documents.security_classification": [
+            "official",
+            "official_sensitive"
+        ],
+        "statutory_obligations.checklist_mode": [
+            "explicit",
+            "type_driven"
+        ],
+        "statutory_obligations.interval_basis": [
+            "practice",
+            "stated"
+        ],
+        "statutory_obligations.pass_fail_rule": [
+            "all_checks_pass",
+            "manual"
+        ],
+        "complaint_timeline_entries.entry_type": [
+            "acknowledgement",
+            "assignment",
+            "closure",
+            "escalation",
+            "investigation",
+            "note",
+            "reopened",
+            "response",
+            "scope_decision",
+            "sla_pause",
+            "sla_resume",
+            "status_change"
+        ],
+        "component_inspections.inspection_result": [
+            "failed",
+            "inactive",
+            "no_access",
+            "ok",
+            "problem"
+        ],
+        "parking_applications.last_offer_outcome": [
+            "declined",
+            "lapsed"
+        ],
+        "type_attribute_options.priority_override": [
+            "critical",
+            "high",
+            "low",
+            "medium"
+        ]
+    },
+    "transitions": {
+        "gt_risks.status": [
+            [
+                "assessed",
+                "closed"
+            ],
+            [
+                "assessed",
+                "controlled"
+            ],
+            [
+                "assessed",
+                "identified"
+            ],
+            [
+                "assessed",
+                "monitored"
+            ],
+            [
+                "assessed",
+                "superseded"
+            ],
+            [
+                "closed",
+                "monitored"
+            ],
+            [
+                "controlled",
+                "assessed"
+            ],
+            [
+                "controlled",
+                "closed"
+            ],
+            [
+                "controlled",
+                "monitored"
+            ],
+            [
+                "controlled",
+                "superseded"
+            ],
+            [
+                "identified",
+                "assessed"
+            ],
+            [
+                "identified",
+                "closed"
+            ],
+            [
+                "monitored",
+                "assessed"
+            ],
+            [
+                "monitored",
+                "closed"
+            ],
+            [
+                "monitored",
+                "controlled"
+            ],
+            [
+                "monitored",
+                "superseded"
+            ]
+        ],
+        "mor_cases.status": [
+            [
+                "acknowledged",
+                "in_triage"
+            ],
+            [
+                "awaiting_bsr",
+                "bsr_report"
+            ],
+            [
+                "awaiting_bsr",
+                "in_remediation"
+            ],
+            [
+                "awaiting_reporter",
+                "in_remediation"
+            ],
+            [
+                "awaiting_reporter",
+                "in_triage"
+            ],
+            [
+                "bsr_notice",
+                "bsr_report"
+            ],
+            [
+                "bsr_report",
+                "awaiting_bsr"
+            ],
+            [
+                "bsr_report",
+                "in_remediation"
+            ],
+            [
+                "closed",
+                "reopened"
+            ],
+            [
+                "decision_pending",
+                "bsr_notice"
+            ],
+            [
+                "decision_pending",
+                "closed"
+            ],
+            [
+                "decision_pending",
+                "in_remediation"
+            ],
+            [
+                "decision_pending",
+                "in_triage"
+            ],
+            [
+                "in_assessment",
+                "decision_pending"
+            ],
+            [
+                "in_remediation",
+                "awaiting_reporter"
+            ],
+            [
+                "in_remediation",
+                "remediated"
+            ],
+            [
+                "in_triage",
+                "closed"
+            ],
+            [
+                "in_triage",
+                "decision_pending"
+            ],
+            [
+                "in_triage",
+                "in_assessment"
+            ],
+            [
+                "in_triage",
+                "reclassified"
+            ],
+            [
+                "remediated",
+                "closed"
+            ],
+            [
+                "reopened",
+                "in_triage"
+            ],
+            [
+                "submitted",
+                "acknowledged"
+            ]
+        ],
+        "gt_documents.status": [
+            [
+                "current",
+                "superseded"
+            ],
+            [
+                "current",
+                "withdrawn"
+            ],
+            [
+                "draft",
+                "under_review"
+            ],
+            [
+                "draft",
+                "withdrawn"
+            ],
+            [
+                "superseded",
+                "current"
+            ],
+            [
+                "under_review",
+                "current"
+            ],
+            [
+                "under_review",
+                "returned_to_author"
+            ]
+        ],
+        "complaint_cases.status": [
+            [
+                "acknowledged",
+                "investigating"
+            ],
+            [
+                "acknowledged",
+                "withdrawn"
+            ],
+            [
+                "closed",
+                "escalated_to_bsr"
+            ],
+            [
+                "closed",
+                "investigating"
+            ],
+            [
+                "investigating",
+                "responded"
+            ],
+            [
+                "investigating",
+                "withdrawn"
+            ],
+            [
+                "received",
+                "acknowledged"
+            ],
+            [
+                "received",
+                "withdrawn"
+            ],
+            [
+                "responded",
+                "closed"
+            ],
+            [
+                "responded",
+                "escalated_to_bsr"
+            ],
+            [
+                "responded",
+                "withdrawn"
+            ]
+        ]
+    },
+    "exportedFrom": "prod (read-only)",
+    "parkingTransitions": {
+        "parking_agreement_rules": [
+            [
+                "active",
+                "ended"
+            ],
+            [
+                "active",
+                "notice_given"
+            ],
+            [
+                "active",
+                "terminated"
+            ],
+            [
+                "draft",
+                "active"
+            ],
+            [
+                "draft",
+                "terminated"
+            ],
+            [
+                "notice_given",
+                "active"
+            ],
+            [
+                "notice_given",
+                "ended"
+            ],
+            [
+                "notice_given",
+                "terminated"
+            ]
+        ],
+        "parking_application_rules": [
+            [
+                "allocated",
+                "offered"
+            ],
+            [
+                "offered",
+                "allocated"
+            ],
+            [
+                "offered",
+                "waiting"
+            ],
+            [
+                "offered",
+                "withdrawn"
+            ],
+            [
+                "waiting",
+                "offered"
+            ],
+            [
+                "waiting",
+                "withdrawn"
+            ]
+        ]
+    }
+}

@@ -36,7 +36,6 @@ const PUBLIC = {
 
 // Service-role routes whose only check is a login, and why that is enough.
 const LOGIN_ENOUGH = {
-  'management/suggest-summary':       'reads only the AI-model setting; summarises the text it is sent',
   'auth/media-session':               "mints or clears the caller's OWN media cookie; reads nothing",
   'media/upload':                     'writes a new photo for the caller and returns its address; reads nothing back',
   'dossier/publications/[id]/verify': "reads the publication with the caller's own token (RLS applies); the service role only finds where that manifest's files are",

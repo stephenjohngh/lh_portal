@@ -83,6 +83,11 @@ export const AP_ROLE_BADGE = { pap: 'bg-teal-600', ap: 'bg-blue-600' };
 /** Relations for gt_links (citations between the register and other records). */
 export const LINK_RELATIONS = ['evidences', 'cites', 'produced_by', 'action_register', 'drill_down'];
 
+/** How a RISK relates to what it is linked to (gt_risk_links.relation). Not the
+ *  document relations above: a different table with its own CHECK list, held to
+ *  it by dbRulesParity.test.js. */
+export const RISK_LINK_RELATIONS = ['controlled_by', 'evidenced_by', 'raised_by', 'mitigated_by', 'affects', 'located_at'];
+
 /** Target entity types a register document may link to. */
 export const LINK_TARGET_TYPES = [
   'mor_case', 'maintenance_job', 'component_inspection', 'action', 'plan', 'component', 'gt_document'

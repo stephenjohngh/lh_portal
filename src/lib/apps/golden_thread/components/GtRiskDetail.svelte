@@ -11,6 +11,7 @@
     RISK_DOMAIN_LABELS, effectiveScore, scoreBand, liveRating, ALERT_LABELS,
   } from '$lib/apps/golden_thread/utils/gtRiskScoring.js';
   import { listCases as listMorCases, morCaseLabel } from '$lib/apps/mor/public.js';
+  import { LINK_TARGET_TYPES, RISK_LINK_RELATIONS } from '$lib/apps/golden_thread/utils/gtConstants.js';
   import Badge         from '$lib/components/common/Badge.svelte';
   import Button        from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
@@ -53,10 +54,9 @@
   }
 
   // -- Links ------------------------------------------------------------------
-  const TARGET_TYPES = ['gt_document', 'mor_case', 'component', 'plan', 'action', 'component_inspection', 'maintenance_job']
-    .map((v) => ({ value: v, label: v }));
-  const RELATIONS = ['controlled_by', 'evidenced_by', 'raised_by', 'mitigated_by', 'affects', 'located_at']
-    .map((v) => ({ value: v, label: v }));
+  // The database's own lists, held to it by dbRulesParity.test.js.
+  const TARGET_TYPES = LINK_TARGET_TYPES.map((v) => ({ value: v, label: v }));
+  const RELATIONS    = RISK_LINK_RELATIONS.map((v) => ({ value: v, label: v }));
 
   let showAddLink = false;
   let linkTargetType = 'gt_document';

@@ -2,6 +2,7 @@
 <!-- Admin panel for configuring global portal settings.
      Currently: which apps appear in the top navigation bar. -->
 <script>
+  import { AI_MODELS, DEFAULT_AI_MODEL, resolveAiModel } from '$lib/utils/aiModels.js';
   import { onMount }        from 'svelte';
   import { AVAILABLE_APPS } from '$lib/apps/apps.js';
   import { portalSettings } from '$lib/stores/portalSettings.js';
@@ -75,31 +76,10 @@
   }
 
   // ── AI assistant section ─────────────────────────────────────────────
-  // Admins choose which Claude model the /api/management/suggest-action
-  // route uses. The route reads portal_settings.ai_model on every call,
-  // so changes take effect immediately — no redeploy required. Keep this
-  // list ordered cheapest → most expensive; the API route mirrors the
-  // same allowlist so unknown values fall back to the default (Haiku).
-  const AI_MODELS = [
-    {
-      value: 'claude-haiku-4-5',
-      label: 'Haiku 4.5',
-      tagline: 'Fast and inexpensive',
-      description: 'Default. Fits short property-management comments well. ~$0.0006 per suggestion after the prompt cache warms.'
-    },
-    {
-      value: 'claude-sonnet-4-5',
-      label: 'Sonnet 4.5',
-      tagline: 'Balanced quality and cost',
-      description: 'Better at nuance and ambiguous comments. Roughly 10× more expensive than Haiku per call.'
-    },
-    {
-      value: 'claude-opus-4-5',
-      label: 'Opus 4.5',
-      tagline: 'Highest quality, most expensive',
-      description: 'Strongest reasoning. Slowest and most expensive — usually overkill for one-line action suggestions.'
-    }
-  ];
+  // Admins choose which Claude model Management's AI suggestions use. The
+  // routes read portal_settings.ai_model on every call, so a change takes
+  // effect at once. The list is $lib/utils/aiModels.js — one copy, shared
+  // with the routes.
 
   let aiModel         = null;     // null = still loading
   let aiModelPrevious = null;     // last persisted value — used for audit delta
@@ -116,13 +96,13 @@
       });
       const v = rows[0]?.value;
       // Default to Haiku if no row exists or an unknown value is stored
-      aiModel         = AI_MODELS.find(m => m.value === v)?.value ?? 'claude-haiku-4-5';
+      aiModel         = resolveAiModel(v);
       aiModelPrevious = aiModel;
     } catch (/** @type {any} */ err) {
       logger('⚠️ Failed to load ai_model setting:', err.message);
       aiError = 'Failed to load: ' + err.message;
-      aiModel         = 'claude-haiku-4-5';
-      aiModelPrevious = 'claude-haiku-4-5';
+      aiModel         = DEFAULT_AI_MODEL;
+      aiModelPrevious = DEFAULT_AI_MODEL;
     }
   }
 

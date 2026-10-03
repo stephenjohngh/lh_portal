@@ -7,19 +7,18 @@
 // Mirrors the auth / rate-limit / audit pattern of suggest-action.
 
 import { json } from '@sveltejs/kit';
-import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env as privateEnv } from '$env/dynamic/private';
 import { requireAuth } from '$lib/server/requireAuth';
 import { checkKeyRateLimit, LIMITS } from '$lib/server/publicRateLimit';
+import { getConfiguredModel } from '$lib/server/aiModel.js';
+import { DEFAULT_AI_MODEL } from '$lib/utils/aiModels.js';
 import { logAudit } from '$lib/server/auditLogger';
 import { escapeForPrompt } from '$lib/server/promptEscape';
 import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger('SuggestSummaryAPI');
 
-const supabaseAdmin = createClient(PUBLIC_SUPABASE_URL, privateEnv.SUPABASE_SERVICE_ROLE_KEY);
 
 // ── Prompt + tool ──────────────────────────────────────────────────────────
 const SYSTEM_PROMPT = `You are an assistant for a property-management portal. Property managers write notes and comments about building issues. Your job is to produce a single concise one-line summary of a note or comment so it can be used as a heading in printed reports.
@@ -57,29 +56,14 @@ const TOOL_DEFINITION = {
   }
 };
 
-// ── Model resolution (matches suggest-action pattern) ─────────────────────
-const DEFAULT_MODEL  = 'claude-haiku-4-5';
-const ALLOWED_MODELS = new Set(['claude-haiku-4-5', 'claude-sonnet-4-5', 'claude-opus-4-5']);
-
-async function getConfiguredModel() {
-  try {
-    const { data } = await supabaseAdmin
-      .from('portal_settings')
-      .select('value')
-      .eq('key', 'ai_model')
-      .maybeSingle();
-    const v = data?.value;
-    if (typeof v === 'string' && ALLOWED_MODELS.has(v)) return v;
-  } catch (/** @type {any} */ err) {
-    logger('⚠️ Failed to read ai_model; using default:', err.message);
-  }
-  return DEFAULT_MODEL;
-}
+// The model an admin chose — one list and one reader, shared with the other
+// AI route and the Admin panel (aiModel.js). A missing or unknown value is the
+// default.
 
 // ── Handler ───────────────────────────────────────────────────────────────
 export async function POST({ request }) {
   let profile = null;
-  let model   = DEFAULT_MODEL;
+  let model   = DEFAULT_AI_MODEL;
 
   function recordAudit(eventAction, severity = 'info', extra = {}) {
     if (!profile) return;

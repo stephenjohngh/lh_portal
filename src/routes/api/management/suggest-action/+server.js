@@ -30,6 +30,8 @@ import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env as privateEnv } from '$env/dynamic/private';
 import { requireAppAccess } from '$lib/server/requireAuth';
 import { checkKeyRateLimit, LIMITS } from '$lib/server/publicRateLimit';
+import { getConfiguredModel } from '$lib/server/aiModel.js';
+import { DEFAULT_AI_MODEL } from '$lib/utils/aiModels.js';
 import { logAudit } from '$lib/server/auditLogger';
 import { escapeForPrompt } from '$lib/server/promptEscape';
 import { getLogger } from '$lib/utils/logger';
@@ -115,38 +117,9 @@ const TOOL_DEFINITION = {
   }
 };
 
-// Default model when no override is saved in portal_settings.
-const DEFAULT_MODEL = 'claude-haiku-4-5';
-
-// Allowlist — admins can only switch among these. Anything else falls
-// back to DEFAULT_MODEL so a typo or stale row can't break the route.
-// Keep ordered cheapest → most expensive; the admin UI mirrors this.
-const ALLOWED_MODELS = new Set([
-  'claude-haiku-4-5',
-  'claude-sonnet-4-5',
-  'claude-opus-4-5'
-]);
-
-/**
- * Read the configured Claude model from portal_settings.ai_model.
- * Returns DEFAULT_MODEL when the row is missing, the value isn't a
- * string, or it isn't in the allowlist.
- */
-async function getConfiguredModel() {
-  try {
-    const { data, error } = await supabaseAdmin
-      .from('portal_settings')
-      .select('value')
-      .eq('key', 'ai_model')
-      .maybeSingle();
-    if (error) throw error;
-    const v = data?.value;
-    if (typeof v === 'string' && ALLOWED_MODELS.has(v)) return v;
-  } catch (/** @type {any} */ err) {
-    logger('⚠️ Failed to read ai_model setting; using default:', err.message);
-  }
-  return DEFAULT_MODEL;
-}
+// The model an admin chose — one list and one reader, shared with the other
+// AI route and the Admin panel (aiModel.js). A missing or unknown value is the
+// default.
 
 // ── Handler ───────────────────────────────────────────────────────────────
 export async function POST({ request }) {
@@ -157,7 +130,7 @@ export async function POST({ request }) {
   let issue_id     = null;
   let activity_id  = null;
   let issueName    = null;
-  let model        = DEFAULT_MODEL;
+  let model        = DEFAULT_AI_MODEL;
 
   /**
    * Fire-and-forget audit row. Skipped silently when we don't yet know
