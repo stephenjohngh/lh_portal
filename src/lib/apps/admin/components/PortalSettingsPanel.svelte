@@ -2,7 +2,6 @@
 <!-- Admin panel for configuring global portal settings.
      Currently: which apps appear in the top navigation bar. -->
 <script>
-  import { AI_MODELS, DEFAULT_AI_MODEL, resolveAiModel } from '$lib/utils/aiModels.js';
   import { onMount }        from 'svelte';
   import { AVAILABLE_APPS } from '$lib/apps/apps.js';
   import { portalSettings } from '$lib/stores/portalSettings.js';
@@ -10,6 +9,8 @@
   import { auth }           from '$lib/stores/auth';
   import { logAudit }       from '$lib/utils/auditLogger';
   import { getLogger }      from '$lib/utils/logger';
+  import { getJson }        from '$lib/utils/request.js';
+  import { fmtDate }        from '$lib/utils/dates';
   import Checkbox     from '$lib/components/common/Checkbox.svelte';
   import Button       from '$lib/components/common/Button.svelte';
   import Icon         from '$lib/components/icons/Icon.svelte';
@@ -76,37 +77,47 @@
   }
 
   // ── AI assistant section ─────────────────────────────────────────────
-  // Admins choose which Claude model Management's AI suggestions use. The
-  // routes read portal_settings.ai_model on every call, so a change takes
-  // effect at once. The list is $lib/utils/aiModels.js — one copy, shared
-  // with the routes.
+  // Admins choose which Claude model Management's AI suggestions use, from
+  // the models Anthropic offers NOW (/api/admin/ai-models reads its Models
+  // API). No model is named in the code: a new one appears here the day it is
+  // offered, and a retired one is replaced within its family until an admin
+  // chooses again — the reason is shown below. The routes read the choice on
+  // every call, so a change takes effect at once.
 
-  let aiModel         = null;     // null = still loading
+  /** @type {Array<{ id: string, display_name: string, created_at: string }>} */
+  let aiModels        = [];
+  let aiModel         = null;     // the choice on screen; null = still loading
   let aiModelPrevious = null;     // last persisted value — used for audit delta
+  let aiUsing         = null;     // the model actually in use
+  let aiReason        = '';       // why it is not the one chosen
+  let aiListError     = '';
+  let aiLoading       = false;
   let aiSaving        = false;
   let aiSaved         = false;
   let aiError         = '';
 
-  async function loadAiModel() {
+  async function loadAiModel(fresh = false) {
+    aiLoading = true;
+    aiListError = '';
     try {
-      const rows = await api.get('portal_settings', {
-        select: 'value',
-        filters: { key: 'ai_model' },
-        limit: 1
-      });
-      const v = rows[0]?.value;
-      // Default to Haiku if no row exists or an unknown value is stored
-      aiModel         = resolveAiModel(v);
-      aiModelPrevious = aiModel;
+      const r = await getJson(`/api/admin/ai-models${fresh ? '?fresh=1' : ''}`);
+      aiModels        = r.models ?? [];
+      aiModelPrevious = r.saved ?? null;
+      aiModel         = r.saved ?? r.using ?? '';
+      aiUsing         = r.using ?? null;
+      aiReason        = r.substituted ? r.reason : '';
+      aiListError     = r.error ?? '';
     } catch (/** @type {any} */ err) {
-      logger('⚠️ Failed to load ai_model setting:', err.message);
-      aiError = 'Failed to load: ' + err.message;
-      aiModel         = DEFAULT_AI_MODEL;
-      aiModelPrevious = DEFAULT_AI_MODEL;
+      logger('⚠️ Failed to load the AI models:', err.message);
+      aiListError = err.message;
+      aiModel = aiModel ?? '';
+    } finally {
+      aiLoading = false;
     }
   }
 
   async function saveAiModel() {
+    if (!aiModel) return;
     aiSaving = true;
     aiError  = '';
     aiSaved  = false;
@@ -118,11 +129,12 @@
         { key: 'ai_model', value: aiModel, updated_by: userId },
         { onConflict: 'key' }
       );
-      aiSaved = true;
+      aiSaved  = true;
+      aiUsing  = aiModel;
+      aiReason = '';
       logger('✅ Saved ai_model:', aiModel);
 
-      // Audit only when the value actually changed — avoids spam from
-      // an admin clicking Save without changing the radio.
+      // Audit only when the value actually changed.
       if (aiModel !== aiModelPrevious) {
         logAudit('update', 'portal_setting', 'ai_model', 'AI assistant model', {
           appId:         'admin',
@@ -355,8 +367,11 @@
     <div class="mb-5">
       <h3 class="text-base font-semibold text-slate-100">AI assistant</h3>
       <p class="text-sm text-slate-400 mt-1">
-        Choose which Claude model is used for AI-suggested actions in the Issues app.
-        Changes take effect on the next suggestion request — no redeploy needed.
+        Choose which Claude model writes the AI suggestions in Management. The list is
+        the models Anthropic offers today, newest first — a new model appears here as soon
+        as it is offered. Changes take effect on the next suggestion.
+        <a class="text-purple-300 hover:underline" href="https://platform.claude.com/docs/en/about-claude/pricing"
+           target="_blank" rel="noopener noreferrer">Current prices</a>.
       </p>
     </div>
 
@@ -364,28 +379,39 @@
       <p class="text-sm text-slate-500 italic animate-pulse">Loading…</p>
 
     {:else}
-      <div class="space-y-2 mb-6">
-        {#each AI_MODELS as m}
-          <label class="flex items-start gap-3 px-4 py-3 rounded-lg bg-slate-700/40 border border-slate-700/60
-                         hover:bg-slate-700/70 hover:border-slate-600 cursor-pointer transition-colors">
-            <input
-              type="radio"
-              name="ai-model"
-              bind:group={aiModel}
-              value={m.value}
-              class="mt-1 accent-purple-500 shrink-0"
-            />
-            <div class="flex-1 min-w-0">
-              <div class="flex items-baseline gap-2 flex-wrap">
-                <p class="text-sm font-medium text-slate-200">{m.label}</p>
-                <p class="text-xs text-slate-500">— {m.tagline}</p>
-              </div>
-              <p class="text-xs text-slate-500 mt-0.5">{m.description}</p>
-              <p class="text-[10px] text-slate-600 mt-1 font-mono">{m.value}</p>
-            </div>
-          </label>
-        {/each}
+      {#if aiListError}
+        <p class="text-sm text-amber-300 mb-3" data-testid="ai-list-error">⚠ {aiListError}</p>
+      {/if}
+      {#if aiReason}
+        <!-- The saved model has gone: say what is happening instead. -->
+        <p class="text-sm text-amber-300 mb-3" data-testid="ai-substituted">
+          ⚠ {aiReason} Choose a model below to make it your own choice.
+        </p>
+      {/if}
+
+      <div class="flex items-center gap-3 flex-wrap mb-2">
+        <label class="flex-1 min-w-[16rem]">
+          <span class="text-xs text-slate-400">Model</span>
+          <select bind:value={aiModel} disabled={aiLoading || aiModels.length === 0}
+                  class="mt-1 w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm text-slate-100">
+            {#if !aiModelPrevious}
+              <option value="">— none chosen (the newest Haiku is used) —</option>
+            {/if}
+            {#if aiModelPrevious && !aiModels.some((m) => m.id === aiModelPrevious)}
+              <option value={aiModelPrevious}>{aiModelPrevious} (no longer offered)</option>
+            {/if}
+            {#each aiModels as m (m.id)}
+              <option value={m.id}>{m.display_name} — released {fmtDate(m.created_at)} ({m.id})</option>
+            {/each}
+          </select>
+        </label>
+        <Button variant="secondary" on:click={() => loadAiModel(true)} disabled={aiLoading}>
+          {aiLoading ? 'Checking…' : 'Check for new models'}
+        </Button>
       </div>
+      {#if aiUsing}
+        <p class="text-xs text-slate-500 mb-6">In use now: <span class="font-mono text-slate-300">{aiUsing}</span></p>
+      {/if}
 
       <!-- Summary + actions -->
       <div class="flex items-center justify-between gap-4 flex-wrap pt-4 border-t border-slate-700">
@@ -399,7 +425,7 @@
           {#if aiError}
             <p class="text-sm text-red-400">⚠ {aiError}</p>
           {/if}
-          <Button variant="primary" on:click={saveAiModel} disabled={aiSaving}>
+          <Button variant="primary" on:click={saveAiModel} disabled={aiSaving || !aiModel || aiModel === aiModelPrevious}>
             {aiSaving ? 'Saving…' : 'Save model'}
           </Button>
         </div>

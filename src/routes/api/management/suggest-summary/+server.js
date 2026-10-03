@@ -11,8 +11,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { env as privateEnv } from '$env/dynamic/private';
 import { requireAuth } from '$lib/server/requireAuth';
 import { checkKeyRateLimit, LIMITS } from '$lib/server/publicRateLimit';
-import { getConfiguredModel } from '$lib/server/aiModel.js';
-import { DEFAULT_AI_MODEL } from '$lib/utils/aiModels.js';
+import { callWithModel } from '$lib/server/aiModel.js';
 import { logAudit } from '$lib/server/auditLogger';
 import { escapeForPrompt } from '$lib/server/promptEscape';
 import { getLogger } from '$lib/utils/logger';
@@ -56,14 +55,11 @@ const TOOL_DEFINITION = {
   }
 };
 
-// The model an admin chose — one list and one reader, shared with the other
-// AI route and the Admin panel (aiModel.js). A missing or unknown value is the
-// default.
 
 // ── Handler ───────────────────────────────────────────────────────────────
 export async function POST({ request }) {
   let profile = null;
-  let model   = DEFAULT_AI_MODEL;
+  let model   = null;   // set once the call is made
 
   function recordAudit(eventAction, severity = 'info', extra = {}) {
     if (!profile) return;
@@ -111,15 +107,15 @@ export async function POST({ request }) {
       return json({ error: 'AI summaries are not configured on this server' }, { status: 503 });
     }
 
-    model = await getConfiguredModel();
-
     // ── Call Claude ───────────────────────────────────────────────────
+    // The model is the admin's choice, checked against what Anthropic offers
+    // now; a retired one is replaced within its family (callWithModel).
     const client = new Anthropic({ apiKey });
 
     let response;
     try {
-      response = await client.messages.create({
-        model,
+      const out = await callWithModel((m) => client.messages.create({
+        model: m,
         max_tokens: 80,
         tools: [TOOL_DEFINITION],
         tool_choice: { type: 'tool', name: 'suggest_summary' },
@@ -135,7 +131,13 @@ export async function POST({ request }) {
             content: `Activity type: ${escapeForPrompt(activity_type || 'note')}\n\nSummarise the note or comment inside the <content> tags:\n<content>\n${escapeForPrompt(body)}\n</content>`
           }
         ]
-      });
+      }));
+      response = out.result;
+      model    = out.model;
+      if (out.substituted) {
+        logger('⚠', out.reason);
+        recordAudit('model_substituted', 'warning', { configured: out.saved, used: out.model, reason: out.reason });
+      }
     } catch (/** @type {any} */ apiErr) {
       logger('❌ Anthropic API error:', apiErr.message);
       recordAudit('failed', 'error', { reason: 'anthropic_api_error', error: (apiErr.message || '').slice(0, 200) });
