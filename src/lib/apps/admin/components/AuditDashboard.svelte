@@ -7,6 +7,7 @@
   import { onMount } from 'svelte';
   import { auditLogsStore } from '../stores/auditLogsStore';
   import { getLogger } from '$lib/utils/logger';
+  import { errMessage } from '$lib/utils/errors.js';
 
   const logger = getLogger('AuditDashboard');
 
@@ -19,6 +20,8 @@
   };
 
   let loading = false;
+  /** @type {string|null} */
+  let statsError = null;   // ⛔ a failed read left the tiles at 0 — "no failed logins"
   let timeRange = 30;
 
   // totalCount from the store reflects the full DB count (not just the page)
@@ -32,10 +35,12 @@
 
   async function loadStats() {
     loading = true;
+    statsError = null;
     try {
       stats = await auditLogsStore.getStats(timeRange);
     } catch (err) {
       logger('❌ Failed to load stats:', err);
+      statsError = `The figures could not be loaded, so the tiles below cannot be relied on: ${errMessage(err)}`;
     } finally {
       loading = false;
     }
@@ -46,6 +51,9 @@
 </script>
 
 <div class="mb-4 space-y-2">
+  {#if statsError}
+    <p class="rounded bg-amber-900/20 border border-amber-800/40 px-3 py-2 text-sm text-amber-200" data-testid="audit-stats-error">⚠ {statsError}</p>
+  {/if}
 
   <!-- Single dense row of 8 stat tiles -->
   <div class="grid grid-cols-4 md:grid-cols-8 gap-2">

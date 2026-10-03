@@ -374,7 +374,12 @@
   {/if}
 
   <!-- ── Reporter-contact backlog ──────────────────────────────────────── -->
-  {#if contactBacklogTotal > 0}
+  {#if $morStore.reporterContactsUnavailable}
+    <p class="rounded-lg bg-amber-900/20 border border-amber-800/40 px-4 py-3 text-sm text-amber-200"
+       data-testid="mor-contacts-unavailable">
+      ⚠ The reporter-contact history could not be read, so the contact backlog is not shown. Reload to try again.
+    </p>
+  {:else if contactBacklogTotal > 0}
     <div class="bg-slate-800 border border-slate-700 rounded-xl p-5">
       <h3 class="text-sm font-semibold text-slate-300 mb-4">
         Reporter contact backlog

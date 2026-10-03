@@ -432,6 +432,27 @@ describe('planActions', () => {
     expect(compCreate).toMatchObject({ plan_id: plan.id, floor_id: 'f2', type_code: 'FD' });
   });
 
+  // ⛔ A failed read of the links used to be caught and "skipped", so the copy
+  // succeeded with every component's links gone (2026-10-03, §6ccc item 2).
+  it('copyPlan refuses when the links cannot be read, before creating any component', async () => {
+    h.setTables({
+      plans:  [{ id: 'p1', building: 'A', floor_id: 'f1', image_url: 'img', name: 'Src' }],
+      floors: [{ id: 'f1', short_name: 'L1' }, { id: 'f2', short_name: 'L2' }],
+      components: [{ id: 'sc1', type_code: 'FD', asset_id: 'A1', floor_id: 'f1' }],
+    });
+    await store.load();
+    const usual = h.api.getAllIn.getMockImplementation();
+    h.api.getAllIn.mockImplementation((table) => table === 'component_links'
+      ? Promise.reject(new Error('network down'))
+      : Promise.resolve([]));
+    try {
+      await expect(store.copyPlan('p1', { name: 'Copy', floor_id: 'f2' })).rejects.toThrow('network down');
+      expect(h.api.create.mock.calls.filter(c => c[0] === 'components')).toEqual([]);
+    } finally {
+      h.api.getAllIn.mockImplementation(usual);
+    }
+  });
+
   it('copyPlan with a typeCode copies only components of that type', async () => {
     h.setTables({
       plans:  [{ id: 'p1', building: 'A', floor_id: 'f1', image_url: 'img', name: 'Src' }],

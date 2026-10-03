@@ -204,6 +204,15 @@ export function createPlanActions(update, supabase) {
       if (oldRef !== newRef) refRemap[oldRef] = newRef;
     }
 
+    // The links are read BEFORE anything is created. A read inside a
+    // try/catch further down used to "skip" when it failed — the table always
+    // exists, so what it really skipped was a failed read, and the copy came out
+    // with every component's links quietly gone (2026-10-03, §6ccc item 2).
+    // Reading first means a failure stops the copy before the components exist.
+    const srcLinks = srcIds.length
+      ? await api.getAllIn('component_links', 'from_component_id', srcIds)
+      : [];
+
     if (total > 0) {
       // Fetch attributes only for these components (paginated past the 1000-row cap)
       const allAttrs = await api.getAllIn('component_attributes', 'component_id', srcIds);
@@ -257,13 +266,6 @@ export function createPlanActions(update, supabase) {
     // a page reload (parallels the same fix made for componentAttrs).
     const newComponentLinks = {};
     if (srcIds.length > 0) {
-      let srcLinks = [];
-      try {
-        srcLinks = await api.getAllIn('component_links', 'from_component_id', srcIds);
-      } catch (/** @type {any} */ err) {
-        logger('component_links not available — skipping link copy', err.message);
-      }
-
       if (srcLinks.length > 0) {
         // refRemap already computed above — reused here for to_component_ref
         const linkRows = srcLinks
@@ -395,6 +397,15 @@ export function createPlanActions(update, supabase) {
       if (oldRef !== newRef) refRemap[oldRef] = newRef;
     }
 
+    // The links are read BEFORE anything is created. A read inside a
+    // try/catch further down used to "skip" when it failed — the table always
+    // exists, so what it really skipped was a failed read, and the copy came out
+    // with every component's links quietly gone (2026-10-03, §6ccc item 2).
+    // Reading first means a failure stops the copy before the components exist.
+    const srcLinks = srcIds.length
+      ? await api.getAllIn('component_links', 'from_component_id', srcIds)
+      : [];
+
     if (onProgress) onProgress(0, total);
 
     if (total > 0) {
@@ -444,11 +455,6 @@ export function createPlanActions(update, supabase) {
     // without a page reload (parallels componentAttrs).
     const newComponentLinks = {};
     if (srcIds.length > 0) {
-      let srcLinks = [];
-      try {
-        srcLinks = await api.getAllIn('component_links', 'from_component_id', srcIds);
-      } catch { /* skip if table absent */ }
-
       if (srcLinks.length > 0) {
         // refRemap already computed above — reused here for to_component_ref
         const linkRows = srcLinks

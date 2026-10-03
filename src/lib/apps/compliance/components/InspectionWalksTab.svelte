@@ -72,6 +72,10 @@
   let sessions    = [];
   let definitions = [];      // statutory_obligations (all; due list uses active only)
   let awaitingAccess = [];   // components attended but not assessed (G13)
+  // What the due panel could not read. ⛔ A hidden panel reads as "no walk
+  // duties are switched on", so a failed read is said in its place.
+  /** @type {string[]} */
+  let dueUnavailable = [];
   let inspections = {};      // { [sessionId]: flattened inspection[] }
   let showReport  = false;
   let loading     = true;
@@ -193,8 +197,8 @@
     try {
       definitions = await listPlannedObligations();
     } catch (/** @type {any} */ err) {
-      // Non-fatal: the due panel just stays hidden.
       logger('❌ loadDefinitions:', err.message);
+      dueUnavailable = [...dueUnavailable, 'the planned obligations'];
     }
   }
 
@@ -202,8 +206,8 @@
     try {
       awaitingAccess = await listComponentsAwaitingAccess();
     } catch (/** @type {any} */ err) {
-      // Non-fatal: the due panel just omits the awaiting-access flag.
       logger('❌ loadAwaitingAccess:', err.message);
+      dueUnavailable = [...dueUnavailable, 'which components are awaiting access'];
     }
   }
 
@@ -279,6 +283,11 @@
        part of the evidence is the "reads plausibly while saying something
        untrue" failure. What is due belongs to the Planner (PROJECT_STATUS §6ww). -->
   {#if $permissions.isAdmin}
+    {#if dueUnavailable.length}
+      <p class="due-unavailable" data-testid="due-unavailable">
+        ⚠ Could not read {dueUnavailable.join(' or ')}, so what is due is not shown in full. Reload to try again.
+      </p>
+    {/if}
     <UpcomingInspections definitions={activeDefs} {sessions} {awaitingAccess} />
   {/if}
 
@@ -647,6 +656,7 @@
 
 <style>
   .insp-tab   { display: flex; flex-direction: column; gap: 1rem; }
+  .due-unavailable { font-size: 0.875rem; color: rgb(253 230 138); background: rgb(120 53 15 / 0.2); border: 1px solid rgb(146 64 14 / 0.4); border-radius: 8px; padding: 0.75rem 1rem; }
 
   /* Toolbar */
   .toolbar         { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid rgb(71 85 105 / 0.5); }

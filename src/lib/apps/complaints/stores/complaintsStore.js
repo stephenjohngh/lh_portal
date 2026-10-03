@@ -20,6 +20,7 @@ import { getLogger } from '$lib/utils/logger';
 import { STATUS, stampsFor, entryTypeFor, blockedReason } from '../utils/complaintLifecycle.js';
 import { storeLoader } from '../../../utils/storeLoad.js';
 import { currentUser } from '$lib/utils/currentUser.js';
+import { errMessage } from '$lib/utils/errors.js';
 
 const logger = getLogger('complaintsStore');
 
@@ -323,11 +324,34 @@ function createComplaintsStore() {
     update(s => ({ ...s, error: null }));
   }
 
+  /** A write that shows its own failure, then rethrows — as save and transition do. */
+  function reported(fn) {
+    return async (...args) => {
+      update(st => ({ ...st, error: null }));
+      try {
+        return await fn(...args);
+      } catch (/** @type {any} */ err) {
+        logger('❌', fn.name, err);
+        update(st => ({ ...st, saving: false, error: errMessage(err) }));
+        throw err;
+      }
+    };
+  }
+
   return {
     subscribe,
     load, select, refresh,
-    create, save, transition, addNote, recordEscalationTold, assign,
-    addAction, updateAction, deleteAction,
+    create, save, transition,
+    // ⛔ These six did not set `error` when they failed, and the screen swallows
+    // the throw on the understanding that the store has shown it — so a failed
+    // note, or a failed record that the complainant was told of their right to
+    // escalate (evidence of the s.93 duty), vanished without a word (2026-10-03).
+    addNote:              reported(addNote),
+    recordEscalationTold: reported(recordEscalationTold),
+    assign:               reported(assign),
+    addAction:            reported(addAction),
+    updateAction:         reported(updateAction),
+    deleteAction:         reported(deleteAction),
     clearError,
   };
 }

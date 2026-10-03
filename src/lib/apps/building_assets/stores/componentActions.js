@@ -40,11 +40,11 @@ export function createComponentActions(update) {
       const [components, allAttrs, allLinks] = await Promise.all([
         api.getAll('components', compOpts),
         api.getAll('component_attributes'),
-        // Graceful degradation: component_links (migration 033) may not exist yet.
-        api.getAll('component_links').catch(() => {
-          logger('component_links table not available — run migration 033 to enable');
-          return [];
-        })
+        // The table has existed since migration 033. A failed read used to be
+        // caught as "not available" and became no links, so every component
+        // showed none (2026-10-03, §6ccc item 2). It fails the load now, as
+        // the reads beside it do.
+        api.getAll('component_links'),
       ]);
 
       // Latest inspection per component, deduped server-side (migration 130 RPC)

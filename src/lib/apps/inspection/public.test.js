@@ -94,3 +94,25 @@ describe('loadSessionInspections', () => {
     expect(h.listAttachments).not.toHaveBeenCalled();
   });
 });
+
+// ⛔ A second Golden Thread record cannot be deleted, so the write itself refuses
+// a duplicate, and refuses when it cannot check (2026-10-03, §6ccc item 2).
+describe('registerSessionReportToGoldenThread refuses a duplicate', () => {
+  it('when the session report is already registered, before building anything', async () => {
+    const gt = await import('$lib/apps/golden_thread/public.js');
+    const { registerSessionReportToGoldenThread } = await import('./public.js');
+    vi.mocked(gt.findDocumentBySource).mockResolvedValueOnce({ id: 'gt-1', reference: 'GT-000001' });
+    globalThis.fetch = vi.fn();
+    await expect(registerSessionReportToGoldenThread({ id: 's1' }, [], {}, 'u')).rejects.toThrow(/already .*GT-000001/);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    expect(gt.registerDocument).not.toHaveBeenCalled();
+  });
+
+  it('when it cannot check', async () => {
+    const gt = await import('$lib/apps/golden_thread/public.js');
+    const { registerSessionReportToGoldenThread } = await import('./public.js');
+    vi.mocked(gt.findDocumentBySource).mockRejectedValueOnce(new Error('network down'));
+    await expect(registerSessionReportToGoldenThread({ id: 's1' }, [], {}, 'u')).rejects.toThrow('network down');
+    expect(gt.registerDocument).not.toHaveBeenCalled();
+  });
+});

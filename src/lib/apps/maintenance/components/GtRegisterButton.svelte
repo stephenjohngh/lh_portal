@@ -28,6 +28,7 @@
   let checking    = true;
   let registering = false;
   let error       = '';
+  let checkFailed = false;
 
   $: canEdit = $permissions.isAdmin || $permissions.canModify;
 
@@ -38,8 +39,11 @@
 
   onMount(async () => {
     if (!selfCheck) return;   // parent supplies the registered state
+    // ⛔ A failed lookup is NOT "not registered". Treating it so offered to
+    // register again, and a second Golden Thread record cannot be deleted
+    // (2026-10-03, §6ccc item 2). Say we could not check, and offer nothing.
     try { registered = await findRegisteredCertificate(doc.id); }
-    catch { /* treat as not registered */ }
+    catch { checkFailed = true; error = 'Could not check the Golden Thread — reload to try again.'; }
     finally { checking = false; }
   });
 
@@ -65,7 +69,7 @@
   <span class="text-xs text-emerald-400 whitespace-nowrap" title="Registered in the Golden Thread">
     ✓ {registered.reference}
   </span>
-{:else if !checking && canEdit && doc.library_doc_id}
+{:else if !checking && !checkFailed && canEdit && doc.library_doc_id}
   <button
     type="button"
     on:click={register}

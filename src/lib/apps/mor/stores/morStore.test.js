@@ -229,3 +229,19 @@ describe('addNote', () => {
     expect(h.api.update).toHaveBeenCalledWith('mor_cases', 'c1', expect.objectContaining({ updated_by: 'u1' }));
   });
 });
+
+// ⛔ An unread contact history used to leave the nudges treating every case as
+// never contacted. The store now says it could not read it (§6ccc item 2).
+describe('loadReporterContactsForCases', () => {
+  it('flags an unread contact history, and clears it once a read succeeds', async () => {
+    h.setList({ data: null, error: { message: 'timeout' } });
+    await morStore.loadReporterContactsForCases(['c1']);
+    expect(get(morStore).reporterContactsUnavailable).toBe(true);
+
+    h.setList({ data: [{ id: 't1', case_id: 'c1', entry_type: 'reporter_contact' }], error: null });
+    await morStore.loadReporterContactsForCases(['c1']);
+    expect(get(morStore).reporterContactsUnavailable).toBe(false);
+    expect(get(morStore).reporterContactsByCase.c1).toHaveLength(1);
+    h.setList({ data: [], error: null });
+  });
+});

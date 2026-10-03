@@ -172,6 +172,13 @@ export async function deleteWalkSession(sessionId) {
  * @returns {Promise<object>} the created gt_document draft
  */
 export async function registerSessionReportToGoldenThread(session, inspections, opts, userId) {
+  // ⛔ Refused here, not only on the screen: a second Golden Thread record
+  // cannot be deleted. A lookup that fails throws, so this never registers on
+  // a guess (2026-10-03, §6ccc item 2 — the certificate button had exactly that).
+  const existing = await findDocumentBySource('walk_session', session.id);
+  if (existing) {
+    throw new Error(`This session's report is already in the Golden Thread as ${existing.reference ?? 'a register document'}.`);
+  }
   const res = await fetch('/api/generate-inspections-report', {
     method:  'POST',
     headers: await authHeaders(),

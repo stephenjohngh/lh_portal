@@ -210,8 +210,11 @@ function createDossierStore() {
       api.get('dossier_datasets', {
         filters: { pack_id: packId }, orderBy: 'created_at', ascending: true,
       }),
-      listDocuments({ entity_type: 'dossier_pack', entity_id: packId })
-        .catch(() => []),
+      // ⛔ No .catch(() => []): a failed listing became "this pack has no
+      // files", so a duplicate came out without them and said nothing
+      // (2026-10-03, §6ccc item 2). It runs before the copy is created, so a
+      // failure stops the copy before it starts.
+      listDocuments({ entity_type: 'dossier_pack', entity_id: packId }),
     ]);
 
     const records = datasets.length

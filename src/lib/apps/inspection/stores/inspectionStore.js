@@ -250,7 +250,12 @@ function createInspectionStore() {
         api.getAll('components'),
         api.getAll('component_attributes'),
         // Rotating definitions resolve their linked set from component_links.
-        api.getAll('component_links').catch(() => []),
+        // ⛔ No .catch(() => []): a failed read became "no links", so a rotating
+        // walk quietly lost its linked components. RLS refuses with NO ROWS,
+        // not an error, so only a real failure lands here — and it now fails
+        // the load like the reads beside it, which falls back to the offline
+        // cache (2026-10-03, §6ccc item 2).
+        api.getAll('component_links'),
       ]);
 
     // Restore asset_id ordering (getAll pages by id, not asset_id)

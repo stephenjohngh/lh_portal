@@ -62,9 +62,19 @@ describe('gtRiskStore.load', () => {
   it('still loads risks if alert resolution throws', async () => {
     pub.listRisks.mockResolvedValueOnce([{ id: 'r1', reference: 'RISK-0001', status: 'monitored' }]);
     pub.listAllRiskLinks.mockResolvedValueOnce([{ id: 'l1', risk_id: 'r1', target_type: 'mor_case', target_id: 'm1', relation: 'raised_by' }]);
-    api.getAllIn.mockRejectedValue(new Error('boom'));   // safe() swallows per-source; alertsFor still runs
+    api.getAllIn.mockRejectedValueOnce(new Error('boom'));   // safe() reads it as empty; alertsFor still runs
     await gtRiskStore.load();
     expect(get(gtRiskStore).risks).toHaveLength(1);
+    // ⛔ …and SAYS so: an unread source is not "no escalation".
+    expect(get(gtRiskStore).alertsUnavailable).toBe(true);
+  });
+
+  it('clears the flag once every source reads', async () => {
+    pub.listRisks.mockResolvedValueOnce([{ id: 'r1', reference: 'RISK-0001', status: 'monitored' }]);
+    pub.listAllRiskLinks.mockResolvedValueOnce([{ id: 'l1', risk_id: 'r1', target_type: 'mor_case', target_id: 'm1', relation: 'raised_by' }]);
+    api.getAllIn.mockResolvedValueOnce([{ id: 'm1', status: 'closed' }]);
+    await gtRiskStore.load();
+    expect(get(gtRiskStore).alertsUnavailable).toBe(false);
   });
 });
 

@@ -166,6 +166,13 @@ export async function registerCertificateToGoldenThread(maintDocId, opts = {}, u
   if (!doc?.library_doc_id) {
     throw new Error('This certificate predates unified storage — re-upload it to register it in the Golden Thread.');
   }
+  // ⛔ Refused HERE, not only by the button. The button's lookup could fail and
+  // read as "not registered"; a second Golden Thread record cannot be deleted.
+  // A lookup that fails throws, so this never registers on a guess.
+  const existing = await findRegisteredCertificate(maintDocId);
+  if (existing) {
+    throw new Error(`This certificate is already in the Golden Thread as ${existing.reference ?? 'a register document'}.`);
+  }
   return registerExistingArtifact(
     {
       sourceDocId:        doc.library_doc_id,

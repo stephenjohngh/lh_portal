@@ -65,6 +65,7 @@ function createMaintenanceStore() {
     obligations:   [],    // job-evidenced rows from the shared obligation library
     contractors:   [],    // profiles[] where is_contractor=true (for job assignment)
     isContractor:  false, // true when the current user is a contractor
+    unavailable:   [],    // what could not be read this load — shown, never silently empty
     loading:       false,
     error:         null,
   }));
@@ -72,6 +73,15 @@ function createMaintenanceStore() {
   // ── Load ───────────────────────────────────────────────────────────────────
 
   const load = storeLoader(update, async () => {
+      // ⛔ A soft read that fails still lets the rest load, but it is NAMED
+      // here and shown. It used to become an empty list, and an empty
+      // scheduler reads as "nothing is due" (2026-10-03, §6ccc item 2).
+      const unavailable = [];
+      const soft = (what, promise) => promise.catch((/** @type {any} */ err) => {
+        logger(`⚠ could not read ${what}:`, err?.message ?? err);
+        unavailable.push(what);
+        return [];
+      });
       // Detect current user's contractor status
       const userId = await currentUserId();
       let isContractor = false;
@@ -95,23 +105,22 @@ function createMaintenanceStore() {
         api.get('component_types',   { orderBy: 'name' }),
         // Only obligations a contractor job can actually discharge. A
         // walk-evidenced one belongs to the Inspection app's due list, not here.
-        listPlannedObligations({ activeOnly: true })
-          .then(defs => defs.filter(isJobEvidenced))
-          .catch(() => []),   // non-fatal: the scheduler just offers nothing
+        soft('the planned obligations', listPlannedObligations({ activeOnly: true })
+          .then(defs => defs.filter(isJobEvidenced))),
         api.get('maintenance_documents', {
           select:    '*, job:maintenance_jobs(id, title, scope_label, scheduled_date)',
           orderBy:   'created_at',
           ascending: false,
         }),
         // Contractor profiles for job assignment selector
-        api.get('profiles', {
+        soft('the contractor list', api.get('profiles', {
           select:    'id, full_name, email',
           filters:   { is_contractor: true },
           orderBy:   'full_name',
-        }).catch(() => []),   // graceful fallback if column not yet migrated
+        })),
       ]);
 
-      return { jobs: jobs.map(enrichJob), allDocs, systems, types, obligations, contractors, isContractor };
+      return { jobs: jobs.map(enrichJob), allDocs, systems, types, obligations, contractors, isContractor, unavailable };
     },
     (loaded) => loaded,
     { what: 'maintenance', log: logger });
@@ -187,21 +196,22 @@ function createMaintenanceStore() {
 
   async function deleteDocument(docId, storagePath) {
     // Newer docs live in document_library (library_doc_id); older ones are the
-    // repurposed Drive URL. Delete the file best-effort, then the index row.
+    // repurposed Drive URL. ⛔ The FILE goes first, and if it cannot, the row
+    // is KEPT and the failure thrown — the portal's rule since 2026-09-27. This
+    // caught the failure as "non-fatal" and deleted the row anyway, leaving
+    // the file in storage with nothing naming it (2026-10-03, §6ccc item 2).
     const s   = get({ subscribe });
     const row = s.allDocs.find(d => d.id === docId)
              ?? Object.values(s.docsByJob).flat().find(d => d.id === docId);
-    try {
-      if (row?.library_doc_id) {
-        await deleteFromLibrary(row.library_doc_id);   // storage file + library row
-      } else {
-        // No provider was ever recorded on these legacy rows, so the server
-        // infers it from the URL's shape (storageRef.js) — which is exactly
-        // the case that routing exists for.
-        await deleteStorageObjects([{ storage_url: storagePath }]);
+    if (row?.library_doc_id) {
+      await deleteFromLibrary(row.library_doc_id);   // storage file + library row; throws on failure
+    } else if (storagePath) {
+      // No provider was ever recorded on these legacy rows, so the server
+      // infers it from the URL's shape (storageRef.js).
+      const result = await deleteStorageObjects([{ storage_url: storagePath }]);
+      if (result.failed) {
+        throw new Error('The file could not be deleted from storage, so the document was kept. Try again.');
       }
-    } catch (/** @type {any} */ err) {
-      logger('⚠ file delete (non-fatal):', err.message);
     }
     await api.delete('maintenance_documents', docId);
 

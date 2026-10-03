@@ -50,6 +50,22 @@ describe('registerCertificateToGoldenThread', () => {
     );
   });
 
+  // ⛔ The only guard used to be the button's lookup, and a failed lookup read
+  // as "not registered". A second Golden Thread record cannot be deleted.
+  it('refuses a certificate already in the Golden Thread', async () => {
+    h.api.getById.mockResolvedValueOnce({ id: 'md-4', library_doc_id: 'lib-4', doc_type: 'certificate', filename: 'a.pdf' });
+    h.findDocumentBySource.mockResolvedValueOnce({ id: 'gt-9', reference: 'GT-000009' });
+    await expect(registerCertificateToGoldenThread('md-4', {}, 'u')).rejects.toThrow(/already .*GT-000009/);
+    expect(h.registerExistingArtifact).not.toHaveBeenCalled();
+  });
+
+  it('registers nothing when it cannot check — a failed lookup is not "not registered"', async () => {
+    h.api.getById.mockResolvedValueOnce({ id: 'md-5', library_doc_id: 'lib-5', doc_type: 'certificate', filename: 'b.pdf' });
+    h.findDocumentBySource.mockRejectedValueOnce(new Error('network down'));
+    await expect(registerCertificateToGoldenThread('md-5', {}, 'u')).rejects.toThrow('network down');
+    expect(h.registerExistingArtifact).not.toHaveBeenCalled();
+  });
+
   it('refuses a legacy cert with no library_doc_id (not in document_library)', async () => {
     h.api.getById.mockResolvedValueOnce({ id: 'md-3', job_id: 'j', library_doc_id: null, filename: 'old.pdf' });
     await expect(registerCertificateToGoldenThread('md-3', {}, 'u')).rejects.toThrow(/unified storage/i);

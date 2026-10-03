@@ -4,6 +4,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { get }           from 'svelte/store';
   import { getLogger }  from '$lib/utils/logger';
+  import { errMessage } from '$lib/utils/errors.js';
   import { permissions } from '$lib/stores/permissions';
   import { auth }       from '$lib/stores/auth';
   import { inspectionStore } from './stores/inspectionStore.js';
@@ -26,6 +27,8 @@
   let summarySession = null;
   let loading        = true;
   let initError      = null;
+  /** @type {string|null} */
+  let resumeError    = null;   // a failed resume used to do nothing at all on screen
 
   // Edit rights. On a cold OFFLINE boot permissions.init() can't reach the DB and
   // returns canModify:false, which would hide the Home start buttons. So we cache
@@ -65,11 +68,13 @@
   onDestroy(() => stopSync());
 
   async function handleResume(e) {
+    resumeError = null;
     try {
       await inspectionStore.resumeSession(e.detail.session);
       screen = 'walk';
     } catch (/** @type {any} */ err) {
       logger('❌ Resume failed:', err.message);
+      resumeError = `Could not resume that inspection: ${errMessage(err)}`;
     }
   }
 
@@ -118,6 +123,7 @@
     <WalkError message={initError} />
 
   {:else if screen === 'home'}
+    {#if resumeError}<WalkError message={resumeError} onDismiss={() => resumeError = null} />{/if}
     <InspectionHome
       {canEdit}
       on:startTest={() => { sessionType = 'test'; screen = 'start_session'; }}

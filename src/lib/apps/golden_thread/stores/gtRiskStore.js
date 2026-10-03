@@ -28,6 +28,9 @@ function createGtRiskStore() {
     selectedRisk: /** @type {any|null} */ (null),
     riskLinks:    /** @type {any[]} */ ([]),      // links for the selected risk
     alertsByRisk: /** @type {Record<string, any>} */ ({}), // riskId → signals
+    // ⛔ The live signals could not be worked out, so no risk shows an
+    // escalation it may have. Said on screen rather than read as "none".
+    alertsUnavailable: false,
     loading:      false,
     saving:       false,
     error:        '',
@@ -37,10 +40,13 @@ function createGtRiskStore() {
 
   // -- Live alert resolution --------------------------------------------------
   const toMap = (rows) => new Map((rows ?? []).map((r) => [r.id, r]));
-  const safe  = (p) => p.catch((e) => { logger('⚠ alert source (non-fatal):', e?.message); return []; });
 
-  /** Batch-read the minimal state of every linked operational record. */
+  /** Batch-read the minimal state of every linked operational record.
+   *  A source that fails is read as empty so the others still count, and
+   *  `failed` says so — an unread source must not pass for "no signal". */
   async function resolveAlerts(links) {
+    let failed = false;
+    const safe = (p) => p.catch((e) => { failed = true; logger('⚠ alert source failed:', e?.message); return []; });
     const ids = { mor_case: [], component_inspection: [], maintenance_job: [], gt_document: [], action: [] };
     for (const l of links) if (l.target_type in ids) ids[l.target_type].push(l.target_id);
     const uniq = (a) => [...new Set(a)];
@@ -51,7 +57,7 @@ function createGtRiskStore() {
       ids.gt_document.length         ? safe(api.getAllIn('gt_documents', 'id', uniq(ids.gt_document), { select: 'id, status, review_due' })) : [],
       ids.action.length              ? safe(api.getAllIn('actions', 'id', uniq(ids.action), { select: 'id, status' })) : [],
     ]);
-    return { mor: toMap(mor), insp: toMap(insp), maint: toMap(maint), docs: toMap(docs), acts: toMap(acts) };
+    return { mor: toMap(mor), insp: toMap(insp), maint: toMap(maint), docs: toMap(docs), acts: toMap(acts), failed };
   }
 
   /** Per-risk alert signals from resolved records. */
@@ -80,15 +86,18 @@ function createGtRiskStore() {
     async () => {
       const [risks, links] = await Promise.all([listRisks(), listAllRiskLinks()]);
       let alertsByRisk = {};
+      let alertsUnavailable = false;
       try {
         const resolved = await resolveAlerts(links);
         alertsByRisk = alertsFor(links, resolved);
+        alertsUnavailable = resolved.failed;
       } catch (err) {
-        logger('⚠ alert computation failed (non-fatal):', err?.message);
+        alertsUnavailable = true;
+        logger('⚠ alert computation failed:', err?.message);
       }
-      return { risks, alertsByRisk };
+      return { risks, alertsByRisk, alertsUnavailable };
     },
-    ({ risks, alertsByRisk }) => ({ risks, alertsByRisk }),
+    ({ risks, alertsByRisk, alertsUnavailable }) => ({ risks, alertsByRisk, alertsUnavailable }),
     { what: 'the risk register', clearError: '', log: logger });
 
   /** Load one risk into selectedRisk + its links. */

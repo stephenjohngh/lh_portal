@@ -46,6 +46,7 @@ const CASE_SELECT = `
  *   mitigations: Mitigation[],
  *   gtCitations: Record<string, any>[],
  *   reporterContactsByCase: Record<string, TimelineEntry[]>,
+ *   reporterContactsUnavailable: boolean,
  *   loading: boolean,
  *   saving: boolean,
  *   error: string
@@ -65,6 +66,9 @@ function createMorStore() {
     // currently-loaded case. Populated by fetchCases() and kept fresh by
     // recordReporterContact(). Drives the dashboard backlog widgets.
     reporterContactsByCase: {},
+    // ⛔ The contact history could not be read. The nudges would then treat
+    // every case as never contacted, so the dashboard says so instead.
+    reporterContactsUnavailable: false,
     loading:                false,
     saving:                 false,
     error:                  '',
@@ -142,7 +146,7 @@ function createMorStore() {
    */
   async function loadReporterContactsForCases(caseIds) {
     if (!Array.isArray(caseIds) || caseIds.length === 0) {
-      update(s => ({ ...s, reporterContactsByCase: {} }));
+      update(s => ({ ...s, reporterContactsByCase: {}, reporterContactsUnavailable: false }));
       return;
     }
     try {
@@ -157,9 +161,10 @@ function createMorStore() {
       for (const row of (data ?? [])) {
         (byCase[row.case_id] ??= []).push(row);
       }
-      update(s => ({ ...s, reporterContactsByCase: byCase }));
+      update(s => ({ ...s, reporterContactsByCase: byCase, reporterContactsUnavailable: false }));
     } catch (/** @type {any} */ err) {
-      logger('⚠ loadReporterContactsForCases (non-fatal):', err.message);
+      logger('⚠ loadReporterContactsForCases:', err.message);
+      update(s => ({ ...s, reporterContactsUnavailable: true }));
     }
   }
 

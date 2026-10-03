@@ -95,6 +95,14 @@
       ⚠ {store.error}
     </div>
   {/if}
+  <!-- A part that could not be read is SAID, not shown as empty: an empty
+       scheduler reads as "nothing is due". -->
+  {#if store.unavailable?.length}
+    <div class="rounded-lg bg-amber-900/20 border border-amber-800/40 px-4 py-3 text-sm text-amber-200"
+         data-testid="maintenance-unavailable">
+      ⚠ Could not read {store.unavailable.join(' or ')}, so what is shown may be incomplete. Reload to try again.
+    </div>
+  {/if}
 
   <!-- Stats summary (hidden on documents/schedule tabs) -->
   {#if activeTab === 'due' || activeTab === 'jobs'}

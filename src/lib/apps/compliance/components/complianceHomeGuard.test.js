@@ -108,7 +108,11 @@ describe('every evidence source is read through its owner', () => {
     // Both reach the export, not just the screen — a document silently missing
     // an evidence stream is worse than a screen missing one, because it
     // outlives the person who generated it.
-    expect(src).toMatch(/evidenceNotes:\s*\[walkEvidenceNote,\s*jobEvidenceNote\]/);
+    // Asserts membership, not the exact list, so a further note (the
+    // not-applicable decisions, 2026-10-03) does not break it.
+    const notes = src.match(/evidenceNotes:\s*\[([^\]]*)\]/)?.[1] ?? '';
+    expect(notes).toMatch(/walkEvidenceNote/);
+    expect(notes).toMatch(/jobEvidenceNote/);
   });
 });
 
@@ -206,7 +210,13 @@ describe('the walk evidence lives with the compliance domain', () => {
 describe('a partial walk list never drives a due state', () => {
   it('renders the upcoming/due panel for admins only', () => {
     const tab = read('src/lib/apps/compliance/components/InspectionWalksTab.svelte');
-    expect(tab).toMatch(/\{#if \$permissions\.isAdmin\}\s*<UpcomingInspections/);
     expect(tab.match(/<UpcomingInspections/g)).toHaveLength(1);
+    // Still INSIDE the admin block: from its opening to the panel, more
+    // blocks open than close. Other content may sit between them.
+    const at   = tab.indexOf('<UpcomingInspections');
+    const from = tab.lastIndexOf('{#if $permissions.isAdmin}', at);
+    expect(from).toBeGreaterThan(-1);
+    const slice = tab.slice(from, at);
+    expect((slice.match(/\{#if/g) ?? []).length).toBeGreaterThan((slice.match(/\{\/if\}/g) ?? []).length);
   });
 });

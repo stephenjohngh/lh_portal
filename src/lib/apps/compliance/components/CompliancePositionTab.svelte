@@ -72,6 +72,7 @@
   // times over.
   let walkEvidenceNote = '';
   let jobEvidenceNote = '';
+  let exclusionsNote = '';
   let faultsAvailable = true;
 
   $: canReadWalks = $permissions.isAdmin || Boolean($permissions.appPermissions?.inspection?.hasAccess);
@@ -126,6 +127,9 @@
     try {
       exclusions = await listStatutoryExclusions();
     } catch (/** @type {any} */ err) {
+      // ⛔ Without them a compliance obligation recorded as not applicable
+      // here reads as a gap, on screen and in the Word report.
+      exclusionsNote = 'The not-applicable decisions could not be loaded, so a compliance obligation recorded as not applicable here may show as a gap.';
       logger('⚠ exclusions unavailable:', err.message);
     }
 
@@ -234,7 +238,7 @@
             includeElsewhere: optIncludeElsewhere,
             includeHistory: optIncludeHistory || report === 'history',
             notes: optNotes.trim(),
-            evidenceNotes: [walkEvidenceNote, jobEvidenceNote].filter(Boolean),
+            evidenceNotes: [walkEvidenceNote, jobEvidenceNote, exclusionsNote].filter(Boolean),
           },
         },
       });
@@ -273,6 +277,7 @@
 
     {#if walkEvidenceNote}<p class="degraded">⚠ {walkEvidenceNote}</p>{/if}
     {#if jobEvidenceNote}<p class="degraded">⚠ {jobEvidenceNote}</p>{/if}
+    {#if exclusionsNote}<p class="degraded">⚠ {exclusionsNote}</p>{/if}
 
     <!-- ══ Open faults — ADJACENT to the position, never part of it ══════════
          ⛔ These figures are NEVER added to the ones above. Corrective work

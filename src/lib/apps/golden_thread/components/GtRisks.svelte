@@ -18,7 +18,7 @@
   import GtRiskDetail  from '$lib/apps/golden_thread/components/GtRiskDetail.svelte';
   import GtRiskHeatmap from '$lib/apps/golden_thread/components/GtRiskHeatmap.svelte';
 
-  $: ({ risks, selectedRisk, riskLinks, alertsByRisk, loading, saving, error } = $gtRiskStore);
+  $: ({ risks, selectedRisk, riskLinks, alertsByRisk, alertsUnavailable, loading, saving, error } = $gtRiskStore);
   $: canEdit = $permissions.isAdmin || $permissions.canModify;
 
   let view = 'register';    // 'register' | 'heatmap'
@@ -96,6 +96,12 @@
       {#if canEdit}<ProtectedButton action="modify" variant="primary" size="small" on:click={newRisk}>+ New risk</ProtectedButton>{/if}
     </div>
 
+    {#if !loading && alertsUnavailable}
+      <p class="rounded-lg bg-amber-900/20 border border-amber-800/40 px-4 py-3 text-sm text-amber-200 mb-3"
+         data-testid="risk-alerts-unavailable">
+        ⚠ The live signals from linked records could not be read, so no risk shows an escalation it may have. Reload to try again.
+      </p>
+    {/if}
     {#if loading}
       <LoadingSpinner />
     {:else if view === 'heatmap'}

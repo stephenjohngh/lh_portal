@@ -72,9 +72,13 @@ export async function GET({ params, request }) {
         .in('dataset_id', datasetIds).order('position', { ascending: true })
     : { data: [] };
 
+  // ⛔ No .catch(() => []): a failed listing produced an archive with none of
+  // the pack's files and no note of the omission — files that fail ONE BY ONE
+  // are listed as omitted below, but a failed list skipped even that
+  // (2026-10-03, §6ccc item 2). The request now fails and says why.
   const files = await listDocuments({
     entity_type: 'dossier_pack', entity_id: packId,
-  }).catch(() => []);
+  });
 
   const result = await buildPackArchive({
     content: {

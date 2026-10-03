@@ -259,4 +259,32 @@ describe('load — obligations come from the shared library', () => {
     expect(get(maintenanceStore).obligations).toEqual([]);
     expect(get(maintenanceStore).error).toBeNull();
   });
+
+  // ⛔ …but it SAYS so. An empty scheduler reads as "nothing is due", which is
+  // the one thing it must never say by accident (2026-10-03, §6ccc item 2).
+  it('names what it could not read, and clears it once a load succeeds', async () => {
+    h.listPlannedObligations.mockRejectedValueOnce(new Error('RLS says no'));
+    await maintenanceStore.load();
+    expect(get(maintenanceStore).unavailable).toEqual(['the planned obligations']);
+    await maintenanceStore.load();
+    expect(get(maintenanceStore).unavailable).toEqual([]);
+  });
+});
+
+// ⛔ The file goes first, and a file that cannot go keeps its row. This caught
+// the storage failure as "non-fatal" and deleted the row anyway, leaving the
+// file in storage with nothing naming it (§6ccc item 2, 2026-10-03).
+describe('deleteDocument', () => {
+  it('keeps the row when a legacy file cannot be deleted', async () => {
+    h.deleteStorageObjects.mockResolvedValueOnce({ deleted: 0, failed: 1, results: [] });
+    await expect(maintenanceStore.deleteDocument('doc-1', 'https://drive.google.com/file/d/abc/view'))
+      .rejects.toThrow(/document was kept/);
+    expect(h.api.delete).not.toHaveBeenCalledWith('maintenance_documents', 'doc-1');
+  });
+
+  it('deletes the row once the file has gone', async () => {
+    await maintenanceStore.deleteDocument('doc-2', 'https://drive.google.com/file/d/def/view');
+    expect(h.deleteStorageObjects).toHaveBeenCalled();
+    expect(h.api.delete).toHaveBeenCalledWith('maintenance_documents', 'doc-2');
+  });
 });
