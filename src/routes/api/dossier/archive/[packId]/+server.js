@@ -22,6 +22,7 @@ import { canListDocuments, bearerToken } from '$lib/server/documentAccess.js';
 import { checkKeyRateLimit } from '$lib/server/publicRateLimit.js';
 import { listDocuments }    from '$lib/server/documentLibrary.js';
 import { buildPackArchive } from '$lib/server/packArchiveBuilder.js';
+import { readDatasetRecords } from '$lib/server/publicationReader.js';
 
 /**
  * The notice that travels with the material — the same words the recipient
@@ -66,11 +67,7 @@ export async function GET({ params, request }) {
   if (!pack) return json({ error: 'Not found.' }, { status: 404 });
 
   const datasetIds = (datasets ?? []).map(d => d.id);
-  const { data: records } = datasetIds.length
-    ? await db.from('dossier_records')
-        .select('id, dataset_id, fields, position, document_id, doc_id')
-        .in('dataset_id', datasetIds).order('position', { ascending: true })
-    : { data: [] };
+  const records = await readDatasetRecords(db, datasetIds);   // every page
 
   // ⛔ No .catch(() => []): a failed listing produced an archive with none of
   // the pack's files and no note of the omission — files that fail ONE BY ONE

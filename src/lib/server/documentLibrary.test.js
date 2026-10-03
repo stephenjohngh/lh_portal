@@ -94,7 +94,7 @@ vi.mock('@supabase/supabase-js', () => ({
 
 const {
   uploadDocument, copyDocument, listDocuments, getDocument,
-  getDocumentUrl, updateDocument, deleteDocument, listFolders,
+  getDocumentUrl, updateDocument, deleteDocument,
 } = await import('./documentLibrary.js');
 
 beforeEach(() => {
@@ -320,16 +320,6 @@ describe('record folders', () => {
     expect(h.updated).toEqual({ folder_path: 'Info Notes/New title (1a2b3c4d)' });
     expect(h.filters.provider_folder_id).toBe('folder-1');
     expect(h.filters['not folder_path']).toBe('Info Notes/New title (1a2b3c4d)');
-  });
-});
-
-describe('listFolders', () => {
-  it('asks storage for folders only, and tolerates no path', async () => {
-    await listFolders();
-    expect(h.listFiles).toHaveBeenCalledWith('', { foldersOnly: true });
-
-    await listFolders('Dossier Packs');
-    expect(h.listFiles).toHaveBeenCalledWith('Dossier Packs', { foldersOnly: true });
   });
 });
 

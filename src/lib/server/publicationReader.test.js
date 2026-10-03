@@ -24,6 +24,8 @@ const h = vi.hoisted(() => {
       eq(col, val) { q._filters[col] = val; return q; },
       in(col, vals) { q._filters[col] = vals; return q; },
       order() { return q; },
+      // A paged read ends with .range(): one page, the whole fixture.
+      range() { return q; },
       maybeSingle: () => { state.calls.push({ ...q, table: name }); return maybeSingle(); },
       then(resolve) {
         state.calls.push({ ...q, table: name });

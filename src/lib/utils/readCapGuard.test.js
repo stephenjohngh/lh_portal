@@ -19,6 +19,7 @@
 //      range and no readAllPages
 //   4. paging a table that has no `id` column without `tiebreak: false` —
 //      getAll breaks ties on `id`, which such a table does not have
+//   5. a direct .in() read of a growing table that is not paged
 //
 // A read with a `limit` is deliberate ("the latest five") and is not flagged.
 
@@ -99,8 +100,9 @@ export function directReads(files) {
       const before = src.slice(Math.max(0, m.index - 160), m.index);
       out.push({
         rel, table: m[1], line: src.slice(0, m.index).split('\n').length,
-        paged:    /\.(range|limit|single|maybeSingle)\(/.test(stmt) || /readAllPages\(|readAll\(|build\(/.test(before),
+        paged:    /\.(range|limit|single|maybeSingle)\(/.test(stmt) || /readAllPages\(|readAll\(|build\(|readIn\(/.test(before),
         filtered: /\.(eq|in|not|is|gte|lte|gt|lt|ilike|or|contains)\(/.test(stmt),
+        byList:   /\.in\(/.test(stmt),
       });
     }
   }
@@ -140,6 +142,16 @@ describe('reads that stop at 1,000 rows', () => {
       .filter((d) => !ALLOWED_DIRECT[`${d.rel}:${d.table}`])
       .map((d) => `${d.rel}:${d.line} ${d.table}`);
     expect(bad, 'read every page — readAllPages').toEqual([]);
+  });
+
+  // Found by item 4 (2026-10-03): the Dossier pack reader and archive read a
+  // pack's table rows with one .in() — a pack holding more than 1,000 rows
+  // showed its outside recipient a table silently cut short.
+  it('5. no unpaged .in() read of a table that grows', () => {
+    const bad = directReads(FILES)
+      .filter((d) => growing(d.table) && d.byList && !d.paged)
+      .map((d) => `${d.rel}:${d.line} ${d.table}`);
+    expect(bad, 'an id list can match more than 1,000 rows, and a long list overruns the URL — chunks + readAllPages').toEqual([]);
   });
 
   it('4. a table with no id says its sort column is unique when paged', () => {

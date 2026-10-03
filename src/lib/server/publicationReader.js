@@ -25,6 +25,7 @@ import { env }                 from '$env/dynamic/private';
 import { hashToken, isWellFormedToken } from '$lib/apps/dossier/utils/publicationToken.js';
 import { isServable, READER_REFUSAL }   from '$lib/apps/dossier/utils/publicationState.js';
 import { buildSnapshot, buildManifest, withCurrentFieldKeys } from '$lib/apps/dossier/utils/snapshot.js';
+import { readAllPages, chunks } from '$lib/utils/readAllPages.js';
 
 let _svc = null;
 function svc() {
@@ -108,11 +109,7 @@ export async function readPublicationContent(publication) {
   if (!pack) return null;
 
   const datasetIds = (datasets ?? []).map(d => d.id);
-  const { data: records } = datasetIds.length
-    ? await db.from('dossier_records')
-        .select('id, dataset_id, fields, position, document_id, doc_id')
-        .in('dataset_id', datasetIds)
-    : { data: [] };
+  const records = await readDatasetRecords(db, datasetIds);
 
   const { data: files } = await db.from('document_library')
     .select('id, filename, display_name, description, mime_type, file_size, provider_file_id')
@@ -213,4 +210,24 @@ export function publicPublicationFields(publication) {
     // made when the link was issued.
     show_contents: publication.manifest?.show_contents === true,
   };
+}
+
+/**
+ * Every row of these datasets, in position order. ⛔ Read in chunks and every
+ * page: one read stopped at 1,000 rows, so a pack whose tables held more
+ * showed the recipient — and the archive — a table silently cut short, and a
+ * failed read showed none (§6ccc item 4, 2026-10-03). Throws on failure.
+ * @param {any} db  a service-role client
+ * @param {string[]} datasetIds
+ */
+export async function readDatasetRecords(db, datasetIds) {
+  const out = [];
+  for (const part of chunks(datasetIds ?? [])) {
+    out.push(...await readAllPages(() => db.from('dossier_records')
+      .select('id, dataset_id, fields, position, document_id, doc_id')
+      .in('dataset_id', part)
+      .order('position', { ascending: true })
+      .order('id')));
+  }
+  return out;
 }

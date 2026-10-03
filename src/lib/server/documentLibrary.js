@@ -328,15 +328,6 @@ export async function tidyFolder(provider, folderId) {
 }
 
 /**
- * Return folder/prefix entries from storage at a given path.
- * @param {string} [folderPath]
- * @returns {Promise<import('./storage/storageProvider.js').FileEntry[]>}
- */
-export async function listFolders(folderPath) {
-  return storageProvider.listFiles(folderPath ?? '', { foldersOnly: true });
-}
-
-/**
  * Every row for a long id list: chunked (one .in() of hundreds of ids overruns
  * the URL) and paged (one read stops at 1,000 rows).
  * @param {string[]} ids

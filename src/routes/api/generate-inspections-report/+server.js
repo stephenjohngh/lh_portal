@@ -22,6 +22,10 @@
 import { json }             from '@sveltejs/kit';
 import { requireAuth } from '$lib/server/requireAuth';
 import { storageProvider }  from '$lib/server/storage/index.js';
+import { createClient }     from '@supabase/supabase-js';
+import { PUBLIC_SUPABASE_URL } from '$env/static/public';
+import { env }              from '$env/dynamic/private';
+import { findFileReferences, loadViewer, canViewFile } from '$lib/server/mediaAccess.js';
 import {
   Document, Packer,
   Paragraph, TextRun,
@@ -88,29 +92,30 @@ function componentRef(ins) {
   return `${floor}/${init}/${id}`;
 }
 
+let _db = null;
+const db = () => (_db ??= createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY ?? ''));
+
 // -- Image fetch ----------------------------------------------------------------
-// Handles two URL forms:
-//   /api/media/file/{fileId}  — our own proxy URL; extract the ID and call
-//                               storageProvider directly (avoids an extra HTTP
-//                               round-trip and works server-side without an origin).
-//   https://…                 — any absolute URL (legacy Drive links, Supabase, etc.)
-async function fetchImageBuffer(url) {
-  if (!url) return null;
+// Only our own proxy URL (/api/media/file/{fileId}), read straight from the
+// storage provider — and only after the SAME check the proxy makes: a portal
+// record names the file, and a parking licence needs the Parking grant.
+// ⛔ This used to read any file id it was handed, and to fetch any absolute
+// URL from inside the server, so any signed-in account could put any stored
+// file into a Word document (§6ccc item 4, 2026-10-03). Every stored photo has
+// been a proxy URL since the 2026-09-27 review; anything else prints as
+// "[Photo unavailable]".
+async function fetchImageBuffer(url, viewer) {
+  if (!url || !viewer) return null;
+  const proxyMatch = url.match(/^\/api\/media\/file\/([A-Za-z0-9_-]+)$/);
+  if (!proxyMatch) {
+    logger('⚠️ Not a portal file URL, not fetched:', url);
+    return null;
+  }
   try {
-    // Proxy URL: call storage provider directly with the extracted file ID.
-    const proxyMatch = url.match(/^\/api\/media\/file\/([A-Za-z0-9_-]+)$/);
-    if (proxyMatch) {
-      const { data } = await storageProvider.getFileStream(proxyMatch[1]);
-      return data;
-    }
-    // Absolute URL fallback (e.g. legacy Drive viewer links).
-    if (!url.startsWith('http')) {
-      logger('⚠️ Unresolvable image URL (not proxy, not absolute):', url);
-      return null;
-    }
-    const response = await fetch(url);
-    if (!response.ok) { logger('⚠️ Image fetch failed:', response.status, url); return null; }
-    return Buffer.from(await response.arrayBuffer());
+    const refs = await findFileReferences(db(), proxyMatch[1]);
+    if (!canViewFile(refs, viewer)) { logger('⚠️ Photo not viewable by this caller:', proxyMatch[1]); return null; }
+    const { data } = await storageProvider.getFileStream(proxyMatch[1]);
+    return data;
   } catch (/** @type {any} */ err) {
     logger('❌ Image fetch error:', err.message, url); return null;
   }
@@ -271,7 +276,7 @@ function getImageType(buf) {
 //
 // Each photo has a caption ("Photo N of M") below it.
 // Returns an array of TableRow objects (may be empty).
-async function buildPhotoRows(photoUrls, alt) {
+async function buildPhotoRows(photoUrls, alt, viewer) {
   if (!photoUrls.length) return [];
 
   const fill    = alt ? 'F8FAFC' : 'FFFFFF';
@@ -283,7 +288,7 @@ async function buildPhotoRows(photoUrls, alt) {
 
   // Fetch all images in parallel; failures return null (graceful degradation)
   const buffers = await Promise.all(
-    photoUrls.map(url => fetchImageBuffer(url).catch(() => null))
+    photoUrls.map(url => fetchImageBuffer(url, viewer))
   );
 
   const rows = [];
@@ -351,7 +356,7 @@ async function buildPhotoRows(photoUrls, alt) {
   return rows;
 }
 
-async function buildDetailedSession({ session: s, inspections }, isFirst, includePhotos) {
+async function buildDetailedSession({ session: s, inspections }, isFirst, includePhotos, viewer) {
   const children = [];
 
   if (!isFirst) children.push(new Paragraph({ children: [new PageBreak()] }));
@@ -531,7 +536,7 @@ async function buildDetailedSession({ session: s, inspections }, isFirst, includ
     if (includePhotos) {
       const photoUrls = Array.isArray(ins.photo_urls) ? ins.photo_urls : [];
       if (photoUrls.length > 0) {
-        const photoRows = await buildPhotoRows(photoUrls, alt);
+        const photoRows = await buildPhotoRows(photoUrls, alt, viewer);
         dataRows.push(...photoRows);
       } else {
         // Note the absence of photos for compliance traceability.
@@ -624,8 +629,10 @@ export async function POST({ request }) {
     if (reportType === 'summary') {
       children.push(buildSummaryTable(sessions, SUM_COLS_L));
     } else {
+      // Who is asking, for the per-photo check (see fetchImageBuffer).
+      const viewer = includePhotos ? await loadViewer(db(), auth.user.id) : null;
       for (let i = 0; i < sessions.length; i++) {
-        const sessionChildren = await buildDetailedSession(sessions[i], i === 0, includePhotos);
+        const sessionChildren = await buildDetailedSession(sessions[i], i === 0, includePhotos, viewer);
         children.push(...sessionChildren);
       }
     }

@@ -11,9 +11,10 @@
 // ANTHROPIC_API_KEY is unset the route returns 503 and the client falls
 // back to the Day 0.5 verbatim-comment-text path.
 //
-// Auth: bearer token in the Authorization header, verified by requireAuth.
-// We don't gate by is_admin — every authenticated user can use this when
-// their permissions allow them to add comments.
+// Auth: the Management grant (requireAppAccess), or an admin. ⛔ It reads the
+// issue, its activities and actions with the SERVICE ROLE, which RLS gates on
+// that grant — so checking only a login let any account read Management
+// issues through the suggestion it wrote back (§6ccc item 4, 2026-10-03).
 //
 // Rate limit: 60 calls / user / hour, table-backed via checkKeyRateLimit
 // (an in-memory Map doesn't survive Netlify cold starts and isn't shared
@@ -27,7 +28,7 @@ import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env as privateEnv } from '$env/dynamic/private';
-import { requireAuth } from '$lib/server/requireAuth';
+import { requireAppAccess } from '$lib/server/requireAuth';
 import { checkKeyRateLimit, LIMITS } from '$lib/server/publicRateLimit';
 import { logAudit } from '$lib/server/auditLogger';
 import { escapeForPrompt } from '$lib/server/promptEscape';
@@ -186,7 +187,7 @@ export async function POST({ request }) {
 
   try {
     // ── Auth: verified bearer token, never a body-supplied id ────────
-    const auth = await requireAuth(request);
+    const auth = await requireAppAccess(request, 'management');
     if (auth.error) return auth.error;
     profile = auth.user;
 

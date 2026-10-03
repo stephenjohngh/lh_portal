@@ -23,7 +23,8 @@ import { createClient }        from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }                 from '$env/dynamic/private';
 import { requireAuth }         from '$lib/server/requireAuth';
-import { copyDocument }        from '$lib/server/documentLibrary';
+import { copyDocument, getDocument } from '$lib/server/documentLibrary';
+import { canAccessDocument, bearerToken } from '$lib/server/documentAccess.js';
 import { getLogger }           from '$lib/utils/logger';
 
 const logger = getLogger('gt-ingest-artifact');
@@ -62,6 +63,21 @@ export async function POST({ request }) {
     if (draft.created_by !== auth.user.id) {
       return json({ error: 'Only the creator of the draft can attach its file.' }, { status: 403 });
     }
+
+    // ── The caller must be able to read the SOURCE ───────────────────────────
+    // ⛔ The copy runs with the service role, so without this a person with a
+    // Golden Thread draft could copy ANY library document into it — a parking
+    // licence, another app's record — and then read it there (§6ccc item 4,
+    // 2026-10-03). The same question every other route asks of a document.
+    // PGRST116 is "no row"; any other failure is a failure, not "not found".
+    const source = await getDocument(sourceDocId).catch((/** @type {any} */ e) => {
+      if (e?.code === 'PGRST116') return null;
+      throw e;
+    });
+    const readable = source
+      ? await canAccessDocument(source, { isAdmin: auth.isAdmin, token: bearerToken(request) })
+      : { ok: false, status: 404, message: 'Source document not found.' };
+    if (!readable.ok) return json({ error: readable.message }, { status: readable.status });
 
     // ── Copy the source file into a gt_document-owned library entry ──────────
     const copy = await copyDocument(
