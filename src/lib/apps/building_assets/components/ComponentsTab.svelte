@@ -11,7 +11,7 @@
   import { permissions }         from '$lib/stores/permissions';
   import { auth }                from '$lib/stores/auth.js';
   import {
-    loadPresets, createPreset, removePreset,
+    loadPresets, createPreset, removePreset, presetToState,
   } from '../componentPresets.js';
 
   import { resolveComponentHalo, conditionChecklistDisplay } from '../lookups.js';
@@ -163,42 +163,35 @@
     },
   };
 
+  // presetToState reads every shape a preset has ever been saved in; the
+  // active-preset highlight uses the same reading (componentPresets.js).
   function applyPreset(e) {
-    const { filters: f, columns: c, report: r = {} } = e.detail;
-    searchQuery   = f.searchQuery ?? '';
-    // Floor — handle legacy 'single' preset (single filterFloorId string → Set)
-    filterFloorIds = new Set(f.filterFloorIds ?? (f.filterFloorId ? [f.filterFloorId] : []));
-    floorPreset    = f.floorPreset === 'single'
-      ? (filterFloorIds.size > 0 ? 'custom' : 'all')
-      : (f.floorPreset ?? 'all');
-    // Support both new (arrays) and legacy single-value preset formats
-    filterSystemIds = new Set(f.filterSystemIds ?? (f.filterSystemId ? [f.filterSystemId] : []));
-    filterTypeCodes = new Set(f.filterTypeCodes ?? (f.filterTypeCode ? [f.filterTypeCode] : []));
-    filterStatuses  = new Set(f.filterStatuses  ?? (f.filterStatus  ? [f.filterStatus]  : []));
-    // Space filters — default to empty for presets saved before they existed.
-    filterSpaceIds  = new Set(f.filterSpaceIds ?? []);
-    filterTypes     = new Set(f.filterTypes    ?? []);
-    filterKinds     = new Set(f.filterKinds    ?? []);
-    // Default to empty for presets saved before attribute filtering existed
-    fixedAttrFilters     = Array.isArray(f.fixedAttrFilters)     ? f.fixedAttrFilters     : [];
-    conditionAttrFilters = Array.isArray(f.conditionAttrFilters) ? f.conditionAttrFilters : [];
-    showNotes           = c.showNotes;
-    showLinked          = c.showLinked;
-    showInspectionNotes = c.showInspectionNotes;
-    // Default to true for presets saved before these toggles existed (matches
-    // the prior always-shown behaviour).
-    showAttributes      = c.showAttributes ?? true;
-    showConditions      = c.showConditions ?? true;
-    showSpaces          = c.showSpaces ?? false;
-    view                = c.view ?? 'list';
-    // Restore report options (use defaults for presets saved before report was tracked)
-    includePlan              = r.includePlan              ?? false;
-    includeList              = r.includeList              ?? true;
-    includeFloorSummary      = r.includeFloorSummary      ?? true;
-    includeFullSummary       = r.includeFullSummary       ?? false;
-    includeFullComponentList = r.includeFullComponentList ?? false;
-    planShowId               = r.planShowId               ?? true;
-    planShowLabel            = r.planShowLabel            ?? false;
+    const { filters: f, columns: c, report: r } = presetToState(e.detail);
+    searchQuery          = f.searchQuery;
+    floorPreset          = f.floorPreset;
+    filterFloorIds       = new Set(f.filterFloorIds);
+    filterSystemIds      = new Set(f.filterSystemIds);
+    filterTypeCodes      = new Set(f.filterTypeCodes);
+    filterStatuses       = new Set(f.filterStatuses);
+    filterSpaceIds       = new Set(f.filterSpaceIds);
+    filterTypes          = new Set(f.filterTypes);
+    filterKinds          = new Set(f.filterKinds);
+    fixedAttrFilters     = f.fixedAttrFilters;
+    conditionAttrFilters = f.conditionAttrFilters;
+    showNotes                = c.showNotes;
+    showLinked               = c.showLinked;
+    showInspectionNotes      = c.showInspectionNotes;
+    showAttributes           = c.showAttributes;
+    showConditions           = c.showConditions;
+    showSpaces               = c.showSpaces;
+    view                     = c.view;
+    includePlan              = r.includePlan;
+    includeList              = r.includeList;
+    includeFloorSummary      = r.includeFloorSummary;
+    includeFullSummary       = r.includeFullSummary;
+    includeFullComponentList = r.includeFullComponentList;
+    planShowId               = r.planShowId;
+    planShowLabel            = r.planShowLabel;
   }
 
   async function handleSavePreset(e) {

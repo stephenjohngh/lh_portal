@@ -6,10 +6,8 @@
 // sort_order IS NULL      →  personal preset, visible only to owner,
 //                            shown second (sorted alphabetically by name).
 //
-// Config JSONB shape: { filters, columns, report }
-//   filters — floor, system, type, status, search
-//   columns — showNotes, showLinked, showInspectionNotes, view
-//   report  — which report sections to include on Generate
+// Config JSONB shape: { filters, columns, report } — presetToState below is
+// the one reading of it, old shapes included.
 
 import { api } from '$lib/utils/api';
 
@@ -55,46 +53,88 @@ export async function removePreset(id) {
   await api.delete('component_presets', id);
 }
 
-// -- Config equality -----------------------------------------------------------
-// Returns true when a preset's filters + columns + report match the live config.
-// Handles both new (array) and legacy (single-string) filter formats for
-// smooth backward compatibility with presets saved before multi-select.
+// -- What a preset means, ONE rule -----------------------------------------------
+//
+// A saved preset may be in any shape the tab has ever written: single values
+// before multi-select, a 'single' floor preset, no space or attribute filters,
+// no report options. presetToState reads them all into today's shape, and BOTH
+// applying a preset and highlighting the active one use it (2026-10-03).
+// ⛔ They used to be two copies. The highlight's copy predated the space and
+// attribute filters and the attribute/condition/space columns, so a preset
+// with any of those showed as ACTIVE while none of them was applied.
+
+const asArray = (list, single) => (Array.isArray(list) ? list : single ? [single] : []);
+
+/**
+ * A preset's config in today's shape, every field present.
+ * @param {{ filters?: any, columns?: any, report?: any } | null | undefined} preset
+ */
+export function presetToState(preset) {
+  const f = preset?.filters ?? {};
+  const c = preset?.columns ?? {};
+  const r = preset?.report  ?? {};
+  const filterFloorIds = asArray(f.filterFloorIds, f.filterFloorId);
+  return {
+    filters: {
+      // A legacy 'single' preset named one floor; today that is a custom set.
+      floorPreset: f.floorPreset === 'single'
+        ? (filterFloorIds.length > 0 ? 'custom' : 'all')
+        : (f.floorPreset ?? 'all'),
+      filterFloorIds,
+      filterSystemIds: asArray(f.filterSystemIds, f.filterSystemId),
+      filterTypeCodes: asArray(f.filterTypeCodes, f.filterTypeCode),
+      filterStatuses:  asArray(f.filterStatuses,  f.filterStatus),
+      // Saved before space filtering existed → none.
+      filterSpaceIds:  asArray(f.filterSpaceIds),
+      filterTypes:     asArray(f.filterTypes),
+      filterKinds:     asArray(f.filterKinds),
+      searchQuery:     f.searchQuery ?? '',
+      // Saved before attribute filtering existed → none.
+      fixedAttrFilters:     Array.isArray(f.fixedAttrFilters)     ? f.fixedAttrFilters     : [],
+      conditionAttrFilters: Array.isArray(f.conditionAttrFilters) ? f.conditionAttrFilters : [],
+    },
+    columns: {
+      showNotes:           c.showNotes,
+      showLinked:          c.showLinked,
+      showInspectionNotes: c.showInspectionNotes,
+      // Saved before these toggles existed → shown, as they always were then.
+      showAttributes:      c.showAttributes ?? true,
+      showConditions:      c.showConditions ?? true,
+      showSpaces:          c.showSpaces ?? false,
+      view:                c.view ?? 'list',
+    },
+    // Saved before the report was tracked → the report's defaults.
+    report: {
+      includePlan:              r.includePlan              ?? false,
+      includeList:              r.includeList              ?? true,
+      includeFloorSummary:      r.includeFloorSummary      ?? true,
+      includeFullSummary:       r.includeFullSummary       ?? false,
+      includeFullComponentList: r.includeFullComponentList ?? false,
+      planShowId:               r.planShowId               ?? true,
+      planShowLabel:            r.planShowLabel            ?? false,
+    },
+  };
+}
+
+const SET_FIELDS = new Set(['filterFloorIds', 'filterSystemIds', 'filterTypeCodes', 'filterStatuses',
+                            'filterSpaceIds', 'filterTypes', 'filterKinds']);
+
+function sameValue(key, a, b) {
+  if (SET_FIELDS.has(key)) {
+    const sa = new Set(a), sb = new Set(b);
+    return sa.size === sb.size && [...sa].every(x => sb.has(x));
+  }
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/**
+ * Is this preset what the tab is showing? Both sides go through presetToState,
+ * so a field the tab can apply is a field this compares.
+ */
 export function configMatches(preset, config) {
   if (!config) return false;
-  const pf = preset.filters;
-  const pc = preset.columns;
-  const pr = preset.report  ?? {};
-  const { filters: cf, columns: cc, report: cr = {} } = config;
-
-  // Normalise a value that may be an array (new) or a single string (legacy) to a Set.
-  function toSet(v) {
-    if (Array.isArray(v)) return new Set(v);
-    return v ? new Set([v]) : new Set();
-  }
-  function sameSet(a, b) {
-    const sa = toSet(a), sb = toSet(b);
-    if (sa.size !== sb.size) return false;
-    for (const x of sa) if (!sb.has(x)) return false;
-    return true;
-  }
-
-  return (
-    (pf.floorPreset  ?? 'all') === (cf.floorPreset  ?? 'all') &&
-    (pf.searchQuery  ?? '')    === (cf.searchQuery   ?? '')    &&
-    sameSet(pf.filterFloorIds  ?? (pf.filterFloorId  ? [pf.filterFloorId]  : []), cf.filterFloorIds  ?? []) &&
-    sameSet(pf.filterSystemIds ?? (pf.filterSystemId ? [pf.filterSystemId] : []), cf.filterSystemIds ?? []) &&
-    sameSet(pf.filterTypeCodes ?? (pf.filterTypeCode ? [pf.filterTypeCode] : []), cf.filterTypeCodes ?? []) &&
-    sameSet(pf.filterStatuses  ?? (pf.filterStatus   ? [pf.filterStatus]   : []), cf.filterStatuses  ?? []) &&
-    pc.showNotes           === cc.showNotes           &&
-    pc.showLinked          === cc.showLinked          &&
-    pc.showInspectionNotes === cc.showInspectionNotes &&
-    (pc.view ?? 'list')    === (cc.view ?? 'list')   &&
-    (pr.includePlan              ?? false) === (cr.includePlan              ?? false) &&
-    (pr.includeList              ?? true)  === (cr.includeList              ?? true)  &&
-    (pr.includeFloorSummary      ?? true)  === (cr.includeFloorSummary      ?? true)  &&
-    (pr.includeFullSummary       ?? false) === (cr.includeFullSummary       ?? false) &&
-    (pr.includeFullComponentList ?? false) === (cr.includeFullComponentList ?? false) &&
-    (pr.planShowId    ?? true)  === (cr.planShowId    ?? true)  &&
-    (pr.planShowLabel ?? false) === (cr.planShowLabel ?? false)
-  );
+  const p = presetToState(preset);
+  const c = presetToState(config);
+  return ['filters', 'columns', 'report'].every(part =>
+    Object.keys(p[part]).every(key => sameValue(key, p[part][key], c[part][key])));
 }
