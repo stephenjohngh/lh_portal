@@ -10,10 +10,10 @@
 
 import { writable }  from 'svelte/store';
 import { api }       from '$lib/utils/api';
-import { supabase }  from '$lib/supabaseClient';
 import { getLogger } from '$lib/utils/logger';
 import { logAudit }  from '$lib/utils/auditLogger';
 import { storeLoader } from '../../../utils/storeLoad.js';
+import { currentUserId as userId } from '$lib/utils/currentUser.js';
 
 const logger = getLogger('DisplayRegister');
 
@@ -55,11 +55,6 @@ function createDisplayRegisterStore() {
   const { subscribe, update } = writable(/** @type {State} */ ({
     items: [], loading: false, error: null,
   }));
-
-  async function userId() {
-    const { data } = await supabase.auth.getUser();
-    return data?.user?.id ?? null;
-  }
 
   const load = storeLoader(update,
     async () => (await api.get('display_items', { orderBy: 'display_location' })).sort(byLocationThenTitle),

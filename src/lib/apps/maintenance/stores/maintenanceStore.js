@@ -14,7 +14,6 @@ import { writable, get } from 'svelte/store';
 import { getLogger }     from '$lib/utils/logger';
 import { logAudit }      from '$lib/utils/auditLogger';
 import { api }           from '$lib/utils/api';
-import { supabase }      from '$lib/supabaseClient';
 import { uploadMedia }   from '$lib/utils/mediaUpload.js';
 import { deleteStorageObjects } from '$lib/utils/mediaAttachments.js';
 import { uploadDocument as uploadToLibrary, deleteDocument as deleteFromLibrary, deleteDocumentsFor } from '$lib/utils/documentApi.js';
@@ -24,20 +23,9 @@ import { listPlannedObligations } from '$lib/apps/compliance/public.js';
 import { isJobEvidenced } from '$lib/utils/obligationEvidence.js';
 import { plannedOccurrenceDates } from '../utils/obligationJobScope.js';
 import { storeLoader } from '$lib/utils/storeLoad.js';
+import { currentUserId } from '$lib/utils/currentUser.js';
 
 const logger = getLogger('maintenanceStore');
-
-// Current user id for created_by/updated_by stamps. Uses the standard Supabase
-// auth accessors (getSession reads the locally-stored session — no network — with
-// getUser as a fallback), rather than hand-parsing the localStorage token, which
-// was brittle to key-format/token-shape/SSR changes and could silently write
-// unattributed rows.
-async function currentUserId() {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.user?.id) return session.user.id;
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.id ?? null;
-}
 
 function enrichJob(job) {
   return { ...job, rag: jobRag(job) };
@@ -85,8 +73,7 @@ function createMaintenanceStore() {
 
   const load = storeLoader(update, async () => {
       // Detect current user's contractor status
-      const { data: authData } = await supabase.auth.getUser();
-      const userId = authData?.user?.id ?? null;
+      const userId = await currentUserId();
       let isContractor = false;
       if (userId) {
         try {

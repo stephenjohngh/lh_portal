@@ -3,9 +3,9 @@
 
 import { writable }   from 'svelte/store';
 import { api }        from '$lib/utils/api';
-import { supabase }   from '$lib/supabaseClient';
 import { getLogger }  from '$lib/utils/logger';
 import { storeLoader } from '../../../utils/storeLoad.js';
+import { currentUserId as userId } from '$lib/utils/currentUser.js';
 
 const logger = getLogger('MaintenanceGroups');
 
@@ -34,11 +34,6 @@ function createMaintenanceGroupsStore() {
     () => api.get('maintenance_groups', { orderBy: 'name' }),
     (groups) => ({ groups }),
     { what: 'the maintenance groups', log: logger });
-
-  async function userId() {
-    const { data } = await supabase.auth.getUser();
-    return data?.user?.id ?? null;
-  }
 
   // Completed maintenance jobs (+ their component links for component-scoped jobs),
   // used to SUGGEST a last-renewal date per group (R2). Read-only, cross-app read

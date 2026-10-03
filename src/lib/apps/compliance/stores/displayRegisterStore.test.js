@@ -5,7 +5,7 @@
 // the row shape toRow builds, the not_set -> displayed escalation, the
 // singleton-slot delete guard, and what setStatus stamps.
 //
-// Seams mocked: api, supabaseClient (auth.getUser), auditLogger, logger.
+// Seams mocked: api, supabaseClient (auth.getSession — the signed-in user, via $lib/utils/currentUser.js), auditLogger, logger.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
@@ -17,7 +17,7 @@ const h = vi.hoisted(() => {
     update: vi.fn((t, id, d) => Promise.resolve({ id, ...d })),
     delete: vi.fn(() => Promise.resolve()),
   };
-  const supabase = { auth: { getUser: vi.fn(() => Promise.resolve({ data: { user: { id: 'u1' } } })) } };
+  const supabase = { auth: { getSession: vi.fn(() => Promise.resolve({ data: { session: { user: { id: 'u1' } } } })) } };
   return { api, supabase, logAudit: vi.fn() };
 });
 

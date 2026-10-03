@@ -1,6 +1,6 @@
 // src/lib/apps/maintenance/stores/maintenanceGroupsStore.test.js
 // CHARACTERIZATION tests for maintenanceGroupsStore (Admin > Maint. Groups /
-// 10-Yr Plan). Seams mocked: api, supabaseClient (auth.getUser), logger.
+// 10-Yr Plan). Seams mocked: api, supabaseClient (auth.getSession — the signed-in user, via $lib/utils/currentUser.js), logger.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
@@ -12,7 +12,7 @@ const h = vi.hoisted(() => {
     update: vi.fn((t, id, d) => Promise.resolve({ id, ...d })),
     delete: vi.fn(() => Promise.resolve()),
   };
-  const supabase = { auth: { getUser: vi.fn(() => Promise.resolve({ data: { user: { id: 'u1' } } })) } };
+  const supabase = { auth: { getSession: vi.fn(() => Promise.resolve({ data: { session: { user: { id: 'u1' } } } })) } };
   return { api, supabase };
 });
 

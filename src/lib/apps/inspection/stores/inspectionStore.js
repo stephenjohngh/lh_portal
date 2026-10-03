@@ -6,7 +6,6 @@ import { writable, get } from 'svelte/store';
 import { getLogger }     from '$lib/utils/logger';
 import { logAudit }      from '$lib/utils/auditLogger';
 import { api }           from '$lib/utils/api';
-import { supabase }      from '$lib/supabaseClient';   // auth (getUser) only
 // Components belong to the Building Assets app — reach them only through its
 // public interface, so the write rules live in one place (../building_assets/public.js).
 import {
@@ -45,6 +44,7 @@ import {
 } from '../utils/inspectionWalk.js';
 import { buildRotatingWalk, resolveLinkedSet } from '../utils/inspectionRotation.js';
 import { newSessionRecord, freshWalkState } from '../utils/sessionStart.js';
+import { currentUserId as getCurrentUserId } from '$lib/utils/currentUser.js';
 
 const logger = getLogger('inspectionStore');
 
@@ -202,16 +202,6 @@ const RESET_SESSION_STATE = {
 };
 
 // -- Auth helpers --------------------------------------------------------------
-
-async function getCurrentUserId() {
-  // getSession() reads the locally-stored session (no network), so it still
-  // yields the user id when offline — unlike getUser(), which round-trips to the
-  // auth server. Fall back to getUser() only if the local session is absent.
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.user?.id) return session.user.id;
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.id ?? null;
-}
 
 async function getCurrentUserName(userId) {
   try {

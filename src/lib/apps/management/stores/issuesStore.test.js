@@ -39,7 +39,7 @@ const h = vi.hoisted(() => {
   };
 
   const supabase = {
-    auth: { getUser: vi.fn(() => Promise.resolve({ data: { user: { id: 'u1', email: 'u@example.com' } } })) },
+    auth: { getSession: vi.fn(() => Promise.resolve({ data: { session: { user: { id: 'u1', email: 'u@example.com' } } } })) },
     from: vi.fn(() => makeBuilder()),
     channel: vi.fn(() => {
       const ch = {};

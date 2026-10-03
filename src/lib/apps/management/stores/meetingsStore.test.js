@@ -9,7 +9,7 @@ import { get } from 'svelte/store';
 
 const h = vi.hoisted(() => {
   const supabase = {
-    auth: { getUser: vi.fn(() => Promise.resolve({ data: { user: { id: 'u1', email: 'u@x' } } })) },
+    auth: { getSession: vi.fn(() => Promise.resolve({ data: { session: { user: { id: 'u1', email: 'u@x' } } } })) },
     channel: vi.fn(() => {
       const ch = {};
       ch.on = vi.fn(() => ch);

@@ -9,6 +9,7 @@ import { api } from '$lib/utils/api';
 import { postJson } from '$lib/utils/request';
 import { getLogger } from '$lib/utils/logger';
 import { storeLoader } from '$lib/utils/storeLoad.js';
+import { currentUser } from '$lib/utils/currentUser.js';
 
 const logger = getLogger("usersStore");
 
@@ -171,7 +172,7 @@ function createUsersStore() {
           logger('Removed permission:', appId);
 
         } else {
-          const { data: { user } } = await supabase.auth.getUser();
+          const user = await currentUser();
 
           const { error } = await supabase
             .from('app_permissions')
@@ -230,7 +231,7 @@ function createUsersStore() {
      */
     async setAppAccessLevel(userId, appId, level) {
       logger('Setting app access level:', { userId, appId, level });
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await currentUser();
 
       if (level === 'none') {
         const { error } = await supabase

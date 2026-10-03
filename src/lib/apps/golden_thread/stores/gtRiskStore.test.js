@@ -5,9 +5,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
 
-const { api, getUser, logAudit, pub } = vi.hoisted(() => ({
+const { api, getSession, logAudit, pub } = vi.hoisted(() => ({
   api: { getAllIn: vi.fn(async () => []) },
-  getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })),
+  getSession: vi.fn(async () => ({ data: { session: { user: { id: 'user-1' } } } })),
   logAudit: vi.fn(),
   pub: {
     listRisks: vi.fn(async () => []),
@@ -22,7 +22,7 @@ const { api, getUser, logAudit, pub } = vi.hoisted(() => ({
 }));
 
 vi.mock('$lib/utils/api', () => ({ api }));
-vi.mock('$lib/supabaseClient', () => ({ supabase: { auth: { getUser } } }));
+vi.mock('$lib/supabaseClient', () => ({ supabase: { auth: { getSession } } }));
 vi.mock('$lib/utils/auditLogger', () => ({ logAudit }));
 vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
 vi.mock('$lib/apps/golden_thread/public.js', () => pub);

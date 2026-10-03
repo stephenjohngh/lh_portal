@@ -26,6 +26,7 @@ import { writable }  from 'svelte/store';
 import { supabase }  from '$lib/supabaseClient';
 import { getLogger } from '$lib/utils/logger';
 import { setDueWindows, cleanDueWindows, activeDueWindows } from '$lib/utils/dueWindows.js';
+import { currentUserId } from '$lib/utils/currentUser.js';
 
 const logger     = getLogger('portalSettings');
 const TOPBAR_KEY = 'topbar_apps';
@@ -81,8 +82,7 @@ function createPortalSettingsStore() {
    * @param {string[]} appIds  — ordered list of app IDs to show in the top bar
    */
   async function save(appIds) {
-    const { data: authData } = await supabase.auth.getUser();
-    const userId = authData?.user?.id ?? null;
+    const userId = await currentUserId();
 
     const { error } = await supabase
       .from('portal_settings')
@@ -102,8 +102,7 @@ function createPortalSettingsStore() {
    * @param {string[]} appIds  — all app IDs in the desired display order
    */
   async function saveOrder(appIds) {
-    const { data: authData } = await supabase.auth.getUser();
-    const userId = authData?.user?.id ?? null;
+    const userId = await currentUserId();
 
     const { error } = await supabase
       .from('portal_settings')
@@ -126,8 +125,7 @@ function createPortalSettingsStore() {
    * @returns {Promise<Record<string, number>>} what was stored
    */
   async function saveDueWindows(windows) {
-    const { data: authData } = await supabase.auth.getUser();
-    const userId = authData?.user?.id ?? null;
+    const userId = await currentUserId();
     const changed = cleanDueWindows(windows);
 
     const { error } = await supabase

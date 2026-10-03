@@ -11,6 +11,7 @@ import { del }              from '$lib/utils/request';
 import * as docApi          from '$lib/utils/documentApi';
 import { currentMeeting }   from './meetingsStore';
 import { storeLoader } from '$lib/utils/storeLoad.js';
+import { currentUser } from '$lib/utils/currentUser.js';
 
 const logger = getLogger('issuesStore');
 
@@ -159,7 +160,7 @@ function createIssuesStore() {
       try {
         logger('➕ Adding issue');
         const now = new Date().toISOString();
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await currentUser();
         logger('User:', user?.id, user?.email);
 
         const meetingId = activeMeetingId();
@@ -213,7 +214,7 @@ function createIssuesStore() {
     async updateIssue(issueId, issueData) {
       try {
         logger('✏️ Updating issue:', issueId);
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await currentUser();
 
         // Get issue before update for audit log
         const { data: beforeIssue } = await supabase
@@ -272,7 +273,7 @@ function createIssuesStore() {
     async deleteIssue(issueId) {
       try {
         logger('🗑️ Deleting issue:', issueId);
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await currentUser();
 
         // Get issue data before deletion for audit log
         const { data: issue } = await supabase
@@ -329,7 +330,7 @@ function createIssuesStore() {
       try {
         logger('➕ Adding activity to issue:', issueId, '(type:', activity_type, ')');
         const now = new Date().toISOString();
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await currentUser();
         logger('User:', user?.id, user?.email);
 
         // Sanitise the body once, at the write boundary, so every read path
@@ -402,7 +403,7 @@ function createIssuesStore() {
         const override_created_at  = activityData.override_created_at ?? null;
         const override_updated_at  = activityData.override_updated_at ?? null;
 
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await currentUser();
 
         // Get activity before update
         const { data: before } = await supabase
@@ -454,7 +455,7 @@ function createIssuesStore() {
 
     async deleteActivity(activityId) {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await currentUser();
 
         // Get activity data before deletion
         const { data: activity } = await supabase
@@ -509,7 +510,7 @@ function createIssuesStore() {
       try {
         logger('➕ Adding action to issue:', issueId);
         const now = new Date().toISOString();
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await currentUser();
         logger('User:', user?.id, user?.email);
 
         // Get issue for audit context
@@ -575,7 +576,7 @@ function createIssuesStore() {
     async updateAction(actionId, actionData) {
       try {
         logger('✏️ Updating action:', actionId);
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await currentUser();
 
         // Get action before update for audit log
         const { data: beforeAction } = await supabase
@@ -641,7 +642,7 @@ function createIssuesStore() {
     async deleteAction(actionId) {
       try {
         logger('🗑️ Deleting action:', actionId);
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await currentUser();
 
         // Get action data before deletion for audit log
         const { data: action } = await supabase
@@ -698,7 +699,7 @@ function createIssuesStore() {
         if (total === 0) return { success: true };
 
         logger(`📎 Assigning ${total} items to meeting ${meetingId}`);
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await currentUser();
         const now = new Date().toISOString();
 
         const tasks = [];
@@ -747,7 +748,7 @@ function createIssuesStore() {
     // to a different issue.
     async moveActivity(activityId, destinationIssueId) {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await currentUser();
         const now = new Date().toISOString();
 
         // Fetch context for the audit log

@@ -28,6 +28,7 @@ import { supabase } from '$lib/supabaseClient';
 import { api }      from '$lib/utils/api';
 import { logAudit } from '$lib/utils/auditLogger';
 import { getLogger } from '$lib/utils/logger';
+import { currentUser } from '$lib/utils/currentUser.js';
 
 const logger = getLogger('meetingsStore');
 
@@ -111,7 +112,7 @@ function createMeetingsStore() {
 
   async function create(data) {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await currentUser();
       const userId = user?.id ?? null;
 
       const row = await api.create('meetings', {
@@ -145,7 +146,7 @@ function createMeetingsStore() {
 
   async function update(id, patch) {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await currentUser();
       const userId = user?.id ?? null;
 
       const before = await api.getById('meetings', id);
@@ -247,7 +248,7 @@ function createMeetingsStore() {
       return { success: false, error: `Unsupported table: ${table}` };
     }
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await currentUser();
       const userId = user?.id ?? null;
 
       await api.update(table, rowId, {

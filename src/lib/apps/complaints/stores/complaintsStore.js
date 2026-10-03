@@ -14,12 +14,12 @@
 // constraint violation afterwards.
 
 import { writable } from 'svelte/store';
-import { supabase } from '$lib/supabaseClient';
 import { api }      from '$lib/utils/api';
 import { logAudit } from '$lib/utils/auditLogger';
 import { getLogger } from '$lib/utils/logger';
 import { STATUS, stampsFor, entryTypeFor, blockedReason } from '../utils/complaintLifecycle.js';
 import { storeLoader } from '../../../utils/storeLoad.js';
+import { currentUser } from '$lib/utils/currentUser.js';
 
 const logger = getLogger('complaintsStore');
 
@@ -62,7 +62,7 @@ function createComplaintsStore() {
   // ── Who is acting ─────────────────────────────────────────────────────────
 
   async function currentUserProfile() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await currentUser();
     if (!user) return { id: null, full_name: 'Unknown' };
     try {
       const profile = await api.getById('profiles', user.id, 'id, full_name');

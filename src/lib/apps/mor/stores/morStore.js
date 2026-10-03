@@ -9,6 +9,7 @@ import { isValidTransition } from '$lib/apps/mor/utils/morHelpers';
 import { generateVerificationCode } from '$lib/utils/caseVerificationCode';
 import { listDocumentsCiting } from '$lib/apps/golden_thread/public.js';
 import { storeLoader } from '$lib/utils/storeLoad.js';
+import { currentUser } from '$lib/utils/currentUser.js';
 
 const logger = getLogger('morStore');
 
@@ -70,11 +71,6 @@ function createMorStore() {
   }));
 
   // ── Internal helpers ───────────────────────────────────────────────────────
-
-  async function currentUser() {
-    const { data: { user } } = await supabase.auth.getUser();
-    return user;
-  }
 
   async function currentUserProfile() {
     const user = await currentUser();

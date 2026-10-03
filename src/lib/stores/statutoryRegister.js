@@ -35,7 +35,6 @@
 import { today } from '../utils/dates.js';
 import { writable, get } from 'svelte/store';
 import { api } from '$lib/utils/api';
-import { supabase } from '$lib/supabaseClient';
 import { getLogger } from '$lib/utils/logger';
 import { logAudit } from '$lib/utils/auditLogger';
 import { STATUTORY_TEMPLATE, setActiveRegister } from '$lib/utils/statutoryTemplate.js';
@@ -44,6 +43,7 @@ import { ofKind, kindOf } from '$lib/utils/registerKinds.js';
 import { toRow, fromRow, shippedDiffers } from '$lib/utils/registerRowMapping.js';
 import { validateRegisterEntry } from '$lib/utils/registerEntryRules.js';
 import { diffRegister, fieldChanges } from '$lib/utils/registerDiff.js';
+import { currentUser, currentUserId } from '$lib/utils/currentUser.js';
 
 const logger = getLogger('statutoryRegister');
 
@@ -174,7 +174,7 @@ function createStatutoryRegisterStore() {
     if (!missing.length && !updatable.length) return 0;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await currentUser();
 
       if (missing.length) {
         await api.createMany('statutory_register', missing.map(e => ({
@@ -343,11 +343,6 @@ function createStatutoryRegisterStore() {
   /** The rows the app is showing, keyed — for uniqueness checks and edits. */
   function entryKeys() {
     return new Set(get({ subscribe }).entries.map(e => e.key));
-  }
-
-  async function currentUserId() {
-    const { data: { user } } = await supabase.auth.getUser();
-    return user?.id ?? null;
   }
 
   /**

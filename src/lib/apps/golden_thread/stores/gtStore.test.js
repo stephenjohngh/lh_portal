@@ -11,9 +11,9 @@ import { get } from 'svelte/store';
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 // vi.mock factories hoist above imports, so the mock objects must live in
 // vi.hoisted() (CLAUDE.md testing blueprint).
-const { api, getUser, logAudit, pub } = vi.hoisted(() => ({
+const { api, getSession, logAudit, pub } = vi.hoisted(() => ({
   api: { getAll: vi.fn(), get: vi.fn(), getById: vi.fn(), create: vi.fn(), update: vi.fn() },
-  getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })),
+  getSession: vi.fn(async () => ({ data: { session: { user: { id: 'user-1' } } } })),
   logAudit: vi.fn(),
   pub: {
     registerDocument: vi.fn(),
@@ -32,7 +32,7 @@ const { api, getUser, logAudit, pub } = vi.hoisted(() => ({
 }));
 
 vi.mock('$lib/utils/api', () => ({ api }));
-vi.mock('$lib/supabaseClient', () => ({ supabase: { auth: { getUser } } }));
+vi.mock('$lib/supabaseClient', () => ({ supabase: { auth: { getSession } } }));
 vi.mock('$lib/utils/auditLogger', () => ({ logAudit }));
 vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
 vi.mock('$lib/apps/golden_thread/public.js', () => pub);

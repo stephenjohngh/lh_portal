@@ -8,13 +8,12 @@
 // error state (the R6 convention).
 
 import { errMessage } from '../../../utils/errors.js';
-import { supabase } from '$lib/supabaseClient';
 
-/** The current auth user id, or null. */
-export async function currentUserId() {
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.id ?? null;
-}
+// The current auth user id, or null — the portal's one helper. Imported, then
+// exported, because makeRun below calls it: `export { x } from` alone creates
+// no local name, and every Golden Thread save would throw.
+import { currentUserId } from '$lib/utils/currentUser.js';
+export { currentUserId };
 
 /**
  * Build a `run(fn)` bound to a store: flips saving/error around a mutation and

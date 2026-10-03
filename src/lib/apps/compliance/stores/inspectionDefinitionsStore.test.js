@@ -2,7 +2,7 @@
 // CHARACTERIZATION tests for inspectionDefinitionsStore (Compliance > Planned obligations).
 // Asserts which DB calls each method makes, the persisted row shape built by
 // toRow (defaults + field normalisation), and the resulting store state.
-// Seams mocked: api, supabaseClient (auth.getUser), auditLogger, logger.
+// Seams mocked: api, supabaseClient (auth.getSession — the signed-in user, via $lib/utils/currentUser.js), auditLogger, logger.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
@@ -19,7 +19,7 @@ const h = vi.hoisted(() => {
     delete: vi.fn(() => Promise.resolve()),
     upsert: vi.fn(() => Promise.resolve()),
   };
-  const supabase = { auth: { getUser: vi.fn(() => Promise.resolve({ data: { user: { id: 'u1' } } })) } };
+  const supabase = { auth: { getSession: vi.fn(() => Promise.resolve({ data: { session: { user: { id: 'u1' } } } })) } };
   const logAudit = vi.fn();
   return { api, supabase, logAudit };
 });

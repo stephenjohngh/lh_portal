@@ -32,7 +32,7 @@ const h = vi.hoisted(() => {
   const supabase = {
     auth: {
       getUser:    vi.fn(() => Promise.resolve({ data: { user: { id: 'u1', email: 'u@x' } } })),
-      getSession: vi.fn(() => Promise.resolve({ data: { session: { access_token: 'tok' } } })),
+      getSession: vi.fn(() => Promise.resolve({ data: { session: { access_token: 'tok', user: { id: 'u1', email: 'u@x' } } } })),
     },
     from: vi.fn(() => makeBuilder()),
   };

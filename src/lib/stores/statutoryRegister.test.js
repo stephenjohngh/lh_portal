@@ -15,7 +15,7 @@ import { get } from 'svelte/store';
 const h = vi.hoisted(() => ({
   getAll: vi.fn(), createMany: vi.fn(), create: vi.fn(), updateMany: vi.fn(),
   get: vi.fn(async () => []), deleteMany: vi.fn(),
-  getUser: vi.fn(async () => ({ data: { user: { id: 'u1' } } })),
+  getSession: vi.fn(async () => ({ data: { session: { user: { id: 'u1' } } } })),
   logAudit: vi.fn(),
 }));
 
@@ -23,7 +23,7 @@ vi.mock('$lib/utils/api', () => ({ api: {
   getAll: h.getAll, createMany: h.createMany, create: h.create, updateMany: h.updateMany,
   get: h.get, deleteMany: h.deleteMany,
 } }));
-vi.mock('$lib/supabaseClient', () => ({ supabase: { auth: { getUser: h.getUser } } }));
+vi.mock('$lib/supabaseClient', () => ({ supabase: { auth: { getSession: h.getSession } } }));
 vi.mock('$lib/utils/auditLogger', () => ({ logAudit: h.logAudit }));
 // ⚠ logger touches localStorage at module load, so it is one of the seams
 // CLAUDE.md lists for a store-contract test — along with api, supabaseClient
