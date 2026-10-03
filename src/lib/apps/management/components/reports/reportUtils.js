@@ -28,9 +28,14 @@ export function buildFieldSummary(activityType, fields) {
   if (activityType === ACTIVITY_TYPE.DOCUMENT) {
     return f.summary || f.display_name || f.filename || '';
   }
+  // ⛔ The one-line summary leads, for every type that asks for one (its
+  // placeholder reads "One-line summary for reports"). Email read `f.notes`,
+  // which no form writes, and letter and meeting read nothing — so the
+  // summary typed for reports never reached a report (fixed 2026-10-03).
+  // reportUtils.test.js checks every field each type's form asks for.
   if (activityType === ACTIVITY_TYPE.EMAIL) {
     const parts = [];
-    if (f.notes)         parts.push(f.notes);
+    if (f.summary)       parts.push(f.summary);
     if (f.from || f.to)  parts.push(`${f.from || '?'} → ${f.to || '?'}`);
     if (f.subject)       parts.push(`Re: ${f.subject}`);
     if (f.email_date)    parts.push(fmtDate(f.email_date + 'T12:00:00'));
@@ -39,6 +44,7 @@ export function buildFieldSummary(activityType, fields) {
 
   if (activityType === ACTIVITY_TYPE.LETTER) {
     const parts = [];
+    if (f.summary)      parts.push(f.summary);
     if (f.from || f.to) parts.push(`${f.from || '?'} → ${f.to || '?'}`);
     if (f.reference)    parts.push(`Ref: ${f.reference}`);
     if (f.letter_date)  parts.push(fmtDate(f.letter_date + 'T12:00:00'));
@@ -46,6 +52,7 @@ export function buildFieldSummary(activityType, fields) {
   }
   if (activityType === ACTIVITY_TYPE.MEETING) {
     const parts = [];
+    if (f.summary)       parts.push(f.summary);
     if (f.title)         parts.push(f.title);
     if (f.meeting_date)  parts.push(fmtDate(f.meeting_date + 'T12:00:00'));
     if (f.participants)  parts.push(`👥 ${f.participants}`);
