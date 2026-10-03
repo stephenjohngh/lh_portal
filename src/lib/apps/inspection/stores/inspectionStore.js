@@ -44,6 +44,7 @@ import {
   calcFloorProgress,
 } from '../utils/inspectionWalk.js';
 import { buildRotatingWalk, resolveLinkedSet } from '../utils/inspectionRotation.js';
+import { newSessionRecord, freshWalkState } from '../utils/sessionStart.js';
 
 const logger = getLogger('inspectionStore');
 
@@ -510,32 +511,15 @@ function createInspectionStore() {
       walkComponents = target ? [target] : [];
     }
 
-    const session = await createSession({
-      session_type:              sessionType,
-      session_scope:             'single_floor',
-      session_preset:            definition ? 'custom' : preset,
-      // Definition sessions record the RESOLVED type codes for the historic
-      // record; scheduling keys off definition_id (plan §4.2).
-      type_filter:               JSON.stringify(definition ? [...new Set(walkComponents.map(c => c.type_code))] : typeFilter),
-      emergency_only:            definition ? false : emergencyOnly,
-      definition_id:             definition?.id ?? null,
-      building,
-      floor_id:                  floor.id,
-      session_name:              sessionName,
-      total_components_count:    walkComponents.length,
-      inspected_components_count: 0,
-    });
+    const session = await createSession(newSessionRecord({
+      sessionType, scope: 'single_floor', components: walkComponents,
+      building, floorId: floor.id, sessionName, definition, preset, typeFilter, emergencyOnly,
+    }));
 
     update(s => ({
       ...s,
-      activeSession:  { ...session, _floorObj: floor, _walk: walk },
-      walkComponents,
-      currentIndex:   0,
-      inspections:    {},
-      statusBefore:   {},
-      buildingFloors: [],
-      currentFloor:   floor,
-      floorProgress:  {},
+      activeSession: { ...session, _floorObj: floor, _walk: walk },
+      ...freshWalkState({ walkComponents, currentFloor: floor }),
     }));
 
     return session;
@@ -564,19 +548,10 @@ function createInspectionStore() {
 
     const allWalkComponents = buildingFloors.flatMap(floor => buildFn(state.allComponents[floor.id] ?? []));
 
-    const session = await createSession({
-      session_type:              sessionType,
-      session_scope:             'building',
-      session_preset:            definition ? 'custom' : preset,
-      type_filter:               JSON.stringify(definition ? [...new Set(allWalkComponents.map(c => c.type_code))] : typeFilter),
-      emergency_only:            definition ? false : emergencyOnly,
-      definition_id:             definition?.id ?? null,
-      building,
-      floor_id:                  null,
-      session_name:              sessionName,
-      total_components_count:    allWalkComponents.length,
-      inspected_components_count: 0,
-    });
+    const session = await createSession(newSessionRecord({
+      sessionType, scope: 'building', components: allWalkComponents,
+      building, floorId: null, sessionName, definition, preset, typeFilter, emergencyOnly,
+    }));
 
     const floorProgress = initFloorProgress(buildingFloors, state.allComponents, buildFn);
     // Start on the first floor that actually has matching components
@@ -586,14 +561,8 @@ function createInspectionStore() {
 
     update(s => ({
       ...s,
-      activeSession:  { ...session, _walk: walk },
-      buildingFloors,
-      currentFloor:   firstFloor,
-      floorProgress,
-      walkComponents,
-      currentIndex:   0,
-      inspections:    {},
-      statusBefore:   {},
+      activeSession: { ...session, _walk: walk },
+      ...freshWalkState({ walkComponents, currentFloor: firstFloor, buildingFloors, floorProgress }),
     }));
 
     return session;
@@ -624,31 +593,16 @@ function createInspectionStore() {
 
     const floor = state.floors.find(f => f.id === trigger.floor_id) ?? null;
 
-    const session = await createSession({
-      session_type:              sessionType,
-      session_scope:             'single_floor',
-      session_preset:            'custom',
-      type_filter:               JSON.stringify([...new Set(walkComponents.map(c => c.type_code))]),
-      emergency_only:            false,
-      definition_id:             definition.id,
-      trigger_component_id:      trigger.id,
-      building,
-      floor_id:                  trigger.floor_id ?? null,
-      session_name:              sessionName,
-      total_components_count:    walkComponents.length,
-      inspected_components_count: 0,
-    });
+    const session = await createSession(newSessionRecord({
+      sessionType, scope: 'single_floor', components: walkComponents,
+      building, floorId: trigger.floor_id ?? null, sessionName, definition,
+      triggerComponentId: trigger.id,
+    }));
 
     update(s => ({
       ...s,
-      activeSession:  { ...session, _floorObj: floor, _walk: { definition } },
-      walkComponents,
-      currentIndex:   0,
-      inspections:    {},
-      statusBefore:   {},
-      buildingFloors: [],
-      currentFloor:   floor,
-      floorProgress:  {},
+      activeSession: { ...session, _floorObj: floor, _walk: { definition } },
+      ...freshWalkState({ walkComponents, currentFloor: floor }),
     }));
 
     return session;
