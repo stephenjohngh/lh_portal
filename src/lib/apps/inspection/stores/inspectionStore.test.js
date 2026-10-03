@@ -540,6 +540,6 @@ describe('deleteSession', () => {
     await inspectionStore.deleteSession('sess9');
     expect(h.api.delete).toHaveBeenCalledWith('walk_sessions', 'sess9');
     expect(h.api.deleteMany).not.toHaveBeenCalled(); // cascade handles component_inspections
-    expect(h.api.get).toHaveBeenCalledWith('walk_sessions', expect.any(Object)); // loadSessions
+    expect(h.api.getAll).toHaveBeenCalledWith('walk_sessions', expect.any(Object)); // loadSessions, every page
   });
 });

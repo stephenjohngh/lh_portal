@@ -98,7 +98,7 @@ function createInfoStore() {
     // library has no FK to notes, so they stayed in Drive with nothing pointing
     // at them (2026-09-27). Each note is deleted first through deleteNote,
     // which removes its documents, so the section goes last.
-    const notes = await api.get('info_notes', { select: 'id, title', filters: { section_id: id } });
+    const notes = await api.getAll('info_notes', { select: 'id, title', filters: { section_id: id } });
     for (const n of notes ?? []) await deleteNote(n.id, n.title);
 
     await api.delete('info_sections', id);
@@ -112,7 +112,7 @@ function createInfoStore() {
   async function loadNotes(sectionId = null) {
     update(s => ({ ...s, loadingNotes: true, error: null }));
     try {
-      const notes = await api.get('info_notes', {
+      const notes = await api.getAll('info_notes', {
         select:    NOTE_SELECT,
         filters:   sectionId ? { section_id: sectionId } : {},
         orderBy:   'updated_at',

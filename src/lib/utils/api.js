@@ -8,6 +8,7 @@
 
 import { supabase }    from '$lib/supabaseClient';
 import { getLogger }   from '$lib/utils/logger';
+import { readAllPages } from '$lib/utils/readAllPages.js';
 
 const logger = getLogger('api');
 
@@ -87,30 +88,28 @@ class ApiClient {
    * truncates the response to its server-side max-rows setting.
    *
    * Pagination needs a stable sort to avoid rows shifting between pages, so a
-   * deterministic order is always applied (caller's orderBy, else 'id').
+   * deterministic order is always applied: the caller's orderBy (else 'id'),
+   * then 'id' to break ties — unless `tiebreak: false` says orderBy is unique.
    *
    * @param {string} table - Table name
-   * @param {object} options - Same as get(), minus limit/range (ignored)
+   * @param {object} options - select, filters (.eq), orderBy, ascending, tiebreak, pageSize
    * @returns {Promise<Array>} All matching records
    */
   async getAll(table, options = {}) {
-    const pageSize = options.pageSize || 1000;
-    // Strip paging-control keys; force a stable order for consistent pages.
-    const { limit, range, pageSize: _ps, orderBy, ...rest } = options;
-    const baseOpts = { ...rest, orderBy: orderBy || 'id' };
-
-    const all = [];
-    let from = 0;
-    for (;;) {
-      const page = await this.get(table, {
-        ...baseOpts,
-        range: { from, to: from + pageSize - 1 }
-      });
-      all.push(...page);
-      if (page.length < pageSize) break;
-      from += pageSize;
-    }
-    return all;
+    const { select, filters, ascending, pageSize = 1000 } = options;
+    const orderBy  = options.orderBy || 'id';
+    // ⛔ Pages need an order with no ties. Sorted on a date or a name alone,
+    // rows sharing a value can fall either side of a page boundary — repeated
+    // on one page, missing from both. So `id` breaks ties, unless the caller
+    // says its column is already unique (`tiebreak: false`, for the two tables
+    // keyed on something else: statutory_register, planner_day_marks).
+    const tiebreak = options.tiebreak === false || orderBy === 'id' ? null : (options.tiebreak || 'id');
+    return this.readAll(() => {
+      let q = supabase.from(table).select(select || '*');
+      for (const [key, value] of Object.entries(filters ?? {})) q = q.eq(key, value);
+      q = q.order(orderBy, { ascending: ascending !== false });
+      return tiebreak ? q.order(tiebreak, { ascending: true }) : q;
+    }, { pageSize, label: table });
   }
 
   /**
@@ -126,7 +125,7 @@ class ApiClient {
    * @param {string} table - Table name
    * @param {string} column - Column to match against the id list
    * @param {Array<string>} ids - Values to match (chunked internally)
-   * @param {object} options - { select, orderBy, ascending, idChunk, pageSize }
+   * @param {object} options - { select, filters (.eq, like get()), orderBy, ascending, idChunk, pageSize }
    * @returns {Promise<Array>} All matching rows
    */
   async getAllIn(table, column, ids, options = {}) {
@@ -140,22 +139,33 @@ class ApiClient {
     const out = [];
     for (let i = 0; i < ids.length; i += idChunk) {
       const chunk = ids.slice(i, i + idChunk);
-      let from = 0;
-      for (;;) {
-        const { data, error } = await supabase
-          .from(table)
-          .select(select)
-          .in(column, chunk)
-          .order(orderBy, { ascending })
-          .range(from, from + pageSize - 1);
-        if (error) throw this.handleError('GET_ALL_IN', table, error);
-        const rows = data ?? [];
-        out.push(...rows);
-        if (rows.length < pageSize) break;
-        from += pageSize;
-      }
+      const rows = await this.readAll(() => {
+        let q = supabase.from(table).select(select).in(column, chunk);
+        for (const [key, value] of Object.entries(options.filters ?? {})) q = q.eq(key, value);
+        q = q.order(orderBy, { ascending });
+        // Ties at a page boundary repeat or lose rows — see getAll.
+        return orderBy === 'id' || options.tiebreak === false ? q : q.order('id', { ascending: true });
+      }, { pageSize, label: table });
+      out.push(...rows);
     }
     return out;
+  }
+
+  /**
+   * Every row a query matches, page by page — `readAllPages` with this
+   * client's error shape. Use it where a read is not `api.get` with eq
+   * filters (`api.getAll` covers that). `build` returns a FRESH query each
+   * call, ordered with no ties (a unique column last).
+   * @param {() => any} build
+   * @param {{ pageSize?: number, label?: string }} [opts]
+   * @returns {Promise<any[]>}
+   */
+  async readAll(build, { pageSize = 1000, label = 'query' } = {}) {
+    try {
+      return await readAllPages(build, { pageSize });
+    } catch (/** @type {any} */ error) {
+      throw this.handleError('READ_ALL', label, error);
+    }
   }
 
   /**

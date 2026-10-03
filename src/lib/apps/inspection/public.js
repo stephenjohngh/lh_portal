@@ -40,7 +40,8 @@ const SESSION_INSPECTION_SELECT =
  * @returns {Promise<Record<string, string>>} { componentId: ISO inspected_at }
  */
 export async function lastDefinitionInspections(definitionId) {
-  const sessions = await api.get('walk_sessions', {
+  // Every page: a frequent planned obligation passes 1,000 walks.
+  const sessions = await api.getAll('walk_sessions', {
     select:  'id',
     filters: { definition_id: definitionId },
   });
@@ -116,7 +117,7 @@ export async function loadSessionInspections(sessionId, { withPhotos = true } = 
  *                          definition_id: string|null, lastObserved: string|null}>>}
  */
 export async function listComponentsAwaitingAccess() {
-  const noAccess = await api.get('component_inspections', {
+  const noAccess = await api.getAll('component_inspections', {
     select:  'component_id, no_access_reason, inspected_at, session:walk_sessions!walk_session_id(definition_id)',
     filters: { inspection_result: 'no_access' },
   });

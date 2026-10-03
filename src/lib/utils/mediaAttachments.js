@@ -20,6 +20,7 @@
 
 import { supabase } from '$lib/supabaseClient';
 import { accessToken } from '$lib/utils/authHeaders';
+import { api } from '$lib/utils/api';
 
 /**
  * List attachments for one or more owning entities.
@@ -30,15 +31,16 @@ import { accessToken } from '$lib/utils/authHeaders';
 export async function listAttachments(entityType, entityIds) {
   const ids = Array.isArray(entityIds) ? entityIds : [entityIds];
   if (ids.length === 0) return [];
-  const { data, error } = await supabase
-    .from('media_attachments')
+  // ⛔ Chunked and paged (getAllIn). A building-wide walk has over a thousand
+  // inspections: one .in() of every id overruns the request URL, and a single
+  // read stops at 1,000 rows — and purge then deleted rows for files it had
+  // never listed, leaving those files in storage with nothing naming them.
+  return api.getAllIn('media_attachments', 'entity_id', ids, {
     // ⚠ `storage_provider` is selected because purge routes on it. Dropping it
     // from this list silently returns deletion to guessing.
-    .select('entity_id, storage_url, storage_provider')
-    .eq('entity_type', entityType)
-    .in('entity_id', ids);
-  if (error) throw new Error(error.message);
-  return data ?? [];
+    select:  'id, entity_id, storage_url, storage_provider',
+    filters: { entity_type: entityType },
+  });
 }
 
 /**
@@ -214,10 +216,16 @@ export async function purgeAttachments(entityType, entityIds) {
         + 'so nothing else was deleted. Try again.');
     }
   }
-  const { error } = await supabase
-    .from('media_attachments')
-    .delete()
-    .eq('entity_type', entityType)
-    .in('entity_id', ids);
-  if (error) throw new Error(error.message);
+  // Delete exactly the rows that were listed, and in chunks: one .in() of a
+  // building walk's ids overruns the request URL.
+  const rowIds = rows.map((r) => r.id);
+  for (let i = 0; i < rowIds.length; i += DELETE_CHUNK) {
+    const { error } = await supabase
+      .from('media_attachments')
+      .delete()
+      .in('id', rowIds.slice(i, i + DELETE_CHUNK));
+    if (error) throw new Error(error.message);
+  }
 }
+
+const DELETE_CHUNK = 300;

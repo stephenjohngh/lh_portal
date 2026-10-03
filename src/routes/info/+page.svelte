@@ -6,6 +6,7 @@
   import { onMount }     from 'svelte';
   import { supabase }    from '$lib/supabaseClient';
   import { fmtDateLong } from '$lib/utils/dates';
+  import { readAllPages } from '$lib/utils/readAllPages.js';
   import lhLogo          from '$lib/assets/LH_services_logo.png';
 
   let articles = [];
@@ -16,13 +17,12 @@
     try {
       // No explicit visibility filter — RLS returns only what the caller
       // is permitted to see based on their auth state.
-      const { data, error: err } = await supabase
+      articles = await readAllPages(() => supabase
         .from('info_notes')
         .select('id, slug, title, summary, published_at')
         .not('published_at', 'is', null)
-        .order('published_at', { ascending: false });
-      if (err) throw err;
-      articles = data ?? [];
+        .order('published_at', { ascending: false })
+        .order('id'));
     } catch (/** @type {any} */ e) {
       error = e.message ?? 'Failed to load articles';
     } finally {

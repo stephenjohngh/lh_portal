@@ -94,7 +94,7 @@ function createInspectionDefinitionsStore() {
   }));
 
   const load = storeLoader(update,
-    async () => (await api.get('statutory_obligations', { orderBy: 'presentation_order' })).sort(byOrderThenName),
+    async () => (await api.getAll('statutory_obligations', { orderBy: 'presentation_order' })).sort(byOrderThenName),
     (definitions) => ({ definitions }),
     { what: 'the planned obligations', log: logger });
 
@@ -289,7 +289,7 @@ function createInspectionDefinitionsStore() {
    */
   async function loadExclusions() {
     try {
-      const exclusions = await api.get('statutory_exclusions', { orderBy: 'decided_at', ascending: false });
+      const exclusions = await api.getAll('statutory_exclusions', { orderBy: 'decided_at', ascending: false });
       update(s => ({ ...s, exclusions, dismissedKeys: excludedKeys(exclusions) }));
       return exclusions;
     } catch (/** @type {any} */ err) {

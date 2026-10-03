@@ -31,6 +31,8 @@ const h = vi.hoisted(() => {
     deleteMany: vi.fn(() => Promise.resolve()),
     createMany: vi.fn(() => Promise.resolve([])),
   };
+  api.getAll = api.get;   // the real getAll pages; here it answers as get does
+  api.getAllIn = vi.fn((table, col, ids) => Promise.resolve((tables[table] ?? []).filter((r) => ids.includes(r[col]))));
   const supabase = {
     auth: {
       getUser:    vi.fn(() => Promise.resolve({ data: { user: { id: 'u1' } } })),
@@ -286,5 +288,39 @@ describe('deleteDocument', () => {
     await maintenanceStore.deleteDocument('doc-2', 'https://drive.google.com/file/d/def/view');
     expect(h.deleteStorageObjects).toHaveBeenCalled();
     expect(h.api.delete).toHaveBeenCalledWith('maintenance_documents', 'doc-2');
+  });
+});
+
+// ⛔ A component carries only its type CODE, and the system belongs to the
+// type. The scope read filtered components on `system_id` / `type_id`, which
+// do not exist, so every type- or system-scoped job failed to list its
+// components (§6ccc item 3, 2026-10-03).
+describe('loadScopeComponents', () => {
+  const comps = [
+    { id: 'c1', type_code: 'door' },
+    { id: 'c2', type_code: 'door' },
+    { id: 'c3', type_code: 'lamp' },
+  ];
+
+  it('a type-scoped job lists the components of that type, by code', async () => {
+    h.setTables({ component_types: [{ code: 'door' }], components: comps });
+    const out = await maintenanceStore.loadScopeComponents('type', 't-door');
+    expect(h.api.get).toHaveBeenCalledWith('component_types', expect.objectContaining({ filters: { id: 't-door' } }));
+    expect(out.map((c) => c.id)).toEqual(['c1', 'c2']);
+  });
+
+  it("a system-scoped job lists the components of every type in the system", async () => {
+    h.setTables({ component_types: [{ code: 'door' }, { code: 'lamp' }], components: comps });
+    const out = await maintenanceStore.loadScopeComponents('system', 's-fire');
+    expect(h.api.get).toHaveBeenCalledWith('component_types',
+      expect.objectContaining({ filters: { building_system_id: 's-fire' } }));
+    expect(out.map((c) => c.id)).toEqual(['c1', 'c2', 'c3']);
+  });
+
+  it('never filters components on a column they do not have', async () => {
+    h.setTables({ component_types: [{ code: 'door' }], components: comps });
+    await maintenanceStore.loadScopeComponents('type', 't-door');
+    const onComponents = [...h.api.get.mock.calls, ...h.api.getAllIn.mock.calls].filter((c) => c[0] === 'components');
+    for (const call of onComponents) expect(JSON.stringify(call)).not.toMatch(/system_id|type_id|name/);
   });
 });

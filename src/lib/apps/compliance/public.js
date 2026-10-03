@@ -54,7 +54,7 @@ import { correctiveSummary, faultLabel, FAULT_STATUSES } from './utils/correctiv
 export function listPlannedObligations({ activeOnly = false } = {}) {
   const options = { orderBy: 'presentation_order' };
   if (activeOnly) options.filters = { active: true };
-  return api.get('statutory_obligations', options);
+  return api.getAll('statutory_obligations', options);
 }
 
 /**
@@ -169,7 +169,7 @@ export async function listUnaddressedFaults() {
  * hands the reader this.
  */
 export function listStatutoryExclusions() {
-  return api.get('statutory_exclusions', { orderBy: 'decided_at', ascending: false });
+  return api.getAll('statutory_exclusions', { orderBy: 'decided_at', ascending: false });
 }
 
 /**

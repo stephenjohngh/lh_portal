@@ -2,6 +2,7 @@
 import { errMessage } from '../../../utils/errors.js';
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
+import { readAllPages, chunks } from '$lib/utils/readAllPages.js';
 import { api }      from '$lib/utils/api';
 import { logAudit } from '$lib/utils/auditLogger';
 import { getLogger } from '$lib/utils/logger';
@@ -150,13 +151,18 @@ function createMorStore() {
       return;
     }
     try {
-      const { data, error } = await supabase
-        .from('mor_timeline_entries')
-        .select('id, case_id, entry_type, contact_kind, content, created_at')
-        .eq('entry_type', 'reporter_contact')
-        .in('case_id', caseIds)
-        .order('created_at', { ascending: true });
-      if (error) throw error;
+      // Chunked and paged: every case's contacts, however many cases.
+      const data = [];
+      for (const ids of chunks(caseIds)) {
+        data.push(...await readAllPages(() => supabase
+          .from('mor_timeline_entries')
+          .select('id, case_id, entry_type, contact_kind, content, created_at')
+          .eq('entry_type', 'reporter_contact')
+          .in('case_id', ids)
+          .order('created_at', { ascending: true })
+          .order('id')));
+      }
+      data.sort((a, b) => (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0));
       const byCase = {};
       for (const row of (data ?? [])) {
         (byCase[row.case_id] ??= []).push(row);
@@ -171,12 +177,12 @@ function createMorStore() {
   // A failure stays on the store (`error`) and is not re-thrown, as before.
   const fetchCases = storeLoader(update,
     async () => {
-      const { data, error } = await supabase
+      // Every page: one read stops at 1,000 cases and says nothing.
+      return readAllPages(() => supabase
         .from('mor_cases')
         .select(CASE_SELECT)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data ?? [];
+        .order('created_at', { ascending: false })
+        .order('id'));
     },
     (cases) => {
       // Reporter-contact map is dashboard-only; load it in the background

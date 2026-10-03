@@ -20,7 +20,7 @@ const h = vi.hoisted(() => {
   let result = { data: [], error: null };
   const makeBuilder = () => {
     const b = {};
-    for (const m of ['select', 'eq', 'in', 'insert', 'delete']) b[m] = vi.fn(() => b);
+    for (const m of ['select', 'eq', 'in', 'insert', 'delete', 'order', 'range']) b[m] = vi.fn(() => b);
     b.then = (res, rej) => Promise.resolve(result).then(res, rej);
     return b;
   };
@@ -32,6 +32,7 @@ const h = vi.hoisted(() => {
 });
 
 vi.mock('$lib/supabaseClient', () => ({ supabase: h.supabase }));
+vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
 
 const { listAttachments, addAttachments, purgeAttachments, setAttachments, deleteStorageObjects } =
   await import('./mediaAttachments.js');
@@ -52,7 +53,7 @@ describe('listAttachments', () => {
     h.setResult({ data: [{ entity_id: 'i1', storage_url: 'u1', storage_provider: 'google_drive' }], error: null });
     const out = await listAttachments('component_inspection', ['i1', 'i2']);
     const b = h.supabase.from.mock.results[0].value;
-    expect(b.select).toHaveBeenCalledWith('entity_id, storage_url, storage_provider');
+    expect(b.select).toHaveBeenCalledWith('id, entity_id, storage_url, storage_provider');
     expect(b.eq).toHaveBeenCalledWith('entity_type', 'component_inspection');
     expect(b.in).toHaveBeenCalledWith('entity_id', ['i1', 'i2']);
     expect(out[0].storage_provider).toBe('google_drive');
@@ -64,6 +65,18 @@ describe('listAttachments', () => {
     h.supabase.from.mockClear();
     expect(await listAttachments('x', [])).toEqual([]);
     expect(h.supabase.from).not.toHaveBeenCalled();
+  });
+
+  // ⛔ A building walk has over a thousand inspections. One .in() of every id
+  // overran the request URL, and one read stopped at 1,000 rows — then purge
+  // deleted rows for files it had never listed.
+  it('reads a long id list in chunks, each one paged', async () => {
+    const ids = Array.from({ length: 700 }, (_, i) => `i${i}`);
+    await listAttachments('component_inspection', ids);
+    const inCalls = h.supabase.from.mock.results.map(r => r.value.in.mock.calls[0]?.[1]);
+    expect(inCalls.length).toBe(3);
+    expect(inCalls.flat()).toEqual(ids);
+    for (const r of h.supabase.from.mock.results) expect(r.value.range).toHaveBeenCalledWith(0, 999);
   });
 
   it('throws on a db error', async () => {
@@ -159,12 +172,25 @@ describe('purgeAttachments hands the provider to the server', () => {
     expect(sentBody().files).toEqual([{ url: 'u1', provider: null }]);
   });
 
-  it('skips storage cleanup when nothing matches but still issues the delete', async () => {
+  // It deletes the rows it LISTED, by id — never "everything for these
+  // entities", which would also take a row added after the listing, whose
+  // file nobody deleted.
+  it('deletes nothing when nothing matches', async () => {
     h.setResult({ data: [], error: null });
     await purgeAttachments('x', ['i1']);
     expect(globalThis.fetch).not.toHaveBeenCalled();
     const deleted = h.supabase.from.mock.results.some(r => r.value.delete.mock.calls.length);
-    expect(deleted).toBe(true);
+    expect(deleted).toBe(false);
+  });
+
+  it('deletes exactly the rows whose files went, by row id', async () => {
+    h.setResult({ data: [
+      { id: 'm1', entity_id: 'i1', storage_url: 'u1', storage_provider: 'google_drive' },
+      { id: 'm2', entity_id: 'i2', storage_url: 'u2', storage_provider: 'google_drive' },
+    ], error: null });
+    await purgeAttachments('x', ['i1', 'i2']);
+    const del = h.supabase.from.mock.results.map(r => r.value).find(b => b.delete.mock.calls.length);
+    expect(del.in).toHaveBeenCalledWith('id', ['m1', 'm2']);
   });
 
   it('no-ops entirely for an empty id list', async () => {

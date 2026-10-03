@@ -52,7 +52,7 @@ export function listCurrentDocuments(filters = {}) {
   const f = { status: 'current' };
   if (filters.schedule1_category != null) f.schedule1_category = filters.schedule1_category;
   if (filters.document_type) f.document_type = filters.document_type;
-  return api.get('gt_documents', { filters: f, orderBy: 'effective_from', ascending: false });
+  return api.getAll('gt_documents', { filters: f, orderBy: 'effective_from', ascending: false });
 }
 
 /**
@@ -71,7 +71,7 @@ export function listCurrentDocuments(filters = {}) {
  * @param {string} to   ISO date
  */
 export async function listReviewsDue(from, to) {
-  const rows = await api.get('gt_documents', {
+  const rows = await api.getAll('gt_documents', {
     select: 'id, title, review_due, status',
     filters: { status: 'current' },
     orderBy: 'review_due',
@@ -89,7 +89,7 @@ export async function listReviewsDue(from, to) {
  * @param {string} to ISO date
  */
 export async function listRiskReviewsDue(to) {
-  const rows = await api.get('gt_risks', { select: 'id, reference, title, status, review_due', orderBy: 'review_due' });
+  const rows = await api.getAll('gt_risks', { select: 'id, reference, title, status, review_due', orderBy: 'review_due' });
   return (rows ?? []).filter((r) => r.review_due && r.review_due <= to
     && r.status !== 'closed' && r.status !== 'superseded');
 }
@@ -242,7 +242,7 @@ export function removeLink(linkId) {
 
 /** List risks (optionally filtered), reference order. */
 export function listRisks(filters = {}) {
-  return api.get('gt_risks', { filters, orderBy: 'reference', ascending: true });
+  return api.getAll('gt_risks', { filters, orderBy: 'reference', ascending: true });
 }
 
 /** One risk by id. */
@@ -353,7 +353,7 @@ export function updateAccountablePerson(id, patch, userId) {
 
 /** List safety-case notification log rows, newest first. */
 export function listSafetyCaseNotifications() {
-  return api.get('gt_safety_case_notifications', { orderBy: 'created_at', ascending: false });
+  return api.getAll('gt_safety_case_notifications', { orderBy: 'created_at', ascending: false });
 }
 
 /**
@@ -385,9 +385,10 @@ export function markSafetyCaseNotified(id, patch, userId) {
  * @param {string} documentId
  */
 export function listAuditHistory(documentId) {
-  return api.get('gt_audit', {
+  return api.getAll('gt_audit', {
     filters: { target_table: 'gt_documents', target_id: documentId },
     orderBy: 'seq',
+    tiebreak: false,   // seq is gt_audit's primary key; the table has no id
     ascending: true
   });
 }

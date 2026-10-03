@@ -52,7 +52,7 @@ function createIssuesStore() {
 
     // A failure stays on the store (`error`) and is not re-thrown, as before.
     fetchIssues: storeLoader(update, async () => {
-        const data = await api.get('issues', {
+        const data = await api.getAll('issues', {
           select: `
             *,
             issue_number,

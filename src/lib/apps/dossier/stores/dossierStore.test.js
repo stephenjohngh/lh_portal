@@ -17,6 +17,7 @@ const h = vi.hoisted(() => {
     createMany: vi.fn((t, rows) => Promise.resolve(rows)),
     getAllIn: vi.fn(() => Promise.resolve([])),
   });
+  api.getAll = api.get;   // the real getAll pages; here it answers as get does
   const logAudit = vi.fn();
   const listDocuments = vi.fn(() => Promise.resolve([]));
   const deleteDocumentsFor = vi.fn(() => Promise.resolve(0));

@@ -72,9 +72,9 @@ function createBuildingAssetsStore() {
           api.get('type_attributes',     { orderBy: 'presentation_order' }),
           api.get('type_attribute_options', { orderBy: 'presentation_order' }),
           api.get('plans',              { orderBy: 'building',           ascending: true }),
-          api.get('spaces',             { orderBy: 'created_at',         ascending: false }),
-          api.get('space_component_overrides'),
-          api.get('plan_annotations',   { orderBy: 'created_at',         ascending: false })
+          api.getAll('spaces',             { orderBy: 'created_at',         ascending: false }),
+          api.getAll('space_component_overrides'),
+          api.getAll('plan_annotations',   { orderBy: 'created_at',         ascending: false })
         ]);
 
       const { attrDefs, systemAttrDefs, attrOptions } =

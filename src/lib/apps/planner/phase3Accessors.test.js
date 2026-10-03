@@ -13,7 +13,12 @@ vi.mock('$lib/utils/api', () => ({
       const f = opts?.filters ?? {};
       return rows.filter((r) => Object.entries(f).every(([k, v]) => r[k] === v));
     }),
-    getAll: vi.fn(async (table) => h.tables[table] ?? []),
+    // Filters applied as the real getAll applies them.
+    getAll: vi.fn(async (table, opts) => {
+      const rows = h.tables[table] ?? [];
+      const f = opts?.filters ?? {};
+      return rows.filter((r) => Object.entries(f).every(([k, v]) => r[k] === v));
+    }),
     getAllIn: vi.fn(async (table, col, ids) => (h.tables[table] ?? []).filter((r) => ids.includes(r[col]))),
   },
 }));

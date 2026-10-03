@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const h = vi.hoisted(() => ({ tables: {} }));
 vi.mock('$lib/utils/api', () => ({
-  api: { get: vi.fn(async (table) => h.tables[table] ?? []) },
+  api: (() => { const get = vi.fn(async (table) => h.tables[table] ?? []); return { get, getAll: get }; })(),
 }));
 vi.mock('./stores/inspectionDefinitionsStore.js', () => ({ inspectionDefinitionsStore: {} }));
 vi.mock('$lib/apps/inspection/public.js', () => ({ listWalkSessions: vi.fn(async () => []) }));

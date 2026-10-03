@@ -274,6 +274,6 @@ export function listWorksLinesFor(componentIds) {
  * @param {string} to  ISO date — nothing due after this is returned
  */
 export async function listWorksDue(to) {
-  const rows = await api.get('works_schedules', { select: '*', filters: { status: 'issued' } });
+  const rows = await api.getAll('works_schedules', { select: '*', filters: { status: 'issued' } });
   return (rows ?? []).filter((w) => w.expected_completion && w.expected_completion <= to);
 }

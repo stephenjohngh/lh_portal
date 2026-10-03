@@ -23,7 +23,7 @@ const h = vi.hoisted(() => {
   const makeBuilder = () => {
     const b = {};
     const chain = () => b;
-    for (const m of ['select', 'eq', 'in', 'order', 'insert', 'update', 'delete']) b[m] = vi.fn(chain);
+    for (const m of ['select', 'eq', 'in', 'order', 'range', 'insert', 'update', 'delete']) b[m] = vi.fn(chain);
     b.single = vi.fn(() => Promise.resolve(single));
     b.then = (res, rej) => Promise.resolve(list).then(res, rej);
     return b;

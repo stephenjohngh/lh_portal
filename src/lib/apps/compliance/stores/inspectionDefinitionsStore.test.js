@@ -19,6 +19,7 @@ const h = vi.hoisted(() => {
     delete: vi.fn(() => Promise.resolve()),
     upsert: vi.fn(() => Promise.resolve()),
   };
+  api.getAll = api.get;   // the real getAll pages; here it answers as get does
   const supabase = { auth: { getSession: vi.fn(() => Promise.resolve({ data: { session: { user: { id: 'u1' } } } })) } };
   const logAudit = vi.fn();
   return { api, supabase, logAudit };

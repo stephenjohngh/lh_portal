@@ -5,6 +5,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 const h = vi.hoisted(() => ({
   api: { get: vi.fn(), getById: vi.fn() },
 }));
+h.api.getAll = h.api.get;   // the real getAll pages; here it answers as get does
 vi.mock('$lib/utils/api', () => ({ api: h.api }));
 
 const { listCases, morCaseLabel } = await import('./public.js');

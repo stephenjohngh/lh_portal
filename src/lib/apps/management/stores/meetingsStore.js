@@ -63,7 +63,7 @@ function createMeetingsStore() {
   /** Refresh the list and re-derive `current`. */
   async function load() {
     try {
-      const list = await api.get('meetings', {
+      const list = await api.getAll('meetings', {
         select:    '*',
         orderBy:   'meeting_date',
         ascending: false

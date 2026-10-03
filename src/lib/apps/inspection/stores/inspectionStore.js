@@ -341,8 +341,10 @@ function createInspectionStore() {
         // convention permits that), and importing the Compliance interface would
         // drag its store and the whole shipped register seed into the phone
         // app's bundle for one query that returns the same rows.
-        api.get('statutory_obligations', { orderBy: 'presentation_order' }),
-        api.get('walk_sessions', {
+        api.getAll('statutory_obligations', { orderBy: 'presentation_order' }),
+        // ⛔ Every page: past 1,000 closed walks, a rarely run duty's last walk
+        // fell off the end of a single read and its due date read "never done".
+        api.getAll('walk_sessions', {
           // counts drive completeness in computeInspectionSchedule (a finished-early
           // session must not reset the clock).
           select:    'id, definition_id, status, closed_at, inspected_components_count, total_components_count',
@@ -408,7 +410,7 @@ function createInspectionStore() {
     let base = null, usingCache = false;
     try {
       const userId = await getCurrentUserId();
-      base = await api.get('walk_sessions', {
+      base = await api.getAll('walk_sessions', {
         filters:   { created_by: userId },
         orderBy:   'started_at',
         ascending: false,
@@ -1094,7 +1096,9 @@ function createInspectionStore() {
   async function loadSessionInspections(sessionId) {
     // Note: type_code on components is NOT a FK so we cannot join to component_types here.
     // Type name/colour/initial are resolved client-side from $inspectionStore.types.
-    const rows = await api.get('component_inspections', {
+    // ⛔ Every page: a building-wide walk records 1,092 inspections, and a
+    // single read stopped at 1,000 (inspection/public.js already paged this).
+    const rows = await api.getAll('component_inspections', {
       select:    '*, component:components!component_id(asset_id, label, type_code, status, floor:floors!floor_id(short_name, level_order))',
       filters:   { walk_session_id: sessionId },
       orderBy:   'inspected_at',

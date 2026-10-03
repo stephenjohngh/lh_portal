@@ -7,7 +7,7 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock('$lib/utils/api', () => ({
-  api: { get: vi.fn(async () => h.obligations) },
+  api: (() => { const get = vi.fn(async () => h.obligations); return { get, getAll: get }; })(),
 }));
 vi.mock('./stores/inspectionDefinitionsStore.js', () => ({ inspectionDefinitionsStore: {} }));
 vi.mock('$lib/apps/inspection/public.js', () => ({ listWalkSessions: vi.fn(async () => h.sessions) }));

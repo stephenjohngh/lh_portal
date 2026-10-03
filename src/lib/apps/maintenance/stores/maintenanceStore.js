@@ -97,7 +97,10 @@ function createMaintenanceStore() {
         // gone (migration 204) and the obligation library belongs to another
         // app, so it is fetched through its public.js and joined in memory by
         // obligation_id — an embed would be this app reaching into another's table.
-        api.get('maintenance_jobs', {
+        // ⛔ Every page. Each completion creates the next job, so this table
+        // passes 1,000 rows — and a single read, oldest first, then dropped
+        // the NEWEST: the upcoming work.
+        api.getAll('maintenance_jobs', {
           orderBy:   'scheduled_date',
           ascending: true,
         }),
@@ -107,7 +110,7 @@ function createMaintenanceStore() {
         // walk-evidenced one belongs to the Inspection app's due list, not here.
         soft('the planned obligations', listPlannedObligations({ activeOnly: true })
           .then(defs => defs.filter(isJobEvidenced))),
-        api.get('maintenance_documents', {
+        api.getAll('maintenance_documents', {
           select:    '*, job:maintenance_jobs(id, title, scope_label, scheduled_date)',
           orderBy:   'created_at',
           ascending: false,
@@ -236,7 +239,7 @@ function createMaintenanceStore() {
 
   async function loadJobComponents(jobId) {
     const comps = await api.get('maintenance_job_components', {
-      select:  '*, component:components(id, asset_id, name, label, type_code)',
+      select:  '*, component:components(id, asset_id, label, type_code)',
       filters: { job_id: jobId },
       orderBy: 'created_at',
     });
@@ -271,10 +274,20 @@ function createMaintenanceStore() {
    */
   async function loadScopeComponents(scopeType, scopeId) {
     if (!scopeId || scopeType === 'building' || scopeType === 'component') return [];
-    const filterKey = scopeType === 'system' ? 'system_id' : 'type_id';
-    return api.get('components', {
-      select:  'id, asset_id, name, label, type_code, primary_attribute',
-      filters: { [filterKey]: scopeId },
+    // ⛔ A component carries only its type CODE; the system belongs to the
+    // type. This used to filter components on `system_id` / `type_id`, columns
+    // that do not exist, so every type- or system-scoped job failed to list its
+    // components (unseen only because no job had ever been created, 2026-10-03).
+    // The job's scope_id is a component_types id or a building_systems id.
+    const types = await api.get('component_types', {
+      select:  'code',
+      filters: scopeType === 'system' ? { building_system_id: scopeId } : { id: scopeId },
+    });
+    const codes = types.map((t) => t.code).filter(Boolean);
+    if (codes.length === 0) return [];
+    // Every page: one system can hold more components than a single read returns.
+    return api.getAllIn('components', 'type_code', codes, {
+      select:  'id, asset_id, label, type_code, primary_attribute',
       orderBy: 'asset_id',
     });
   }

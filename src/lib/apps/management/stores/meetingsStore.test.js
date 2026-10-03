@@ -26,6 +26,7 @@ const h = vi.hoisted(() => {
     update:  vi.fn((t, id, d) => Promise.resolve({ id, title: 'T', ...d })),
     delete:  vi.fn(() => Promise.resolve()),
   };
+  api.getAll = api.get;   // the real getAll pages; here it answers as get does
   return { supabase, api, logAudit: vi.fn() };
 });
 

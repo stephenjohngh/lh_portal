@@ -10,6 +10,7 @@ import { get } from 'svelte/store';
 
 const h = vi.hoisted(() => {
   let result = { data: [], error: null, count: 0 };
+  let pages = [];   // when set, each awaited query takes the next one
   // Builder where every method returns the builder, and awaiting the builder
   // resolves `result` (covers .range(), the trailing .eq()/.in(), and .gte()).
   const makeBuilder = () => {
@@ -18,11 +19,11 @@ const h = vi.hoisted(() => {
     for (const m of ['select', 'eq', 'gte', 'lte', 'or', 'order', 'range', 'update', 'delete', 'insert', 'in']) {
       b[m] = vi.fn(chain);
     }
-    b.then = (res, rej) => Promise.resolve(result).then(res, rej);
+    b.then = (res, rej) => Promise.resolve(pages.length ? pages.shift() : result).then(res, rej);
     return b;
   };
   const supabase = { from: vi.fn(() => makeBuilder()) };
-  return { supabase, setResult: (r) => { result = r; } };
+  return { supabase, setResult: (r) => { result = r; }, setPages: (p) => { pages = p; } };
 });
 
 vi.mock('$lib/supabaseClient', () => ({ supabase: h.supabase }));
@@ -33,6 +34,7 @@ const { auditLogsStore } = await import('./auditLogsStore.js');
 beforeEach(() => {
   vi.clearAllMocks();
   h.setResult({ data: [], error: null, count: 0 });
+  h.setPages([]);
   auditLogsStore.reset();
 });
 
@@ -128,6 +130,21 @@ describe('getStats', () => {
     expect(stats.flaggedEvents).toBe(1);
     expect(stats.authEvents).toBe(2);
     expect(stats.planEvents).toBe(1);
+  });
+});
+
+// ⛔ One read stops at 1,000 rows. The busiest 30 days so far held 1,127
+// events, so the figures would have been understated with nothing saying so.
+describe('reads past 1,000 rows', () => {
+  const page = (n) => ({ data: Array.from({ length: n }, () => ({ event_type: 'failed_login', event_category: 'auth', severity: 'warning', flagged: false })), error: null });
+
+  it('getStats counts every page', async () => {
+    h.setPages([page(1000), page(127)]);
+    const stats = await auditLogsStore.getStats(30);
+    expect(stats.totalEvents).toBe(1127);
+    expect(stats.failedLogins).toBe(1127);
+    const ranges = h.supabase.from.mock.results.map(r => r.value.range.mock.calls[0]);
+    expect(ranges).toEqual([[0, 999], [1000, 1999]]);
   });
 });
 

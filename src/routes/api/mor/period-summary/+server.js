@@ -39,6 +39,7 @@ import {
   TRIAGE_LABEL, DECISION_LABEL,
   CHANNEL_LABEL, MECHANISM_LABEL, bsrReportClock,
 } from '$lib/apps/mor/utils/morHelpers';
+import { readAllPages } from '$lib/utils/readAllPages.js';
 
 const logger = getLogger('mor/period-summary');
 
@@ -171,11 +172,16 @@ export async function POST({ request }) {
   const svc = getSvc();
 
   // All cases — we need every case that was open at any point in the period.
-  const { data: cases = [], error: cErr } = await svc
-    .from('mor_cases')
-    .select('*')
-    .order('created_at', { ascending: true });
-  if (cErr) {
+  // Every page: a statutory summary built from the first 1,000 cases would
+  // read as complete.
+  let cases;
+  try {
+    cases = await readAllPages(() => svc
+      .from('mor_cases')
+      .select('*')
+      .order('created_at', { ascending: true })
+      .order('id'));
+  } catch (/** @type {any} */ cErr) {
     logger('❌ case fetch:', cErr.message);
     return json({ error: 'Could not load cases.' }, { status: 500 });
   }

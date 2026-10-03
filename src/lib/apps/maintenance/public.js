@@ -86,7 +86,7 @@ export function listJobEvidence() {
  * @param {string} to  ISO date — nothing expiring after this is returned
  */
 export async function listCertificateExpiries(to) {
-  const rows = await api.get('maintenance_documents', {
+  const rows = await api.getAll('maintenance_documents', {
     select: 'id, filename, doc_type, expiry_date, job:maintenance_jobs(id, title)',
     orderBy: 'expiry_date',
   });

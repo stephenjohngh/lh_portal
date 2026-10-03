@@ -58,6 +58,7 @@ const h = vi.hoisted(() => {
     updateMany: vi.fn(() => Promise.resolve([])),
     create:     vi.fn(() => Promise.resolve({})),
   };
+  api.getAll = api.get;   // the real getAll pages; here it answers as get does
 
   const del          = vi.fn(() => Promise.resolve({ ok: true }));
   const docApi       = {

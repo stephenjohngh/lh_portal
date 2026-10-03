@@ -93,7 +93,7 @@ function createComplaintsStore() {
   // ── Reading ───────────────────────────────────────────────────────────────
 
   const load = storeLoader(update,
-    () => api.get('complaint_cases', { select: CASE_SELECT, orderBy: 'received_at', ascending: false }),
+    () => api.getAll('complaint_cases', { select: CASE_SELECT, orderBy: 'received_at', ascending: false }),
     (cases) => ({ cases }),
     { what: 'the complaints', log: logger });
 

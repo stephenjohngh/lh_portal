@@ -83,10 +83,10 @@ function createPlannerStore() {
   const load = storeLoader(update,
     async () => {
       const [events, occurrences, categories, dayMarks] = await Promise.all([
-        api.get('planner_events', { orderBy: 'start_date', ascending: true }),
+        api.getAll('planner_events', { orderBy: 'start_date', ascending: true }),
         api.getAll('planner_occurrences', { orderBy: 'occurs_on' }),
         api.get('planner_categories', { orderBy: 'position' }),
-        api.getAll('planner_day_marks', { orderBy: 'date' }),
+        api.getAll('planner_day_marks', { orderBy: 'date', tiebreak: false }),
       ]);
       return { events, occurrences, categories, dayMarks };
     },

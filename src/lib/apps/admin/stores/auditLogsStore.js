@@ -6,6 +6,7 @@ import { today, DAY_MS } from '../../../utils/dates.js';
 import { downloadCsvRows } from '../../../utils/download.js';
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
+import { api } from '$lib/utils/api';
 import { sanitizeIlikeTerm } from '$lib/utils/pgFilter.js';
 import { getLogger } from '$lib/utils/logger';
 
@@ -129,20 +130,21 @@ function createAuditLogsStore() {
     async exportToCSV(filters = {}) {
       logger('Exporting logs to CSV...');
       try {
-        let query = supabase.from('audit_logs').select('*');
-
-        if (filters.appId)         query = query.eq('app_id', filters.appId);
-        if (filters.userId)        query = query.eq('user_id', filters.userId);
-        if (filters.eventType)     query = query.eq('event_type', filters.eventType);
-        if (filters.eventCategory) query = query.eq('event_category', filters.eventCategory);
-        if (filters.severity)      query = query.eq('severity', filters.severity);
-        if (filters.startDate)     query = query.gte('created_at', `${filters.startDate}T00:00:00.000Z`);
-        if (filters.endDate)       query = query.lte('created_at', `${filters.endDate}T23:59:59.999Z`);
-        if (filters.flaggedOnly)   query = query.eq('flagged', true);
-
-        const { data, error } = await query.order('created_at', { ascending: false });
-        if (error) throw error;
-        if (!data || data.length === 0) throw new Error('No logs to export');
+        // ⛔ Every page. A single read stopped at 1,000 rows, so an unfiltered
+        // export held the newest 1,000 of 2,547 and nothing said so (2026-10-03).
+        const data = await api.readAll(() => {
+          let query = supabase.from('audit_logs').select('*');
+          if (filters.appId)         query = query.eq('app_id', filters.appId);
+          if (filters.userId)        query = query.eq('user_id', filters.userId);
+          if (filters.eventType)     query = query.eq('event_type', filters.eventType);
+          if (filters.eventCategory) query = query.eq('event_category', filters.eventCategory);
+          if (filters.severity)      query = query.eq('severity', filters.severity);
+          if (filters.startDate)     query = query.gte('created_at', `${filters.startDate}T00:00:00.000Z`);
+          if (filters.endDate)       query = query.lte('created_at', `${filters.endDate}T23:59:59.999Z`);
+          if (filters.flaggedOnly)   query = query.eq('flagged', true);
+          return query.order('created_at', { ascending: false }).order('id', { ascending: false });
+        }, { label: 'audit_logs' });
+        if (data.length === 0) throw new Error('No logs to export');
 
         const headers = [
           'Timestamp', 'App', 'User Email', 'User ID',
@@ -253,12 +255,13 @@ function createAuditLogsStore() {
       try {
         const startDate = new Date(Date.now() - days * DAY_MS);   // elapsed: the last N x 24 h
 
-        const { data, error } = await supabase
+        // Every page: the busiest 30 days so far held 1,127 events, and one read
+        // stops at 1,000 — the figures would have been understated, silently.
+        const data = await api.readAll(() => supabase
           .from('audit_logs')
           .select('event_type, event_category, app_id, severity, flagged')
-          .gte('created_at', startDate.toISOString());
-
-        if (error) throw error;
+          .gte('created_at', startDate.toISOString())
+          .order('id'), { label: 'audit_logs' });
 
         const stats = {
           totalEvents:       data.length,

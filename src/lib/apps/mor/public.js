@@ -16,7 +16,7 @@ const CASE_REF_SELECT = 'id, reference, status, mechanism, description, location
  * @returns {Promise<Array<{id:string,reference:string,status:string,mechanism:string,description:string,location_text:string,identification_date:string}>>}
  */
 export function listCases() {
-  return api.get('mor_cases', {
+  return api.getAll('mor_cases', {
     select: CASE_REF_SELECT,
     orderBy: 'identification_date',
     ascending: false,
@@ -56,7 +56,7 @@ export function morCaseLabel(c) {
  *   status: string, decided: boolean, label: string }>>}  deadline YYYY-MM-DD
  */
 export async function listBsrReportDeadlines() {
-  const rows = await api.get('mor_cases', {
+  const rows = await api.getAll('mor_cases', {
     select: 'id, reference, status, identification_date, decision_outcome, '
           + 'bsr_report_submitted_at, description, location_text, mechanism',
   });

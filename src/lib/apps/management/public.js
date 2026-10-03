@@ -38,7 +38,7 @@ function within(rows, column, from, to) {
  * @param {string} to   ISO date
  */
 export async function listMeetings(from, to) {
-  const rows = await api.get('meetings', {
+  const rows = await api.getAll('meetings', {
     select: 'id, title, meeting_date, status',
     orderBy: 'meeting_date',
   });

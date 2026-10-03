@@ -233,9 +233,9 @@ function createStatutoryRegisterStore() {
   async function load() {
     update(s => ({ ...s, loading: true, error: null }));
     try {
-      let rows = await api.getAll('statutory_register', { orderBy: 'template_key' });
+      let rows = await api.getAll('statutory_register', { orderBy: 'template_key', tiebreak: false });
       if (await levelWithSeed(rows ?? [])) {
-        rows = await api.getAll('statutory_register', { orderBy: 'template_key' });
+        rows = await api.getAll('statutory_register', { orderBy: 'template_key', tiebreak: false });
       }
       if (!rows?.length) {
         logger('table is empty and could not be seeded — using the shipped register');

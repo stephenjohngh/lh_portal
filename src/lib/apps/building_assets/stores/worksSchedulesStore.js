@@ -65,7 +65,7 @@ function createWorksSchedulesStore() {
   // ── Schedules ────────────────────────────────────────────────────────────
 
   const loadSchedules = storeLoader(update,
-    () => api.get('works_schedules', { orderBy: 'created_at', ascending: false }),
+    () => api.getAll('works_schedules', { orderBy: 'created_at', ascending: false }),
     (schedules) => ({ schedules }),
     { what: 'the works schedules' });
 

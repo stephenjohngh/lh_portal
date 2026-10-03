@@ -24,6 +24,7 @@ import { env }                  from '$env/dynamic/private';
 import { requireAdmin }         from '$lib/server/requireAuth';
 import { computeReviewTick }    from '$lib/apps/golden_thread/utils/gtReview';
 import { getLogger }            from '$lib/utils/logger';
+import { readAllPages } from '$lib/utils/readAllPages.js';
 
 const logger = getLogger('gt-review-tick');
 
@@ -56,16 +57,18 @@ export async function POST({ request }) {
 
   // 2. Read-only scan of current documents (service role — no caller RLS needed).
   const supabase = createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY ?? '');
-  const { data, error } = await supabase
-    .from('gt_documents')
-    .select('id, reference, status, review_due')
-    .eq('status', 'current');
-
-  if (error) {
+  let data;
+  try {
+    data = await readAllPages(() => supabase
+      .from('gt_documents')
+      .select('id, reference, status, review_due')
+      .eq('status', 'current')
+      .order('id'));
+  } catch (/** @type {any} */ error) {
     logger('review-tick query failed:', error.message);
     return json({ error: 'Failed to read register' }, { status: 500 });
   }
 
-  const summary = computeReviewTick(data ?? [], todayISO());
+  const summary = computeReviewTick(data, todayISO());
   return json({ ranAt: new Date().toISOString(), ...summary });
 }

@@ -117,7 +117,7 @@ function createDossierStore() {
   // RLS scopes this to packs the caller owns (admins see all), so no filter
   // is needed here — and adding one would be a false sense of security.
   const loadPacks = storeLoader(update,
-    () => api.get('dossier_packs', { orderBy: 'created_at', ascending: false }),
+    () => api.getAll('dossier_packs', { orderBy: 'created_at', ascending: false }),
     (packs) => ({ packs: sortPacks(packs) }),
     { what: 'the packs' });
 
@@ -536,7 +536,7 @@ function createDossierStore() {
    * links.
    */
   async function loadAllPublications() {
-    const all = await api.get('dossier_publications', {
+    const all = await api.getAll('dossier_publications', {
       orderBy: 'created_at', ascending: false,
     });
     update(s => ({ ...s, allPublications: all }));

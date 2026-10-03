@@ -14,6 +14,7 @@ import { sanitizeIlikeTerm }          from '$lib/utils/pgFilter.js';
 import { docTypeFromMime, isUnclassifiedDocType } from '$lib/utils/documentUtils.js';
 import { getLogger }                  from '$lib/utils/logger';
 import { checkDocuments }             from './documentCheck.js';
+import { readAllPages, chunks } from '$lib/utils/readAllPages.js';
 
 const logger = getLogger('DocumentLibrary');
 
@@ -57,10 +58,9 @@ export function providerFor(doc) {
 export async function providersForFileIds(fileIds = []) {
   const ids = [...new Set((fileIds ?? []).filter(Boolean))];
   if (!ids.length) return new Map();
-  const { data, error } = await getDb()
-    .from('document_library').select('provider_file_id, provider').in('provider_file_id', ids);
-  if (error) throw error;
-  return new Map((data ?? []).map(r => [r.provider_file_id, r.provider ?? null]));
+  const data = await readIn(ids, (part) => getDb()
+    .from('document_library').select('id, provider_file_id, provider').in('provider_file_id', part));
+  return new Map(data.map(r => [r.provider_file_id, r.provider ?? null]));
 }
 
 /**
@@ -233,12 +233,11 @@ export async function listDocuments(opts = {}) {
 export async function checkDocumentsById(ids = []) {
   const unique = [...new Set((ids ?? []).filter(Boolean))];
   if (!unique.length) return {};
-  const { data, error } = await getDb()
+  const data = await readIn(unique, (part) => getDb()
     .from('document_library')
     .select('id, entity_type, entity_id, provider, provider_file_id')
-    .in('id', unique);
-  if (error) throw error;
-  return checkDocuments(getDb(), data ?? [], providerFor);
+    .in('id', part));
+  return checkDocuments(getDb(), data, providerFor);
 }
 
 /**
@@ -335,4 +334,16 @@ export async function tidyFolder(provider, folderId) {
  */
 export async function listFolders(folderPath) {
   return storageProvider.listFiles(folderPath ?? '', { foldersOnly: true });
+}
+
+/**
+ * Every row for a long id list: chunked (one .in() of hundreds of ids overruns
+ * the URL) and paged (one read stops at 1,000 rows).
+ * @param {string[]} ids
+ * @param {(part: string[]) => any} build  the query for one chunk, unordered
+ */
+async function readIn(ids, build) {
+  const out = [];
+  for (const part of chunks(ids)) out.push(...await readAllPages(() => build(part).order('id')));
+  return out;
 }

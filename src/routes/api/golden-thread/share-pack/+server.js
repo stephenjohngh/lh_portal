@@ -20,6 +20,7 @@ import { ownerOf } from '$lib/server/storage/index.js';
 import { buildZip }      from '$lib/server/zip.js';
 import { buildManifest, renderReadme, packPath } from '$lib/server/gtSharePack.js';
 import { getLogger }     from '$lib/utils/logger';
+import { readAllPages, chunks } from '$lib/utils/readAllPages.js';
 
 const logger = getLogger('GtSharePack');
 const db = createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY ?? '');
@@ -30,24 +31,29 @@ export async function POST({ request }) {
 
   try {
     // Current register documents, reference order.
-    const { data: docs, error: dErr } = await db
+    // ⛔ Every page, and every chunk below: this is the pack sent to the
+    // regulator, and one that stopped at 1,000 documents would read as whole.
+    const docs = await readAllPages(() => db
       .from('gt_documents')
       .select('id, reference, title, document_type, schedule1_category, status, effective_from, review_due, safety_critical, file_checksum')
       .eq('status', 'current')
-      .order('reference', { ascending: true });
-    if (dErr) throw dErr;
+      .order('reference', { ascending: true })
+      .order('id'));
 
     const ids = (docs ?? []).map((d) => d.id);
 
     // Their attached files (shared document_library, entity_type='gt_document').
     const libByDoc = new Map();
     if (ids.length) {
-      const { data: lib, error: lErr } = await db
-        .from('document_library')
-        .select('id, entity_id, provider, provider_file_id, filename, mime_type, file_checksum')
-        .eq('entity_type', 'gt_document')
-        .in('entity_id', ids);
-      if (lErr) throw lErr;
+      const lib = [];
+      for (const part of chunks(ids)) {
+        lib.push(...await readAllPages(() => db
+          .from('document_library')
+          .select('id, entity_id, provider, provider_file_id, filename, mime_type, file_checksum')
+          .eq('entity_type', 'gt_document')
+          .in('entity_id', part)
+          .order('id')));
+      }
       for (const row of lib ?? []) {
         const arr = libByDoc.get(row.entity_id) ?? [];
         arr.push(row);
