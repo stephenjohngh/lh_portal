@@ -360,10 +360,32 @@ export function groupRows(rows, by = 'group') {
 
 export const HISTORY_MODES = ['completed', 'due'];
 
+// ⛔ 'completed' mode lists every occurrence CARRIED OUT — an attempt that did
+// not complete (a walk left unfinished, a visit that could not finish) is
+// evidence too, and is listed. It used to be labelled "Completed in the
+// period" and counted as such, on screen and in the Word report, so an
+// unfinished walk read as a completion (§6ccc item 6, 2026-10-04). The key
+// stays; the words and the count say what is in the list.
 export const HISTORY_MODE_LABEL = {
-  completed: 'Completed in the period',
+  completed: 'Carried out in the period',
   due: 'Due in the period',
 };
+
+/**
+ * The one sentence that counts a history list, for the screen and the Word
+ * report alike: carried-out occurrences are split into completed and not.
+ * @param {{ status?: string }[]} history
+ * @param {string} mode  'completed' | 'due'
+ */
+export function historyCountText(history, mode) {
+  const list = history ?? [];
+  const n = list.length;
+  const occ = `${n} occurrence${n === 1 ? '' : 's'}`;
+  if (mode === 'due') return `${occ} due in the period`;
+  const done = list.filter((h) => h.status === 'completed').length;
+  if (done === n) return `${occ} carried out in the period, ${n === 1 ? 'completed' : 'all completed'}`;
+  return `${occ} carried out in the period — ${done} completed, ${n - done} not completed`;
+}
 
 /**
  * Every occurrence for the selected requirements, within a window.

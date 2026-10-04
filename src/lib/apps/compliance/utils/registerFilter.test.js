@@ -427,7 +427,8 @@ describe('R0 — citation verification evidence', () => {
     // report. Its contribution there was a removal, not a verification.
     for (const key of ['complaints_report_publication', 'complaints_self_assessment']) {
       const e = ALL.find(x => x.key === key);
-      if (e) expect(e.citationVerifiedAgainst, key).toBeUndefined();
+      expect(e, `${key} is not in the register — this check would pass with nothing checked`).toBeTruthy();
+      expect(e?.citationVerifiedAgainst, key).toBeUndefined();
     }
   });
 
@@ -435,7 +436,8 @@ describe('R0 — citation verification evidence', () => {
     // evacuation_alert_system_service cites BS 8629 and mentions FSER reg 7(5)
     // in passing. The standard was not verified.
     const e = ALL.find(x => x.key === 'evacuation_alert_system_service');
-    if (e) expect(e.citationVerifiedAgainst).toBeUndefined();
+    expect(e, 'evacuation_alert_system_service is not in the register').toBeTruthy();
+    expect(e?.citationVerifiedAgainst).toBeUndefined();
   });
 
   it('the URL points at the instrument the row actually cites', () => {

@@ -40,7 +40,7 @@
   import {
     compliancePosition, positionSummary, filterRows, sortRows, groupRows,
     evidenceHistory, SORTS, SORT_LABEL, ROW_STATUS, ROW_STATUS_LABEL,
-    HISTORY_MODES, HISTORY_MODE_LABEL,
+    HISTORY_MODES, HISTORY_MODE_LABEL, historyCountText,
   } from '$lib/utils/obligationReport.js';
   import {
     BASIS, BASIS_LABEL, GROUPS, GROUP_LABEL, HANDLED_BY_LABEL,
@@ -444,7 +444,7 @@
           <select bind:value={histMode} class="sel">
             {#each HISTORY_MODES as m (m)}<option value={m}>{HISTORY_MODE_LABEL[m]}</option>{/each}
           </select>
-          <span class="count">{history.length} occurrence{history.length === 1 ? '' : 's'}</span>
+          <span class="count">{historyCountText(history, histMode)}</span>
         </div>
         <p class="hint">
           Covers the {rows.length} compliance obligation{rows.length === 1 ? '' : 's'} the filters above select.

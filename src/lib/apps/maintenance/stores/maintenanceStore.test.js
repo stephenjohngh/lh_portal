@@ -321,6 +321,8 @@ describe('loadScopeComponents', () => {
     h.setTables({ component_types: [{ code: 'door' }], components: comps });
     await maintenanceStore.loadScopeComponents('type', 't-door');
     const onComponents = [...h.api.get.mock.calls, ...h.api.getAllIn.mock.calls].filter((c) => c[0] === 'components');
-    for (const call of onComponents) expect(JSON.stringify(call)).not.toMatch(/system_id|type_id|name/);
+    // ⚠ Not vacuous: a read that moved off get/getAllIn would leave nothing to check.
+    expect(onComponents.length).toBeGreaterThan(0);
+    for (const call of onComponents) expect(JSON.stringify(call)).not.toMatch(/system_id|type_id|\bname\b/);
   });
 });

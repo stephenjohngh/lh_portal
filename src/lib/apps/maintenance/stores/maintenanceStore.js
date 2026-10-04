@@ -241,7 +241,10 @@ function createMaintenanceStore() {
     const comps = await api.get('maintenance_job_components', {
       select:  '*, component:components(id, asset_id, label, type_code)',
       filters: { job_id: jobId },
-      orderBy: 'created_at',
+      // ⛔ The table has no created_at (id, job_id, component_id, result,
+      // notes), so ordering on it failed every load — unseen because no job
+      // has been created (§6ccc item 6, 2026-10-04). Its own key is stable.
+      orderBy: 'id',
     });
     update(s => ({ ...s, jobComponents: { ...s.jobComponents, [jobId]: comps } }));
     return comps;

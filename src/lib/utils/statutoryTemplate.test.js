@@ -114,6 +114,7 @@ describe('basis — where the requirement comes from', () => {
   // source — these must not cite an instrument as though one required them.
   it('marks a management decision as self-imposed rather than citing a duty', () => {
     const mgmt = STATUTORY_TEMPLATE.filter(e => e.basis === 'management');
+    expect(mgmt.length).toBeGreaterThan(0);   // a renamed basis would otherwise check nothing
     for (const e of mgmt) expect(e.statutoryRef, e.key).toMatch(/self-imposed|insurer|no statutory|our own/i);
   });
 });
@@ -506,6 +507,7 @@ describe('applying a register entry', () => {
 
   it('falls back to an empty scope rather than inventing one', () => {
     const unscoped = schedulable.filter(e => !e.suggestedScope);
+    expect(unscoped.length).toBeGreaterThan(0);
     for (const e of unscoped) expect(templateToObligation(e).scope, e.key).toEqual({});
   });
 });

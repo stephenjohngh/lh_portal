@@ -141,33 +141,41 @@ describe('building the document', () => {
     await packs({});
   });
 
+  // ⚠ §6ccc item 6 (2026-10-04): the tests below were named for what the
+  // document SAYS and only checked that it packed. They now read it.
   it('handles a never-completed row, which prints "Never" rather than blank', async () => {
-    await packs(payload({
+    const text = await textOf(await packs(payload({
       rows: [row({ lastCompleted: null, lastAttempted: null, lastOutcome: null, status: 'breach', statusLabel: 'In breach' })],
       summary: { breach: 1 },
-    }));
+    })));
+    expect(text).toMatch(/AnnualNever—01 Mar 2027In breach/);
   });
 
   it('renders a withdrawn requirement, which still prints with what withdrew it', async () => {
-    await packs(payload({
+    const text = await textOf(await packs(payload({
       rows: [row({
         name: 'Repealed check', status: 'retired', statusLabel: 'Retired',
         retiredOn: '2026-04-01', retiredReason: 'Repealed by SI 2026/123',
       })],
       summary: { retired: 1 },
-    }));
+    })));
+    expect(text).toContain('Repealed check');
+    expect(text).toContain('Repealed by SI 2026/123');
+    expect(text).toContain('Retired');
   });
 
   it('handles an interval breach, which appends to the status cell', async () => {
-    await packs(payload({ rows: [row({ intervalBreached: true })] }));
+    const text = await textOf(await packs(payload({ rows: [row({ intervalBreached: true })] })));
+    expect(text).toContain('On schedule · exceeds max interval');
   });
 
   it('handles an unknown group and an unknown basis without dropping the row', async () => {
-    await packs(payload({ rows: [row({ group: 'invented', basis: 'invented' })] }));
+    const text = await textOf(await packs(payload({ rows: [row({ name: 'Odd one', group: 'invented', basis: 'invented' })] })));
+    expect(text).toContain('Odd one');
   });
 
   it('renders the exclusions section, with and without a review date', async () => {
-    await packs(payload({
+    const text = await textOf(await packs(payload({
       rows: [
         row({ name: 'Lift maintenance', status: 'excluded', statusLabel: 'Recorded as not applicable',
               exclusionReason: 'No lift — four storeys', exclusionDecidedAt: '2026-01-01T00:00:00Z' }),
@@ -176,7 +184,10 @@ describe('building the document', () => {
               exclusionReviewDue: '2027-04-01' }),
       ],
       summary: { excluded: 2 },
-    }));
+    })));
+    expect(text).toContain('No lift — four storeys');
+    expect(text).toContain('All long leases');
+    expect(text.match(/Review 01 Apr 2027/g)).toHaveLength(1);
   });
 
   it('renders the history section in both modes', async () => {
@@ -185,11 +196,17 @@ describe('building the document', () => {
       obligationName: 'Emergency Lighting', statutoryRef: 'BS 5266-1',
       outcome: 'Partial — 3 of 14 observed', by: null, reference: null, notes: null,
     }];
-    await packs(payload({ history, options: { includeHistory: true } }));
-    await packs(payload({
+    // The one entry is an ATTEMPT that did not complete; the document said
+    // "1 occurrence completed in the period" until 2026-10-04.
+    const carried = await textOf(await packs(payload({ history, options: { includeHistory: true } })));
+    expect(carried).toContain('1 occurrence carried out in the period — 0 completed, 1 not completed');
+    expect(carried).not.toMatch(/occurrences? completed in the period/);
+    expect(carried).toContain('Partial — 3 of 14 observed');
+    const due = await textOf(await packs(payload({
       history, options: { includeHistory: true },
       historyWindow: { from: '2026-09-10', to: '2027-09-10', mode: 'due' },
-    }));
+    })));
+    expect(due).toContain('1 occurrence due in the period');
   });
 
   // ⚠ BOTH evidence streams can go missing independently since C3 moved this

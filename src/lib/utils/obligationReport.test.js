@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import {
   compliancePosition, positionSummary, filterRows, sortRows, groupRows,
   evidenceHistory, outcomeText, ROW_STATUS, ROW_STATUS_LABEL, NON_FAILING,
+  historyCountText, HISTORY_MODE_LABEL,
 } from './obligationReport.js';
 import { STATUTORY_TEMPLATE, templateEntry } from './statutoryTemplate.js';
 
@@ -459,6 +460,22 @@ describe('evidenceHistory', () => {
     const due = evidenceHistory({ events, obligations }, { ...window, mode: 'due' });
     expect(due).toHaveLength(1);
     expect(due[0].outcome).toBe('Booked, not yet done');
+  });
+
+  // ⛔ §6ccc item 6 (2026-10-04): the earlier tests here held only completed
+  // events, so nothing showed that an UNFINISHED attempt is listed too — while
+  // the screen and the Word report counted the list as "completed in the
+  // period". An attempt is evidence and stays; the words now say what it is.
+  it('lists an unfinished attempt as carried out, and never counts it as completed', () => {
+    const withAttempt = [...events,
+      { obligationId: 'o1', kind: 'walk', at: '2026-08-01T00:00:00Z', status: 'attempted', title: 'Walk' }];
+    const h = evidenceHistory({ events: withAttempt, obligations }, { from: '2026-01-01', to: '2026-12-31' });
+    expect(h.map((r) => r.status)).toContain('attempted');
+    expect(HISTORY_MODE_LABEL.completed).not.toMatch(/^Completed/);
+    expect(historyCountText(h, 'completed')).toBe('3 occurrences carried out in the period — 2 completed, 1 not completed');
+    expect(historyCountText(h.filter((r) => r.status === 'completed'), 'completed'))
+      .toBe('2 occurrences carried out in the period, all completed');
+    expect(historyCountText([{ status: 'planned' }], 'due')).toBe('1 occurrence due in the period');
   });
 
   // Review finding: an empty array meant "selected nothing", but was read as

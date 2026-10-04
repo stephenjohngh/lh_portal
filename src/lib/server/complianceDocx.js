@@ -14,7 +14,7 @@
 // ever NARROWS what prints — it can never add a row the screen did not show.
 
 import { fmtDate } from '../utils/dates.js';
-import { ROW_STATUS } from '../utils/obligationReport.js';
+import { ROW_STATUS, historyCountText } from '../utils/obligationReport.js';
 import {
   Document, Packer, Paragraph,
   Table, TableRow, HeadingLevel, WidthType, TableLayoutType, PageBreak, AlignmentType,
@@ -336,13 +336,11 @@ export function buildComplianceDocument(input = {}) {
   }
 
   if (opts.includeHistory && (history ?? []).length > 0) {
-    const modeText = historyWindow?.mode === 'due' ? 'due in the period' : 'completed in the period';
     children.push(
       new Paragraph({ children: [new PageBreak()] }),
       new Paragraph({ text: 'Evidence history', heading: HeadingLevel.HEADING_2 }),
       para([run(
-        `${history.length} occurrence${history.length === 1 ? '' : 's'} `
-        + `${modeText}, ${d(historyWindow?.from)} to ${d(historyWindow?.to)}.`,
+        `${historyCountText(history, historyWindow?.mode)}, ${d(historyWindow?.from)} to ${d(historyWindow?.to)}.`,
         { color: COLOURS.textMuted, size: 18 },
       )]),
       new Paragraph({ text: '' }),
