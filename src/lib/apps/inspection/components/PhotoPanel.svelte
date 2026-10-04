@@ -16,6 +16,10 @@
   // -- Bound by parent — parent owns these arrays --------------------
   export let photoUrls     = [];   // already-uploaded URLs
   export let pendingPhotos = [];   // { blob, preview, uploading, error }
+  // This component's photos from its earlier inspection in this walk. Kept
+  // unless removed here — a removed one is taken off when the save syncs.
+  /** @type {Array<{ key: string, preview: string }>} */
+  export let keptPhotos    = [];
 
   // -- Camera state — local to this component ------------------------
   let capturing    = false;
@@ -26,7 +30,7 @@
   let destroyed    = false;
 
   // -- Derived -------------------------------------------------------
-  $: totalPhotos = photoUrls.length + pendingPhotos.length;
+  $: totalPhotos = keptPhotos.length + photoUrls.length + pendingPhotos.length;
   $: canAddPhoto = totalPhotos < MAX_PHOTOS;
 
   // -- Camera --------------------------------------------------------
@@ -107,6 +111,10 @@
     pendingPhotos = pendingPhotos.filter((_, idx) => idx !== i);
   }
 
+  function removeKept(i) {
+    keptPhotos = keptPhotos.filter((_, idx) => idx !== i);
+  }
+
   function removeUploaded(i) {
     photoUrls = photoUrls.filter((_, idx) => idx !== i);
   }
@@ -117,6 +125,18 @@
 
   {#if captureError}
     <WalkError message={captureError} onDismiss={() => captureError = ''} />
+  {/if}
+
+  <!-- Photos from this component's earlier inspection in this walk -->
+  {#if keptPhotos.length > 0}
+    <div class="photo-grid">
+      {#each keptPhotos as p, i (p.key)}
+        <div class="thumb">
+          <img src={p.preview} alt="Earlier inspection {i+1}" />
+          <button class="thumb-remove" aria-label="Remove this photo" on:click={() => removeKept(i)}>✕</button>
+        </div>
+      {/each}
+    </div>
   {/if}
 
   <!-- Uploaded photo thumbnails -->

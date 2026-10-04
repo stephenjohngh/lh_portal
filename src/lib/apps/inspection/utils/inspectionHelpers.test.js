@@ -9,6 +9,7 @@ import {
   resolveAwaitingAccess, awaitingAccessByDefinition, sessionKindLabel,
   mapSyncByInspection, syncGlyph,
 } from './inspectionHelpers.js';
+import { reinspectPhotoPlan } from './inspectionHelpers.js';
 
 const STARTED = '2026-07-15T10:00:00.000Z';
 
@@ -199,5 +200,25 @@ describe('offline sync state (G5)', () => {
     expect(syncGlyph('error')).toBe('⚠');
     expect(syncGlyph(null)).toBe('');
     expect(syncGlyph('done')).toBe('');
+  });
+});
+
+// ⛔ 2026-10-04: a re-inspect opened a blank form and its save deleted every
+// earlier photo from Drive. The user's rule: carried into the form, kept
+// unless removed.
+describe('reinspectPhotoPlan', () => {
+  const earlier = [
+    { key: 'https://drive/a.jpg', url: 'https://drive/a.jpg' },
+    { key: 'p1', photoId: 'p1' },
+  ];
+  it('keeps every earlier photo when the caller says nothing', () => {
+    expect(reinspectPhotoPlan(earlier, null)).toMatchObject({ photoIds: ['p1'], removePhotoUrls: [], removePhotoIds: [] });
+  });
+  it('removes exactly what was taken out of the form, by url or by photo', () => {
+    expect(reinspectPhotoPlan(earlier, [])).toMatchObject({ photoIds: [], removePhotoUrls: ['https://drive/a.jpg'], removePhotoIds: ['p1'] });
+    expect(reinspectPhotoPlan(earlier, [earlier[1]])).toMatchObject({ photoIds: ['p1'], removePhotoUrls: ['https://drive/a.jpg'], removePhotoIds: [] });
+  });
+  it('a first inspection has nothing to keep or remove', () => {
+    expect(reinspectPhotoPlan([], null)).toEqual({ kept: [], photoIds: [], removePhotoUrls: [], removePhotoIds: [] });
   });
 });

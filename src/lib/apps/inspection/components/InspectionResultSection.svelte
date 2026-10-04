@@ -22,6 +22,8 @@
   export let checklistResults = {};   // { type_attribute_id: boolean }
   /** @type {string[]} */
   export let photoUrls        = [];   // already-uploaded URLs (array)
+  /** @type {Array<{ key: string, preview: string, url?: string, photoId?: string }>} */
+  export let keptPhotos       = [];   // the earlier inspection's photos, kept unless removed
   /** @type {Array<{ blob: Blob, filename: string, folderPath: string[] }>} */
   export let photoBlobs       = [];   // captured-but-not-uploaded photos; the
                                       // offline syncer uploads these (or inline
@@ -309,7 +311,7 @@
 </div>
 
 <!-- -- Photos ------------------------------------------------------------------- -->
-<PhotoPanel bind:photoUrls bind:pendingPhotos />
+<PhotoPanel bind:photoUrls bind:keptPhotos bind:pendingPhotos />
 
 <!-- -- Notes -------------------------------------------------------------------- -->
 <div class="sec">

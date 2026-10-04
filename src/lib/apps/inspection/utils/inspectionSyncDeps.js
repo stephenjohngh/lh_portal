@@ -7,7 +7,7 @@
 
 import { api } from '$lib/utils/api';
 import { uploadMedia } from '$lib/utils/mediaUpload.js';
-import { setAttachments } from '$lib/utils/mediaAttachments.js';
+import { setAttachments, listAttachments } from '$lib/utils/mediaAttachments.js';
 import { updateComponent, upsertComponentInspection } from '$lib/apps/building_assets/public.js';
 
 /**
@@ -28,6 +28,9 @@ export function makeSyncDeps() {
     // safely in sequence — the purge deleted the files the add was about to
     // reference. See setAttachments. PROJECT_STATUS §6jj.
     setAttachments,
+    // What is attached now — a save adds to it and removes only what it was
+    // told to (inspectionSync, 2026-10-04).
+    listAttachments: (entityType, entityId) => listAttachments(entityType, entityId),
     // The patch already carries updated_by (built by inspectionResultPatch);
     // pass it as the userId so updateComponent's stamp stays consistent.
     applyStatusPatch: (componentId, patch) => updateComponent(componentId, patch, patch.updated_by),

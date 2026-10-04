@@ -106,6 +106,8 @@ function fakeServer() {
       }
       db.attachments.set(id, desired);
     },
+    listAttachments: async (/** @type {string} */ _type, /** @type {string} */ id) =>
+      (db.attachments.get(id) ?? []).map((/** @type {any} */ a) => ({ storage_url: a.url, storage_provider: a.provider })),
     applyStatusPatch: async (/** @type {string} */ cid, /** @type {any} */ patch) => { check('applyStatusPatch'); db.status.set(cid, patch.status); },
     // PostgREST: an update that matches no row succeeds and changes nothing.
     completeSession: async (/** @type {string} */ id, /** @type {any} */ fields) => {
@@ -129,6 +131,26 @@ async function record(handle, inspId, componentId, result, photoNames = []) {
     photoUrls: [], photoIds: /** @type {string[]} */ ([]), statusPatch: { status: result, updated_by: 'u1' },
   };
   for (const name of photoNames) {
+    const photoId = `${inspId}-${name}`;
+    await putPhoto(handle, { photoId, inspectionId: inspId, blob: new Blob([name]), filename: name, folderPath: ['Inspections'] });
+    payload.photoIds.push(photoId);
+  }
+  await enqueueInspectionSave(handle, payload);
+}
+
+/**
+ * A re-inspect, as recordInspection builds it: the earlier photos kept (by
+ * photoId — this test's photos are all ones taken in the walk) and removed.
+ * @param {any} handle @param {string} inspId @param {string} componentId @param {string} result
+ * @param {{ keep?: string[], remove?: string[], add?: string[] }} photos
+ */
+async function reinspect(handle, inspId, componentId, result, { keep = [], remove = [], add = [] }) {
+  const payload = {
+    row: { id: inspId, walk_session_id: SESSION, component_id: componentId, inspection_result: result, inspected_by: 'u1' },
+    photoUrls: [], photoIds: [...keep], removePhotoUrls: [], removePhotoIds: [...remove],
+    statusPatch: { status: result, updated_by: 'u1' },
+  };
+  for (const name of add) {
     const photoId = `${inspId}-${name}`;
     await putPhoto(handle, { photoId, inspectionId: inspId, blob: new Blob([name]), filename: name, folderPath: ['Inspections'] });
     payload.photoIds.push(photoId);
@@ -183,7 +205,8 @@ describe('a walk recorded offline', () => {
     expect(server.seen.uploads).toBe(3);
     expect(server.seen.deleted).toEqual([]);
     expect(await listOps(h.handle)).toEqual([]);           // the outbox is empty
-    expect(await h.handle.getAll(STORE_PHOTOS)).toEqual([]); // and the blobs freed
+    // the images freed; what each became is kept a while, so a re-inspect can remove one
+    expect((await h.handle.getAll(STORE_PHOTOS)).every((/** @type {any} */ p) => p.blob == null && p.url)).toBe(true);
     runner.stopSync();
   });
 
@@ -315,6 +338,67 @@ describe('Finish, pressed while the last component is still syncing', () => {
     release();
     await finish;
     expect(server.db.inspections.has('i9')).toBe(true);
+    runner.stopSync();
+  });
+});
+
+// ⛔ 2026-10-04: a re-inspect opened a blank form, and its save deleted every
+// photo the first attempt had taken — from Drive. Decided by the user: the
+// earlier photos are carried into the form and kept unless removed.
+describe('a re-inspect in the same walk', () => {
+  it('after the first save synced: keeps the earlier photo, uploads nothing again', async () => {
+    const { runner, start } = await loadRunner();
+    await start(server.deps);
+    await startSession(h.handle);
+    await record(h.handle, 'i1', 'c1', 'failed', ['evidence.jpg']);
+    await runner.flush();
+    await reinspect(h.handle, 'i1', 'c1', 'failed', { keep: ['i1-evidence.jpg'] });
+    await runner.flush();
+    expect(server.seen.deleted).toEqual([]);
+    expect(server.seen.uploads).toBe(1);
+    expect(server.db.attachments.get('i1').map((/** @type {any} */ a) => a.url)).toEqual(['https://drive.example/evidence.jpg#1']);
+    runner.stopSync();
+  });
+
+  it('after the first save synced: a photo the inspector removed is taken off and deleted', async () => {
+    const { runner, start } = await loadRunner();
+    await start(server.deps);
+    await startSession(h.handle);
+    await record(h.handle, 'i1', 'c1', 'failed', ['keep.jpg', 'wrong.jpg']);
+    await runner.flush();
+    await reinspect(h.handle, 'i1', 'c1', 'failed', { keep: ['i1-keep.jpg'], remove: ['i1-wrong.jpg'] });
+    await runner.flush();
+    expect(server.seen.deleted).toEqual(['https://drive.example/wrong.jpg#2']);
+    expect(server.db.attachments.get('i1').map((/** @type {any} */ a) => a.url)).toEqual(['https://drive.example/keep.jpg#1']);
+    runner.stopSync();
+  });
+
+  it('before the first save synced: keeps the earlier photo and adds the new one', async () => {
+    const { runner, online, start } = await loadRunner();
+    await start(server.deps);
+    online.set(false);
+    await startSession(h.handle);
+    await record(h.handle, 'i1', 'c1', 'failed', ['first.jpg']);
+    await reinspect(h.handle, 'i1', 'c1', 'problem', { keep: ['i1-first.jpg'], add: ['second.jpg'] });
+    online.set(true);
+    await runner.flush();
+    expect(server.db.inspections.get('i1').inspection_result).toBe('problem');
+    expect(server.db.attachments.get('i1')).toHaveLength(2);
+    expect(server.seen.deleted).toEqual([]);
+    runner.stopSync();
+  });
+
+  it('a photo nobody can match any more is kept, never guessed away', async () => {
+    const { runner, start } = await loadRunner();
+    await start(server.deps);
+    await startSession(h.handle);
+    await record(h.handle, 'i1', 'c1', 'failed', ['old.jpg']);
+    await runner.flush();
+    await h.handle.clear(STORE_PHOTOS);                    // the retired record is gone
+    await reinspect(h.handle, 'i1', 'c1', 'failed', { remove: ['i1-old.jpg'] });
+    await runner.flush();
+    expect(server.seen.deleted).toEqual([]);
+    expect(server.db.attachments.get('i1')).toHaveLength(1);
     runner.stopSync();
   });
 });

@@ -22,6 +22,7 @@
 //   'session_complete' payload: { sessionId, notes, inspectedCount }
 
 import { openDB, isIdbAvailable } from '$lib/utils/idb.js';
+import { DAY_MS } from '$lib/utils/dates.js';
 
 export const DB_NAME    = 'lh_inspection_offline';
 export const DB_VERSION = 1;
@@ -102,11 +103,24 @@ export async function enqueueInspectionSave(handle, payload) {
     o.payload?.row?.id === inspectionId
   );
   if (existing) {
-    // Free any photo blobs the superseded op referenced that the new payload
-    // doesn't (a re-inspect before sync captured a fresh photo set).
+    // A re-inspect carries the earlier photos the inspector KEPT in its
+    // photoIds, so a photo the superseded op referenced and this one does not
+    // was removed. Free its blob — and if it had already been uploaded (a
+    // partial sync), remember its url so the sync takes the attachment off too.
     const keep = new Set(payload?.photoIds ?? []);
-    for (const pid of (existing.payload?.photoIds ?? [])) if (!keep.has(pid)) await deletePhoto(handle, pid);
-    const updated = { ...existing, payload, status: OP_PENDING, attempts: 0, lastError: null };
+    const removeUrls = new Set([...(existing.payload?.removePhotoUrls ?? []), ...(payload?.removePhotoUrls ?? [])]);
+    for (const pid of (existing.payload?.photoIds ?? [])) {
+      if (keep.has(pid)) continue;
+      const p = await getPhoto(handle, pid);
+      if (p?.uploaded && p.url) removeUrls.add(p.url);
+      await deletePhoto(handle, pid);
+    }
+    const merged = {
+      ...payload,
+      removePhotoUrls: [...removeUrls],
+      removePhotoIds:  [...new Set([...(existing.payload?.removePhotoIds ?? []), ...(payload?.removePhotoIds ?? [])])],
+    };
+    const updated = { ...existing, payload: merged, status: OP_PENDING, attempts: 0, lastError: null };
     await handle.put(STORE_OPS, updated);
     return updated;
   }
@@ -211,8 +225,34 @@ export async function pruneDone(handle) {
  *          folderPath: string[], uploaded?: boolean, url?: string|null }} photo
  */
 export async function putPhoto(handle, photo) {
-  await handle.put(STORE_PHOTOS, { uploaded: false, url: null, ...photo });
+  await handle.put(STORE_PHOTOS, { uploaded: false, url: null, createdAt: Date.now(), ...photo });
   return photo;
+}
+
+/**
+ * A photo whose op has synced: drop the image, keep what it became.
+ *
+ * ⭐ The record stays, without its blob, so a later re-inspect that REMOVES this
+ * photo (it knows it only by photoId) can still name the file to take off —
+ * the url is learned only when the sync uploads it. A photo never uploaded
+ * has nothing to remember and goes. Cleared after RETIRED_PHOTO_MS by
+ * pruneRetiredPhotos. (2026-10-04, §6ccc item 7: re-inspects keep earlier photos.)
+ */
+export async function retirePhoto(handle, photoId) {
+  const p = await handle.get(STORE_PHOTOS, photoId);
+  if (!p) return;
+  if (!p.uploaded || !p.url) { await deletePhoto(handle, photoId); return; }
+  await handle.put(STORE_PHOTOS, { ...p, blob: null, retiredAt: Date.now() });
+}
+
+/** How long a retired photo's url is remembered — a walk is done well within it. */
+export const RETIRED_PHOTO_MS = 14 * DAY_MS;
+
+/** Forget retired photos older than `maxAgeMs`. */
+export async function pruneRetiredPhotos(handle, maxAgeMs = RETIRED_PHOTO_MS, now = Date.now()) {
+  for (const p of await handle.getAll(STORE_PHOTOS)) {
+    if (p.blob == null && p.retiredAt != null && now - p.retiredAt > maxAgeMs) await deletePhoto(handle, p.photoId);
+  }
 }
 
 export function getPhoto(handle, photoId) {

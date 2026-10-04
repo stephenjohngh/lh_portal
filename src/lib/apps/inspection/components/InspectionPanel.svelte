@@ -57,6 +57,11 @@
   let photoUrls        = [];
   /** @type {Array<{ blob: Blob, filename: string, folderPath: string[] }>} */
   let photoBlobs       = [];   // captured-but-not-uploaded; queued by recordInspection
+  // The photos of this component's earlier inspection in this walk: shown in
+  // the form, kept unless removed (user, 2026-10-04). A re-inspect used to open
+  // blank, and its save deleted them from Drive.
+  /** @type {Array<{ key: string, preview: string, url?: string, photoId?: string }>} */
+  let keptPhotos       = [];
   /** @type {string|null} */
   let noAccessReason   = null;
   /** @type {Record<string, string|number>} */
@@ -73,6 +78,7 @@
   $: component, resetForm();
   function resetForm() {
     result = ''; notes = ''; checklistResults = {}; photoUrls = []; photoBlobs = [];
+    keptPhotos = [...($inspectionStore.inspections?.[component?.id]?.photos ?? [])];
     noAccessReason = null; readings = {}; error = null;
   }
 
@@ -98,6 +104,7 @@
         notes,
         photoUrls,
         photoBlobs,
+        keptPhotos,
         checklistResults,
         noAccessReason,
         readings,
@@ -153,6 +160,7 @@
       bind:checklistResults
       bind:photoUrls
       bind:photoBlobs
+      bind:keptPhotos
       bind:noAccessReason
       bind:readings
       {checklistDefs}

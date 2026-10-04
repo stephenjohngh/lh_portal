@@ -14,6 +14,7 @@ function makeDeps() {
     upsertSession:     vi.fn(() => Promise.resolve()),
     completeSession:   vi.fn(() => Promise.resolve()),
     setAttachments:    vi.fn(() => Promise.resolve()),
+    listAttachments:   vi.fn(() => Promise.resolve([])),
     // ⚠ Still offered so that a regression to purge-then-add would CALL them
     // and be caught. Asserting they are missing from this fixture would only
     // test the fixture.
@@ -33,10 +34,10 @@ const PAYLOAD = {
 };
 
 describe('syncOne — inspection_save', () => {
-  it('upserts the inspection, purges then adds attachments, applies the status patch, in that order', async () => {
+  it('upserts the inspection, reads what is attached, reconciles, applies the status patch, in that order', async () => {
     const deps = makeDeps();
     const order = [];
-    for (const k of Object.keys(deps)) deps[k].mockImplementation(() => { order.push(k); return Promise.resolve(); });
+    for (const k of Object.keys(deps)) deps[k].mockImplementation(() => { order.push(k); return Promise.resolve(k === 'listAttachments' ? [] : undefined); });
 
     const res = await syncOne({ type: 'inspection_save', payload: PAYLOAD }, deps);
 
@@ -44,7 +45,7 @@ describe('syncOne — inspection_save', () => {
     expect(deps.upsertInspection).toHaveBeenCalledWith(PAYLOAD.row);
     expect(deps.setAttachments).toHaveBeenCalledWith('component_inspection', 'i1', ['https://drive/p.jpg'], 'u1');
     expect(deps.applyStatusPatch).toHaveBeenCalledWith('c1', PAYLOAD.statusPatch);
-    expect(order).toEqual(['upsertInspection', 'setAttachments', 'applyStatusPatch']);
+    expect(order).toEqual(['upsertInspection', 'listAttachments', 'setAttachments', 'applyStatusPatch']);
   });
 
   it('is idempotent on replay — running twice repeats the same idempotent calls', async () => {
@@ -199,5 +200,39 @@ describe('classifyError', () => {
   });
   it('handles a non-Error throwable', () => {
     expect(classifyError('boom')).toEqual({ ok: false, permanent: false, error: 'boom' });
+  });
+});
+
+// ⛔ 2026-10-04 (§6ccc item 7): a save never deletes a photo it was not told to
+// remove. A re-inspect opens a blank form, and its save used to delete every
+// photo the first attempt had attached.
+describe('syncOne — the photos already attached', () => {
+  const held = [{ storage_url: 'https://drive/first.jpg', storage_provider: 'google_drive' }];
+
+  it('keeps every photo already attached when the save names none', async () => {
+    const deps = makeDeps();
+    deps.listAttachments.mockResolvedValueOnce(held);
+    await syncOne({ type: 'inspection_save', payload: { ...PAYLOAD, photoUrls: [] } }, deps);
+    expect(deps.setAttachments).toHaveBeenCalledWith('component_inspection', 'i1',
+      [{ url: 'https://drive/first.jpg', provider: 'google_drive' }], 'u1');
+  });
+
+  it('takes off only what the inspector removed, by url or by the photo it was', async () => {
+    const deps = makeDeps();
+    deps.listAttachments.mockResolvedValueOnce([...held,
+      { storage_url: 'https://drive/second.jpg', storage_provider: 'google_drive' },
+      { storage_url: 'https://drive/third.jpg', storage_provider: 'google_drive' }]);
+    deps.getPhoto.mockImplementation(async (id) => (id === 'p3' ? { photoId: 'p3', uploaded: true, url: 'https://drive/third.jpg', blob: null } : null));
+    await syncOne({ type: 'inspection_save', payload: { ...PAYLOAD, photoUrls: [],
+      removePhotoUrls: ['https://drive/second.jpg'], removePhotoIds: ['p3'] } }, deps);
+    expect(deps.setAttachments).toHaveBeenCalledWith('component_inspection', 'i1',
+      [{ url: 'https://drive/first.jpg', provider: 'google_drive' }], 'u1');
+  });
+
+  it('a removal it cannot match keeps the photo — the safe way to be wrong', async () => {
+    const deps = makeDeps();
+    deps.listAttachments.mockResolvedValueOnce(held);
+    await syncOne({ type: 'inspection_save', payload: { ...PAYLOAD, photoUrls: [], removePhotoIds: ['unknown'] } }, deps);
+    expect(deps.setAttachments.mock.calls[0][2]).toHaveLength(1);
   });
 });

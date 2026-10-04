@@ -30,12 +30,13 @@ import {
   openQueue, isOfflineAvailable, readCache, writeCache,
   enqueue, enqueueInspectionSave, putPhoto, dropSession,
   listQueuedSessionRows, listQueuedSessionCompletions, listQueuedInspectionRows, hasQueuedSessionCreate,
+  listUnsyncedOps, getPhoto,
 } from '../utils/offlineQueue.js';
 import { syncOne }      from '../utils/inspectionSync.js';
 import { makeSyncDeps } from '../utils/inspectionSyncDeps.js';
 import { kickSync, flush as flushQueue } from '../utils/syncRunner.js';
 import { online } from '$lib/stores/online.js';
-import { statusBeforeSession } from '../utils/inspectionHelpers.js';
+import { statusBeforeSession, reinspectPhotoPlan } from '../utils/inspectionHelpers.js';
 import {
   makeWalkBuilder,
   firstNonEmptyFloor,
@@ -85,10 +86,17 @@ async function mergePhotosIntoRows(rows) {
 
   const byId = {};
   for (const p of (photos ?? [])) {
-    (byId[p.entity_id] ??= []).push(normalisePhotoUrl(p.storage_url));
+    (byId[p.entity_id] ??= []).push({ key: p.storage_url, url: p.storage_url, preview: normalisePhotoUrl(p.storage_url) });
   }
   for (const row of rows) {
-    row.photo_urls = byId[row.id] ?? [];
+    // ⭐ `photos` carries each photo's IDENTITY (its storage url, or the photoId
+    // of one still queued) beside the preview — a re-inspect keeps the ones the
+    // inspector leaves, and removes only what they take off (2026-10-04).
+    // A queued row's own photos (from the outbox) come first and are kept.
+    const merged = [...(row.photos ?? [])];
+    for (const p of byId[row.id] ?? []) if (!merged.some((m) => m.key === p.key)) merged.push(p);
+    row.photos = merged;
+    row.photo_urls = merged.map((p) => p.preview);
   }
 }
 
@@ -937,7 +945,7 @@ function createInspectionStore() {
    * @param {string|null} [args.noAccessReason] why the component could not be
    *        assessed; only meaningful (and only persisted) when result==='no_access'
    */
-  async function recordInspection({ componentId, result, notes, photoUrls = [], photoBlobs = [], checklistResults = {}, noAccessReason = null, readings = {} }) {
+  async function recordInspection({ componentId, result, notes, photoUrls = [], photoBlobs = [], keptPhotos = null, checklistResults = {}, noAccessReason = null, readings = {} }) {
     logger('recordInspection:', componentId, result);
     const userId = await getCurrentUserId();
     const state  = getState();
@@ -980,7 +988,19 @@ function createInspectionStore() {
     // (so status_set_at is the true observation time even if sync happens hours
     // later) and applied to the component by the syncer. Rule stays in public.js.
     const statusPatch = inspectionResultPatch(result, { inspectionId, userId, at: now });
-    const payload = { row, photoUrls, photoIds: [], statusPatch };
+    // ⭐ A re-inspect keeps the earlier photos the inspector left in the form
+    // (`keptPhotos`) and removes only the ones they took off — never the rest
+    // (user, 2026-10-04: "carry them into the form"). Each earlier photo is
+    // known by its storage url, or by the photoId of one still in the outbox.
+    // `keptPhotos` null means the caller did not say: keep them all.
+    const plan = reinspectPhotoPlan(existing?.photos ?? [], keptPhotos);
+    const kept = plan.kept;
+    const payload = {
+      row, photoUrls, statusPatch,
+      photoIds: plan.photoIds, removePhotoUrls: plan.removePhotoUrls, removePhotoIds: plan.removePhotoIds,
+    };
+    /** @type {{ key: string, preview: string, url?: string, photoId?: string }[]} */
+    const newPhotos = [];
 
     // Local-first: stash any captured photo blobs, then enqueue the whole unit
     // durably and let the syncer push it — immediately when online, on reconnect
@@ -998,6 +1018,7 @@ function createInspectionStore() {
           const photoId = newUuid();
           await putPhoto(handle, { photoId, inspectionId, blob: pb.blob, filename: pb.filename, folderPath: pb.folderPath });
           payload.photoIds.push(photoId);
+          newPhotos.push({ key: photoId, photoId, preview: (typeof URL !== 'undefined' && URL.createObjectURL) ? URL.createObjectURL(pb.blob) : '' });
         }
         await enqueueInspectionSave(handle, payload);
         queued = true;
@@ -1009,17 +1030,20 @@ function createInspectionStore() {
       const deps = makeSyncDeps();
       const inlineUrls = [...photoUrls];
       for (const pb of photoBlobs) inlineUrls.push(await deps.uploadPhoto(pb.blob, { filename: pb.filename, folderPath: pb.folderPath }));
-      const res = await syncOne({ type: 'inspection_save', payload: { row, photoUrls: inlineUrls, photoIds: [], statusPatch } }, deps);
+      const res = await syncOne({ type: 'inspection_save', payload: { ...payload, photoUrls: inlineUrls, photoIds: [] } }, deps);
       if (!res.ok) throw new Error(res.error || 'Failed to save inspection');
     }
 
     // In-memory record for the walk UI. Show already-uploaded URLs (normalised)
     // plus local object-URL previews of the just-captured blobs, so photos are
     // visible immediately even before the sync uploads them.
-    const blobPreviews = (typeof URL !== 'undefined' && URL.createObjectURL)
-      ? photoBlobs.map(pb => URL.createObjectURL(pb.blob))
-      : [];
-    const inspection = { ...row, photo_urls: [...photoUrls.map(normalisePhotoUrl), ...blobPreviews] };
+    const photos = [
+      ...kept,
+      ...photoUrls.map((u) => ({ key: u, url: u, preview: normalisePhotoUrl(u) })),
+      ...(newPhotos.length ? newPhotos
+        : (typeof URL !== 'undefined' && URL.createObjectURL ? photoBlobs.map((pb) => ({ key: pb.filename, preview: URL.createObjectURL(pb.blob) })) : [])),
+    ];
+    const inspection = { ...row, photos, photo_urls: photos.map((p) => p.preview) };
 
     update(s => {
       const newInsp = { ...s.inspections, [componentId]: inspection };
@@ -1191,7 +1215,25 @@ function createInspectionStore() {
   // Outbox read helpers (no-op / empty when IndexedDB is unavailable).
   async function outboxInspectionRows(sessionId) {
     if (!isOfflineAvailable()) return [];
-    try { return await listQueuedInspectionRows(await openQueue(), sessionId); }
+    try {
+      const handle = await openQueue();
+      const rows = await listQueuedInspectionRows(handle, sessionId);
+      // The photos of a row walked offline live in the outbox, not on the
+      // server: bring them back with the row, or a re-inspect after a reload
+      // would not know they exist — and drop their blobs (2026-10-04).
+      const ops = (await listUnsyncedOps(handle)).filter((o) => o.type === 'inspection_save');
+      for (const row of rows) {
+        const op = ops.find((o) => o.payload?.row?.id === row.id);
+        const photos = [];
+        for (const photoId of op?.payload?.photoIds ?? []) {
+          const p = await getPhoto(handle, photoId);
+          const preview = p?.blob && typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(p.blob) : (p?.url ? normalisePhotoUrl(p.url) : null);
+          if (preview) photos.push({ key: photoId, photoId, preview });
+        }
+        row.photos = photos;
+      }
+      return rows;
+    }
     catch (/** @type {any} */ e) { logger('⚠ outboxInspectionRows:', e.message); return []; }
   }
   async function isUnsyncedSession(sessionId) {

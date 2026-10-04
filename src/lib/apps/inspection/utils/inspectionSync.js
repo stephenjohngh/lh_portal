@@ -12,7 +12,7 @@
 // Everything here is IDEMPOTENT, because the outbox may be replayed after a
 // partial sync (a crash or dropped connection between sub-steps):
 //   • ids are client-chosen, so every insert is an upsert-by-id;
-//   • attachments are purge-then-add, so a retry after a partial add converges;
+//   • attachments are reconciled (held + this save − removed), so a retry converges;
 //   • the status patch and the session-complete update set fixed values.
 // Running an op twice therefore lands on the same server state as running it once.
 
@@ -36,7 +36,7 @@ export async function syncOne(op, deps) {
   }
 }
 
-async function syncInspectionSave({ row, photoUrls = [], photoIds = [], statusPatch }, deps) {
+async function syncInspectionSave({ row, photoUrls = [], photoIds = [], removePhotoUrls = [], removePhotoIds = [], statusPatch }, deps) {
   await deps.upsertInspection(row);
 
   // Resolve any locally-queued photo blobs to Drive URLs. Idempotent: a photo
@@ -77,7 +77,31 @@ async function syncInspectionSave({ row, photoUrls = [], photoIds = [], statusPa
   // no longer referenced, never merely because the set is being rewritten. A
   // replay is then a genuine no-op, and a re-inspection that really does drop
   // a photo still removes its file.
-  await deps.setAttachments('component_inspection', row.id, urls, row.inspected_by);
+  // ⛔ A SAVE NEVER DELETES A PHOTO IT WAS NOT TOLD TO REMOVE (2026-10-04,
+  // §6ccc item 7). The set is what the server already holds, plus this save's
+  // photos, minus the ones the inspector took off. It used to be this save's
+  // photos alone — and a re-inspect opens a blank form, so correcting a note
+  // deleted every photo taken a minute earlier, from Drive, for good. A photo
+  // known only by its photoId is matched through what it became (the retired
+  // record keeps its url); one that cannot be matched stays: the safe way to
+  // be wrong.
+  const remove = new Set(removePhotoUrls);
+  for (const photoId of removePhotoIds) {
+    const p = await deps.getPhoto(photoId);
+    if (p?.url) remove.add(p.url);
+  }
+  const held = (await deps.listAttachments('component_inspection', row.id))
+    .map((a) => ({ url: a.storage_url, provider: a.storage_provider ?? null }));
+  // One entry per file: a kept photo is both held and re-resolved.
+  const desired = [];
+  const seenUrl = new Set();
+  for (const item of [...held, ...urls]) {
+    const url = typeof item === 'string' ? item : item.url;
+    if (!url || remove.has(url) || seenUrl.has(url)) continue;
+    seenUrl.add(url);
+    desired.push(item);
+  }
+  await deps.setAttachments('component_inspection', row.id, desired, row.inspected_by);
   if (statusPatch) await deps.applyStatusPatch(row.component_id, statusPatch);
 }
 

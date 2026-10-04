@@ -281,3 +281,26 @@ export function sessionKindLabel(session, definitions = []) {
   }
   return presetLabel(session?.session_preset ?? '');
 }
+
+/**
+ * What a re-inspect does with the component's earlier photos in this walk:
+ * keep the ones the inspector left in the form, remove only the ones they took
+ * off (user, 2026-10-04). A re-inspect used to open blank, and its save deleted
+ * every earlier photo from Drive. `kept` null means the caller did not say —
+ * keep them all, never the reverse.
+ * Each photo is known by its storage `url`, or by the `photoId` of one taken in
+ * this walk (still queued, or synced and remembered by the outbox).
+ * @param {Array<{ key: string, url?: string, photoId?: string }>} earlier
+ * @param {Array<{ key: string, url?: string, photoId?: string }>|null} kept
+ */
+export function reinspectPhotoPlan(earlier, kept) {
+  const keep = kept ?? earlier ?? [];
+  const keys = new Set(keep.map((p) => p.key));
+  const removed = (earlier ?? []).filter((p) => !keys.has(p.key));
+  return {
+    kept:            keep,
+    photoIds:        keep.filter((p) => p.photoId).map((p) => /** @type {string} */ (p.photoId)),
+    removePhotoUrls: removed.filter((p) => p.url).map((p) => /** @type {string} */ (p.url)),
+    removePhotoIds:  removed.filter((p) => p.photoId).map((p) => /** @type {string} */ (p.photoId)),
+  };
+}

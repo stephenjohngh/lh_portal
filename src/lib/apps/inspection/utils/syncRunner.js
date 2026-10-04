@@ -14,7 +14,7 @@ import { online } from '$lib/stores/online.js';
 import { getLogger } from '$lib/utils/logger';
 import {
   openQueue, isOfflineAvailable, listOps, listUnsyncedOps, setOpStatus, pruneDone,
-  getPhoto, markPhotoUploaded, deletePhoto,
+  getPhoto, markPhotoUploaded, retirePhoto, pruneRetiredPhotos,
   summarizeOps, pickNextOp, OP_PENDING, OP_SYNCING, OP_ERROR, OP_DONE,
 } from './offlineQueue.js';
 import { syncOne } from './inspectionSync.js';
@@ -104,8 +104,9 @@ async function drainOnce() {
       const res = await syncOne(next, deps);
       if (res.ok) {
         await setOpStatus(handle, next.seq, OP_DONE);
-        // The blobs are now safely on Drive + attached — free the local copies.
-        for (const pid of (next.payload?.photoIds ?? [])) await deletePhoto(handle, pid);
+        // The blobs are now safely on Drive + attached — free the images, and
+        // keep what each became, so a later re-inspect can remove one by name.
+        for (const pid of (next.payload?.photoIds ?? [])) await retirePhoto(handle, pid);
       } else if (res.permanent) {
         logger('✗ permanent sync error — op', next.seq, next.type, res.error);
         await setOpStatus(handle, next.seq, OP_ERROR, res.error);
@@ -162,7 +163,7 @@ export function startSync(deps = null) {
     if (isOnline) kickSync();   // reconnected — drain what's queued
   });
   if (isOfflineAvailable()) {
-    openQueue().then(resetStaleSyncing).then(kickSync).catch(() => {});
+    openQueue().then(async (h) => { await resetStaleSyncing(h); await pruneRetiredPhotos(h); }).then(kickSync).catch(() => {});
   }
 }
 
