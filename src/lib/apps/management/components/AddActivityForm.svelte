@@ -6,6 +6,7 @@
      its OWN saving/mutationError — the parent's are shared with the edit/
      delete/move flows. See CLAUDE.md "Testing". -->
 <script>
+  import { portalSettings } from '$lib/stores/portalSettings.js';
   import { createEventDispatcher } from 'svelte';
   import { issuesStore }      from '../stores/issuesStore';
   import { uploadDocument }   from '$lib/utils/documentApi';
@@ -227,6 +228,7 @@
                 on:input={(e) => setNewField(field.key, e.currentTarget.value)}
                 class="flex-1 min-w-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 {newTypeConfig.ringClass}"
               />
+              {#if $portalSettings.aiEnabled}
               <button
                 type="button"
                 on:click={generateNewSummary}
@@ -234,6 +236,7 @@
                 title="Generate one-line summary with AI"
                 class="px-2 py-1 text-xs bg-slate-700 hover:bg-purple-800/60 text-slate-300 hover:text-purple-200 rounded border border-slate-600 hover:border-purple-600/50 shrink-0 transition-colors disabled:opacity-40"
               >{newSummaryGenerating ? '…' : '✨'}</button>
+              {/if}
               <input
                 type="number"
                 value={newActivity.sequence ?? ''}

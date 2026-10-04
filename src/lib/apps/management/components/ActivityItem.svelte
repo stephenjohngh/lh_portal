@@ -19,6 +19,7 @@
   Left-border colour by activity_type — see ACTIVITY_TYPE_CONFIG.
 -->
 <script>
+  import { portalSettings } from '$lib/stores/portalSettings.js';
   import { fileViewUrl } from '$lib/utils/driveUtils.js';
   import { createEventDispatcher } from 'svelte';
   import { sanitizeHtml }         from '$lib/utils/sanitizeHtml';
@@ -232,6 +233,7 @@
                   on:input={(e) => setEditField(field.key, e.currentTarget.value)}
                   class="flex-1 min-w-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 {editTypeConfig.ringClass}"
                 />
+                {#if $portalSettings.aiEnabled}
                 <button
                   type="button"
                   on:click={generateSummary}
@@ -239,6 +241,7 @@
                   title="Generate one-line summary with AI"
                   class="px-2 py-1 text-xs bg-slate-700 hover:bg-purple-800/60 text-slate-300 hover:text-purple-200 rounded border border-slate-600 hover:border-purple-600/50 shrink-0 transition-colors disabled:opacity-40"
                 >{summaryGenerating ? '…' : '✨'}</button>
+                {/if}
                 <input
                   type="number"
                   value={editingActivity.sequence ?? ''}

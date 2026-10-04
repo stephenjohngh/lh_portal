@@ -19,6 +19,7 @@
     'deleteLinkedRequest' — open the delete-linked-action confirm dialog
 -->
 <script>
+  import { portalSettings } from '$lib/stores/portalSettings.js';
   import { createEventDispatcher } from 'svelte';
   import { auth }           from '$lib/stores/auth';
   import { permissions }    from '$lib/stores/permissions';
@@ -119,7 +120,7 @@
         {/if}
       </p>
       <div class="flex items-center gap-1.5 shrink-0">
-        {#if !loading}
+        {#if !loading && $portalSettings.aiEnabled}
           <button
             type="button"
             on:click={() => dispatch('suggestAI')}

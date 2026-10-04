@@ -21,6 +21,7 @@
 //     wording:    object      — the texts an admin changed ({} = none)
 //     wordingInForce: object  — every text in force (defaults + those changes)
 //     documentCategories: object — the category changes ({labels, added, retired})
+//     aiEnabled:  boolean     — Management's AI suggestions on (default) or off
 //   }
 //
 // ⭐ The building and the business are admin settings, not code
@@ -44,6 +45,7 @@ import { WORDING_KEY, setWording, cleanWording, validateWording, activeWording }
 import {
   DOCUMENT_CATEGORIES_KEY, setDocumentCategories, cleanDocumentCategories, validateDocumentCategories,
 } from '$lib/utils/documentCategories.js';
+import { AI_ENABLED_KEY, aiEnabledFrom } from '$lib/utils/aiSwitch.js';
 
 const logger     = getLogger('portalSettings');
 const TOPBAR_KEY = 'topbar_apps';
@@ -64,6 +66,7 @@ const DUE_KEY    = 'due_soon_days';
  *   wording: Record<string, string>,
  *   wordingInForce: Record<string, string>,
  *   documentCategories: import('$lib/utils/documentCategories.js').CategoryChanges,
+ *   aiEnabled: boolean,
  * }} PortalSettingsState
  */
 
@@ -73,6 +76,7 @@ function createPortalSettingsStore() {
     building: null, organisation: {}, policies: {}, policiesInForce: activePolicies(),
     wording: {}, wordingInForce: activeWording(),
     documentCategories: { labels: {}, added: [], retired: [] },
+    aiEnabled: true,
   }));
 
   /**
@@ -86,7 +90,7 @@ function createPortalSettingsStore() {
           .from('portal_settings')
           .select('key, value')
           .in('key', [TOPBAR_KEY, ORDER_KEY, DUE_KEY, ORGANISATION_KEY, POLICIES_KEY,
-                     WORDING_KEY, DOCUMENT_CATEGORIES_KEY]),
+                     WORDING_KEY, DOCUMENT_CATEGORIES_KEY, AI_ENABLED_KEY]),
         supabase
           .from('facilities')
           .select('id, name, short_name, address')
@@ -108,7 +112,8 @@ function createPortalSettingsStore() {
       set({ loaded: true, ids, order, dueWindows, windows: activeDueWindows(),
             building: facility.data ?? null, organisation,
             policies, policiesInForce: activePolicies(),
-            wording, wordingInForce: activeWording(), documentCategories });
+            wording, wordingInForce: activeWording(), documentCategories,
+            aiEnabled: aiEnabledFrom(rows.find(r => r.key === AI_ENABLED_KEY)?.value) });
       logger('✅ Loaded portal settings — topbar:', ids ?? 'all', '— order:', order ?? 'default');
     } catch (/** @type {any} */ err) {
       logger('⚠ Failed to load portal settings (non-fatal):', err.message);
@@ -292,8 +297,24 @@ function createPortalSettingsStore() {
     return documentCategories;
   }
 
+  /**
+   * Switch Management's AI suggestions on or off for everyone.
+   * @param {boolean} on
+   */
+  async function saveAiEnabled(on) {
+    const userId = await currentUserId();
+    const value = on === true;
+    const { error } = await supabase
+      .from('portal_settings')
+      .upsert({ key: AI_ENABLED_KEY, value, updated_by: userId }, { onConflict: 'key' });
+    if (error) throw new Error(error.message);
+    update(s => ({ ...s, aiEnabled: value }));
+    logger('✅ AI suggestions', value ? 'on' : 'off');
+    return value;
+  }
+
   return { subscribe, load, save, saveOrder, saveDueWindows, saveBuilding, saveOrganisation, savePolicies,
-           saveWording, saveDocumentCategories };
+           saveWording, saveDocumentCategories, saveAiEnabled };
 }
 
 export const portalSettings = createPortalSettingsStore();

@@ -24,6 +24,9 @@ const h = vi.hoisted(() => {
 });
 
 vi.mock('$lib/stores/permissions', () => ({ permissions: h.permissions }));
+vi.mock('$lib/stores/portalSettings.js', () => ({
+  portalSettings: { subscribe: (/** @type {(v: object) => void} */ fn) => { fn({ aiEnabled: true }); return () => {}; } },
+}));
 vi.mock('../stores/issuesStore', () => ({ issuesStore: { addActivity: h.addActivity } }));
 vi.mock('$lib/supabaseClient', () => ({
   supabase: { auth: { getSession: () => Promise.resolve({ data: { session: { access_token: 't' } } }) } },

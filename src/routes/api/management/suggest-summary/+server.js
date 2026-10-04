@@ -13,6 +13,7 @@ import { requireAuth } from '$lib/server/requireAuth';
 import { checkKeyRateLimit } from '$lib/server/publicRateLimit';
 import { rateLimit } from '$lib/utils/policies.js';
 import { callWithModel } from '$lib/server/aiModel.js';
+import { aiSwitchedOn } from '$lib/server/aiSwitch.js';
 import { logAudit } from '$lib/server/auditLogger';
 import { escapeForPrompt } from '$lib/server/promptEscape';
 import { getLogger } from '$lib/utils/logger';
@@ -91,6 +92,12 @@ export async function POST({ request }) {
     }
     if (body.length > 4000) {
       return json({ error: 'body must be under 4000 characters' }, { status: 400 });
+    }
+
+    // ── Switched off by an admin (Admin → Other Config → Portal) ──────
+    // Checked before the rate limit, so a refused call costs nothing.
+    if (!(await aiSwitchedOn())) {
+      return json({ error: 'AI suggestions are switched off by an administrator.' }, { status: 403 });
     }
 
     // ── Rate limit per user (table-backed) ───────────────────────────

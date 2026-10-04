@@ -11,8 +11,10 @@
   import { getLogger }      from '$lib/utils/logger';
   import { getJson }        from '$lib/utils/request.js';
   import { fmtDate }        from '$lib/utils/dates';
+  import { errMessage }     from '$lib/utils/errors';
   import Checkbox     from '$lib/components/common/Checkbox.svelte';
   import Button       from '$lib/components/common/Button.svelte';
+  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import Icon         from '$lib/components/icons/Icon.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
 
@@ -95,6 +97,25 @@
   let aiSaving        = false;
   let aiSaved         = false;
   let aiError         = '';
+  let aiKeyConfigured = /** @type {boolean|null} */ (null);
+  let aiSwitching     = false;
+  let aiSwitchError   = '';
+
+  async function toggleAi() {
+    const on = !$portalSettings.aiEnabled;
+    aiSwitching = true; aiSwitchError = '';
+    try {
+      await portalSettings.saveAiEnabled(on);
+      logAudit('update', 'portal_setting', 'ai_enabled', 'AI suggestions', {
+        appId: 'admin', eventCategory: 'system', severity: 'info',
+        beforeData: { enabled: !on }, afterData: { enabled: on },
+      });
+    } catch (/** @type {any} */ err) {
+      aiSwitchError = errMessage(err, 'Could not change the switch');
+    } finally {
+      aiSwitching = false;
+    }
+  }
 
   async function loadAiModel(fresh = false) {
     aiLoading = true;
@@ -107,6 +128,7 @@
       aiUsing         = r.using ?? null;
       aiReason        = r.substituted ? r.reason : '';
       aiListError     = r.error ?? '';
+      aiKeyConfigured = r.keyConfigured ?? null;
     } catch (/** @type {any} */ err) {
       logger('⚠️ Failed to load the AI models:', err.message);
       aiListError = err.message;
@@ -375,6 +397,31 @@
       </p>
     </div>
 
+    <!-- The on/off switch: an admin setting since 2026-10-04 (it was the
+         PUBLIC_AI_SUGGESTIONS_ENABLED environment flag, so switching it needed
+         a redeploy). On unless switched off. -->
+    <div class="flex items-start justify-between gap-4 mb-5 pb-5 border-b border-slate-700" data-testid="ai-switch">
+      <div>
+        <p class="text-sm text-slate-200">AI suggestions in Management</p>
+        <p class="text-xs text-slate-500 mt-0.5">
+          {$portalSettings.aiEnabled
+            ? 'On — the ✨ buttons are shown and suggestions are written by the model below.'
+            : 'Off — the ✨ buttons are hidden and nothing is sent to Anthropic.'}
+        </p>
+        {#if aiKeyConfigured === false}
+          <p class="text-xs text-amber-300 mt-1" data-testid="ai-no-key">
+            ⚠ This deployment has no Anthropic key (ANTHROPIC_API_KEY), so no suggestion can be written
+            whatever this switch says. The key is set where the portal is deployed, not here.
+          </p>
+        {/if}
+        {#if aiSwitchError}<p class="text-xs text-red-400 mt-1">⚠ {aiSwitchError}</p>{/if}
+      </div>
+      <ProtectedButton requireAdmin={true} variant={$portalSettings.aiEnabled ? 'secondary' : 'primary'}
+                       on:click={toggleAi} disabled={aiSwitching}>
+        {aiSwitching ? 'Saving…' : $portalSettings.aiEnabled ? 'Switch off' : 'Switch on'}
+      </ProtectedButton>
+    </div>
+
     {#if aiModel === null}
       <p class="text-sm text-slate-500 italic animate-pulse">Loading…</p>
 
@@ -415,9 +462,7 @@
 
       <!-- Summary + actions -->
       <div class="flex items-center justify-between gap-4 flex-wrap pt-4 border-t border-slate-700">
-        <p class="text-xs text-slate-500">
-          Also requires <code class="text-slate-400 font-mono">PUBLIC_AI_SUGGESTIONS_ENABLED=true</code> and a valid <code class="text-slate-400 font-mono">ANTHROPIC_API_KEY</code> in the deploy environment.
-        </p>
+        <p class="text-xs text-slate-500"></p>
         <div class="flex items-center gap-3">
           {#if aiSaved}
             <p class="text-sm text-green-400">✓ Saved — applies on next suggestion</p>

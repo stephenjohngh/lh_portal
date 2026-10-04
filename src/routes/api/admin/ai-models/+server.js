@@ -12,10 +12,15 @@ import { requireAdmin } from '$lib/server/requireAuth';
 import { listAvailableModels, readSavedModel } from '$lib/server/aiModel.js';
 import { chooseModel }  from '$lib/utils/aiModels.js';
 import { errMessage }   from '$lib/utils/errors.js';
+import { env }          from '$env/dynamic/private';
 
 export async function GET({ request, url }) {
   const auth = await requireAdmin(request);
   if (auth.error) return auth.error;
+
+  // Whether the deploy has an Anthropic key at all — a secret stays in the
+  // environment, so the panel can only say whether one is there.
+  const keyConfigured = !!env.ANTHROPIC_API_KEY;
 
   let saved;
   try { saved = await readSavedModel(); }
@@ -27,9 +32,9 @@ export async function GET({ request, url }) {
   } catch (err) {
     // Said, not hidden: without the list the panel cannot offer a choice, and
     // the suggestions fall back to using the saved model as it is.
-    return json({ saved, models: [], using: saved, error: `Could not read Anthropic's list of models: ${errMessage(err)}` });
+    return json({ keyConfigured, saved, models: [], using: saved, error: `Could not read Anthropic's list of models: ${errMessage(err)}` });
   }
 
   const choice = chooseModel(saved, models);
-  return json({ saved, models, using: choice.model, substituted: choice.substituted, reason: choice.reason });
+  return json({ keyConfigured, saved, models, using: choice.model, substituted: choice.substituted, reason: choice.reason });
 }

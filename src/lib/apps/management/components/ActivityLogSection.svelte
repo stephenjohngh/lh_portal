@@ -11,9 +11,9 @@
   This file owns all suggestion-panel state and cross-cutting modals.
 -->
 <script>
+  import { portalSettings } from '$lib/stores/portalSettings.js';
   import { fileViewUrl } from '$lib/utils/driveUtils.js';
   import { onMount, createEventDispatcher } from 'svelte';
-  import { env as publicEnv } from '$env/dynamic/public';
   import { auth }             from '$lib/stores/auth';
   import { profilesStore }    from '$lib/stores/profiles';
   import { permissions }      from '$lib/stores/permissions';
@@ -41,9 +41,10 @@
 
   const logger = getLogger('ActivityLogSection');
 
-  // Feature flag — when 'true', the suggestion card calls the LLM API on
-  // open. When unset/anything else, we use the activity body text verbatim.
-  const AI_SUGGESTIONS_ENABLED = publicEnv.PUBLIC_AI_SUGGESTIONS_ENABLED === 'true';
+  // Whether AI suggestions are on is an admin setting (Admin → Other Config →
+  // Portal), read as $portalSettings.aiEnabled — it was an environment flag.
+  // Off: the suggestion starts from the activity's own text, and no ✨ button
+  // is shown.
 
   const dispatch = createEventDispatcher();
 
@@ -286,7 +287,7 @@
     const activity = activities.find(a => a.id === suggestionForId);
     if (!activity) return;
 
-    if (!AI_SUGGESTIONS_ENABLED) {
+    if (!$portalSettings.aiEnabled) {
       suggestionDraft  = activity.body;
       suggestionSource = 'comment';
       return;
@@ -611,6 +612,7 @@
                     on:input={(e) => setEditField(field.key, e.currentTarget.value)}
                     class="flex-1 min-w-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 {editTypeConfig.ringClass}"
                   />
+                  {#if $portalSettings.aiEnabled}
                   <button
                     type="button"
                     on:click={generateModalSummary}
@@ -618,6 +620,7 @@
                     title="Generate one-line summary with AI"
                     class="px-2 py-1 text-xs bg-slate-700 hover:bg-purple-800/60 text-slate-300 hover:text-purple-200 rounded border border-slate-600 hover:border-purple-600/50 shrink-0 transition-colors disabled:opacity-40"
                   >{modalSummaryGenerating ? '…' : '✨'}</button>
+                  {/if}
                   <input
                     type="number"
                     value={editingActivity.sequence ?? ''}
