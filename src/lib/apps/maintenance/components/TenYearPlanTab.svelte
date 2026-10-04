@@ -168,7 +168,6 @@
     exporting = true; exportError = '';
     try {
       const payload = buildPlanReportPayload(forecast, membership, groups, {
-        building:    'Lonsdale House',
         generatedAt: fmtToday(),
       });
       await requestDownload('/api/reports/generate-ten-year-plan', {

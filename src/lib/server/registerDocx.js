@@ -329,7 +329,7 @@ export function narrativeSection(section, items) {
 export function buildRegisterDocument(input = {}) {
   const {
     rows = [], total = 0, filterSummary = '', generatedAt = '',
-    building = 'Lancaster House',
+    building = '[Building name]',
     sections = {}, items = {},
     // ⚠ Defaults to FALSE, which is the safe direction only because the caller
     // always knows. A missing flag prints no banner; a wrong TRUE prints one

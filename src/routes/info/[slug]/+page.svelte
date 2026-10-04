@@ -8,7 +8,7 @@
   import { supabase }     from '$lib/supabaseClient';
   import { fmtDateLong }  from '$lib/utils/dates';
   import { sanitizeHtml } from '$lib/utils/sanitizeHtml';
-  import lhLogo           from '$lib/assets/LH_services_logo.png';
+  import { LOGO as lhLogo, LOGO_ALT } from '$lib/branding.js';
 
   let article  = null;
   let loading  = true;
@@ -50,7 +50,7 @@
   <!-- ── Header ── -->
   <header class="pub-header">
     <a href="/" class="pub-logo-link">
-      <img src={lhLogo} alt="LH Services" class="pub-logo" />
+      <img src={lhLogo} alt={LOGO_ALT} class="pub-logo" />
     </a>
     <a href="/info" class="pub-all-articles">All Articles</a>
   </header>

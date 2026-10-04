@@ -10,7 +10,7 @@ const MAX_LEN = 80;
 
 /**
  * Turn a title into a URL-safe slug.
- * "14 Lonsdale House - Cafe dispute!" -> "14-lonsdale-house-cafe-dispute"
+ * "Flat 14 - Cafe dispute!" -> "flat-14-cafe-dispute"
  *
  * NFKD matters: it splits an accented character into base letter + combining
  * mark, so the base letter survives the strip below and "Cafe" keeps its 'e'.

@@ -7,7 +7,7 @@
   import { fmtDateTime } from '$lib/utils/dates';
   import { onMount } from 'svelte';
   import { page }     from '$app/stores';
-  import lhLogo       from '$lib/assets/LH_services_logo.png';
+  import { LOGO as lhLogo, LOGO_ALT } from '$lib/branding.js';
   import {
     normalizeVerificationCode,
     formatVerificationCode,
@@ -117,7 +117,7 @@
 
 <div class="shell">
   <header class="hdr">
-    <img src={lhLogo} alt="LH Services" class="logo" />
+    <img src={lhLogo} alt={LOGO_ALT} class="logo" />
   </header>
 
   <main class="main">

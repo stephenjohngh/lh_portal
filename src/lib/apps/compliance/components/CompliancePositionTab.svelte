@@ -211,7 +211,6 @@
       await requestDownload('/api/maintenance/generate-compliance-report', {
         filename: `Compliance_Position_${today()}.docx`,
         body: {
-          building: 'Lonsdale House',
           generatedAt: fmtToday(),
           report,
           rows: rows.map(r => ({

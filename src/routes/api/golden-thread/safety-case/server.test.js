@@ -11,6 +11,8 @@ import { buildSafetyCaseModel } from '$lib/apps/golden_thread/utils/gtSafetyCase
 
 vi.mock('$lib/server/requireAuth', () => ({ requireAuth: async () => ({ user: { id: 'u1' }, error: null }) }));
 vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+// The building as an admin named it (Admin → Building & business).
+vi.mock('$lib/server/identity.js', () => ({ documentBuildingName: async () => 'Riverside Court' }));
 
 const { POST } = await import('./+server.js');
 
@@ -30,6 +32,9 @@ describe('POST /api/golden-thread/safety-case', () => {
     if (!file) throw new Error('no document.xml');
     const xml = await file.async('string');
     expect(xml).toContain('Safety Case Summary');
+    // The building comes from the setting, not from what the request carried.
+    expect(xml).toContain('Riverside Court');
+    expect(xml).not.toContain('Lonsdale House');
     expect(xml).toMatch(/<w:tbl>/);
     expect(xml).toMatch(/<w:tblLayout w:type="fixed"\/>/);
   });

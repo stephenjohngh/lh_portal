@@ -20,6 +20,7 @@
   import SpaceTypesPanel from './components/SpaceTypesPanel.svelte';
   import PortalSettingsPanel from './components/PortalSettingsPanel.svelte';
   import DueWindowsPanel from './components/DueWindowsPanel.svelte';
+  import IdentityPanel from './components/IdentityPanel.svelte';
   import DocumentsTab    from './components/DocumentsTab.svelte';
   import TabDropdown     from './components/TabDropdown.svelte';
   import TabBar          from '$lib/components/common/TabBar.svelte';
@@ -45,6 +46,7 @@
   const otherConfigTabs = [
     { id: 'floors',    icon: '🏢', label: 'Floors' },
     { id: 'space-types', icon: '🏷', label: 'Space Types' },
+    { id: 'identity',  icon: '🏠', label: 'Building & business' },
     { id: 'portal',    icon: '⚙',  label: 'Portal' },
     { id: 'due-windows', icon: '⏳', label: 'Due windows' },
     { id: 'documents', icon: '📁', label: 'Document Demo' },
@@ -283,6 +285,9 @@
 
   {:else if activeTab === 'portal'}
     <PortalSettingsPanel />
+
+  {:else if activeTab === 'identity'}
+    <IdentityPanel />
 
   {:else if activeTab === 'due-windows'}
     <DueWindowsPanel />

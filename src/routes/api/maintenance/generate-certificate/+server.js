@@ -27,6 +27,7 @@ import {
   makeHeader, makeFooter,
   DOC_STYLES, pageProps
 } from '$lib/server/docxHelpers.js';
+import { documentBuildingName } from '$lib/server/identity.js';
 
 const logger = getLogger('maintenance:generate-certificate');
 
@@ -152,9 +153,12 @@ export async function POST({ request }) {
   logger('📄 POST /api/maintenance/generate-certificate');
   try {
     const body = await request.json();
+    // The building as an admin named it (Admin → Building & business), never
+    // what the request carried or a name in code.
+    body.building = await documentBuildingName();
     const {
       job, jobComponents = [], docs = [], obligation = null,
-      building = 'Lonsdale House', generatedAt = '',
+      building, generatedAt = '',
     } = body;
 
     if (!job) return json({ error: 'No job data supplied.' }, { status: 400 });

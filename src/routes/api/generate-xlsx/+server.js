@@ -28,6 +28,7 @@ import { json } from '@sveltejs/kit';
 import { requireAuth } from '$lib/server/requireAuth';
 import { getLogger } from '$lib/utils/logger';
 import { buildWorkbook, xlsxFilename } from '$lib/server/xlsxWorkbook.js';
+import { documentBuildingName } from '$lib/server/identity.js';
 
 const logger = getLogger('generateXlsx');
 
@@ -39,6 +40,9 @@ export async function POST({ request }) {
 
   try {
     const body = await request.json();
+    // The building as an admin named it (Admin → Building & business), never
+    // what the request carried or a name in code.
+    body.building = await documentBuildingName();
     const wb = buildWorkbook(body);
     const buffer = await wb.xlsx.writeBuffer();
 

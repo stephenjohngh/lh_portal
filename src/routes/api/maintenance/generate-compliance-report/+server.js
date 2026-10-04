@@ -19,6 +19,7 @@ import { requireAuth } from '$lib/server/requireAuth';
 import { getLogger } from '$lib/utils/logger';
 import { today } from '$lib/utils/dates';
 import { buildComplianceDocument, printedRows, Packer } from '$lib/server/complianceDocx.js';
+import { documentBuildingName } from '$lib/server/identity.js';
 
 const logger = getLogger('maintenance:generate-compliance-report');
 
@@ -31,6 +32,9 @@ export async function POST({ request }) {
 
   try {
     const payload = await request.json();
+    // The building as an admin named it (Admin → Building & business), never
+    // what the request carried or a name in code.
+    payload.building = await documentBuildingName();
     const doc = buildComplianceDocument(payload);
     const buf = await Packer.toBuffer(doc);
 

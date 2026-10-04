@@ -23,6 +23,7 @@ import {
   makeHeader, makeFooter,
   DOC_STYLES, pageProps
 } from '$lib/server/docxHelpers.js';
+import { documentBuildingName } from '$lib/server/identity.js';
 
 const logger = getLogger('maintenance:generate-schedule');
 
@@ -169,7 +170,10 @@ export async function POST({ request }) {
   logger('📄 POST /api/maintenance/generate-schedule');
   try {
     const body = await request.json();
-    const { jobs = [], building = 'Lonsdale House', generatedAt = '' } = body;
+    // The building as an admin named it (Admin → Building & business), never
+    // what the request carried or a name in code.
+    body.building = await documentBuildingName();
+    const { jobs = [], building, generatedAt = '' } = body;
 
     const genAt    = generatedAt || fmtToday();
     const docTitle = `${building} — Maintenance Schedule`;

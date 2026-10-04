@@ -5,6 +5,7 @@
      Floor presets: All · Residential (G–7) · Basement (X,L,G) · Single floor. -->
 
 <script>
+  import { buildingName } from '$lib/utils/identity.js';
   import { errMessage } from '$lib/utils/errors';
   import { onMount }             from 'svelte';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
@@ -329,7 +330,7 @@
     generatingReport = true;
     reportError      = '';
     try {
-      const building    = facilities[0]?.name ?? 'Lancaster House';
+      const building    = buildingName(facilities[0]);   // Admin → Building & business
       const generatedAt = fmtGenerated();
       const reportTypes = [
         ...(includePlan              ? ['plan']               : []),
@@ -403,7 +404,7 @@
     reportError    = '';
     try {
       await generateXlsxDocument({
-        building:      facilities[0]?.name ?? 'Lancaster House',
+        building:      buildingName(facilities[0]),
         filterSummary: reportFilterSummary,
         generatedAt:   fmtGenerated(),
         filteredComponents, filteredByFloor,

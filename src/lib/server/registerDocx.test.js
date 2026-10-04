@@ -283,15 +283,16 @@ describe('the whole document', () => {
   });
 
   it('titles the header from the same rule as the body', () => {
+    // No building given: the placeholder, never a guessed name (Admin → Building & business).
     const extract = buildRegisterDocument({ rows: rows(1), total: 116, generatedAt: '19 September 2026' });
-    expect(textOf(extract).join(' ')).toContain('Lancaster House — register extract');
+    expect(textOf(extract).join(' ')).toContain('[Building name] — register extract');
 
     const statement = buildRegisterDocument({
       rows: everyRow, total: STATUTORY_TEMPLATE.length,
       generatedAt: '19 September 2026', sections: ALL,
     });
     const text = textOf(statement).join(' ');
-    expect(text).toContain('Lancaster House — obligations statement');
+    expect(text).toContain('[Building name] — obligations statement');
     expect(text).toContain('19 September 2026');
   });
 

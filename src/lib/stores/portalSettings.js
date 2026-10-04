@@ -14,7 +14,13 @@
 //     dueWindows: object      — due_soon_days: the "due soon" windows an admin
 //                               changed from the shipped default ({} = none)
 //     windows:    object      — every window in force (defaults + those changes)
+//     building:   object|null — the facilities row: { id, name, short_name, address }
+//     organisation: object    — the business and letter signatory ({} = none set)
 //   }
+//
+// ⭐ The building and the business are admin settings, not code
+// ($lib/utils/identity.js): read here so every screen and export names them
+// from one place.
 //
 // ⭐ The due windows are handed to dueWindows.js (setDueWindows) as they load,
 // so every app reads them through dueSoonDays(). The main shell WAITS for this
@@ -27,6 +33,7 @@ import { supabase }  from '$lib/supabaseClient';
 import { getLogger } from '$lib/utils/logger';
 import { setDueWindows, cleanDueWindows, activeDueWindows } from '$lib/utils/dueWindows.js';
 import { currentUserId } from '$lib/utils/currentUser.js';
+import { ORGANISATION_KEY, cleanOrganisation } from '$lib/utils/identity.js';
 
 const logger     = getLogger('portalSettings');
 const TOPBAR_KEY = 'topbar_apps';
@@ -40,12 +47,15 @@ const DUE_KEY    = 'due_soon_days';
  *   order: string[] | null,
  *   dueWindows: Record<string, number>,
  *   windows: Record<string, number>,
+ *   building: { id: string, name: string, short_name: string, address: string|null } | null,
+ *   organisation: Record<string, string>,
  * }} PortalSettingsState
  */
 
 function createPortalSettingsStore() {
   const { subscribe, set, update } = writable(/** @type {PortalSettingsState} */ ({
     loaded: false, ids: null, order: null, dueWindows: {}, windows: activeDueWindows(),
+    building: null, organisation: {},
   }));
 
   /**
@@ -54,19 +64,28 @@ function createPortalSettingsStore() {
    */
   async function load() {
     try {
-      const { data, error } = await supabase
-        .from('portal_settings')
-        .select('key, value')
-        .in('key', [TOPBAR_KEY, ORDER_KEY, DUE_KEY]);
+      const [{ data, error }, facility] = await Promise.all([
+        supabase
+          .from('portal_settings')
+          .select('key, value')
+          .in('key', [TOPBAR_KEY, ORDER_KEY, DUE_KEY, ORGANISATION_KEY]),
+        supabase
+          .from('facilities')
+          .select('id, name, short_name, address')
+          .order('created_at').limit(1).maybeSingle(),
+      ]);
 
       if (error) throw error;
+      if (facility.error) throw facility.error;
 
       const rows  = data ?? [];
       const ids   = /** @type {string[] | null} */ (rows.find(r => r.key === TOPBAR_KEY)?.value ?? null);
       const order = /** @type {string[] | null} */ (rows.find(r => r.key === ORDER_KEY)?.value  ?? null);
       const dueWindows = setDueWindows(rows.find(r => r.key === DUE_KEY)?.value ?? null);
+      const organisation = cleanOrganisation(rows.find(r => r.key === ORGANISATION_KEY)?.value);
 
-      set({ loaded: true, ids, order, dueWindows, windows: activeDueWindows() });
+      set({ loaded: true, ids, order, dueWindows, windows: activeDueWindows(),
+            building: facility.data ?? null, organisation });
       logger('✅ Loaded portal settings — topbar:', ids ?? 'all', '— order:', order ?? 'default');
     } catch (/** @type {any} */ err) {
       logger('⚠ Failed to load portal settings (non-fatal):', err.message);
@@ -143,7 +162,50 @@ function createPortalSettingsStore() {
     return changed;
   }
 
-  return { subscribe, load, save, saveOrder, saveDueWindows };
+  /**
+   * Save the building's details (the one facilities row).
+   * @param {{ name: string, short_name: string, address: string|null }} fields
+   */
+  async function saveBuilding(fields) {
+    const userId = await currentUserId();
+    let current = null;
+    update(s => { current = s.building; return s; });
+    if (!current?.id) throw new Error('There is no building record to update.');
+    const row = {
+      name:       String(fields.name ?? '').trim(),
+      short_name: String(fields.short_name ?? '').trim(),
+      address:    String(fields.address ?? '').trim() || null,
+      updated_by: userId,
+      updated_at: new Date().toISOString(),
+    };
+    if (!row.name || !row.short_name) throw new Error('The building needs a name and a short name.');
+    const { data, error } = await supabase
+      .from('facilities').update(row).eq('id', current.id)
+      .select('id, name, short_name, address').single();
+    if (error) throw new Error(error.message);
+    update(s => ({ ...s, building: data }));
+    logger('✅ Saved the building details');
+    return data;
+  }
+
+  /**
+   * Save the business and letter details. Only filled-in fields are stored, so
+   * a cleared field reads as unset again.
+   * @param {Record<string, string>} fields
+   */
+  async function saveOrganisation(fields) {
+    const userId = await currentUserId();
+    const organisation = cleanOrganisation(fields);
+    const { error } = await supabase
+      .from('portal_settings')
+      .upsert({ key: ORGANISATION_KEY, value: organisation, updated_by: userId }, { onConflict: 'key' });
+    if (error) throw new Error(error.message);
+    update(s => ({ ...s, organisation }));
+    logger('✅ Saved the business details');
+    return organisation;
+  }
+
+  return { subscribe, load, save, saveOrder, saveDueWindows, saveBuilding, saveOrganisation };
 }
 
 export const portalSettings = createPortalSettingsStore();

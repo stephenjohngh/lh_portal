@@ -128,7 +128,7 @@ export function drawBayPlanImage(plan, bays, holders, agreements) {
  * Draw every level that has bays and download the Word file.
  * @param {object} state  the parking store's state
  */
-export async function downloadBayPlan(state, { building = 'Lancaster House' } = {}) {
+export async function downloadBayPlan(state) {
   const levels = [];
   for (const floor of state.floors) {
     const bays = state.bays.filter(b => b.floor_id === floor.id);
@@ -143,7 +143,6 @@ export async function downloadBayPlan(state, { building = 'Lancaster House' } = 
   const filename = await requestDownload('/api/parking/bay-plan', {
     filename: `Parking_Bay_Plan_${today()}.docx`,
     body: {
-      building,
       generatedAt: fmtGenerated(),
       levels,
       rows: bayPlanRows(state.bays, state.holders, state.agreements, state.vehicles),

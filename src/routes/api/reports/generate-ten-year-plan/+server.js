@@ -20,6 +20,7 @@ import {
   hCell, dCell, run, para,
   makeHeader, makeFooter, DOC_STYLES, pageProps,
 } from '$lib/server/docxHelpers.js';
+import { documentBuildingName } from '$lib/server/identity.js';
 
 const logger = getLogger('generate-ten-year-plan');
 
@@ -39,6 +40,9 @@ export async function POST({ request }) {
   if (auth.error) return auth.error;
   try {
     const plan = await request.json();
+    // The building as an admin named it (Admin → Building & business), never
+    // what the request carried or a name in code.
+    plan.building = await documentBuildingName();
     if (!plan || !Array.isArray(plan.years)) {
       return json({ error: 'Invalid plan payload' }, { status: 400 });
     }

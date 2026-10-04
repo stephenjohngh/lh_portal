@@ -126,7 +126,6 @@
     try {
       const payload = {
         jobs,
-        building:    'Lonsdale House',
         generatedAt: fmtToday(),
       };
       await requestDownload('/api/maintenance/generate-schedule', {

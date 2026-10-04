@@ -67,7 +67,7 @@ function addSummarySheet(wb, name, blocks) {
  */
 export function buildWorkbook(payload = {}) {
   const {
-    building = 'Lancaster House',
+    building = '[Building name]',
     filterSummary = '',
     generatedAt = '',
     detail = { headers: [], rows: [] },
@@ -83,7 +83,7 @@ export function buildWorkbook(payload = {}) {
   }
 
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'LH Portal';
+  wb.creator = building;
   wb.created = new Date();
   wb.title = `${building} — ${reportTitle}`;
 
@@ -148,7 +148,7 @@ export function buildWorkbook(payload = {}) {
 }
 
 /** `Building_Stem_YYYY-MM-DD.xlsx`, with anything awkward replaced. */
-export function xlsxFilename(building = 'Lancaster House', filenameStem = 'Components') {
+export function xlsxFilename(building = 'Building', filenameStem = 'Components') {
   const safe = (s) => String(s).replace(/[^a-z0-9]/gi, '_');
   return `${safe(building)}_${safe(filenameStem)}_${today()}.xlsx`;
 }

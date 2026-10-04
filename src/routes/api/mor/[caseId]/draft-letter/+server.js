@@ -26,6 +26,7 @@ import {
   LETTER_BUILDERS,
   LETTER_FILENAME_SUFFIX,
 } from '$lib/server/morLetterTemplates.js';
+import { getIdentity } from '$lib/server/identity.js';
 
 const logger = getLogger('mor/draft-letter');
 
@@ -92,8 +93,17 @@ export async function POST({ params, request }) {
 
   // ── Build and stream the .docx ──────────────────────────────────────────
   let doc;
+  // The building and the signatory as an admin set them (Building & business).
+  let identity;
   try {
-    doc = builder(caseRow);
+    identity = await getIdentity();
+  } catch (/** @type {any} */ err) {
+    logger('❌ identity read failed:', err.message);
+    return jsonErr('Could not read the building and business details.', 500);
+  }
+
+  try {
+    doc = builder(caseRow, { building: identity.building.name, organisation: identity.organisation });
   } catch (/** @type {any} */ err) {
     logger('❌ template builder failed:', err.message);
     return jsonErr('Could not build the letter.', 500);

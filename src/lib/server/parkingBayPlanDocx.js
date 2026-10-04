@@ -73,7 +73,7 @@ function caption(level) {
  * }} body
  */
 export function buildBayPlanDocument(body) {
-  const { building = 'Lancaster House', generatedAt = '', levels = [], rows = [], legend = [] } = body ?? {};
+  const { building = '[Building name]', generatedAt = '', levels = [], rows = [], legend = [] } = body ?? {};
   const drawn = levels.filter(l => l.imageBase64 && l.width && l.height);
   if (drawn.length === 0) throw new Error('No basement plan could be drawn');
 

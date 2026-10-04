@@ -11,8 +11,10 @@ const h = vi.hoisted(() => {
   const makeBuilder = () => {
     const b = {};
     const chain = () => b;
-    for (const m of ['select', 'in', 'upsert']) b[m] = vi.fn(chain);
+    for (const m of ['select', 'in', 'upsert', 'order', 'limit', 'eq', 'update']) b[m] = vi.fn(chain);
     b.then = (res, rej) => Promise.resolve(result).then(res, rej);
+    // The building row (Admin → Building & business) is read alongside.
+    b.maybeSingle = vi.fn(() => Promise.resolve({ data: null, error: null }));
     return b;
   };
   const supabase = {

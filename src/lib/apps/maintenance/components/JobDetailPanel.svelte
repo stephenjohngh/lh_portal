@@ -115,7 +115,6 @@
         jobComponents: jobComponents ?? [],
         docs,
         obligation: obligation ?? null,
-        building: 'Lonsdale House',
         generatedAt: fmtToday(),
       };
       await requestDownload('/api/maintenance/generate-certificate', {

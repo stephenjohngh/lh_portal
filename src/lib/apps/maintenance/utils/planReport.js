@@ -78,7 +78,7 @@ export function buildPlanReportPayload(forecast, membership = {}, groups = [], m
     .sort((a, b) => (b.costPerCycle ?? 0) - (a.costPerCycle ?? 0) || a.name.localeCompare(b.name));
 
   return {
-    building:    meta.building    ?? 'Lonsdale House',
+    building:    meta.building    ?? null,   // the route sets it from Admin → Building & business
     generatedAt: meta.generatedAt ?? '',
     startYear:   forecast.startYear,
     endYear:     years[years.length - 1] ?? forecast.startYear,

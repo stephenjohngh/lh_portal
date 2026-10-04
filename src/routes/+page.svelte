@@ -45,7 +45,7 @@
   import Button        from '$lib/components/common/Button.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
-  import lhLogo from '$lib/assets/LH_services_logo.png';
+  import { LOGO as lhLogo, LOGO_ALT } from '$lib/branding.js';
 
   const logger = getLogger('MainApp');
 
@@ -286,7 +286,7 @@
               class="flex items-center space-x-2 hover:opacity-80 transition-opacity"
               aria-label="Go to home"
             >
-              <img src={lhLogo} alt="LH Services" class="h-12 w-auto" />
+              <img src={lhLogo} alt={LOGO_ALT} class="h-12 w-auto" />
                           </button>
           </div>
 
@@ -359,7 +359,8 @@
     <main class="lh-main max-w-7xl mx-auto px-4 py-8">
       {#if activeApp === 'home'}
         <div>
-          <h1 class="text-4xl font-bold mb-1">LH Services Portal</h1>
+          <!-- The business as an admin named it (Building & business); the brand until then. -->
+          <h1 class="text-4xl font-bold mb-1">{$portalSettings.organisation?.name ?? LOGO_ALT} Portal</h1>
           <p class="text-xs text-slate-600 mb-4">
             v{deployedVersion} · {buildDate} · {viteMode} · DB:
             <span class={dbName === 'PROD' ? 'text-slate-500' : 'text-teal-400 font-semibold'}>{dbName}</span>

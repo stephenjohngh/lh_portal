@@ -40,6 +40,7 @@ import {
   CHANNEL_LABEL, MECHANISM_LABEL, bsrReportClock,
 } from '$lib/apps/mor/utils/morHelpers';
 import { readAllPages } from '$lib/utils/readAllPages.js';
+import { getIdentity } from '$lib/server/identity.js';
 
 const logger = getLogger('mor/period-summary');
 
@@ -294,6 +295,14 @@ export async function POST({ request }) {
     .map(c => ({ ref: c.reference, closedAt: c.closed_at, text: c.lessons_learned.trim() }));
 
   // ── Build the document ──────────────────────────────────────────────────
+  // The building as an admin named it (Building & business), never a name in code.
+  let buildingName;
+  try {
+    ({ building: { name: buildingName } } = await getIdentity());
+  } catch (/** @type {any} */ err) {
+    logger('❌ identity read failed:', err.message);
+    return json({ error: 'Could not read the building details.' }, { status: 500 });
+  }
   const docTitle = `MOR Activity Summary — ${fmtDateLong(startIso)} to ${fmtDateLong(endIso)}`;
   const children = [];
 
@@ -302,7 +311,7 @@ export async function POST({ request }) {
     spacing:  { before: 0, after: 80 },
     children: [run(docTitle, { size: 34, bold: true, color: COLOURS.textDark })],
   }));
-  children.push(para('Lonsdale House — Mandatory Occurrence Reporting (BSA 2022 s.87)',
+  children.push(para(`${buildingName} — Mandatory Occurrence Reporting (BSA 2022 s.87)`,
     { size: 20, color: COLOURS.subheading, bold: true, after: 280 }));
 
   // Headline numbers
@@ -411,7 +420,7 @@ export async function POST({ request }) {
 
   // Footer note
   children.push(new Paragraph({ spacing: { before: 400, after: 0 }, children: [] }));
-  children.push(para(`Generated ${fmtGenerated()} from the LH Portal MOR app.`,
+  children.push(para(`Generated ${fmtGenerated()} from the portal's MOR app.`,
     { size: 14, italics: true, color: COLOURS.textMuted, align: AlignmentType.RIGHT }));
 
   // ── Pack and stream ──────────────────────────────────────────────────

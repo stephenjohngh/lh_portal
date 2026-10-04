@@ -15,6 +15,7 @@ import {
 import { REVIEW_BAND_LABEL, AP_ROLE_LABEL } from '$lib/apps/golden_thread/utils/gtConstants.js';
 import { getLogger } from '$lib/utils/logger';
 import { fmtDate, fmtDateTime, today } from '$lib/utils/dates';
+import { documentBuildingName } from '$lib/server/identity.js';
 
 const logger = getLogger('GtSafetyCase');
 
@@ -138,6 +139,9 @@ export async function POST({ request }) {
   if (auth.error) return auth.error;
   try {
     const model = await request.json();
+    // The building as an admin named it (Admin → Building & business), never
+    // what the request carried or a name in code.
+    model.building = await documentBuildingName();
     if (!model || !model.summary) return json({ error: 'No safety-case model provided' }, { status: 400 });
 
     const generatedAt = fmtDateTime(model.generatedAt);

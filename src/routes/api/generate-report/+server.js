@@ -36,6 +36,7 @@ import {
 import { sortBySystemInspectionAsset } from '$lib/utils/componentSorting.js';
 import { buildStatusPivot } from '$lib/apps/building_assets/utils/reportModel.js';
 import { fmtGenerated, fmtShortDate, today } from '$lib/utils/dates.js';
+import { documentBuildingName } from '$lib/server/identity.js';
 
 const logger = getLogger('generateReport');
 
@@ -488,11 +489,14 @@ export async function POST({ request }) {
 
   try {
     const body = await request.json();
+    // The building as an admin named it (Admin → Building & business), never
+    // what the request carried or a name in code.
+    body.building = await documentBuildingName();
     const { options = {}, floors = [], allComponents = [] } = body;
 
     const {
       reportTypes          = [],
-      building             = 'Lancaster House',
+      building,
       filterSummary        = '',
       generatedAt          = '',
       showNotes            = false,

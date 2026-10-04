@@ -59,7 +59,7 @@
     <FormInput
       label="Title"
       bind:value={title}
-      placeholder="e.g. 14 Lonsdale House — service charge dispute"
+      placeholder="e.g. Flat 14 — service charge dispute"
       required={true}
       error={titleError}
       on:input={() => titleError = ''}

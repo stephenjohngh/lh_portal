@@ -16,7 +16,7 @@
   import { revealBlock } from '$lib/apps/dossier/utils/revealBlock.js';
   import { buildTree } from '$lib/apps/dossier/utils/docTree.js';
   import { fmtDateLong } from '$lib/utils/dates';
-  import lhLogo from '$lib/assets/LH_services_logo.png';
+  import { LOGO as lhLogo, LOGO_ALT } from '$lib/branding.js';
 
   import { tick, onMount } from 'svelte';
   import {
@@ -267,7 +267,7 @@
        need to ask for one. -->
   <div class="min-h-screen bg-slate-900 flex items-center justify-center p-6">
     <form class="max-w-sm w-full space-y-4" on:submit|preventDefault={unlock}>
-      <img src={lhLogo} alt="Lonsdale House" class="h-10 mx-auto opacity-80" />
+      <img src={lhLogo} alt={LOGO_ALT} class="h-10 mx-auto opacity-80" />
       <p class="text-sm text-slate-300 text-center">
         This pack is protected by a passphrase. Enter the one you were given.
       </p>
@@ -304,7 +304,7 @@
 {:else if data.refused}
   <div class="min-h-screen bg-slate-900 flex items-center justify-center p-6">
     <div class="max-w-md text-center space-y-4">
-      <img src={lhLogo} alt="Lonsdale House" class="h-10 mx-auto opacity-70" />
+      <img src={lhLogo} alt={LOGO_ALT} class="h-10 mx-auto opacity-70" />
       <p class="text-slate-300">{data.message}</p>
     </div>
   </div>
@@ -317,7 +317,7 @@
     <!-- Header -->
     <header class="pack-header border-b border-slate-700 bg-slate-900/95 sticky top-0 z-10">
       <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
-        <img src={lhLogo} alt="Lonsdale House" class="h-7 shrink-0" />
+        <img src={lhLogo} alt={LOGO_ALT} class="h-7 shrink-0" />
         <div class="min-w-0 flex-1">
           <p class="text-sm font-semibold text-white truncate">
             {publication?.title}

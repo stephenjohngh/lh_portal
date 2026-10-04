@@ -19,14 +19,15 @@ import {
   run, para,
 } from '$lib/server/docxHelpers.js';
 import { fmtDate, fmtDateLong, fmtGenerated } from '$lib/utils/dates';
+import { organisationOrPlaceholders } from '$lib/utils/identity.js';
 
-// ── Common building / org defaults ────────────────────────────────────────────
-// These can later be overridden from portal_settings if a richer config UI is
-// added. For now they match the rest of the docx pipeline (Lonsdale House).
-const DEFAULT_BUILDING_NAME = 'Lonsdale House';
-const SIGN_OFF_NAME         = '[Building Safety Manager name]';
-const SIGN_OFF_ROLE         = 'Building Safety Manager';
-const SIGN_OFF_CONTACT      = '[BSM email · BSM phone]';
+// ── The building and the signatory ────────────────────────────────────────────
+// From Admin → Other Config → Building & business ($lib/utils/identity.js), via
+// the route: `opts.building` (its name) and `opts.organisation`. They used to be
+// written here — the building as "Lonsdale House", the signatory as a bracketed
+// placeholder on every letter. An unset field still prints as its placeholder,
+// for the staff member to fill in before sending.
+const UNSET_BUILDING = '[Building name]';
 
 // Small helpers -----------------------------------------------------------------
 
@@ -46,14 +47,16 @@ function bodyPara(text) {
   return para(text, { size: 20, after: 180 });
 }
 
-function signature() {
+/** @param {Record<string, string>} [organisation] */
+function signature(organisation) {
+  const o = organisationOrPlaceholders(organisation);
   return [
     new Paragraph({ spacing: { before: 200, after: 0 }, children: [] }),
     para('Yours sincerely,', { size: 20, after: 360 }),
     para([
-      run(SIGN_OFF_NAME, { size: 20, bold: true }), new TextRun({ break: 1, font: 'Arial' }),
-      run(SIGN_OFF_ROLE, { size: 20 }),             new TextRun({ break: 1, font: 'Arial' }),
-      run(SIGN_OFF_CONTACT, { size: 18, color: COLOURS.textMuted }),
+      run(o.signatoryName, { size: 20, bold: true }), new TextRun({ break: 1, font: 'Arial' }),
+      run(o.signatoryRole, { size: 20 }),             new TextRun({ break: 1, font: 'Arial' }),
+      run(o.signatoryContact, { size: 18, color: COLOURS.textMuted }),
     ], { after: 0 }),
   ];
 }
@@ -103,7 +106,7 @@ function makeDoc(title, children) {
 // ─── Template 1: Reporter — BSR escalation notification ───────────────────────
 
 export function buildReporterBsrLetter(caseRow, opts = {}) {
-  const building = opts.building ?? DEFAULT_BUILDING_NAME;
+  const building = opts.building ?? UNSET_BUILDING;
 
   const docTitle = `${building} — Notification of escalation to the Building Safety Regulator`;
 
@@ -139,7 +142,7 @@ export function buildReporterBsrLetter(caseRow, opts = {}) {
       'Please contact me using the details below. If at any point you believe there is an immediate danger to anyone in the building, call 999.'
     ),
 
-    ...signature(),
+    ...signature(opts.organisation),
   ];
 
   return makeDoc(docTitle, children);
@@ -148,7 +151,7 @@ export function buildReporterBsrLetter(caseRow, opts = {}) {
 // ─── Template 2: Reporter — case closure ──────────────────────────────────────
 
 export function buildReporterClosureLetter(caseRow, opts = {}) {
-  const building = opts.building ?? DEFAULT_BUILDING_NAME;
+  const building = opts.building ?? UNSET_BUILDING;
   const docTitle = `${building} — Outcome of your safety report`;
 
   const children = [
@@ -183,7 +186,7 @@ export function buildReporterClosureLetter(caseRow, opts = {}) {
       'Reports from residents and other people in the building are an important part of how we keep ' + building + ' safe. Thank you for taking the time to let us know.'
     ),
 
-    ...signature(),
+    ...signature(opts.organisation),
   ].flat().filter(Boolean);
 
   return makeDoc(docTitle, children);
@@ -192,7 +195,7 @@ export function buildReporterClosureLetter(caseRow, opts = {}) {
 // ─── Template 3: Reporter — holding update (mid-case) ─────────────────────────
 
 export function buildReporterHoldingLetter(caseRow, opts = {}) {
-  const building = opts.building ?? DEFAULT_BUILDING_NAME;
+  const building = opts.building ?? UNSET_BUILDING;
   const docTitle = `${building} — Update on your safety report`;
 
   // Plain-English current-status phrase. We mirror the public status page's
@@ -234,7 +237,7 @@ export function buildReporterHoldingLetter(caseRow, opts = {}) {
 
     bodyPara('Thank you for your patience while we work through this.'),
 
-    ...signature(),
+    ...signature(opts.organisation),
   ];
 
   return makeDoc(docTitle, children);
@@ -243,7 +246,7 @@ export function buildReporterHoldingLetter(caseRow, opts = {}) {
 // ─── Template 4: Residents block — closure notice (anonymised) ────────────────
 
 export function buildResidentsClosureLetter(caseRow, opts = {}) {
-  const building = opts.building ?? DEFAULT_BUILDING_NAME;
+  const building = opts.building ?? UNSET_BUILDING;
   const docTitle = `${building} — Update on a building safety concern`;
 
   const children = [
@@ -275,7 +278,7 @@ export function buildResidentsClosureLetter(caseRow, opts = {}) {
       'If you notice anything that you think could pose a risk to the safety of the building or the people in it, please raise it through the building safety reporting route described in the residents\' engagement strategy. You can report at any time and you can do so anonymously if you prefer. If you believe there is an immediate danger, call 999.'
     ),
 
-    ...signature(),
+    ...signature(opts.organisation),
   ].flat().filter(Boolean);
 
   return makeDoc(docTitle, children);

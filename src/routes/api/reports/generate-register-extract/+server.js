@@ -19,6 +19,7 @@ import { json } from '@sveltejs/kit';
 import { requireAuth } from '$lib/server/requireAuth';
 import { getLogger } from '$lib/utils/logger';
 import { buildRegisterDocument, isWholePicture, Packer } from '$lib/server/registerDocx.js';
+import { documentBuildingName } from '$lib/server/identity.js';
 
 const logger = getLogger('reports:generate-register-extract');
 
@@ -28,6 +29,9 @@ export async function POST({ request }) {
 
   try {
     const payload = await request.json();
+    // The building as an admin named it (Admin → Building & business), never
+    // what the request carried or a name in code.
+    payload.building = await documentBuildingName();
     const doc = buildRegisterDocument(payload);
     const buf = await Packer.toBuffer(doc);
 

@@ -351,7 +351,7 @@ export async function POST({ params, request }) {
 
   // Footer note
   children.push(new Paragraph({ spacing: { before: 400, after: 0 }, children: [] }));
-  children.push(para(`Generated ${fmtGenerated()} from the LH Portal MOR app.`,
+  children.push(para(`Generated ${fmtGenerated()} from the portal's MOR app.`,
     { size: 14, italics: true, color: COLOURS.textMuted, align: AlignmentType.RIGHT }));
 
   // ── Pack and stream ───────────────────────────────────────────────────

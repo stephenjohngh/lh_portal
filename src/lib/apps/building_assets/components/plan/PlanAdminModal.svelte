@@ -444,7 +444,7 @@
         id="pa-building"
         type="text"
         bind:value={editBuilding}
-        placeholder="e.g. Lonsdale House"
+        placeholder="e.g. Riverside Court"
         disabled={saving}
         class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
                focus:outline-none focus:border-purple-500 disabled:opacity-50"

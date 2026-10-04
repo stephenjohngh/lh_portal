@@ -139,14 +139,13 @@ export function reportSummary(key, sheet) {
 }
 
 /** Build a report from the store's state and download it as Excel. */
-export async function downloadParkingReport(key, state, { building = 'Lancaster House' } = {}) {
+export async function downloadParkingReport(key, state) {
   const r = REPORTS[key];
   if (!r) throw new Error(`No such report: ${key}`);
   const sheet = r.build(state);
   const filename = await requestDownload('/api/generate-xlsx', {
     filename: `${r.stem}_${today()}.xlsx`,
     body: {
-      building,
       filterSummary: reportSummary(key, sheet),
       generatedAt: fmtGenerated(),
       detail: { headers: sheet.headers, rows: sheet.rows },

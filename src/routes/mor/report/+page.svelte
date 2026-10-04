@@ -4,7 +4,7 @@
      "a safety concern", not an "MOR". -->
 <script>
   import { onDestroy } from 'svelte';
-  import lhLogo from '$lib/assets/LH_services_logo.png';
+  import { LOGO as lhLogo, LOGO_ALT } from '$lib/branding.js';
 
   // ── Form state ─────────────────────────────────────────────────────────
   let description     = '';
@@ -147,7 +147,7 @@
 
   <!-- ── Header ──────────────────────────────────────────────────────── -->
   <header class="hdr">
-    <img src={lhLogo} alt="LH Services" class="logo" />
+    <img src={lhLogo} alt={LOGO_ALT} class="logo" />
   </header>
 
   <main class="main">

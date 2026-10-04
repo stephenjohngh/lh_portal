@@ -41,13 +41,12 @@ import { fmtGenerated, today } from '$lib/utils/dates.js';
  * @param {Record<string, Set<string>>} params.values          the active facets
  * @param {string} [params.query]                              the search box
  * @param {(key: string) => Object} [params.provenanceOf]
- * @param {string} [params.building]
  * @returns {Promise<{filename: string}>}
  */
 export async function downloadRegisterXlsx(params) {
   const {
     rows, total, fields, values, query = '',
-    provenanceOf = () => ({}), building = 'Lancaster House', fromSeed = false,
+    provenanceOf = () => ({}), fromSeed = false,
   } = params;
 
   const detail = buildRegisterSheet(rows, provenanceOf);
@@ -70,7 +69,6 @@ export async function downloadRegisterXlsx(params) {
   const filename = await requestDownload('/api/generate-xlsx', {
     filename: `periodic-register-${today()}.xlsx`,
     body: {
-      building,
       filterSummary,
       generatedAt: fmtGenerated(),
       detail,
@@ -85,7 +83,7 @@ export async function downloadRegisterXlsx(params) {
 
 export async function downloadRegisterDocx(params) {
   const {
-    rows, total, fields, values, query = '', building = 'Lancaster House',
+    rows, total, fields, values, query = '',
     sections = {}, items = {}, fromSeed = false,
   } = params;
 
@@ -97,7 +95,6 @@ export async function downloadRegisterDocx(params) {
   const filename = await requestDownload('/api/reports/generate-register-extract', {
     filename: `register-${today()}.docx`,
     body: {
-      building,
       total,
       generatedAt: fmtGenerated(),
       filterSummary: describeFilters(fields, values, query),
