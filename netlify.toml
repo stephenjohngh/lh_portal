@@ -3,7 +3,9 @@
   publish = "build"
 
 [build.environment]
-  NODE_VERSION       = "20"
+  NODE_VERSION       = "24"
+  # Node 24 (2026-10-04): 20 reached end of life in April 2026, and SvelteKit 3
+  # needs 22.17+. Matches package.json "engines", which Northflank's builder reads.
   # DEPLOYMENT_TARGET is intentionally absent — omitting it selects adapter-netlify
   # (see svelte.config.js). Only set it to 'northflank' on Northflank.
   PUBLIC_ENV_LABEL   = "production"
