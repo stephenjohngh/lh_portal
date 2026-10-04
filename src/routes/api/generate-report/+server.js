@@ -29,7 +29,7 @@ import { getLogger } from '#lib/utils/logger.js';
 import { statusLabel } from '#lib/utils/resultConstants.js';
 import {
   CONTENT_W, CONTENT_W_L, COLOURS, BORDERS, CELL_PAD,
-  hCell, dCell, run, para,
+  run, para,
   makeHeader, makeFooter,
   DOC_STYLES, pageProps,
 } from '#lib/server/docxHelpers.js';
@@ -39,6 +39,65 @@ import { fmtGenerated, fmtShortDate, today } from '#lib/utils/dates.js';
 import { documentBuildingName } from '#lib/server/identity.js';
 
 const logger = getLogger('generateReport');
+
+// -- Lean cells ----------------------------------------------------------------
+// ⛔ MEMORY (2026-10-05). docx packs a document by first building an
+// intermediate copy several times the size of the document model, and the cost
+// is PER TABLE CELL. This report has a row per component (1,092 on this
+// building, most with a condition sub-row), and with the shared helpers'
+// cells — each carrying its own four borders, four margins, white shading,
+// font and size — it peaked near 1 GB and the process was killed (HTTP 503
+// on Netlify and Northflank). The same look costs about 60% less when what
+// every cell shares is said ONCE: borders and margins on the TABLE, font and
+// size by the document default (DOC_STYLES: Arial 9pt), white by leaving the
+// cell unshaded. leanReport.test.js holds the cells to that.
+// ⚠ These are this report's own: the shared hCell/dCell are unchanged, because
+// no other report reaches a thousand rows and their look was settled.
+const TABLE_MARGINS = { ...CELL_PAD, marginUnitType: WidthType.DXA };
+
+/** A run that states only what differs from the document default. */
+function leanRun(text, { size, bold, italics, color } = {}) {
+  return new TextRun({
+    text: String(text ?? ''),
+    ...(size && size !== 18 ? { size } : {}),
+    ...(bold ? { bold: true } : {}),
+    ...(italics ? { italics: true } : {}),
+    ...(color ? { color } : {}),
+  });
+}
+
+/** A cell with no borders or margins of its own — the table carries those. */
+function leanCell(children, widthDxa, { fill, align, columnSpan, vAlign = true } = {}) {
+  return new TableCell({
+    width: { size: widthDxa, type: WidthType.DXA },
+    ...(columnSpan ? { columnSpan } : {}),
+    ...(fill && fill !== 'FFFFFF' ? { shading: { fill, type: ShadingType.CLEAR } } : {}),
+    ...(vAlign ? { verticalAlign: VerticalAlign.CENTER } : {}),
+    children: [new Paragraph({
+      ...(align ? { alignment: align } : {}),
+      spacing: { before: 0, after: 0 },
+      children,
+    })],
+  });
+}
+
+/** Header cell — the shared hCell's look, lean. */
+function hCell(text, widthDxa, opts = {}) {
+  return leanCell(
+    [leanRun(text, { bold: true, size: opts.size ?? 16, color: opts.color ?? COLOURS.textWhite })],
+    widthDxa, { fill: opts.fill ?? COLOURS.headerFill });
+}
+
+/** Data cell — the shared dCell's look, lean; a newline is a line break. */
+function dCell(text, widthDxa, opts = {}) {
+  const fill = opts.fill ?? (opts.alt ? COLOURS.altRowFill : 'FFFFFF');
+  const ro   = { size: opts.size ?? 18, bold: opts.bold, color: opts.color };
+  const runs = String(text ?? '—').split('\n').flatMap((line, i) => {
+    const r = leanRun(line || ' ', ro);
+    return i === 0 ? [r] : [new TextRun({ break: 1 }), r];
+  });
+  return leanCell(runs, widthDxa, { fill, align: opts.align });
+}
 
 // -- Condition sub-row ---------------------------------------------------------
 // Returns a TableRow listing "Condition (date): ✓ Gap · ✓ Closer · ✗ Smoke seal"
@@ -51,37 +110,16 @@ function buildConditionSubRow(c, columnSpan, alt) {
 
   const dateStr = c.last_inspected ? fmtShortDate(c.last_inspected) : null;
   const runs = [];
-  runs.push(new TextRun({
-    text:  dateStr ? `Condition (${dateStr}):  ` : 'Condition:  ',
-    bold:  true,
-    color: '475569',
-    font:  'Arial',
-    size:  16,
-  }));
+  runs.push(leanRun(dateStr ? `Condition (${dateStr}):  ` : 'Condition:  ', { bold: true, color: '475569', size: 16 }));
   items.forEach((it, j) => {
-    if (j > 0) runs.push(new TextRun({ text: '  ·  ', color: '94A3B8', font: 'Arial', size: 16 }));
+    if (j > 0) runs.push(leanRun('  ·  ', { color: '94A3B8', size: 16 }));
     const glyph  = it.passed === true ? '✓ ' : it.passed === false ? '✗ ' : '— ';
     const colour = it.passed === true ? '15803D' : it.passed === false ? 'B91C1C' : '6B7280';
-    runs.push(new TextRun({
-      text:  `${glyph}${it.name}`,
-      bold:  it.passed === false,
-      color: colour,
-      font:  'Arial',
-      size:  16,
-    }));
+    runs.push(leanRun(`${glyph}${it.name}`, { bold: it.passed === false, color: colour, size: 16 }));
   });
 
   return new TableRow({
-    children: [new TableCell({
-      width:      { size: CONTENT_W, type: WidthType.DXA },
-      columnSpan,
-      shading:    { fill: alt ? 'F8FAFC' : 'FFFFFF', type: ShadingType.CLEAR },
-      margins:    CELL_PAD,
-      children:   [new Paragraph({
-        spacing:  { before: 0, after: 0 },
-        children: runs,
-      })],
-    })],
+    children: [leanCell(runs, CONTENT_W, { columnSpan, fill: alt ? 'F8FAFC' : 'FFFFFF', vAlign: false })],
   });
 }
 
@@ -95,53 +133,21 @@ const STATUS_COLOUR = {
 
 function statusCell(status, widthDxa, alt) {
   const colour = STATUS_COLOUR[status] ?? COLOURS.textDark;
-  const label  = statusLabel(status);
-  return new TableCell({
-    width:         { size: widthDxa, type: WidthType.DXA },
-    margins:       CELL_PAD,
-    borders:       BORDERS,
-    shading:       { fill: alt ? COLOURS.altRowFill : 'FFFFFF', type: ShadingType.CLEAR },
-    verticalAlign: VerticalAlign.CENTER,
-    children: [new Paragraph({
-      spacing:  { before: 0, after: 0 },
-      children: [run(label, { size: 18, bold: true, color: colour })],
-    })],
-  });
+  return leanCell([leanRun(statusLabel(status), { bold: true, color: colour })],
+    widthDxa, { fill: alt ? COLOURS.altRowFill : 'FFFFFF' });
 }
 
 function numCell(value, widthDxa, positiveColour) {
-  return new TableCell({
-    width:         { size: widthDxa, type: WidthType.DXA },
-    margins:       CELL_PAD,
-    borders:       BORDERS,
-    shading:       { fill: 'FFFFFF', type: ShadingType.CLEAR },
-    verticalAlign: VerticalAlign.CENTER,
-    children: [new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing:   { before: 0, after: 0 },
-      children:  [run(String(value ?? 0), {
-        size:  18,
-        bold:  value > 0,
-        color: value > 0 ? positiveColour : COLOURS.textMuted,
-      })],
-    })],
-  });
+  return leanCell([leanRun(String(value ?? 0), {
+    bold:  value > 0,
+    color: value > 0 ? positiveColour : COLOURS.textMuted,
+  })], widthDxa, { align: AlignmentType.CENTER });
 }
 
 // navy-fill header numCell (used in grand-total row)
 function numCellHeader(value, widthDxa) {
-  return new TableCell({
-    width:         { size: widthDxa, type: WidthType.DXA },
-    margins:       CELL_PAD,
-    borders:       BORDERS,
-    shading:       { fill: COLOURS.headerFill, type: ShadingType.CLEAR },
-    verticalAlign: VerticalAlign.CENTER,
-    children: [new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing:   { before: 0, after: 0 },
-      children:  [run(String(value ?? 0), { size: 18, bold: true, color: COLOURS.textWhite })],
-    })],
-  });
+  return leanCell([leanRun(String(value ?? 0), { bold: true, color: COLOURS.textWhite })],
+    widthDxa, { fill: COLOURS.headerFill, align: AlignmentType.CENTER });
 }
 
 // -- Attribute formatting ------------------------------------------------------
@@ -238,6 +244,7 @@ function buildFullComponentListTable(components, colOpts = {}) {
     layout:       TableLayoutType.FIXED,
     columnWidths: colWidths,
     borders:      BORDERS,
+    margins:      TABLE_MARGINS,
     rows:         [headerRow, ...dataRows],
   });
 }
@@ -345,6 +352,7 @@ function buildComponentTable(components, colOpts = {}) {
     layout:       TableLayoutType.FIXED,
     columnWidths: colWidths,
     borders:      BORDERS,
+    margins:      TABLE_MARGINS,
     rows:         [headerRow, ...dataRows],
   });
 }
@@ -392,6 +400,7 @@ function buildFloorSummaryTable(components) {
     layout:       TableLayoutType.FIXED,
     columnWidths: FS_COLS,
     borders:      BORDERS,
+    margins:      TABLE_MARGINS,
     rows:         [headerRow, ...dataRows],
   });
 }
@@ -472,6 +481,7 @@ function buildFullSummarySection(allFloors, building, filterSummary) {
     layout:       TableLayoutType.FIXED,
     columnWidths: SM_COLS,
     borders:      BORDERS,
+    margins:      TABLE_MARGINS,
     rows:         [headerRow, ...dataRows, totalRow],
   }));
 
@@ -490,13 +500,14 @@ export async function POST({ request }) {
   try {
     const body = await request.json();
     // The building as an admin named it (Admin → Building & business), never
-    // what the request carried or a name in code.
-    body.building = await documentBuildingName();
+    // what the request carried or a name in code. ⚠ This used to be written to
+    // body.building while the report read options.building — so it printed the
+    // name the browser sent (leanReport.test.js, 2026-10-05).
+    const building = await documentBuildingName();
     const { options = {}, floors = [], allComponents = [] } = body;
 
     const {
       reportTypes          = [],
-      building,
       filterSummary        = '',
       generatedAt          = '',
       showNotes            = false,

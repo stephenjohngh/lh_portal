@@ -9,8 +9,8 @@
 	// Supabase/SDK results — not bugs); it is a gradual burn-down, not a gate,
 	// until it reaches zero. See CLAUDE.md "Type checking".
 	"extends": "$app/tsconfig",
-	"include": ["src", "test", "*"],
-	"exclude": ["src/service-worker.js"],
+	"include": ["src", "test", "*.js", "*.ts"],
+	"exclude": ["src/service-worker.js", "start.js"],
 	"compilerOptions": {
 		"allowJs": true,
 		"checkJs": false,
