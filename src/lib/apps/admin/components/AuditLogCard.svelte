@@ -2,10 +2,10 @@
 <!-- Individual audit log card with expandable details -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Icon from '$lib/components/icons/Icon.svelte';
-  import Badge from '$lib/components/common/Badge.svelte';
-  import Button from '$lib/components/common/Button.svelte';
-  import { fmtDateTime, fmtDateTimeSec } from '$lib/utils/dates';
+  import Icon from '#lib/components/icons/Icon.svelte';
+  import Badge from '#lib/components/common/Badge.svelte';
+  import Button from '#lib/components/common/Button.svelte';
+  import { fmtDateTime, fmtDateTimeSec } from '#lib/utils/dates.js';
 
   export let log;
   export let selected = false;

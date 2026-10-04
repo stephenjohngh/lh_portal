@@ -6,16 +6,16 @@
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
   import { typeByCode, conditionChecklistDisplay } from '../lookups.js';
-  import { permissions }             from '$lib/stores/permissions';
+  import { permissions }             from '#lib/stores/permissions.js';
   import AttrField                   from './AttrField.svelte';
   import ComponentInspectionHistory  from './ComponentInspectionHistory.svelte';
   import ComponentMaintenanceHistory from './ComponentMaintenanceHistory.svelte';
   import ComponentLinks              from './ComponentLinks.svelte';
   import ConditionChecklistChips     from './ConditionChecklistChips.svelte';
   import { inp, sec, STATUSES }      from '../ui.js';
-  import { fmtDate, fmtDateTime }    from '$lib/utils/dates.js';
-  import { buildSpaceRef }           from '$lib/utils/spaceRef.js';
-  import { buildComponentRef }       from '$lib/utils/componentRef.js';
+  import { fmtDate, fmtDateTime }    from '#lib/utils/dates.js';
+  import { buildSpaceRef }           from '#lib/utils/spaceRef.js';
+  import { buildComponentRef }       from '#lib/utils/componentRef.js';
   import { spacesForComponent }      from '../utils/spaceMembership.js';
 
   export let component;          // components row

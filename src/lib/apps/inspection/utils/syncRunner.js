@@ -10,8 +10,8 @@
 // file owns the loop, the connectivity wiring and the shared counts.
 
 import { writable, get as getStore } from 'svelte/store';
-import { online } from '$lib/stores/online.js';
-import { getLogger } from '$lib/utils/logger';
+import { online } from '#lib/stores/online.js';
+import { getLogger } from '#lib/utils/logger.js';
 import {
   openQueue, isOfflineAvailable, listOps, listUnsyncedOps, setOpStatus, pruneDone,
   getPhoto, markPhotoUploaded, retirePhoto, pruneRetiredPhotos,

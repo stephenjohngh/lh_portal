@@ -4,16 +4,16 @@
      live band preview. Standard theme + common/ components. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Modal        from '$lib/components/common/Modal.svelte';
-  import Button       from '$lib/components/common/Button.svelte';
-  import Badge        from '$lib/components/common/Badge.svelte';
-  import FormInput    from '$lib/components/common/FormInput.svelte';
-  import FormSelect   from '$lib/components/common/FormSelect.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
+  import Modal        from '#lib/components/common/Modal.svelte';
+  import Button       from '#lib/components/common/Button.svelte';
+  import Badge        from '#lib/components/common/Badge.svelte';
+  import FormInput    from '#lib/components/common/FormInput.svelte';
+  import FormSelect   from '#lib/components/common/FormSelect.svelte';
+  import FormTextarea from '#lib/components/common/FormTextarea.svelte';
   import {
     RISK_DOMAINS, RISK_DOMAIN_LABELS, RISK_SOURCES,
     LIKELIHOOD_LABELS, IMPACT_LABELS, scoreBand,
-  } from '$lib/apps/golden_thread/utils/gtRiskScoring.js';
+  } from '#lib/apps/golden_thread/utils/gtRiskScoring.js';
 
   export let risk = null;            // row or null (create)
   export let persons = [];           // gt_persons registry (owner picker)

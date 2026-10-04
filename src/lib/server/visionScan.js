@@ -13,7 +13,7 @@
 //   if (!result.safe) return json({ error: result.reason }, { status: 422 });
 
 import { google }    from 'googleapis';
-import { getLogger } from '$lib/utils/logger';
+import { getLogger } from '#lib/utils/logger.js';
 import { env }       from '$env/dynamic/private';
 
 const logger = getLogger('visionScan');

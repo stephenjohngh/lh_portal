@@ -6,7 +6,7 @@
 // Supabase, OneDrive) based on the STORAGE_PROVIDER environment variable.
 //
 // Usage:
-//   import { uploadMedia } from '$lib/utils/mediaUpload';
+//   import { uploadMedia } from '#lib/utils/mediaUpload.js';
 //
 //   const url = await uploadMedia(blob, {
 //     filename:   'photo_001.jpg',
@@ -18,7 +18,7 @@
 // The caller is responsible for persisting the returned URL into the
 // media_attachments table (or wherever the URL is stored).
 //
-import { accessToken } from '$lib/utils/authHeaders';
+import { accessToken } from '#lib/utils/authHeaders.js';
 
 /**
  * @param {Blob|File} blob

@@ -4,10 +4,10 @@
      'public' + 'registered', admins see all. -->
 <script>
   import { onMount }     from 'svelte';
-  import { supabase }    from '$lib/supabaseClient';
-  import { fmtDateLong } from '$lib/utils/dates';
-  import { readAllPages } from '$lib/utils/readAllPages.js';
-  import { LOGO as lhLogo, LOGO_ALT } from '$lib/branding.js';
+  import { supabase }    from '#lib/supabaseClient.js';
+  import { fmtDateLong } from '#lib/utils/dates.js';
+  import { readAllPages } from '#lib/utils/readAllPages.js';
+  import { LOGO as lhLogo, LOGO_ALT } from '#lib/branding.js';
 
   let articles = [];
   let loading  = true;

@@ -4,19 +4,19 @@
      registry; the GT-document picker uses the current register. -->
 <script>
   import { onMount } from 'svelte';
-  import { gtRiskStore } from '$lib/apps/golden_thread/stores/gtRiskStore';
-  import { permissions } from '$lib/stores/permissions';
-  import { listPersons, listCurrentDocuments } from '$lib/apps/golden_thread/public.js';
-  import { RISK_STATUSES, RISK_STATUS_LABELS, RISK_STATUS_BADGE } from '$lib/apps/golden_thread/utils/gtRiskLifecycle.js';
-  import { RISK_DOMAINS, RISK_DOMAIN_LABELS, riskBands, liveRating } from '$lib/apps/golden_thread/utils/gtRiskScoring.js';
-  import Badge         from '$lib/components/common/Badge.svelte';
-  import Button        from '$lib/components/common/Button.svelte';
-  import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import GtRiskForm    from '$lib/apps/golden_thread/components/GtRiskForm.svelte';
-  import GtRiskDetail  from '$lib/apps/golden_thread/components/GtRiskDetail.svelte';
-  import GtRiskHeatmap from '$lib/apps/golden_thread/components/GtRiskHeatmap.svelte';
+  import { gtRiskStore } from '#lib/apps/golden_thread/stores/gtRiskStore.js';
+  import { permissions } from '#lib/stores/permissions.js';
+  import { listPersons, listCurrentDocuments } from '#lib/apps/golden_thread/public.js';
+  import { RISK_STATUSES, RISK_STATUS_LABELS, RISK_STATUS_BADGE } from '#lib/apps/golden_thread/utils/gtRiskLifecycle.js';
+  import { RISK_DOMAINS, RISK_DOMAIN_LABELS, riskBands, liveRating } from '#lib/apps/golden_thread/utils/gtRiskScoring.js';
+  import Badge         from '#lib/components/common/Badge.svelte';
+  import Button        from '#lib/components/common/Button.svelte';
+  import ErrorDisplay  from '#lib/components/common/ErrorDisplay.svelte';
+  import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import GtRiskForm    from '#lib/apps/golden_thread/components/GtRiskForm.svelte';
+  import GtRiskDetail  from '#lib/apps/golden_thread/components/GtRiskDetail.svelte';
+  import GtRiskHeatmap from '#lib/apps/golden_thread/components/GtRiskHeatmap.svelte';
 
   $: ({ risks, selectedRisk, riskLinks, alertsByRisk, alertsUnavailable, loading, saving, error } = $gtRiskStore);
   $: canEdit = $permissions.isAdmin || $permissions.canModify;

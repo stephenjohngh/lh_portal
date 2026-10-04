@@ -2,11 +2,11 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { usersStore } from '../../stores/usersStore';
-  import { getLogger } from '$lib/utils/logger';
-  import Modal from '$lib/components/common/Modal.svelte';
-  import Button from '$lib/components/common/Button.svelte';
-  import Icon from '$lib/components/icons/Icon.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import { getLogger } from '#lib/utils/logger.js';
+  import Modal from '#lib/components/common/Modal.svelte';
+  import Button from '#lib/components/common/Button.svelte';
+  import Icon from '#lib/components/icons/Icon.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
 
   const logger = getLogger('DeleteUserModal');
 

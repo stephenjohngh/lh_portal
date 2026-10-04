@@ -23,19 +23,19 @@ const h = vi.hoisted(() => ({
 vi.mock('@sveltejs/kit', () => ({
   json: (body, init) => ({ body, status: init?.status ?? 200 }),
 }));
-vi.mock('$lib/server/documentLibrary', () => ({
+vi.mock('#lib/server/documentLibrary.js', () => ({
   getDocument: h.getDocument,
   updateDocument: h.updateDocument,
   deleteDocument: h.deleteDocument,
 }));
-vi.mock('$lib/server/requireAuth', () => ({
+vi.mock('#lib/server/requireAuth.js', () => ({
   requireAuth:  () => Promise.resolve(h.auth),
   requireAdmin: () => Promise.resolve(h.admin),
 }));
-vi.mock('$lib/server/documentAccess', async () => {
+vi.mock('#lib/server/documentAccess.js', async () => {
   // The real sanitiser: which columns are editable is the point of the PATCH
   // tests, and stubbing it would test the stub.
-  const real = await vi.importActual('$lib/server/documentAccess.js');
+  const real = await vi.importActual('#lib/server/documentAccess.js');
   return {
     canAccessDocument: h.canAccessDocument,
     sanitizeDocumentPatch: real.sanitizeDocumentPatch,

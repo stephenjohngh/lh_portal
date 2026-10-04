@@ -12,9 +12,9 @@ import JSZip from 'jszip';
 
 vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://localhost', PUBLIC_SUPABASE_ANON_KEY: 'anon' }));
 vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'service-role' } }));
-vi.mock('$app/environment', () => ({ browser: false, dev: false, building: false }));
-vi.mock('$lib/server/requireAuth', () => ({ requireAuth: async () => ({ user: { id: 'u1' }, error: null }) }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('$app/env', () => ({ browser: false, dev: false, building: false }));
+vi.mock('#lib/server/requireAuth.js', () => ({ requireAuth: async () => ({ user: { id: 'u1' }, error: null }) }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 
 const { POST } = await import('./+server.js');
 

@@ -5,12 +5,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const h = vi.hoisted(() => ({ tables: {} }));
-vi.mock('$lib/utils/api', () => ({
+vi.mock('#lib/utils/api.js', () => ({
   api: (() => { const get = vi.fn(async (table) => h.tables[table] ?? []); return { get, getAll: get }; })(),
 }));
 vi.mock('./stores/inspectionDefinitionsStore.js', () => ({ inspectionDefinitionsStore: {} }));
-vi.mock('$lib/apps/inspection/public.js', () => ({ listWalkSessions: vi.fn(async () => []) }));
-vi.mock('$lib/apps/maintenance/public.js', () => ({ listJobEvidence: vi.fn(async () => []) }));
+vi.mock('#lib/apps/inspection/public.js', () => ({ listWalkSessions: vi.fn(async () => []) }));
+vi.mock('#lib/apps/maintenance/public.js', () => ({ listJobEvidence: vi.fn(async () => []) }));
 
 import { listComplianceReviewDates } from './public.js';
 

@@ -30,7 +30,7 @@ const h = vi.hoisted(() => {
   return { permissions: makeStore({ loading: false, isAdmin: false, canModify: false, isReadOnly: false }) };
 });
 
-vi.mock('$lib/stores/permissions', () => ({ permissions: h.permissions }));
+vi.mock('#lib/stores/permissions.js', () => ({ permissions: h.permissions }));
 
 const ProtectedButton = (await import('./ProtectedButton.svelte')).default;
 

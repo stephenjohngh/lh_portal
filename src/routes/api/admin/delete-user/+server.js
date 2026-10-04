@@ -4,9 +4,9 @@ import { json } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env } from '$env/dynamic/private';
-import { requireAdmin } from '$lib/server/requireAuth';
-import { getLogger } from '$lib/utils/logger';
-import { logDelete } from '$lib/server/auditLogger';
+import { requireAdmin } from '#lib/server/requireAuth.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { logDelete } from '#lib/server/auditLogger.js';
 
 const logger = getLogger('DeleteUserAPI');
 

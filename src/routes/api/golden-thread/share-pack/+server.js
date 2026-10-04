@@ -15,12 +15,12 @@ import { createHash }    from 'node:crypto';
 import { createClient }  from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }           from '$env/dynamic/private';
-import { requireAdmin }  from '$lib/server/requireAuth';
-import { ownerOf } from '$lib/server/storage/index.js';
-import { buildZip }      from '$lib/server/zip.js';
-import { buildManifest, renderReadme, packPath } from '$lib/server/gtSharePack.js';
-import { getLogger }     from '$lib/utils/logger';
-import { readAllPages, chunks } from '$lib/utils/readAllPages.js';
+import { requireAdmin }  from '#lib/server/requireAuth.js';
+import { ownerOf } from '#lib/server/storage/index.js';
+import { buildZip }      from '#lib/server/zip.js';
+import { buildManifest, renderReadme, packPath } from '#lib/server/gtSharePack.js';
+import { getLogger }     from '#lib/utils/logger.js';
+import { readAllPages, chunks } from '#lib/utils/readAllPages.js';
 
 const logger = getLogger('GtSharePack');
 const db = createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY ?? '');

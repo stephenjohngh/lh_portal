@@ -5,25 +5,25 @@
 -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import { auth }        from '$lib/stores/auth';
-  import { permissions } from '$lib/stores/permissions';
-  import { logAudit }    from '$lib/utils/auditLogger';
+  import { auth }        from '#lib/stores/auth.js';
+  import { permissions } from '#lib/stores/permissions.js';
+  import { logAudit }    from '#lib/utils/auditLogger.js';
   import {
     registerSessionReportToGoldenThread, findRegisteredSessionReport, loadSessionInspections,
-  } from '$lib/apps/inspection/public.js';
-  import { findDocumentsBySources } from '$lib/apps/golden_thread/public.js';
-  import Modal    from '$lib/components/common/Modal.svelte';
-  import Button   from '$lib/components/common/Button.svelte';
-  import Checkbox from '$lib/components/common/Checkbox.svelte';
-  import Badge    from '$lib/components/common/Badge.svelte';
-  import { getLogger } from '$lib/utils/logger';
+  } from '#lib/apps/inspection/public.js';
+  import { findDocumentsBySources } from '#lib/apps/golden_thread/public.js';
+  import Modal    from '#lib/components/common/Modal.svelte';
+  import Button   from '#lib/components/common/Button.svelte';
+  import Checkbox from '#lib/components/common/Checkbox.svelte';
+  import Badge    from '#lib/components/common/Badge.svelte';
+  import { getLogger } from '#lib/utils/logger.js';
   import {
     flattenInspectionRows,
     sessionKindLabel,
-  } from '$lib/apps/inspection/utils/inspectionHelpers.js';
-  import { fmtDateTime, today } from '$lib/utils/dates';
-  import { requestDownload } from '$lib/utils/download';
-  import { conditionChecklistDisplay, readingsDisplay } from '$lib/apps/building_assets/lookups.js';
+  } from '#lib/apps/inspection/utils/inspectionHelpers.js';
+  import { fmtDateTime, today } from '#lib/utils/dates.js';
+  import { requestDownload } from '#lib/utils/download.js';
+  import { conditionChecklistDisplay, readingsDisplay } from '#lib/apps/building_assets/lookups.js';
 
   const logger   = getLogger('InspectionsReport');
   const dispatch = createEventDispatcher();

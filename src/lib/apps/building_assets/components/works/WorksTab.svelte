@@ -5,19 +5,19 @@
 
      Two views in one tab: the list of schedules, and one schedule's lines. -->
 <script>
-  import { errMessage } from '$lib/utils/errors';
+  import { errMessage } from '#lib/utils/errors.js';
   import { onMount } from 'svelte';
-  import { auth }         from '$lib/stores/auth';
-  import { permissions }  from '$lib/stores/permissions';
-  import Button           from '$lib/components/common/Button.svelte';
-  import ProtectedButton  from '$lib/components/common/ProtectedButton.svelte';
-  import ErrorDisplay     from '$lib/components/common/ErrorDisplay.svelte';
-  import ConfirmDialog    from '$lib/components/common/ConfirmDialog.svelte';
-  import LoadingSpinner   from '$lib/components/common/LoadingSpinner.svelte';
-  import Badge            from '$lib/components/common/Badge.svelte';
-  import { fmtDate }      from '$lib/utils/dates';
-  import { buildComponentRef } from '$lib/utils/componentRef.js';
-  import { requestDownload } from '$lib/utils/download';
+  import { auth }         from '#lib/stores/auth.js';
+  import { permissions }  from '#lib/stores/permissions.js';
+  import Button           from '#lib/components/common/Button.svelte';
+  import ProtectedButton  from '#lib/components/common/ProtectedButton.svelte';
+  import ErrorDisplay     from '#lib/components/common/ErrorDisplay.svelte';
+  import ConfirmDialog    from '#lib/components/common/ConfirmDialog.svelte';
+  import LoadingSpinner   from '#lib/components/common/LoadingSpinner.svelte';
+  import Badge            from '#lib/components/common/Badge.svelte';
+  import { fmtDate }      from '#lib/utils/dates.js';
+  import { buildComponentRef } from '#lib/utils/componentRef.js';
+  import { requestDownload } from '#lib/utils/download.js';
 
   import { buildingAssetsStore } from '../../stores/buildingAssetsStore.js';
   import { worksSchedulesStore } from '../../stores/worksSchedulesStore.js';

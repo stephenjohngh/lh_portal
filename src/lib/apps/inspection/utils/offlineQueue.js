@@ -1,7 +1,7 @@
 // src/lib/apps/inspection/utils/offlineQueue.js
 //
 // The Inspection app's durable offline outbox, layered on the generic IndexedDB
-// wrapper (`$lib/utils/idb.js`). It holds three kinds of thing:
+// wrapper (`#lib/utils/idb.js`). It holds three kinds of thing:
 //
 //   • ops       — a FIFO of server operations still to sync (seq autoincrement).
 //   • photos    — captured photo Blobs waiting to upload (keyed by photoId).
@@ -21,8 +21,8 @@
 //   'inspection_save'  payload: { row, isUpdate, purgeInspectionId, photoIds, statusPatch }
 //   'session_complete' payload: { sessionId, notes, inspectedCount }
 
-import { openDB, isIdbAvailable } from '$lib/utils/idb.js';
-import { DAY_MS } from '$lib/utils/dates.js';
+import { openDB, isIdbAvailable } from '#lib/utils/idb.js';
+import { DAY_MS } from '#lib/utils/dates.js';
 
 export const DB_NAME    = 'lh_inspection_offline';
 export const DB_VERSION = 1;
@@ -51,7 +51,7 @@ let _handlePromise = null;
 /**
  * Open the shared offline DB (memoised). Throws under SSR / no-IndexedDB — call
  * isOfflineAvailable() first at the boundary.
- * @returns {Promise<import('$lib/utils/idb.js').IdbHandle>}
+ * @returns {Promise<import('#lib/utils/idb.js').IdbHandle>}
  */
 export function openQueue() {
   if (!_handlePromise) _handlePromise = openDB(DB_NAME, DB_VERSION, upgradeSchema);

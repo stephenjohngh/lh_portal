@@ -14,19 +14,19 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock('@sveltejs/kit', () => ({ json: (body, init) => ({ body, status: init?.status ?? 200 }) }));
-vi.mock('$lib/server/requireAuth', () => ({ requireAuth: async () => h.auth }));
-vi.mock('$lib/server/passwordCheck', () => ({
+vi.mock('#lib/server/requireAuth.js', () => ({ requireAuth: async () => h.auth }));
+vi.mock('#lib/server/passwordCheck.js', () => ({
   checkPassword: vi.fn(async () => h.check),
   adminClient:   () => ({ auth: { admin: { updateUserById: h.update } } }),
   pauseMinutes:  () => 15,
 }));
-vi.mock('$lib/server/auditLogger', () => ({
+vi.mock('#lib/server/auditLogger.js', () => ({
   logAudit: h.audit, getIpAddress: () => '1.2.3.4', getUserAgent: () => 'ua',
 }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 
 const { POST } = await import('./+server.js');
-const { checkPassword } = await import('$lib/server/passwordCheck');
+const { checkPassword } = await import('#lib/server/passwordCheck.js');
 
 const call = (body) => POST(/** @type {any} */ ({
   request: { json: async () => body, headers: { get: () => null } },

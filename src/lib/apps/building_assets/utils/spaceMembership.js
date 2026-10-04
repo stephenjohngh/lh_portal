@@ -15,7 +15,7 @@
 // planMeasure.js). ~0.01 = 1% of plan height. Tunable; refine against real plans.
 
 import { pointInPolygon, distanceToPolygon } from '../components/plan/planMeasure.js';
-import { buildSpaceRef } from '$lib/utils/spaceRef.js';
+import { buildSpaceRef } from '#lib/utils/spaceRef.js';
 
 export const DEFAULT_TOLERANCE = 0.01;
 

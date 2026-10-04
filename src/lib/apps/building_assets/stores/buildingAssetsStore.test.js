@@ -7,7 +7,7 @@
 // modules onto one writable, testing the singleton exercises the real wiring.
 //
 // Seams mocked: api, supabaseClient (storage for plan images), auditLogger,
-// logger, and $lib/stores/auth (so the real requireUserId helper resolves a
+// logger, and #lib/stores/auth (so the real requireUserId helper resolves a
 // user). resolveHierarchy and the helpers module are left REAL.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -51,12 +51,12 @@ const h = vi.hoisted(() => {
   };
 });
 
-vi.mock('$lib/utils/api',         () => ({ api: h.api }));
-vi.mock('$lib/supabaseClient',    () => ({ supabase: h.supabase }));
-vi.mock('$lib/utils/auditLogger', () => ({ logAudit: h.logAudit }));
-vi.mock('$lib/utils/logger',      () => ({ getLogger: () => () => {} }));
-vi.mock('$lib/utils/mediaAttachments.js', () => ({ purgeAttachments: h.purgeAttachments }));
-vi.mock('$lib/stores/auth',       () => ({
+vi.mock('#lib/utils/api.js',         () => ({ api: h.api }));
+vi.mock('#lib/supabaseClient.js',    () => ({ supabase: h.supabase }));
+vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: h.logAudit }));
+vi.mock('#lib/utils/logger.js',      () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/mediaAttachments.js', () => ({ purgeAttachments: h.purgeAttachments }));
+vi.mock('#lib/stores/auth.js',       () => ({
   auth: { subscribe: (run) => { run({ user: { id: 'u1' } }); return () => {}; } },
 }));
 

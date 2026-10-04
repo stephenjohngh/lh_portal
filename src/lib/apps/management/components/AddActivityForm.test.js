@@ -23,15 +23,15 @@ const h = vi.hoisted(() => {
   };
 });
 
-vi.mock('$lib/stores/permissions', () => ({ permissions: h.permissions }));
-vi.mock('$lib/stores/portalSettings.js', () => ({
+vi.mock('#lib/stores/permissions.js', () => ({ permissions: h.permissions }));
+vi.mock('#lib/stores/portalSettings.js', () => ({
   portalSettings: { subscribe: (/** @type {(v: object) => void} */ fn) => { fn({ aiEnabled: true }); return () => {}; } },
 }));
 vi.mock('../stores/issuesStore', () => ({ issuesStore: { addActivity: h.addActivity } }));
-vi.mock('$lib/supabaseClient', () => ({
+vi.mock('#lib/supabaseClient.js', () => ({
   supabase: { auth: { getSession: () => Promise.resolve({ data: { session: { access_token: 't' } } }) } },
 }));
-vi.mock('$lib/utils/authHeaders', () => ({ authHeaders: () => Promise.resolve({ 'Content-Type': 'application/json' }) }));
+vi.mock('#lib/utils/authHeaders.js', () => ({ authHeaders: () => Promise.resolve({ 'Content-Type': 'application/json' }) }));
 
 const AddActivityForm = (await import('./AddActivityForm.svelte')).default;
 const btn = (re) => screen.getByRole('button', { name: re });

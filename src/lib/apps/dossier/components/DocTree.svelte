@@ -4,7 +4,7 @@
      the store, so the move guards in utils/docTree.js stay authoritative. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { permissions } from '$lib/stores/permissions';
+  import { permissions } from '#lib/stores/permissions.js';
 
   export let nodes      = [];     // tree nodes from buildTree()
   export let selectedId = null;

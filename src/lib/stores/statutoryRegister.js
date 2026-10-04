@@ -34,16 +34,16 @@
 
 import { today } from '../utils/dates.js';
 import { writable, get } from 'svelte/store';
-import { api } from '$lib/utils/api';
-import { getLogger } from '$lib/utils/logger';
-import { logAudit } from '$lib/utils/auditLogger';
-import { STATUTORY_TEMPLATE, setActiveRegister } from '$lib/utils/statutoryTemplate.js';
-import { REGISTER_ITEMS } from '$lib/utils/registerItemsData.js';
-import { ofKind, kindOf } from '$lib/utils/registerKinds.js';
-import { toRow, fromRow, shippedDiffers } from '$lib/utils/registerRowMapping.js';
-import { validateRegisterEntry } from '$lib/utils/registerEntryRules.js';
-import { diffRegister, fieldChanges } from '$lib/utils/registerDiff.js';
-import { currentUser, currentUserId } from '$lib/utils/currentUser.js';
+import { api } from '#lib/utils/api.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { logAudit } from '#lib/utils/auditLogger.js';
+import { STATUTORY_TEMPLATE, setActiveRegister } from '#lib/utils/statutoryTemplate.js';
+import { REGISTER_ITEMS } from '#lib/utils/registerItemsData.js';
+import { ofKind, kindOf } from '#lib/utils/registerKinds.js';
+import { toRow, fromRow, shippedDiffers } from '#lib/utils/registerRowMapping.js';
+import { validateRegisterEntry } from '#lib/utils/registerEntryRules.js';
+import { diffRegister, fieldChanges } from '#lib/utils/registerDiff.js';
+import { currentUser, currentUserId } from '#lib/utils/currentUser.js';
 
 const logger = getLogger('statutoryRegister');
 

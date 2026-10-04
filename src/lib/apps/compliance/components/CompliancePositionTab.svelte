@@ -26,34 +26,34 @@
      the app open. -->
 <script>
   import { onMount } from 'svelte';
-  import { listWalkSessions } from '$lib/apps/inspection/public.js';
-  import { listJobEvidence } from '$lib/apps/maintenance/public.js';
+  import { listWalkSessions } from '#lib/apps/inspection/public.js';
+  import { listJobEvidence } from '#lib/apps/maintenance/public.js';
   // ⭐ This app's own tables. They used to be read through
   // `inspection/public.js`, which was an ownership inversion left behind by
   // migration 206 — see compliance/public.js.
   import { listPlannedObligations, listStatutoryExclusions } from '../public.js';
-  import { listComponentsByStatus, listWorksLinesFor } from '$lib/apps/building_assets/public.js';
+  import { listComponentsByStatus, listWorksLinesFor } from '#lib/apps/building_assets/public.js';
   import { correctiveSummary, faultLabel, FAULT_STATUSES } from '../utils/correctiveWork.js';
-  import { permissions } from '$lib/stores/permissions';
-  import { requestDownload } from '$lib/utils/download';
-  import { walkEventsFromSessions, jobEventsFromJobs } from '$lib/utils/obligationSchedule.js';
+  import { permissions } from '#lib/stores/permissions.js';
+  import { requestDownload } from '#lib/utils/download.js';
+  import { walkEventsFromSessions, jobEventsFromJobs } from '#lib/utils/obligationSchedule.js';
   import {
     compliancePosition, positionSummary, filterRows, sortRows, groupRows,
     evidenceHistory, SORTS, SORT_LABEL, ROW_STATUS, ROW_STATUS_LABEL,
     HISTORY_MODES, HISTORY_MODE_LABEL, historyCountText,
-  } from '$lib/utils/obligationReport.js';
+  } from '#lib/utils/obligationReport.js';
   import {
     BASIS, BASIS_LABEL, GROUPS, GROUP_LABEL, HANDLED_BY_LABEL,
-  } from '$lib/utils/statutoryTemplate.js';
-  import { frequencyLabel } from '$lib/utils/inspectionSchedule';
-  import { fmtDate, fmtDateTime, fmtToday } from '$lib/utils/dates.js';
-  import { addDaysISO, today } from '$lib/apps/maintenance/utils/maintenanceHelpers.js';
-  import Button from '$lib/components/common/Button.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
-  import Modal from '$lib/components/common/Modal.svelte';
-  import Checkbox from '$lib/components/common/Checkbox.svelte';
-  import { getLogger } from '$lib/utils/logger';
+  } from '#lib/utils/statutoryTemplate.js';
+  import { frequencyLabel } from '#lib/utils/inspectionSchedule.js';
+  import { fmtDate, fmtDateTime, fmtToday } from '#lib/utils/dates.js';
+  import { addDaysISO, today } from '#lib/apps/maintenance/utils/maintenanceHelpers.js';
+  import Button from '#lib/components/common/Button.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
+  import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
+  import Modal from '#lib/components/common/Modal.svelte';
+  import Checkbox from '#lib/components/common/Checkbox.svelte';
+  import { getLogger } from '#lib/utils/logger.js';
 
   const logger = getLogger('CompliancePositionTab');
 

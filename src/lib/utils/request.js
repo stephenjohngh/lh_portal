@@ -10,14 +10,14 @@
 // `error` message on a non-2xx response.
 //
 // Use this for JSON endpoints. NOT for:
-//   • multipart uploads  → use $lib/utils/documentApi or $lib/utils/mediaUpload
-//   • file downloads     → use $lib/utils/download (requestDownload)
+//   • multipart uploads  → use #lib/utils/documentApi or #lib/utils/mediaUpload
+//   • file downloads     → use #lib/utils/download (requestDownload)
 //
 // @example
-//   import { postJson } from '$lib/utils/request';
+//   import { postJson } from '#lib/utils/request.js';
 //   const { summary } = await postJson('/api/management/suggest-summary', { body, activity_type });
 
-import { authHeaders } from '$lib/utils/authHeaders';
+import { authHeaders } from '#lib/utils/authHeaders.js';
 
 // Shown when there is no valid session client-side (authHeaders throws) or the
 // server rejects the token (HTTP 401). Friendlier and more actionable than the

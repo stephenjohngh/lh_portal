@@ -14,7 +14,7 @@
 // Day arithmetic has one owner (dates.js, 2026-10-02); re-exported so this
 // module's callers keep their import.
 import { dueSoonDays } from '../../../utils/dueWindows.js';
-import { daysBetween } from '$lib/utils/dates.js';
+import { daysBetween } from '#lib/utils/dates.js';
 export { daysBetween };
 
 /**

@@ -2,15 +2,15 @@
 //
 // The Claude model for Management's AI suggestions: what the admin chose
 // (portal_settings.ai_model), checked against what Anthropic offers now (its
-// Models API). No model is named in code — see $lib/utils/aiModels.js for why
+// Models API). No model is named in code — see #lib/utils/aiModels.js for why
 // and for the rule when the chosen one has gone.
 
 import Anthropic                 from '@anthropic-ai/sdk';
 import { createClient }          from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL }   from '$env/static/public';
 import { env }                   from '$env/dynamic/private';
-import { chooseModel, newestFirst } from '$lib/utils/aiModels.js';
-import { getLogger }             from '$lib/utils/logger';
+import { chooseModel, newestFirst } from '#lib/utils/aiModels.js';
+import { getLogger }             from '#lib/utils/logger.js';
 
 const logger = getLogger('aiModel');
 

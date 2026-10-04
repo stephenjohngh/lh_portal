@@ -18,10 +18,10 @@
   import { createEventDispatcher } from 'svelte';
   import { typeByCode, defsForType, systemById, attrValue as lookupAttrValue } from '../lookups.js';
   import { componentAttrPairs, attrPairsText } from '../utils/attrDisplay.js';
-  import { fmtComponentRef } from '$lib/utils/componentRef.js';
-  import { statusBadgeCls, statusDotCls } from '$lib/utils/resultConstants.js';
-  import { fmtDate } from '$lib/utils/dates.js';
-  import { permissions } from '$lib/stores/permissions';
+  import { fmtComponentRef } from '#lib/utils/componentRef.js';
+  import { statusBadgeCls, statusDotCls } from '#lib/utils/resultConstants.js';
+  import { fmtDate } from '#lib/utils/dates.js';
+  import { permissions } from '#lib/stores/permissions.js';
 
   export let components     = [];
   export let componentAttrs = {};   // { [componentId]: component_attributes[] }

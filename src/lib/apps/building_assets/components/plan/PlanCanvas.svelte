@@ -5,7 +5,7 @@
   import { createEventDispatcher } from 'svelte';
   import { centroid } from './planMeasure.js';
   import ComponentMarker from '../ComponentMarker.svelte';
-  import { ACCENT, ACCENT_LIGHT } from '$lib/theme.js';
+  import { ACCENT, ACCENT_LIGHT } from '#lib/theme.js';
 
   export let plan;                       // selected plan object
   export let floor;                      // selected floor object

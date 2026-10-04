@@ -23,7 +23,7 @@ import {
 } from './statutoryTemplate.js';
 import { computeObligationSchedule } from './obligationSchedule.js';
 import { currentDecisions } from './statutoryExclusions.js';
-import { matchesSearch } from '$lib/utils/textSearch.js';
+import { matchesSearch } from '#lib/utils/textSearch.js';
 
 const BAND_RANK = { never_run: 0, overdue: 1, due_soon: 2, ok: 3, on_demand: 4 };
 

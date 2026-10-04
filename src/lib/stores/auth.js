@@ -1,9 +1,9 @@
 // src/lib/stores/auth.js
 
 import { writable } from 'svelte/store';
-import { supabase } from '$lib/supabaseClient';
-import { getLogger } from '$lib/utils/logger';
-import { openMediaSession, closeMediaSession } from '$lib/utils/mediaSession';
+import { supabase } from '#lib/supabaseClient.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { openMediaSession, closeMediaSession } from '#lib/utils/mediaSession.js';
 
 const logger = getLogger('authStore');
 

@@ -10,11 +10,11 @@
      Two steps: review → the link, shown once. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Modal        from '$lib/components/common/Modal.svelte';
-  import Button       from '$lib/components/common/Button.svelte';
-  import FormInput    from '$lib/components/common/FormInput.svelte';
-  import FormSelect   from '$lib/components/common/FormSelect.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import Modal        from '#lib/components/common/Modal.svelte';
+  import Button       from '#lib/components/common/Button.svelte';
+  import FormInput    from '#lib/components/common/FormInput.svelte';
+  import FormSelect   from '#lib/components/common/FormSelect.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import { fmtSize }  from '../utils/assetPreview.js';
   import { EXPIRY_CHOICES } from '../utils/publicationState.js';
   import { publicationUrl } from '../utils/publicationToken.js';

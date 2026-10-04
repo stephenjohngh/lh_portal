@@ -1,7 +1,7 @@
 // src/lib/server/storage/folderNames.js
 // Recognising a per-record folder by the short id it ends with.
 //
-// entityFolderPath() ($lib/utils/documentUtils.js) names a record's folder
+// entityFolderPath() (#lib/utils/documentUtils.js) names a record's folder
 // `<title> (<first 8 hex of its id>)` — or just the 8 hex when there is no
 // title. The title part can change (a note renamed, a pack retitled); the
 // short id cannot. So the short id, not the whole name, is what says "this is

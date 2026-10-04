@@ -1,11 +1,11 @@
 <!-- src/lib/apps/info/components/modals/SectionFormModal.svelte -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Modal         from '$lib/components/common/Modal.svelte';
-  import Button        from '$lib/components/common/Button.svelte';
-  import FormInput     from '$lib/components/common/FormInput.svelte';
-  import FormTextarea  from '$lib/components/common/FormTextarea.svelte';
-  import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
+  import Modal         from '#lib/components/common/Modal.svelte';
+  import Button        from '#lib/components/common/Button.svelte';
+  import FormInput     from '#lib/components/common/FormInput.svelte';
+  import FormTextarea  from '#lib/components/common/FormTextarea.svelte';
+  import ErrorDisplay  from '#lib/components/common/ErrorDisplay.svelte';
   import { SECTION_COLOURS } from '../../utils/infoHelpers.js';
 
   export let show    = false;

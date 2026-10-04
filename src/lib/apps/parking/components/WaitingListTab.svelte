@@ -12,12 +12,12 @@
     defaultExpiry, ANY_SIZE, APPLICATION_STATUS_LABEL, OPEN,
   } from '../utils/waitingListModel.js';
   import { validateHolder, HOLDER_TYPE_LABEL, todayISO } from '../utils/agreementModel.js';
-  import { PARKING_BAY_TYPES } from '$lib/apps/building_assets/utils/spaceTypeOptions.js';
-  import { fmtDate } from '$lib/utils/dates.js';
-  import Button       from '$lib/components/common/Button.svelte';
-  import FormSelect   from '$lib/components/common/FormSelect.svelte';
-  import FormInput    from '$lib/components/common/FormInput.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import { PARKING_BAY_TYPES } from '#lib/apps/building_assets/utils/spaceTypeOptions.js';
+  import { fmtDate } from '#lib/utils/dates.js';
+  import Button       from '#lib/components/common/Button.svelte';
+  import FormSelect   from '#lib/components/common/FormSelect.svelte';
+  import FormInput    from '#lib/components/common/FormInput.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import HolderFields from './HolderFields.svelte';
 
   export let canEdit = false;

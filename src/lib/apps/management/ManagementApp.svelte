@@ -1,26 +1,26 @@
 <!-- src/lib/apps/management/ManagementApp.svelte -->
 <script>
-  import TabBar from '$lib/components/common/TabBar.svelte';
+  import TabBar from '#lib/components/common/TabBar.svelte';
   import { onMount, onDestroy, tick } from 'svelte';
   import { get }            from 'svelte/store';
-  import { permissions }    from '$lib/stores/permissions';
-  import { auth }           from '$lib/stores/auth';
-  import { getLogger }      from '$lib/utils/logger';
+  import { permissions }    from '#lib/stores/permissions.js';
+  import { auth }           from '#lib/stores/auth.js';
+  import { getLogger }      from '#lib/utils/logger.js';
   import { issuesStore }    from './stores/issuesStore';
   import { meetingsStore }  from './stores/meetingsStore';
   import { issuesUiState }  from './stores/issuesUiStore';
   import IssueCard          from './components/IssueCard.svelte';
   import SearchMatches      from './components/SearchMatches.svelte';
   import { searchIssues, describeMatches, inStatusTab } from './utils/issueSearch.js';
-  import { revealElement, stickyOffset } from '$lib/utils/revealElement.js';
+  import { revealElement, stickyOffset } from '#lib/utils/revealElement.js';
   import IssueForm          from './components/IssueForm.svelte';
   import ReportsTab         from './components/reports/ReportsTab.svelte';
   import MeetingsTab        from './components/meetings/MeetingsTab.svelte';
-  import Button             from '$lib/components/common/Button.svelte';
-  import Modal              from '$lib/components/common/Modal.svelte';
-  import ErrorDisplay       from '$lib/components/common/ErrorDisplay.svelte';
-  import LoadingSpinner     from '$lib/components/common/LoadingSpinner.svelte';
-  import { ISSUE_STATUS, STATUS_FILTERS } from '$lib/utils/constants';
+  import Button             from '#lib/components/common/Button.svelte';
+  import Modal              from '#lib/components/common/Modal.svelte';
+  import ErrorDisplay       from '#lib/components/common/ErrorDisplay.svelte';
+  import LoadingSpinner     from '#lib/components/common/LoadingSpinner.svelte';
+  import { ISSUE_STATUS, STATUS_FILTERS } from '#lib/utils/constants.js';
 
   const logger = getLogger('ManagementApp');
 

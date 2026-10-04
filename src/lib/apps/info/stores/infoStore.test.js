@@ -20,10 +20,10 @@ const h = vi.hoisted(() => {
   return { api, supabase, logAudit: vi.fn() };
 });
 
-vi.mock('$lib/utils/api',         () => ({ api: h.api }));
-vi.mock('$lib/supabaseClient',    () => ({ supabase: h.supabase }));
-vi.mock('$lib/utils/auditLogger', () => ({ logAudit: h.logAudit }));
-vi.mock('$lib/utils/logger',      () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/api.js',         () => ({ api: h.api }));
+vi.mock('#lib/supabaseClient.js',    () => ({ supabase: h.supabase }));
+vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: h.logAudit }));
+vi.mock('#lib/utils/logger.js',      () => ({ getLogger: () => () => {} }));
 
 const { infoStore } = await import('./infoStore.js');
 

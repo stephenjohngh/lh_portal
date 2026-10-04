@@ -22,9 +22,9 @@
 
 // ⭐ The three numbers are admin policies (Admin → Other Config → Policies,
 // 2026-10-04): 5, 20 and 15 are the shipped defaults, with bounds that keep the
-// lockout a lockout ($lib/utils/policies.js). Read when used — the caller
+// lockout a lockout (#lib/utils/policies.js). Read when used — the caller
 // refreshes them first (passwordCheck → loadServerPolicies).
-import { policy } from '$lib/utils/policies.js';
+import { policy } from '#lib/utils/policies.js';
 
 /** The limits in force now. */
 export function lockoutLimits() {

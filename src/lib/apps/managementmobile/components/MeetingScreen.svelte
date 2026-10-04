@@ -5,11 +5,11 @@
   // to open the full issue; tap an activity to see it in full (ActivitySheet).
 
   import { createEventDispatcher, onMount } from 'svelte';
-  import { profiles, profilesStore } from '$lib/stores/profiles';
-  import { ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPE, getActionStatusLabel } from '$lib/utils/constants.js';
+  import { profiles, profilesStore } from '#lib/stores/profiles.js';
+  import { ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPE, getActionStatusLabel } from '#lib/utils/constants.js';
   import { actionStatusColor } from '../utils/mobileTheme.js';
-  import { fmtDate, fmtDateTime } from '$lib/utils/dates.js';
-  import { buildMeetingMinutes, meetingAttendees } from '$lib/apps/management/utils/meetingMinutes.js';
+  import { fmtDate, fmtDateTime } from '#lib/utils/dates.js';
+  import { buildMeetingMinutes, meetingAttendees } from '#lib/apps/management/utils/meetingMinutes.js';
   import ActivitySheet from './ActivitySheet.svelte';
 
   export let meeting = null;

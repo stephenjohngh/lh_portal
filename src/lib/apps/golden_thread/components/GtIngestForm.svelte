@@ -6,14 +6,14 @@
 -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import FormInput    from '$lib/components/common/FormInput.svelte';
-  import FormSelect   from '$lib/components/common/FormSelect.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
-  import Checkbox     from '$lib/components/common/Checkbox.svelte';
-  import DocAttachInput from '$lib/components/common/DocAttachInput.svelte';
-  import Button       from '$lib/components/common/Button.svelte';
-  import { DOCUMENT_TYPES } from '$lib/apps/golden_thread/utils/gtConstants.js';
-  import { assessCompetence, COMPETENCE_LABELS } from '$lib/apps/golden_thread/utils/gtCompetence.js';
+  import FormInput    from '#lib/components/common/FormInput.svelte';
+  import FormSelect   from '#lib/components/common/FormSelect.svelte';
+  import FormTextarea from '#lib/components/common/FormTextarea.svelte';
+  import Checkbox     from '#lib/components/common/Checkbox.svelte';
+  import DocAttachInput from '#lib/components/common/DocAttachInput.svelte';
+  import Button       from '#lib/components/common/Button.svelte';
+  import { DOCUMENT_TYPES } from '#lib/apps/golden_thread/utils/gtConstants.js';
+  import { assessCompetence, COMPETENCE_LABELS } from '#lib/apps/golden_thread/utils/gtCompetence.js';
 
   /** @type {Array<{code:number,name:string}>} */
   export let categories = [];

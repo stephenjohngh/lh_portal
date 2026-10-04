@@ -3,25 +3,25 @@
 // Tables: components, component_types, floors, walk_sessions, component_inspections.
 
 import { writable, get } from 'svelte/store';
-import { getLogger }     from '$lib/utils/logger';
-import { logAudit }      from '$lib/utils/auditLogger';
-import { api }           from '$lib/utils/api';
+import { getLogger }     from '#lib/utils/logger.js';
+import { logAudit }      from '#lib/utils/auditLogger.js';
+import { api }           from '#lib/utils/api.js';
 // Components belong to the Building Assets app — reach them only through its
 // public interface, so the write rules live in one place (../building_assets/public.js).
 import {
   inspectionResultPatch,
   updateComponent          as writeComponent,
   replaceComponentAttributes,
-} from '$lib/apps/building_assets/public.js';
-import { newUuid }                 from '$lib/utils/uuid.js';
-import { resolveHierarchy }        from '$lib/utils/attrResolution.js';
-import { sortByResultFloorAsset }  from '$lib/utils/componentSorting.js';
-import { normalisePhotoUrl } from '$lib/utils/driveUtils.js';
+} from '#lib/apps/building_assets/public.js';
+import { newUuid }                 from '#lib/utils/uuid.js';
+import { resolveHierarchy }        from '#lib/utils/attrResolution.js';
+import { sortByResultFloorAsset }  from '#lib/utils/componentSorting.js';
+import { normalisePhotoUrl } from '#lib/utils/driveUtils.js';
 // Polymorphic photo storage (media_attachments) goes through the shared module,
 // not raw supabase queries.
 // mergePhotosIntoRows batch-reads photos; the write side (add/purge) now lives in
 // the offline syncer (inspectionSyncDeps.js).
-import { listAttachments } from '$lib/utils/mediaAttachments.js';
+import { listAttachments } from '#lib/utils/mediaAttachments.js';
 import { deleteWalkSession, lastDefinitionInspections } from '../public.js';   // session-delete cascade + rotation inputs (shared)
 // Offline read cache (IndexedDB) — lets a walk start when the network is down.
 // Network-first: a successful fetch always refreshes the cache; the cache is only
@@ -35,7 +35,7 @@ import {
 import { syncOne }      from '../utils/inspectionSync.js';
 import { makeSyncDeps } from '../utils/inspectionSyncDeps.js';
 import { kickSync, flush as flushQueue } from '../utils/syncRunner.js';
-import { online } from '$lib/stores/online.js';
+import { online } from '#lib/stores/online.js';
 import { statusBeforeSession, reinspectPhotoPlan } from '../utils/inspectionHelpers.js';
 import {
   makeWalkBuilder,
@@ -45,7 +45,7 @@ import {
 } from '../utils/inspectionWalk.js';
 import { buildRotatingWalk, resolveLinkedSet } from '../utils/inspectionRotation.js';
 import { newSessionRecord, freshWalkState } from '../utils/sessionStart.js';
-import { currentUserId as getCurrentUserId } from '$lib/utils/currentUser.js';
+import { currentUserId as getCurrentUserId } from '#lib/utils/currentUser.js';
 
 const logger = getLogger('inspectionStore');
 
@@ -121,22 +121,22 @@ function audit(eventType, targetType, targetId, targetName, data = {}) {
  * types, which is the benefit worth having, and tolerates the rest.
  *
  * @typedef {Record<string, any>} Loose
- * @typedef {import('$lib/database.types').Tables<'components'> & Loose} Component
- * @typedef {import('$lib/database.types').Tables<'floors'> & Loose} Floor
- * @typedef {import('$lib/database.types').Tables<'walk_sessions'> & Loose} WalkSession
- * @typedef {import('$lib/database.types').Tables<'component_inspections'> & Loose} Inspection
+ * @typedef {import('#lib/database.types.ts').Tables<'components'> & Loose} Component
+ * @typedef {import('#lib/database.types.ts').Tables<'floors'> & Loose} Floor
+ * @typedef {import('#lib/database.types.ts').Tables<'walk_sessions'> & Loose} WalkSession
+ * @typedef {import('#lib/database.types.ts').Tables<'component_inspections'> & Loose} Inspection
  * @typedef {{
- *   facilities: (import('$lib/database.types').Tables<'facilities'> & Loose)[],
+ *   facilities: (import('#lib/database.types.ts').Tables<'facilities'> & Loose)[],
  *   floors: Floor[],
- *   systems: (import('$lib/database.types').Tables<'building_systems'> & Loose)[],
- *   types: (import('$lib/database.types').Tables<'component_types'> & Loose)[],
- *   attrDefs: Record<string, (import('$lib/database.types').Tables<'type_attributes'> & Loose)[]>,
- *   attrOptions: Record<string, (import('$lib/database.types').Tables<'type_attribute_options'> & Loose)[]>,
- *   plans: (import('$lib/database.types').Tables<'plans'> & Loose)[],
+ *   systems: (import('#lib/database.types.ts').Tables<'building_systems'> & Loose)[],
+ *   types: (import('#lib/database.types.ts').Tables<'component_types'> & Loose)[],
+ *   attrDefs: Record<string, (import('#lib/database.types.ts').Tables<'type_attributes'> & Loose)[]>,
+ *   attrOptions: Record<string, (import('#lib/database.types.ts').Tables<'type_attribute_options'> & Loose)[]>,
+ *   plans: (import('#lib/database.types.ts').Tables<'plans'> & Loose)[],
  *   allComponents: Record<string, Component[]>,
- *   allComponentAttrs: Record<string, (import('$lib/database.types').Tables<'component_attributes'> & Loose)[]>,
- *   componentLinks: Record<string, (import('$lib/database.types').Tables<'component_links'> & Loose)[]>,
- *   definitions: (import('$lib/database.types').Tables<'statutory_obligations'> & Loose)[],
+ *   allComponentAttrs: Record<string, (import('#lib/database.types.ts').Tables<'component_attributes'> & Loose)[]>,
+ *   componentLinks: Record<string, (import('#lib/database.types.ts').Tables<'component_links'> & Loose)[]>,
+ *   definitions: (import('#lib/database.types.ts').Tables<'statutory_obligations'> & Loose)[],
  *   scheduleSessions: WalkSession[],
  *   latestInspections: Record<string, Inspection>,
  *   sessions: WalkSession[],

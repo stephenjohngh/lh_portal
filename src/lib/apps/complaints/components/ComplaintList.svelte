@@ -8,8 +8,8 @@
      they cannot. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Badge from '$lib/components/common/Badge.svelte';
-  import { fmtDate, daysBetween, today } from '$lib/utils/dates';
+  import Badge from '#lib/components/common/Badge.svelte';
+  import { fmtDate, daysBetween, today } from '#lib/utils/dates.js';
   import { statusMeta } from '../utils/complaintLifecycle.js';
   import { categoryLabel } from '../utils/complaintOptions.js';
 

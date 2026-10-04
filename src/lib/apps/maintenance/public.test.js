@@ -11,8 +11,8 @@ const h = vi.hoisted(() => ({
   findDocumentBySource: vi.fn(async () => null),
 }));
 
-vi.mock('$lib/utils/api', () => ({ api: h.api }));
-vi.mock('$lib/apps/golden_thread/public.js', () => ({
+vi.mock('#lib/utils/api.js', () => ({ api: h.api }));
+vi.mock('#lib/apps/golden_thread/public.js', () => ({
   registerExistingArtifact: h.registerExistingArtifact,
   findDocumentBySource: h.findDocumentBySource,
 }));

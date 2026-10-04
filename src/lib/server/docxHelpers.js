@@ -1,6 +1,6 @@
 ﻿// src/lib/server/docxHelpers.js
 // Shared Word document primitives for all report server endpoints.
-// Server-only — in $lib/server/ so it cannot be accidentally imported client-side.
+// Server-only — in #lib/server/ so it cannot be accidentally imported client-side.
 
 import {
   Paragraph, TextRun, TableCell,

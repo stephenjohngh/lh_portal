@@ -2,10 +2,10 @@
 // CRUD store for maintenance_groups — used by Admin > Maint. Groups and 10-Yr Plan tabs.
 
 import { writable }   from 'svelte/store';
-import { api }        from '$lib/utils/api';
-import { getLogger }  from '$lib/utils/logger';
+import { api }        from '#lib/utils/api.js';
+import { getLogger }  from '#lib/utils/logger.js';
 import { storeLoader } from '../../../utils/storeLoad.js';
-import { currentUserId as userId } from '$lib/utils/currentUser.js';
+import { currentUserId as userId } from '#lib/utils/currentUser.js';
 
 const logger = getLogger('MaintenanceGroups');
 
@@ -15,10 +15,10 @@ function createMaintenanceGroupsStore() {
  * `& Record<string, any>` tolerates the joined aliases these queries select.
    *
    * @typedef {{
-   *   groups: (import('$lib/database.types').Tables<'maintenance_groups'> & Record<string, any>)[],
+   *   groups: (import('#lib/database.types.ts').Tables<'maintenance_groups'> & Record<string, any>)[],
    *   loading: boolean,
    *   error: string | null,
-   *   jobHistory: (import('$lib/database.types').Tables<'maintenance_jobs'> & Record<string, any>)[],
+   *   jobHistory: (import('#lib/database.types.ts').Tables<'maintenance_jobs'> & Record<string, any>)[],
    *   jobHistoryLoaded: boolean
    * }} MaintenanceGroupsState
    */

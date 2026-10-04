@@ -23,8 +23,8 @@ const h = vi.hoisted(() => {
   return { supabase, setProfile: (p) => { profile = p; }, setPerms: (p) => { perms = p; } };
 });
 
-vi.mock('$lib/supabaseClient', () => ({ supabase: h.supabase }));
-vi.mock('$lib/utils/logger',   () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/supabaseClient.js', () => ({ supabase: h.supabase }));
+vi.mock('#lib/utils/logger.js',   () => ({ getLogger: () => () => {} }));
 
 const { permissions } = await import('./permissions.js');
 

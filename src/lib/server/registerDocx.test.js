@@ -5,7 +5,7 @@
 // failure that reaches a user, and it is exactly what static analysis misses.
 
 import { describe, it, expect } from 'vitest';
-import { STATUTORY_TEMPLATE } from '$lib/utils/statutoryTemplate.js';
+import { STATUTORY_TEMPLATE } from '#lib/utils/statutoryTemplate.js';
 import {
   buildRegisterDocument, documentPreamble, isWholePicture, narrativeSection,
   SECTIONS, extractTable, cadenceText, fallbackBanner,

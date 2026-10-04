@@ -17,13 +17,13 @@ import { json }             from '@sveltejs/kit';
 import { createClient }     from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }              from '$env/dynamic/private';
-import { requireAuth }      from '$lib/server/requireAuth.js';
-import { canListDocuments, bearerToken } from '$lib/server/documentAccess.js';
-import { checkKeyRateLimit } from '$lib/server/publicRateLimit.js';
-import { listDocuments }    from '$lib/server/documentLibrary.js';
-import { buildPackArchive } from '$lib/server/packArchiveBuilder.js';
-import { readDatasetRecords } from '$lib/server/publicationReader.js';
-import { serverWording }    from '$lib/server/wording.js';
+import { requireAuth }      from '#lib/server/requireAuth.js';
+import { canListDocuments, bearerToken } from '#lib/server/documentAccess.js';
+import { checkKeyRateLimit } from '#lib/server/publicRateLimit.js';
+import { listDocuments }    from '#lib/server/documentLibrary.js';
+import { buildPackArchive } from '#lib/server/packArchiveBuilder.js';
+import { readDatasetRecords } from '#lib/server/publicationReader.js';
+import { serverWording }    from '#lib/server/wording.js';
 
 const db = createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY ?? '');
 

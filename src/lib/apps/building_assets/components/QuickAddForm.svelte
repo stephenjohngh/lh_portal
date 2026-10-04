@@ -6,7 +6,7 @@
   import { createEventDispatcher }    from 'svelte';
   import { buildingAssetsStore }      from '../stores/buildingAssetsStore.js';
   import { inp }                      from '../ui.js';
-  import { getJSON, setJSON }         from '$lib/utils/prefs';
+  import { getJSON, setJSON }         from '#lib/utils/prefs.js';
   import AttrField                    from './AttrField.svelte';
 
   // Reference data comes from the store — no prop drilling needed.

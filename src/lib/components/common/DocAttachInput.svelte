@@ -3,7 +3,7 @@
      Bind to `file` to get the selected File object.
      Call the exported reset() method (or set file = null from outside) to clear. -->
 <script>
-  import { fmtBytes, mimeIcon } from '$lib/utils/files.js';
+  import { fmtBytes, mimeIcon } from '#lib/utils/files.js';
 
   /** @type {File|null} */
   export let file     = null;

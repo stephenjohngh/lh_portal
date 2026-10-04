@@ -2,8 +2,8 @@
 <!-- Choose one of the pack's tables to show inside a page. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Modal  from '$lib/components/common/Modal.svelte';
-  import Button from '$lib/components/common/Button.svelte';
+  import Modal  from '#lib/components/common/Modal.svelte';
+  import Button from '#lib/components/common/Button.svelte';
   import { templateFor } from '../utils/datasetTemplates.js';
 
   export let show     = false;

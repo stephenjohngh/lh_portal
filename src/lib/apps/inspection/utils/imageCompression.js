@@ -3,7 +3,7 @@
 // Uses browser-image-compression library.
 
 import imageCompression from 'browser-image-compression';
-import { getLogger }    from '$lib/utils/logger';
+import { getLogger }    from '#lib/utils/logger.js';
 
 const logger = getLogger('ImageCompression');
 

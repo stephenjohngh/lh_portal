@@ -9,7 +9,7 @@
 // Config JSONB shape: { filters, columns, report } — presetToState below is
 // the one reading of it, old shapes included.
 
-import { api } from '$lib/utils/api';
+import { api } from '#lib/utils/api.js';
 
 // -- DB helpers ----------------------------------------------------------------
 

@@ -6,12 +6,12 @@
 -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Button      from '$lib/components/common/Button.svelte';
-  import Badge        from '$lib/components/common/Badge.svelte';
-  import FormInput    from '$lib/components/common/FormInput.svelte';
-  import { REVIEW_BAND_LABEL, REVIEW_BAND_BADGE, AP_ROLE_LABEL, AP_ROLE_BADGE } from '$lib/apps/golden_thread/utils/gtConstants.js';
-  import { pendingNotifications, daysPending } from '$lib/apps/golden_thread/utils/gtSafetyCaseNotification.js';
-  import { fmtDate, fmtDateTime } from '$lib/utils/dates';
+  import Button      from '#lib/components/common/Button.svelte';
+  import Badge        from '#lib/components/common/Badge.svelte';
+  import FormInput    from '#lib/components/common/FormInput.svelte';
+  import { REVIEW_BAND_LABEL, REVIEW_BAND_BADGE, AP_ROLE_LABEL, AP_ROLE_BADGE } from '#lib/apps/golden_thread/utils/gtConstants.js';
+  import { pendingNotifications, daysPending } from '#lib/apps/golden_thread/utils/gtSafetyCaseNotification.js';
+  import { fmtDate, fmtDateTime } from '#lib/utils/dates.js';
 
   /** @type {any} */
   export let model;

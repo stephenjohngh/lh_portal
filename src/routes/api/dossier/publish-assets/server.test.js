@@ -14,14 +14,14 @@ const h = vi.hoisted(() => ({
   prepareAssets: vi.fn(async (files) => ({ files })),
 }));
 
-vi.mock('$lib/server/requireAuth.js', () => ({
+vi.mock('#lib/server/requireAuth.js', () => ({
   requireAuth: async () => ({ user: { id: 'u1' }, isAdmin: false, error: null }),
 }));
-vi.mock('$lib/server/publicationAssets.js', () => ({ prepareAssets: h.prepareAssets, MAX_FILES: 40 }));
-vi.mock('$lib/server/documentLibrary.js', () => ({
+vi.mock('#lib/server/publicationAssets.js', () => ({ prepareAssets: h.prepareAssets, MAX_FILES: 40 }));
+vi.mock('#lib/server/documentLibrary.js', () => ({
   getDocumentByFileId: async (id) => h.docs[id] ?? null,
 }));
-vi.mock('$lib/server/documentAccess.js', () => ({
+vi.mock('#lib/server/documentAccess.js', () => ({
   canAccessDocument: async (doc) => (h.readable.has(doc.id) ? { ok: true } : { ok: false, status: 403, message: 'Not permitted.' }),
   bearerToken: () => 'tok',
 }));

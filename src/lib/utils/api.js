@@ -6,9 +6,9 @@
  * retry() helper that nothing called was removed 2026-10-02.
  */
 
-import { supabase }    from '$lib/supabaseClient';
-import { getLogger }   from '$lib/utils/logger';
-import { readAllPages } from '$lib/utils/readAllPages.js';
+import { supabase }    from '#lib/supabaseClient.js';
+import { getLogger }   from '#lib/utils/logger.js';
+import { readAllPages } from '#lib/utils/readAllPages.js';
 
 const logger = getLogger('api');
 

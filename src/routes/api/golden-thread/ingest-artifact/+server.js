@@ -22,10 +22,10 @@ import { json }                from '@sveltejs/kit';
 import { createClient }        from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }                 from '$env/dynamic/private';
-import { requireAuth }         from '$lib/server/requireAuth';
-import { copyDocument, getDocument } from '$lib/server/documentLibrary';
-import { canAccessDocument, bearerToken } from '$lib/server/documentAccess.js';
-import { getLogger }           from '$lib/utils/logger';
+import { requireAuth }         from '#lib/server/requireAuth.js';
+import { copyDocument, getDocument } from '#lib/server/documentLibrary.js';
+import { canAccessDocument, bearerToken } from '#lib/server/documentAccess.js';
+import { getLogger }           from '#lib/utils/logger.js';
 
 const logger = getLogger('gt-ingest-artifact');
 

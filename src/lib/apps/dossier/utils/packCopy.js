@@ -27,7 +27,7 @@
 // original's uid — two blocks sharing an id break every link that resolves by
 // it. A duplicated pack is that same copy, at pack scale.
 
-import { newUuid } from '$lib/utils/uuid';
+import { newUuid } from '#lib/utils/uuid.js';
 
 /**
  * Node/mark types that carry an id needing rewriting. Kept explicit: a new

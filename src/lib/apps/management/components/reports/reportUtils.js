@@ -1,6 +1,6 @@
 // src/lib/apps/management/components/reports/reportUtils.js
-import { ACTION_STATUS, ACTIVITY_TYPE, ISSUE_STATUS } from '$lib/utils/constants';
-import { fmtDate, fmtDateLong, addMonthsISO, today } from '$lib/utils/dates';
+import { ACTION_STATUS, ACTIVITY_TYPE, ISSUE_STATUS } from '#lib/utils/constants.js';
+import { fmtDate, fmtDateLong, addMonthsISO, today } from '#lib/utils/dates.js';
 
 
 /**

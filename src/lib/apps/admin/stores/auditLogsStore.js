@@ -5,15 +5,15 @@
 import { today, DAY_MS } from '../../../utils/dates.js';
 import { downloadCsvRows } from '../../../utils/download.js';
 import { writable } from 'svelte/store';
-import { supabase } from '$lib/supabaseClient';
-import { api } from '$lib/utils/api';
-import { sanitizeIlikeTerm } from '$lib/utils/pgFilter.js';
-import { getLogger } from '$lib/utils/logger';
+import { supabase } from '#lib/supabaseClient.js';
+import { api } from '#lib/utils/api.js';
+import { sanitizeIlikeTerm } from '#lib/utils/pgFilter.js';
+import { getLogger } from '#lib/utils/logger.js';
 
 const logger = getLogger('auditLogsStore');
 
 /**
- * @typedef {import('$lib/database.types').Tables<'audit_logs'>} AuditLog
+ * @typedef {import('#lib/database.types.ts').Tables<'audit_logs'>} AuditLog
  * @typedef {{
  *   logs: AuditLog[],
  *   loading: boolean,

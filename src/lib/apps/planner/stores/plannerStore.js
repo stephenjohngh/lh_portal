@@ -8,21 +8,21 @@
 
 import { errMessage } from '../../../utils/errors.js';
 import { writable, get } from 'svelte/store';
-import { api } from '$lib/utils/api';
-import { logAudit } from '$lib/utils/auditLogger';
-import { getLogger } from '$lib/utils/logger';
+import { api } from '#lib/utils/api.js';
+import { logAudit } from '#lib/utils/auditLogger.js';
+import { getLogger } from '#lib/utils/logger.js';
 import { completionPatch, STATUS } from '../utils/agenda.js';
 import { linkedOccurrences } from '../utils/linked.js';
 import { uniqueSlug } from '../utils/categories.js';
-import { listScheduledWork, createJobFromPlanner, listCertificateExpiries } from '$lib/apps/maintenance/public.js';
-import { listMeetings, listOpenActionDeadlines } from '$lib/apps/management/public.js';
-import { listReviewsDue, listRiskReviewsDue, listCompetenceExpiries } from '$lib/apps/golden_thread/public.js';
-import { listObligationDueDates, listComplianceReviewDates, listUnaddressedFaults } from '$lib/apps/compliance/public.js';
-import { listWorksDue } from '$lib/apps/building_assets/public.js';
-import { listParkingDueDates } from '$lib/apps/parking/public.js';
-import { listBsrReportDeadlines } from '$lib/apps/mor/public.js';
-import { today } from '$lib/utils/dates';
-import { storeLoader } from '$lib/utils/storeLoad.js';
+import { listScheduledWork, createJobFromPlanner, listCertificateExpiries } from '#lib/apps/maintenance/public.js';
+import { listMeetings, listOpenActionDeadlines } from '#lib/apps/management/public.js';
+import { listReviewsDue, listRiskReviewsDue, listCompetenceExpiries } from '#lib/apps/golden_thread/public.js';
+import { listObligationDueDates, listComplianceReviewDates, listUnaddressedFaults } from '#lib/apps/compliance/public.js';
+import { listWorksDue } from '#lib/apps/building_assets/public.js';
+import { listParkingDueDates } from '#lib/apps/parking/public.js';
+import { listBsrReportDeadlines } from '#lib/apps/mor/public.js';
+import { today } from '#lib/utils/dates.js';
+import { storeLoader } from '#lib/utils/storeLoad.js';
 
 const logger = getLogger('planner');
 
@@ -40,10 +40,10 @@ function createPlannerStore() {
    * one Row type would assert a uniformity that does not exist.
    *
    * @typedef {{
-   *   events: (import('$lib/database.types').Tables<'planner_events'> & Record<string, any>)[],
-   *   occurrences: (import('$lib/database.types').Tables<'planner_occurrences'> & Record<string, any>)[],
-   *   categories: (import('$lib/database.types').Tables<'planner_categories'> & Record<string, any>)[],
-   *   dayMarks: (import('$lib/database.types').Tables<'planner_day_marks'> & Record<string, any>)[],
+   *   events: (import('#lib/database.types.ts').Tables<'planner_events'> & Record<string, any>)[],
+   *   occurrences: (import('#lib/database.types.ts').Tables<'planner_occurrences'> & Record<string, any>)[],
+   *   categories: (import('#lib/database.types.ts').Tables<'planner_categories'> & Record<string, any>)[],
+   *   dayMarks: (import('#lib/database.types.ts').Tables<'planner_day_marks'> & Record<string, any>)[],
    *   linked: Record<string, any>[],
    *   linkedFailures: string[],
    *   loadingLinked: boolean,

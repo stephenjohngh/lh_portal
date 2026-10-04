@@ -2,9 +2,9 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { usersStore } from '../../stores/usersStore';
-  import Modal from '$lib/components/common/Modal.svelte';
-  import Button from '$lib/components/common/Button.svelte';
-  import FormInput from '$lib/components/common/FormInput.svelte';
+  import Modal from '#lib/components/common/Modal.svelte';
+  import Button from '#lib/components/common/Button.svelte';
+  import FormInput from '#lib/components/common/FormInput.svelte';
 
   export let show = false;
   export let user = null;

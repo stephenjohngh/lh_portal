@@ -8,7 +8,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('$lib/utils/api', () => ({ api: {} }));
+vi.mock('#lib/utils/api.js', () => ({ api: {} }));
 const { presetToState, configMatches } = await import('./componentPresets.js');
 
 /** What the tab reports as its current config right after applying `preset`. */

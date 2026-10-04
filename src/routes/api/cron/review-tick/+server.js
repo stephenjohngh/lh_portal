@@ -21,11 +21,11 @@ import { json }                 from '@sveltejs/kit';
 import { createClient }         from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL }  from '$env/static/public';
 import { env }                  from '$env/dynamic/private';
-import { requireAdmin }         from '$lib/server/requireAuth';
-import { computeReviewTick }    from '$lib/apps/golden_thread/utils/gtReview';
-import { getLogger }            from '$lib/utils/logger';
-import { readAllPages } from '$lib/utils/readAllPages.js';
-import { loadServerPolicies } from '$lib/server/policies.js';
+import { requireAdmin }         from '#lib/server/requireAuth.js';
+import { computeReviewTick }    from '#lib/apps/golden_thread/utils/gtReview.js';
+import { getLogger }            from '#lib/utils/logger.js';
+import { readAllPages } from '#lib/utils/readAllPages.js';
+import { loadServerPolicies } from '#lib/server/policies.js';
 
 const logger = getLogger('gt-review-tick');
 

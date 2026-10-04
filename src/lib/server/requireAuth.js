@@ -15,7 +15,7 @@ import { json }                       from '@sveltejs/kit';
 import { createClient }               from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }                 from '$env/dynamic/private';
-import { getLogger }                  from '$lib/utils/logger';
+import { getLogger }                  from '#lib/utils/logger.js';
 
 const logger = getLogger('RequireAuth');
 

@@ -5,37 +5,37 @@
      panel; everything else (mitigations, timeline, header) is always-on. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { auth }        from '$lib/stores/auth';
-  import { permissions } from '$lib/stores/permissions';
-  import { morStore }    from '$lib/apps/mor/stores/morStore';
-  import Badge          from '$lib/components/common/Badge.svelte';
-  import Button         from '$lib/components/common/Button.svelte';
-  import ErrorDisplay   from '$lib/components/common/ErrorDisplay.svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
-  import ConfirmDialog  from '$lib/components/common/ConfirmDialog.svelte';
-  import SlaClocks      from '$lib/apps/mor/components/SlaClocks.svelte';
-  import TimelineEntry  from '$lib/apps/mor/components/TimelineEntry.svelte';
-  import TriageForm     from '$lib/apps/mor/components/TriageForm.svelte';
-  import DecisionForm   from '$lib/apps/mor/components/DecisionForm.svelte';
-  import RejectionForm  from '$lib/apps/mor/components/RejectionForm.svelte';
-  import AssessmentForm from '$lib/apps/mor/components/AssessmentForm.svelte';
-  import CloseForm      from '$lib/apps/mor/components/CloseForm.svelte';
-  import ReopenForm     from '$lib/apps/mor/components/ReopenForm.svelte';
-  import PauseForm      from '$lib/apps/mor/components/PauseForm.svelte';
-  import BsrHelper      from '$lib/apps/mor/components/BsrHelper.svelte';
-  import MitigationForm from '$lib/apps/mor/components/MitigationForm.svelte';
-  import ReporterContactPanel from '$lib/apps/mor/components/ReporterContactPanel.svelte';
+  import { auth }        from '#lib/stores/auth.js';
+  import { permissions } from '#lib/stores/permissions.js';
+  import { morStore }    from '#lib/apps/mor/stores/morStore.js';
+  import Badge          from '#lib/components/common/Badge.svelte';
+  import Button         from '#lib/components/common/Button.svelte';
+  import ErrorDisplay   from '#lib/components/common/ErrorDisplay.svelte';
+  import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
+  import ConfirmDialog  from '#lib/components/common/ConfirmDialog.svelte';
+  import SlaClocks      from '#lib/apps/mor/components/SlaClocks.svelte';
+  import TimelineEntry  from '#lib/apps/mor/components/TimelineEntry.svelte';
+  import TriageForm     from '#lib/apps/mor/components/TriageForm.svelte';
+  import DecisionForm   from '#lib/apps/mor/components/DecisionForm.svelte';
+  import RejectionForm  from '#lib/apps/mor/components/RejectionForm.svelte';
+  import AssessmentForm from '#lib/apps/mor/components/AssessmentForm.svelte';
+  import CloseForm      from '#lib/apps/mor/components/CloseForm.svelte';
+  import ReopenForm     from '#lib/apps/mor/components/ReopenForm.svelte';
+  import PauseForm      from '#lib/apps/mor/components/PauseForm.svelte';
+  import BsrHelper      from '#lib/apps/mor/components/BsrHelper.svelte';
+  import MitigationForm from '#lib/apps/mor/components/MitigationForm.svelte';
+  import ReporterContactPanel from '#lib/apps/mor/components/ReporterContactPanel.svelte';
   import {
     STATUS_LABEL, STATUS_COLOUR,
     MECHANISM_LABEL, MECHANISM_COLOUR,
     CHANNEL_LABEL, REPORTER_TYPE_LABEL,
     DECISION_LABEL, TRIAGE_LABEL, TRIAGE_COLOUR,
-  } from '$lib/apps/mor/utils/morHelpers';
-  import { formatVerificationCode } from '$lib/utils/caseVerificationCode';
-  import { GT_STATUS_LABELS, GT_STATUS_BADGE } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
-  import { fmtDate, fmtDateTime } from '$lib/utils/dates';
-  import { requestDownload } from '$lib/utils/download';
-  import { errMessage } from '$lib/utils/errors';
+  } from '#lib/apps/mor/utils/morHelpers.js';
+  import { formatVerificationCode } from '#lib/utils/caseVerificationCode.js';
+  import { GT_STATUS_LABELS, GT_STATUS_BADGE } from '#lib/apps/golden_thread/utils/gtLifecycle.js';
+  import { fmtDate, fmtDateTime } from '#lib/utils/dates.js';
+  import { requestDownload } from '#lib/utils/download.js';
+  import { errMessage } from '#lib/utils/errors.js';
 
   const dispatch = createEventDispatcher();
 

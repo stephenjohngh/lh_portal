@@ -4,11 +4,11 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { inspectionStore }  from '../stores/inspectionStore.js';
   import { flattenInspectionRows, groupByComponent, worstResult, resultLabel, sessionFloorLabel, sessionKindLabel } from '../utils/inspectionHelpers.js';
-  import { fmtDate, fmtTime } from '$lib/utils/dates';
-  import WalkStatsBars      from '$lib/apps/inspection/components/common/WalkStatsBars.svelte';
-  import WalkError          from '$lib/apps/inspection/components/common/WalkError.svelte';
-  import WalkButton         from '$lib/apps/inspection/components/common/WalkButton.svelte';
-  import WalkPhotoLightbox  from '$lib/apps/inspection/components/common/WalkPhotoLightbox.svelte';
+  import { fmtDate, fmtTime } from '#lib/utils/dates.js';
+  import WalkStatsBars      from '#lib/apps/inspection/components/common/WalkStatsBars.svelte';
+  import WalkError          from '#lib/apps/inspection/components/common/WalkError.svelte';
+  import WalkButton         from '#lib/apps/inspection/components/common/WalkButton.svelte';
+  import WalkPhotoLightbox  from '#lib/apps/inspection/components/common/WalkPhotoLightbox.svelte';
 
   const dispatch = createEventDispatcher();
 

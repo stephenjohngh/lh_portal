@@ -26,11 +26,11 @@ const h = vi.hoisted(() => {
   };
 });
 
-vi.mock('$lib/stores/permissions', () => ({ permissions: h.permissions }));
-vi.mock('$lib/utils/auditLogger', () => ({ logAudit: h.logAudit }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
-vi.mock('$lib/stores/portalSettings.js', async () => {
-  const { DUE_SOON_DEFAULTS, cleanDueWindows } = await import('$lib/utils/dueWindows.js');
+vi.mock('#lib/stores/permissions.js', () => ({ permissions: h.permissions }));
+vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: h.logAudit }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/stores/portalSettings.js', async () => {
+  const { DUE_SOON_DEFAULTS, cleanDueWindows } = await import('#lib/utils/dueWindows.js');
   const store = h.makeStore({ loaded: true, dueWindows: {}, windows: { ...DUE_SOON_DEFAULTS } });
   h.settings = {
     subscribe: store.subscribe,
@@ -45,7 +45,7 @@ vi.mock('$lib/stores/portalSettings.js', async () => {
   return { portalSettings: h.settings };
 });
 
-const { dueWindowInfo } = await import('$lib/utils/dueWindows.js');
+const { dueWindowInfo } = await import('#lib/utils/dueWindows.js');
 const DueWindowsPanel = (await import('./DueWindowsPanel.svelte')).default;
 
 const jobInput = () => screen.getByLabelText('A scheduled maintenance job — days');

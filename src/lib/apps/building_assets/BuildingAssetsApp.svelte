@@ -3,8 +3,8 @@
      and delegates to the active tab component. -->
 <script>
   import { get } from 'svelte/store';
-  import AppGate from '$lib/components/common/AppGate.svelte';
-  import TabBar from '$lib/components/common/TabBar.svelte';
+  import AppGate from '#lib/components/common/AppGate.svelte';
+  import TabBar from '#lib/components/common/TabBar.svelte';
   import { buildingAssetsStore } from './stores/buildingAssetsStore.js';
 
   import TypeBrowser      from './components/TypeBrowser.svelte';

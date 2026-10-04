@@ -4,12 +4,12 @@
 // verifies it. Never send a user id in the body to identify the caller.
 
 import { writable } from 'svelte/store';
-import { supabase } from '$lib/supabaseClient';
-import { api } from '$lib/utils/api';
-import { postJson } from '$lib/utils/request';
-import { getLogger } from '$lib/utils/logger';
-import { storeLoader } from '$lib/utils/storeLoad.js';
-import { currentUser } from '$lib/utils/currentUser.js';
+import { supabase } from '#lib/supabaseClient.js';
+import { api } from '#lib/utils/api.js';
+import { postJson } from '#lib/utils/request.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { storeLoader } from '#lib/utils/storeLoad.js';
+import { currentUser } from '#lib/utils/currentUser.js';
 
 const logger = getLogger("usersStore");
 

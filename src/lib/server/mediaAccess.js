@@ -33,7 +33,7 @@
 
 import { createHmac, createHash, timingSafeEqual } from 'node:crypto';
 import { env } from '$env/dynamic/private';
-import { policy } from '$lib/utils/policies.js';
+import { policy } from '#lib/utils/policies.js';
 
 export const MEDIA_COOKIE          = 'lh_media';
 export const MEDIA_COOKIE_PATH     = '/api/media';

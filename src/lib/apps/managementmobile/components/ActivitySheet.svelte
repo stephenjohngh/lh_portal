@@ -1,14 +1,14 @@
 <script>
-  import { fileViewUrl } from '$lib/utils/driveUtils.js';
+  import { fileViewUrl } from '#lib/utils/driveUtils.js';
   // src/lib/apps/managementmobile/components/ActivitySheet.svelte
   // Bottom sheet showing a single activity in full.
   // Drag down >30% to dismiss; tap backdrop to dismiss.
 
   import { createEventDispatcher, onDestroy } from 'svelte';
-  import { sanitizeHtml } from '$lib/utils/sanitizeHtml';
-  import { ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPE } from '$lib/utils/constants.js';
-  import { fmtDateTime, wasModified } from '$lib/utils/dates.js';
-  import { fmtBytes, mimeIcon } from '$lib/utils/files.js';
+  import { sanitizeHtml } from '#lib/utils/sanitizeHtml.js';
+  import { ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPE } from '#lib/utils/constants.js';
+  import { fmtDateTime, wasModified } from '#lib/utils/dates.js';
+  import { fmtBytes, mimeIcon } from '#lib/utils/files.js';
 
   export let activity = null;   // activity row
 

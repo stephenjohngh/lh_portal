@@ -1,7 +1,7 @@
 // src/lib/utils/authTokenGuard.test.js
 //
 // The browser reads its access token in ONE place: accessToken() /
-// authHeaders() in $lib/utils/authHeaders.js (2026-10-02, PROJECT_STATUS
+// authHeaders() in #lib/utils/authHeaders.js (2026-10-02, PROJECT_STATUS
 // §6bbb item 3). Twelve files read it from the session by hand. One of them,
 // deleteStorageObjects, answered "0 failed" when there was no token, so a
 // photo delete removed the rows and left the files in storage with nothing
@@ -44,7 +44,7 @@ describe('the access token is read in one place', () => {
     const offenders = files
       .filter((f) => !HANDLES_A_TOKEN[f])
       .filter((f) => TOKEN.test(readFileSync(f, 'utf8')));
-    expect(offenders, 'use accessToken() or authHeaders() from $lib/utils/authHeaders.js, or name the file in HANDLES_A_TOKEN with the reason').toEqual([]);
+    expect(offenders, 'use accessToken() or authHeaders() from #lib/utils/authHeaders.js, or name the file in HANDLES_A_TOKEN with the reason').toEqual([]);
   });
 
   it('every exception still has something to excuse', () => {

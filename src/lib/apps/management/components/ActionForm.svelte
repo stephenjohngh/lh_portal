@@ -3,9 +3,9 @@
      so ActionsSection can handle the mutation and own saving/error state. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { ACTION_STATUS, ACTION_STATUS_OPTIONS } from '$lib/utils/constants';
-  import Button          from '$lib/components/common/Button.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
+  import { ACTION_STATUS, ACTION_STATUS_OPTIONS } from '#lib/utils/constants.js';
+  import Button          from '#lib/components/common/Button.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
 
   export let show              = false;
   export let assigneeOptions   = [];   // [{ value, label }]

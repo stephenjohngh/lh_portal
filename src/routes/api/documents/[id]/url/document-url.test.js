@@ -12,9 +12,9 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock('@sveltejs/kit', () => ({ json: (body, init) => ({ body, status: init?.status ?? 200 }) }));
-vi.mock('$lib/server/requireAuth', () => ({ requireAuth: () => Promise.resolve(h.auth) }));
-vi.mock('$lib/server/documentLibrary', () => ({ getDocument: h.getDocument, getDocumentUrl: h.getDocumentUrl }));
-vi.mock('$lib/server/documentAccess', () => ({ canAccessDocument: h.canAccessDocument, bearerToken: () => 'tok' }));
+vi.mock('#lib/server/requireAuth.js', () => ({ requireAuth: () => Promise.resolve(h.auth) }));
+vi.mock('#lib/server/documentLibrary.js', () => ({ getDocument: h.getDocument, getDocumentUrl: h.getDocumentUrl }));
+vi.mock('#lib/server/documentAccess.js', () => ({ canAccessDocument: h.canAccessDocument, bearerToken: () => 'tok' }));
 
 const { GET } = await import('./+server.js');
 

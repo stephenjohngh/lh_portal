@@ -8,7 +8,9 @@
 	// known legacy backlog (~1.5k, mostly Date-math, e.target casts, untyped
 	// Supabase/SDK results — not bugs); it is a gradual burn-down, not a gate,
 	// until it reaches zero. See CLAUDE.md "Type checking".
-	"extends": "./.svelte-kit/tsconfig.json",
+	"extends": "$app/tsconfig",
+	"include": ["src", "test", "*"],
+	"exclude": ["src/service-worker.js"],
 	"compilerOptions": {
 		"allowJs": true,
 		"checkJs": false,

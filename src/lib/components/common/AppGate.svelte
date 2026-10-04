@@ -19,10 +19,10 @@
 <script>
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { auth } from '$lib/stores/auth';
-  import { permissions } from '$lib/stores/permissions';
-  import { hasAppAccess } from '$lib/utils/appAccess.js';
-  import { errMessage } from '$lib/utils/errors';
+  import { auth } from '#lib/stores/auth.js';
+  import { permissions } from '#lib/stores/permissions.js';
+  import { hasAppAccess } from '#lib/utils/appAccess.js';
+  import { errMessage } from '#lib/utils/errors.js';
   import LoadingSpinner from './LoadingSpinner.svelte';
   import ErrorDisplay from './ErrorDisplay.svelte';
 

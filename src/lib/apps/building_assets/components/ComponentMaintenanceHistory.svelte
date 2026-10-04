@@ -3,9 +3,9 @@
      Queries maintenance_jobs WHERE scope_type='component' AND scope_id=componentId. -->
 <script>
   import { onMount }    from 'svelte';
-  import { api }        from '$lib/utils/api';
-  import { jobRag, ragConfig, resultConfig } from '$lib/apps/maintenance/utils/maintenanceHelpers.js';
-  import { fmtDate }    from '$lib/utils/dates.js';
+  import { api }        from '#lib/utils/api.js';
+  import { jobRag, ragConfig, resultConfig } from '#lib/apps/maintenance/utils/maintenanceHelpers.js';
+  import { fmtDate }    from '#lib/utils/dates.js';
   import { sec }        from '../ui.js';
 
   export let componentId;   // UUID of the component

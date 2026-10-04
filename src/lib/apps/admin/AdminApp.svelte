@@ -1,10 +1,10 @@
 <!-- src/lib/apps/admin/AdminApp.svelte -->
 <!-- User management, permissions, and audit log viewer -->
 <script>
-  import { matchesSearch } from '$lib/utils/textSearch.js';
+  import { matchesSearch } from '#lib/utils/textSearch.js';
   import { onMount } from 'svelte';
-  import { permissions } from '$lib/stores/permissions';
-  import { auth }        from '$lib/stores/auth';
+  import { permissions } from '#lib/stores/permissions.js';
+  import { auth }        from '#lib/stores/auth.js';
   import { usersStore }  from './stores/usersStore';
   
   import UserFilters from './components/UserFilters.svelte';
@@ -26,11 +26,11 @@
   import DocumentCategoriesPanel from './components/DocumentCategoriesPanel.svelte';
   import DocumentsTab    from './components/DocumentsTab.svelte';
   import TabDropdown     from './components/TabDropdown.svelte';
-  import TabBar          from '$lib/components/common/TabBar.svelte';
-  import Button from '$lib/components/common/Button.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
-  import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
+  import TabBar          from '#lib/components/common/TabBar.svelte';
+  import Button from '#lib/components/common/Button.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
+  import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
+  import { buildingAssetsStore } from '#lib/apps/building_assets/stores/buildingAssetsStore.js';
 
 
   let searchTerm = '';

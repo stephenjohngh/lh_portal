@@ -6,9 +6,9 @@
 
 import { describe, it, expect, vi } from 'vitest';
 
-// logger transitively imports $app/environment, which does not resolve without
+// logger transitively imports $app/env, which does not resolve without
 // the SvelteKit vite plugin — the house pattern is to mock the seam.
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 
 const { renderBlocksToHtml, sanitizeBlockHtml, blocksToText } = await import('./blockRender.js');
 const { default: DOMPurify } = await import('dompurify');

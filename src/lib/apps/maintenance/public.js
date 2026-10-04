@@ -5,8 +5,8 @@
 // through here instead of touching maintenance_jobs / maintenance_documents.
 // Stateless, like the other apps' public.js.
 
-import { api } from '$lib/utils/api';
-import { registerExistingArtifact, findDocumentBySource } from '$lib/apps/golden_thread/public.js';
+import { api } from '#lib/utils/api.js';
+import { registerExistingArtifact, findDocumentBySource } from '#lib/apps/golden_thread/public.js';
 
 /** Read a maintenance job by id. */
 export function getJob(id) {

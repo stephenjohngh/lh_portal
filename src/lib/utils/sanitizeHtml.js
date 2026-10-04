@@ -7,7 +7,7 @@
 // again on display.
 //
 // ⚠ The allow-list must cover everything the editor's schema can hold
-// ($lib/utils/richTextExtensions.js), or it is lost on save with no error.
+// (#lib/utils/richTextExtensions.js), or it is lost on save with no error.
 // If new Tiptap extensions are enabled (e.g. images) extend ALLOWED_TAGS /
 // ALLOWED_ATTR here.
 //

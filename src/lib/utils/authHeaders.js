@@ -4,7 +4,7 @@
 // The server verifies the token with requireAuth / requireAdmin — caller
 // identity always travels in the Authorization header, never in the body.
 
-import { supabase } from '$lib/supabaseClient';
+import { supabase } from '#lib/supabaseClient.js';
 
 /**
  * The current session's access token, or null when there is none — the ONE

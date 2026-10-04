@@ -3,7 +3,7 @@
 // ComponentsTab.svelte so the multi-criteria filtering (the core list logic)
 // can be unit-tested without rendering. No store/DOM — all inputs passed in.
 import { matchesAllAttrFilters } from './attrFilters.js';
-import { matchesSearch } from '$lib/utils/textSearch.js';
+import { matchesSearch } from '#lib/utils/textSearch.js';
 
 /**
  * Apply the Components-tab filters to the full component list.

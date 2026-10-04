@@ -6,8 +6,8 @@
 <script>
   import { onMount } from 'svelte';
   import { auditLogsStore } from '../stores/auditLogsStore';
-  import { getLogger } from '$lib/utils/logger';
-  import { errMessage } from '$lib/utils/errors.js';
+  import { getLogger } from '#lib/utils/logger.js';
+  import { errMessage } from '#lib/utils/errors.js';
 
   const logger = getLogger('AuditDashboard');
 

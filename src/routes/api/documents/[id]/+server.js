@@ -3,16 +3,16 @@
 // DELETE /api/documents/[id] — delete file + index row (admin only)
 //
 // GET and PATCH are authorised per ENTITY, not merely per session, for the same
-// reason the list route is — see $lib/server/documentAccess.js. This route
+// reason the list route is — see #lib/server/documentAccess.js. This route
 // matters just as much: getDocument() selects '*', which includes
 // provider_file_id, and that is all anyone needs to pull the bytes from the
 // unauthenticated media proxy.
 import { json }                                       from '@sveltejs/kit';
-import { getDocument, updateDocument, deleteDocument } from '$lib/server/documentLibrary';
-import { requireAuth, requireAdmin }                   from '$lib/server/requireAuth';
+import { getDocument, updateDocument, deleteDocument } from '#lib/server/documentLibrary.js';
+import { requireAuth, requireAdmin }                   from '#lib/server/requireAuth.js';
 import {
   canAccessDocument, sanitizeDocumentPatch, bearerToken,
-} from '$lib/server/documentAccess';
+} from '#lib/server/documentAccess.js';
 
 /** Same wording whether the row is missing or merely not theirs. */
 const NOT_FOUND = json({ error: 'Not found' }, { status: 404 });

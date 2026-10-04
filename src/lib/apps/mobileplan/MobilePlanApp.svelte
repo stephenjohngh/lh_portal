@@ -4,8 +4,8 @@
   // Entry point — initialises permissions, loads store, renders shell layout.
 
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
-  import { auth }              from '$lib/stores/auth';
-  import { permissions }       from '$lib/stores/permissions';
+  import { auth }              from '#lib/stores/auth.js';
+  import { permissions }       from '#lib/stores/permissions.js';
   import { mobileplanStore }   from './stores/mobileplanStore.js';
   import FloorBar              from './components/FloorBar.svelte';
   import PlanView              from './components/PlanView.svelte';

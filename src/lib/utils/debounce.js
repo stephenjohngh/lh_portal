@@ -4,7 +4,7 @@
 // since the last invocation. Successive calls reset the timer.
 //
 // Usage:
-//   import { debounce } from '$lib/utils/debounce';
+//   import { debounce } from '#lib/utils/debounce.js';
 //   const debouncedSearch = debounce(applyFilters, 250);
 //   <input on:input={debouncedSearch} />
 

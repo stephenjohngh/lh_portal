@@ -1,14 +1,14 @@
 <!-- src/lib/apps/mor/MorApp.svelte -->
 <script>
-  import { morStore }    from '$lib/apps/mor/stores/morStore';
-  import Button       from '$lib/components/common/Button.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
-  import AppGate      from '$lib/components/common/AppGate.svelte';
-  import TabBar       from '$lib/components/common/TabBar.svelte';
-  import CaseList      from '$lib/apps/mor/components/CaseList.svelte';
-  import CaseDetail    from '$lib/apps/mor/components/CaseDetail.svelte';
-  import CaseForm      from '$lib/apps/mor/components/CaseForm.svelte';
-  import MorDashboard  from '$lib/apps/mor/components/MorDashboard.svelte';
+  import { morStore }    from '#lib/apps/mor/stores/morStore.js';
+  import Button       from '#lib/components/common/Button.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
+  import AppGate      from '#lib/components/common/AppGate.svelte';
+  import TabBar       from '#lib/components/common/TabBar.svelte';
+  import CaseList      from '#lib/apps/mor/components/CaseList.svelte';
+  import CaseDetail    from '#lib/apps/mor/components/CaseDetail.svelte';
+  import CaseForm      from '#lib/apps/mor/components/CaseForm.svelte';
+  import MorDashboard  from '#lib/apps/mor/components/MorDashboard.svelte';
 
   let selectedCaseId = null;
   let showCreateForm = false;

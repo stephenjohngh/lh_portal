@@ -13,10 +13,10 @@
 
 import { today as todayLondon, addDaysISO } from '../../../utils/dates.js';
 import { writable }  from 'svelte/store';
-import { api }       from '$lib/utils/api';
-import { logAudit }  from '$lib/utils/auditLogger';
-import { getLogger } from '$lib/utils/logger';
-import { isValidTransition } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
+import { api }       from '#lib/utils/api.js';
+import { logAudit }  from '#lib/utils/auditLogger.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { isValidTransition } from '#lib/apps/golden_thread/utils/gtLifecycle.js';
 import { makeRun } from './gtStoreHelpers.js';
 import {
   scheduleOneCompleteness, registerDocument,
@@ -24,7 +24,7 @@ import {
   listPersons, createPerson, updatePerson, listAuditHistory,
   listAccountablePersons, createAccountablePerson, updateAccountablePerson,
   listSafetyCaseNotifications, createSafetyCaseNotification, markSafetyCaseNotified
-} from '$lib/apps/golden_thread/public.js';
+} from '#lib/apps/golden_thread/public.js';
 import { storeLoader } from '../../../utils/storeLoad.js';
 
 const logger = getLogger('gtStore');

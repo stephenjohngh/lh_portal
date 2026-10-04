@@ -30,7 +30,7 @@ describe('identity', () => {
 
 describe('no building or business is named in code', () => {
   // Comments may record the history; code may not carry the names. The logo's
-  // description is deployment branding and lives in $lib/branding.js only.
+  // description is deployment branding and lives in #lib/branding.js only.
   const NAMES = /Lonsdale House|Lancaster House|LH Services|LH Portal/;
   const stripComments = (src) => src
     .replace(/<!--[\s\S]*?-->/g, '')

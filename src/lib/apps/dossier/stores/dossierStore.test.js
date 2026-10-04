@@ -26,17 +26,17 @@ const h = vi.hoisted(() => {
   return { api, logAudit, listDocuments, deleteDocumentsFor, postJson, del };
 });
 
-vi.mock('$lib/utils/api',         () => ({ api: h.api }));
-vi.mock('$lib/utils/auditLogger', () => ({ logAudit: h.logAudit }));
-vi.mock('$lib/utils/logger',      () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/api.js',         () => ({ api: h.api }));
+vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: h.logAudit }));
+vi.mock('#lib/utils/logger.js',      () => ({ getLogger: () => () => {} }));
 // documentApi transitively imports supabaseClient → $env/static/public, which
 // does not resolve without the SvelteKit vite plugin.
-vi.mock('$lib/utils/documentApi', () => ({
+vi.mock('#lib/utils/documentApi.js', () => ({
   listDocuments: h.listDocuments, deleteDocumentsFor: h.deleteDocumentsFor,
 }));
 // duplicatePack imports this lazily, so the file copy costs nothing when the
 // author left the files behind.
-vi.mock('$lib/utils/request', () => ({ postJson: h.postJson, del: h.del }));
+vi.mock('#lib/utils/request.js', () => ({ postJson: h.postJson, del: h.del }));
 
 const { dossierStore: store } = await import('./dossierStore.js');
 const { buildSnapshot } = await import('../utils/snapshot.js');

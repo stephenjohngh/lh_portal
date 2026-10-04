@@ -10,10 +10,10 @@
   import { onMount } from 'svelte';
   import { parkingStore } from '../stores/parkingStore.js';
   import { retentionRules, retentionSummary } from '../utils/retentionModel.js';
-  import { fmtDateTime } from '$lib/utils/dates';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import ConfirmDialog   from '$lib/components/common/ConfirmDialog.svelte';
-  import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
+  import { fmtDateTime } from '#lib/utils/dates.js';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import ConfirmDialog   from '#lib/components/common/ConfirmDialog.svelte';
+  import ErrorDisplay    from '#lib/components/common/ErrorDisplay.svelte';
 
   let due = null;
   let runs = [];

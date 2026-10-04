@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DISPLAY_DUTY_KEY, isDisplayDuty, displayDutyPlan } from './displayRegisterLink.js';
-import { STATUTORY_TEMPLATE } from '$lib/utils/statutoryTemplate.js';
+import { STATUTORY_TEMPLATE } from '#lib/utils/statutoryTemplate.js';
 
 describe('displayRegisterLink', () => {
   // The link is by key, so a renamed or withdrawn register row would leave the

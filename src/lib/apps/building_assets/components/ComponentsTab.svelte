@@ -5,12 +5,12 @@
      Floor presets: All · Residential (G–7) · Basement (X,L,G) · Single floor. -->
 
 <script>
-  import { buildingName } from '$lib/utils/identity.js';
-  import { errMessage } from '$lib/utils/errors';
+  import { buildingName } from '#lib/utils/identity.js';
+  import { errMessage } from '#lib/utils/errors.js';
   import { onMount }             from 'svelte';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
-  import { permissions }         from '$lib/stores/permissions';
-  import { auth }                from '$lib/stores/auth.js';
+  import { permissions }         from '#lib/stores/permissions.js';
+  import { auth }                from '#lib/stores/auth.js';
   import {
     loadPresets, createPreset, removePreset, presetToState,
   } from '../componentPresets.js';
@@ -28,7 +28,7 @@
   import WorksScheduleFormModal  from './works/WorksScheduleFormModal.svelte';
   import { worksSchedulesStore } from '../stores/worksSchedulesStore.js';
   import ReportSectionToggles    from './ReportSectionToggles.svelte';
-  import MultiSelectDropdown     from '$lib/components/common/MultiSelectDropdown.svelte';
+  import MultiSelectDropdown     from '#lib/components/common/MultiSelectDropdown.svelte';
   import ColumnToggles           from './ColumnToggles.svelte';
   import ActiveFilterSummary     from './ActiveFilterSummary.svelte';
   import {
@@ -37,11 +37,11 @@
   import { resolveFixedAttrs } from '../utils/componentsCsv.js';
   import { buildComponentsCsvRows } from '../utils/reportModel.js';
   import { componentSpaceRefs, componentSpaceIdMap } from '../utils/spaceMembership.js';
-  import { buildSpaceRef, KIND_LABEL } from '$lib/utils/spaceRef.js';
+  import { buildSpaceRef, KIND_LABEL } from '#lib/utils/spaceRef.js';
   import { generateXlsxDocument } from './plan/xlsxReportGenerator.js';
   import { filterComponents, describeComponentFilters } from '../utils/componentsFilter.js';
-  import { fmtGenerated, today }   from '$lib/utils/dates.js';
-  import { downloadCsvRows } from '$lib/utils/download.js';
+  import { fmtGenerated, today }   from '#lib/utils/dates.js';
+  import { downloadCsvRows } from '#lib/utils/download.js';
 
   // -- Store bindings ------------------------------------------------
   $: store          = $buildingAssetsStore;

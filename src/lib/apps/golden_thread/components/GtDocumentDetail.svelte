@@ -9,24 +9,24 @@
 -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { gtStore } from '$lib/apps/golden_thread/stores/gtStore';
-  import { permissions } from '$lib/stores/permissions';
-  import { nextStates, GT_STATUS_LABELS, GT_STATUS_BADGE } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
-  import { LINK_TARGET_TYPES, LINK_RELATIONS, REVIEW_BAND_LABEL, REVIEW_BAND_BADGE } from '$lib/apps/golden_thread/utils/gtConstants.js';
-  import { reviewBand, daysToReview } from '$lib/apps/golden_thread/utils/gtReview.js';
-  import { listCases as listMorCases, morCaseLabel } from '$lib/apps/mor/public.js';
-  import Badge           from '$lib/components/common/Badge.svelte';
-  import Button          from '$lib/components/common/Button.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import ConfirmDialog   from '$lib/components/common/ConfirmDialog.svelte';
-  import Modal           from '$lib/components/common/Modal.svelte';
-  import FormInput       from '$lib/components/common/FormInput.svelte';
-  import FormSelect      from '$lib/components/common/FormSelect.svelte';
-  import FormTextarea    from '$lib/components/common/FormTextarea.svelte';
-  import AttachedDocuments from '$lib/components/common/documents/AttachedDocuments.svelte';
-  import { fmtDate, fmtDateTime, today } from '$lib/utils/dates';
-  import { logAudit } from '$lib/utils/auditLogger';
-  import { shouldLogView } from '$lib/apps/golden_thread/utils/gtAccessLog.js';
+  import { gtStore } from '#lib/apps/golden_thread/stores/gtStore.js';
+  import { permissions } from '#lib/stores/permissions.js';
+  import { nextStates, GT_STATUS_LABELS, GT_STATUS_BADGE } from '#lib/apps/golden_thread/utils/gtLifecycle.js';
+  import { LINK_TARGET_TYPES, LINK_RELATIONS, REVIEW_BAND_LABEL, REVIEW_BAND_BADGE } from '#lib/apps/golden_thread/utils/gtConstants.js';
+  import { reviewBand, daysToReview } from '#lib/apps/golden_thread/utils/gtReview.js';
+  import { listCases as listMorCases, morCaseLabel } from '#lib/apps/mor/public.js';
+  import Badge           from '#lib/components/common/Badge.svelte';
+  import Button          from '#lib/components/common/Button.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import ConfirmDialog   from '#lib/components/common/ConfirmDialog.svelte';
+  import Modal           from '#lib/components/common/Modal.svelte';
+  import FormInput       from '#lib/components/common/FormInput.svelte';
+  import FormSelect      from '#lib/components/common/FormSelect.svelte';
+  import FormTextarea    from '#lib/components/common/FormTextarea.svelte';
+  import AttachedDocuments from '#lib/components/common/documents/AttachedDocuments.svelte';
+  import { fmtDate, fmtDateTime, today } from '#lib/utils/dates.js';
+  import { logAudit } from '#lib/utils/auditLogger.js';
+  import { shouldLogView } from '#lib/apps/golden_thread/utils/gtAccessLog.js';
 
   /** @type {any} */
   export let doc;

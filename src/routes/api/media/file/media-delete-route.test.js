@@ -27,18 +27,18 @@ const h = vi.hoisted(() => ({
 const supabaseDelete = vi.fn();
 const requireAuth    = vi.fn();
 
-vi.mock('$lib/server/storage/index.js', () => ({
+vi.mock('#lib/server/storage/index.js', () => ({
   providerByName: (name) => ({
     google_drive: { name: 'google_drive', deleteFile: (...a) => driveDelete(...a),
                     parentFolderOf: (...a) => h.parentOf(...a), trashFolderIfEmpty: (...a) => h.trash(...a) },
     supabase:     { name: 'supabase',     deleteFile: (...a) => supabaseDelete(...a) },
   }[name] ?? null),
 }));
-vi.mock('$lib/server/storage/storageErrors.js', () => ({
+vi.mock('#lib/server/storage/storageErrors.js', () => ({
   friendlyStorageError: (e) => String(e?.message ?? e),
 }));
-vi.mock('$lib/server/requireAuth.js', () => ({ requireAuth: (...a) => requireAuth(...a) }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/server/requireAuth.js', () => ({ requireAuth: (...a) => requireAuth(...a) }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 vi.mock('$env/static/public',  () => ({ PUBLIC_SUPABASE_URL: 'http://x' }));
 vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'test-secret' } }));
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({ from: (t) => h.db.from(t) }) }));

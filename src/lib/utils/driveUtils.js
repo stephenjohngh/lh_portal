@@ -13,8 +13,8 @@
 // was Drive-only by construction — it extracted a Drive id and `continue`d on
 // anything else, so a Supabase or OneDrive attachment never produced a request
 // at all and its file was left behind for ever. Deleting is a provider-routing
-// problem, not a Drive one; it lives in $lib/utils/mediaAttachments.js and is
-// resolved server-side by $lib/server/storage/storageRef.js.
+// problem, not a Drive one; it lives in #lib/utils/mediaAttachments.js and is
+// resolved server-side by #lib/server/storage/storageRef.js.
 // PROJECT_STATUS §6hh. ⚠ Do not add a deleter back to this module.
 //
 // Non-Drive storage_url values (Supabase public URLs, OneDrive, etc.) pass

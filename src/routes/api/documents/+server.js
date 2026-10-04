@@ -4,11 +4,11 @@
 // itself runs with the service role — document_library is shared infrastructure
 // and RLS does not apply to it — so being signed in was previously enough to
 // read the attachments of any entity in the portal. See
-// $lib/server/documentAccess.js for what that meant and how it is decided now.
+// #lib/server/documentAccess.js for what that meant and how it is decided now.
 import { json }              from '@sveltejs/kit';
-import { listDocuments }     from '$lib/server/documentLibrary';
-import { requireAuth }       from '$lib/server/requireAuth';
-import { canListDocuments, bearerToken } from '$lib/server/documentAccess';
+import { listDocuments }     from '#lib/server/documentLibrary.js';
+import { requireAuth }       from '#lib/server/requireAuth.js';
+import { canListDocuments, bearerToken } from '#lib/server/documentAccess.js';
 
 export async function GET({ request, url }) {
   const auth = await requireAuth(request);

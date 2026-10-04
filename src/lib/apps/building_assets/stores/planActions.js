@@ -2,13 +2,13 @@
 // Plan domain: plans[], scale calibration, image upload, plan CRUD, copy.
 // Receives the writable `update` function and the supabase client from buildingAssetsStore.
 
-import { api }        from '$lib/utils/api';
-import { getLogger }  from '$lib/utils/logger';
-import { logAudit }   from '$lib/utils/auditLogger';
-import { buildComponentRef } from '$lib/utils/componentRef.js';
+import { api }        from '#lib/utils/api.js';
+import { getLogger }  from '#lib/utils/logger.js';
+import { logAudit }   from '#lib/utils/auditLogger.js';
+import { buildComponentRef } from '#lib/utils/componentRef.js';
 import { buildSpaceCopyRows, targetSpaceGuards } from '../utils/spaceCopy.js';
 import { requireUserId } from './helpers.js';
-import { purgeAttachments } from '$lib/utils/mediaAttachments.js';
+import { purgeAttachments } from '#lib/utils/mediaAttachments.js';
 
 const logger = getLogger('BuildingAssets');
 

@@ -6,18 +6,18 @@
      its OWN saving/mutationError — the parent's are shared with the edit/
      delete/move flows. See CLAUDE.md "Testing". -->
 <script>
-  import { portalSettings } from '$lib/stores/portalSettings.js';
+  import { portalSettings } from '#lib/stores/portalSettings.js';
   import { createEventDispatcher } from 'svelte';
   import { issuesStore }      from '../stores/issuesStore';
-  import { uploadDocument }   from '$lib/utils/documentApi';
-  import { DOC_FOLDERS }      from '$lib/utils/documentUtils.js';
-  import { postJson }         from '$lib/utils/request';
-  import { parseEmailPaste }  from '$lib/utils/emailParser';
-  import { ACTIVITY_TYPE, ACTIVITY_TYPES, ACTIVITY_TYPE_CONFIG } from '$lib/utils/constants';
-  import Button          from '$lib/components/common/Button.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import DocAttachInput  from '$lib/components/common/DocAttachInput.svelte';
-  import RichTextEditor  from '$lib/components/common/LazyRichTextEditor.svelte';
+  import { uploadDocument }   from '#lib/utils/documentApi.js';
+  import { DOC_FOLDERS }      from '#lib/utils/documentUtils.js';
+  import { postJson }         from '#lib/utils/request.js';
+  import { parseEmailPaste }  from '#lib/utils/emailParser.js';
+  import { ACTIVITY_TYPE, ACTIVITY_TYPES, ACTIVITY_TYPE_CONFIG } from '#lib/utils/constants.js';
+  import Button          from '#lib/components/common/Button.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import DocAttachInput  from '#lib/components/common/DocAttachInput.svelte';
+  import RichTextEditor  from '#lib/components/common/LazyRichTextEditor.svelte';
 
   const dispatch = createEventDispatcher();
 

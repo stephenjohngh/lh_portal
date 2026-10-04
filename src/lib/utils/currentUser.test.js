@@ -13,7 +13,7 @@ const h = vi.hoisted(() => ({
   getSession: vi.fn(),
   getUser: vi.fn(),
 }));
-vi.mock('$lib/supabaseClient', () => ({ supabase: { auth: { getSession: h.getSession, getUser: h.getUser } } }));
+vi.mock('#lib/supabaseClient.js', () => ({ supabase: { auth: { getSession: h.getSession, getUser: h.getUser } } }));
 
 const { currentUser, currentUserId, requireUserId } = await import('./currentUser.js');
 
@@ -78,13 +78,13 @@ describe('who is signed in is read one way', () => {
 
   it('no browser code asks the auth server who is signed in', () => {
     const offenders = files.filter((f) => ASKS_SERVER.test(code(readFileSync(f, 'utf8'))));
-    expect(offenders, 'use currentUser / currentUserId / requireUserId from $lib/utils/currentUser.js').toEqual([]);
+    expect(offenders, 'use currentUser / currentUserId / requireUserId from #lib/utils/currentUser.js').toEqual([]);
   });
 
   it('no other browser code reads the session itself', () => {
     const offenders = files.filter((f) => !READS_SESSION_ITSELF[f])
       .filter((f) => READS_SESSION.test(code(readFileSync(f, 'utf8'))));
-    expect(offenders, 'use $lib/utils/currentUser.js, or name the file in READS_SESSION_ITSELF with the reason').toEqual([]);
+    expect(offenders, 'use #lib/utils/currentUser.js, or name the file in READS_SESSION_ITSELF with the reason').toEqual([]);
   });
 
   it('every exception still reads it', () => {

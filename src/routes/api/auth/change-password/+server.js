@@ -9,7 +9,7 @@
 //   · wrote nothing to the audit log, for a password change;
 //   · read every Supabase error as "Current password is incorrect", including
 //     a switched-off Email provider — the fault the login page was fixed for.
-// The current password is now checked by $lib/server/passwordCheck.js, the
+// The current password is now checked by #lib/server/passwordCheck.js, the
 // same way the login page checks it.
 //
 // Who is asking comes from the bearer token, never from the body: the body
@@ -17,10 +17,10 @@
 // 401, because the client reads a 401 as "your session has expired".
 
 import { json } from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/requireAuth';
-import { logAudit, getIpAddress, getUserAgent } from '$lib/server/auditLogger';
-import { checkPassword, adminClient, pauseMinutes } from '$lib/server/passwordCheck';
-import { getLogger } from '$lib/utils/logger';
+import { requireAuth } from '#lib/server/requireAuth.js';
+import { logAudit, getIpAddress, getUserAgent } from '#lib/server/auditLogger.js';
+import { checkPassword, adminClient, pauseMinutes } from '#lib/server/passwordCheck.js';
+import { getLogger } from '#lib/utils/logger.js';
 
 const logger = getLogger('ChangePassword');
 

@@ -4,7 +4,7 @@
   // and a small count of items tagged to each. Tap a row to open its minutes.
 
   import { createEventDispatcher } from 'svelte';
-  import { fmtDate } from '$lib/utils/dates.js';
+  import { fmtDate } from '#lib/utils/dates.js';
 
   export let meetings = [];   // meetingsStore list (newest first)
   export let issues   = [];   // for the tagged-item counts

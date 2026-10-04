@@ -1,6 +1,6 @@
 // src/lib/apps/inspection/utils/sessionNaming.js
 
-import { fmtMonthYearCompact } from '$lib/utils/dates';
+import { fmtMonthYearCompact } from '#lib/utils/dates.js';
 
 /**
  * Builds an initials string from a building/facility name.

@@ -7,7 +7,7 @@
      docs/requirements/app_designs/Parking_App_Design.md §6. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { centroid } from '$lib/apps/building_assets/components/plan/planMeasure.js';
+  import { centroid } from '#lib/apps/building_assets/components/plan/planMeasure.js';
   import { BAY_STATE } from '../utils/bayModel.js';
 
   export let plan = null;          // { image_url, name }

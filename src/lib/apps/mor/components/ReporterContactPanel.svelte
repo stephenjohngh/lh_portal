@@ -8,16 +8,16 @@
      "Skip with reason" pair that writes a `reporter_contact` timeline entry
      via the store. -->
 <script>
-  import { morStore } from '$lib/apps/mor/stores/morStore';
-  import { requestDownload } from '$lib/utils/download';
-  import { errMessage } from '$lib/utils/errors';
-  import Button       from '$lib/components/common/Button.svelte';
-  import RecordContactForm from '$lib/apps/mor/components/RecordContactForm.svelte';
+  import { morStore } from '#lib/apps/mor/stores/morStore.js';
+  import { requestDownload } from '#lib/utils/download.js';
+  import { errMessage } from '#lib/utils/errors.js';
+  import Button       from '#lib/components/common/Button.svelte';
+  import RecordContactForm from '#lib/apps/mor/components/RecordContactForm.svelte';
   import {
     shouldShowBsrNotifyNudge,
     shouldShowClosureNudge,
     shouldShowStalenessNudge,
-  } from '$lib/apps/mor/utils/morHelpers';
+  } from '#lib/apps/mor/utils/morHelpers.js';
 
   export let c;
   export let timeline = [];

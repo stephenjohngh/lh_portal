@@ -20,12 +20,12 @@
 //   { sessions: [{ session, inspections }], reportType: 'summary' | 'detailed' }
 
 import { json }             from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/requireAuth';
-import { storageProvider }  from '$lib/server/storage/index.js';
+import { requireAuth } from '#lib/server/requireAuth.js';
+import { storageProvider }  from '#lib/server/storage/index.js';
 import { createClient }     from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }              from '$env/dynamic/private';
-import { findFileReferences, loadViewer, canViewFile } from '$lib/server/mediaAccess.js';
+import { findFileReferences, loadViewer, canViewFile } from '#lib/server/mediaAccess.js';
 import {
   Document, Packer,
   Paragraph, TextRun,
@@ -34,14 +34,14 @@ import {
   WidthType, HeadingLevel, ShadingType,
   AlignmentType, VerticalAlign, convertInchesToTwip, TableLayoutType,
 } from 'docx';
-import { getLogger } from '$lib/utils/logger';
+import { getLogger } from '#lib/utils/logger.js';
 import {
   hCell, dCell, run, para,
   makeHeader, makeFooter, DOC_STYLES, pageProps,
   CONTENT_W, CONTENT_W_L, PAGE_W_L, PAGE_H_L,
   COLOURS, BORDERS, CELL_PAD,
-} from '$lib/server/docxHelpers.js';
-import { fmtGenerated, fmtDate, fmtDateTime, fmtTime, fmtDuration, today } from '$lib/utils/dates';
+} from '#lib/server/docxHelpers.js';
+import { fmtGenerated, fmtDate, fmtDateTime, fmtTime, fmtDuration, today } from '#lib/utils/dates.js';
 
 const logger = getLogger('generateInspectionsReport');
 

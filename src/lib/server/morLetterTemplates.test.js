@@ -3,7 +3,7 @@
 // Building & business — not from a name and placeholders written into the code
 // (2026-10-03). Read from the PACKED file: what a recipient gets.
 import { describe, it, expect, afterEach } from 'vitest';
-import { setWording } from '$lib/utils/wording.js';
+import { setWording } from '#lib/utils/wording.js';
 import { Packer } from 'docx';
 import JSZip from 'jszip';
 import {

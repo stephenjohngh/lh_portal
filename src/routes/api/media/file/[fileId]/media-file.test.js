@@ -6,7 +6,7 @@
 // PDF fetch into an opaque 404, twice, because nothing exercised it — so these
 // call GET for real. Since the security review (2026-09-27) it also needs a
 // media session cookie and a file the portal knows; these tests go through the
-// real $lib/server/mediaAccess.js rules against a stand-in database.
+// real #lib/server/mediaAccess.js rules against a stand-in database.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fakeDb } from '../fakeDb.js';
@@ -16,16 +16,16 @@ const h = vi.hoisted(() => ({ getFileStream: vi.fn(), db: /** @type {any} */ (nu
 vi.mock('$env/static/public',  () => ({ PUBLIC_SUPABASE_URL: 'http://x' }));
 vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'test-secret' } }));
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({ from: (t) => h.db.from(t) }) }));
-vi.mock('$lib/server/storage/index.js', () => ({
+vi.mock('#lib/server/storage/index.js', () => ({
   storageProvider: { getFileStream: h.getFileStream, deleteFile: vi.fn() },
 }));
-vi.mock('$lib/server/storage/storageErrors.js', () => ({
+vi.mock('#lib/server/storage/storageErrors.js', () => ({
   friendlyStorageError: (e) => String(e?.message ?? e),
 }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 
 const { GET } = await import('./+server.js');
-const { mediaSessionValue } = await import('$lib/server/mediaAccess.js');
+const { mediaSessionValue } = await import('#lib/server/mediaAccess.js');
 
 const USER   = '11111111-1111-4111-8111-111111111111';
 const ADMIN  = '22222222-2222-4222-8222-222222222222';

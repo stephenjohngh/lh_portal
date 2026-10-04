@@ -21,20 +21,20 @@
 -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Modal from '$lib/components/common/Modal.svelte';
-  import Button from '$lib/components/common/Button.svelte';
-  import FormInput from '$lib/components/common/FormInput.svelte';
-  import FormSelect from '$lib/components/common/FormSelect.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
-  import Checkbox from '$lib/components/common/Checkbox.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
-  import { fmtDate, today } from '$lib/utils/dates.js';
+  import Modal from '#lib/components/common/Modal.svelte';
+  import Button from '#lib/components/common/Button.svelte';
+  import FormInput from '#lib/components/common/FormInput.svelte';
+  import FormSelect from '#lib/components/common/FormSelect.svelte';
+  import FormTextarea from '#lib/components/common/FormTextarea.svelte';
+  import Checkbox from '#lib/components/common/Checkbox.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
+  import { fmtDate, today } from '#lib/utils/dates.js';
   import {
     GROUPS, GROUP_LABEL, BASIS, BASIS_LABEL, BASIS_DESCRIPTION,
     HANDLED_BY_LABEL, TRIGGER_TYPE_LABEL,
-  } from '$lib/utils/statutoryTemplate.js';
-  import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
-  import { problemsByField, suggestKey } from '$lib/utils/registerEntryRules.js';
+  } from '#lib/utils/statutoryTemplate.js';
+  import { EVIDENCE_ROUTE_LABEL } from '#lib/utils/obligationEvidence.js';
+  import { problemsByField, suggestKey } from '#lib/utils/registerEntryRules.js';
 
   /** @type {Object|null} null = adding a new requirement */
   export let entry = null;

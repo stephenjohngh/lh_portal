@@ -5,9 +5,9 @@
      per-job list (DocumentUpload) and the global Documents tab. -->
 <script>
   import { onMount } from 'svelte';
-  import { auth }        from '$lib/stores/auth';
-  import { permissions } from '$lib/stores/permissions';
-  import { logAudit }    from '$lib/utils/auditLogger';
+  import { auth }        from '#lib/stores/auth.js';
+  import { permissions } from '#lib/stores/permissions.js';
+  import { logAudit }    from '#lib/utils/auditLogger.js';
   import {
     registerCertificateToGoldenThread, findRegisteredCertificate,
   } from '../public.js';

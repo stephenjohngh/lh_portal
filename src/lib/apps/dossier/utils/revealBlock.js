@@ -12,7 +12,7 @@
 // works for both, which is the only reason this is shared code and not two
 // near-identical handlers.
 
-import { revealElement } from '$lib/utils/revealElement.js';
+import { revealElement } from '#lib/utils/revealElement.js';
 
 /**
  * @param {string|null|undefined} uid
@@ -28,7 +28,7 @@ export function revealBlock(uid, { root, behavior = 'smooth' } = {}) {
   const el = scope.querySelector(`[data-uid="${CSS.escape(String(uid))}"]`);
   if (!(el instanceof HTMLElement)) return false;
 
-  // The scroll and the mark are shared — see $lib/utils/revealElement.js. What
+  // The scroll and the mark are shared — see #lib/utils/revealElement.js. What
   // is Dossier's is the SELECTOR above: data-uid, written by both surfaces.
   return revealElement(el, { behavior });
 }

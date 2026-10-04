@@ -6,11 +6,11 @@
      snapshots the current content first, so a restore is itself undoable. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Modal          from '$lib/components/common/Modal.svelte';
-  import Button         from '$lib/components/common/Button.svelte';
-  import ErrorDisplay   from '$lib/components/common/ErrorDisplay.svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
-  import { fmtDateTime } from '$lib/utils/dates';
+  import Modal          from '#lib/components/common/Modal.svelte';
+  import Button         from '#lib/components/common/Button.svelte';
+  import ErrorDisplay   from '#lib/components/common/ErrorDisplay.svelte';
+  import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
+  import { fmtDateTime } from '#lib/utils/dates.js';
   import BlockContent   from './BlockContent.svelte';
   import { blocksToText } from '../utils/blockRender.js';
   import { revisionCap } from '../stores/dossierStore.js';

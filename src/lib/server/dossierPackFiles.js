@@ -10,8 +10,8 @@ import { PUBLIC_SUPABASE_URL }          from '$env/static/public';
 import { env }                          from '$env/dynamic/private';
 import { listDocuments, copyDocument } from './documentLibrary.js';
 import { friendlyStorageError }        from './storage/storageErrors.js';
-import { getLogger }                   from '$lib/utils/logger';
-import { DOC_FOLDERS, entityFolderPath } from '$lib/utils/documentUtils.js';
+import { getLogger }                   from '#lib/utils/logger.js';
+import { DOC_FOLDERS, entityFolderPath } from '#lib/utils/documentUtils.js';
 
 const db = createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY ?? '');
 

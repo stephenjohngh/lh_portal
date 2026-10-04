@@ -9,11 +9,11 @@
      Scoped by RLS, not by a filter here: publications inherit their pack's
      owner test, so this shows the caller's own and an admin sees all. -->
 <script>
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
+  import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
   import { createEventDispatcher } from 'svelte';
-  import Badge from '$lib/components/common/Badge.svelte';
-  import Icon  from '$lib/components/icons/Icon.svelte';
-  import { fmtDateTime } from '$lib/utils/dates';
+  import Badge from '#lib/components/common/Badge.svelte';
+  import Icon  from '#lib/components/icons/Icon.svelte';
+  import { fmtDateTime } from '#lib/utils/dates.js';
   import {
     publicationState, describePublication, STATE_LABEL, STATE_BADGE,
   } from '../utils/publicationState.js';

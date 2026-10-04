@@ -43,7 +43,7 @@ const LOGIN_ENOUGH = {
 
 const LOGIN = /\b(requireAuth|requireAdmin|requireAppAccess)\(/;
 // The service role, or storage itself — which no RLS covers at all.
-const SERVICE_ROLE = /SERVICE_ROLE_KEY|getSvc\(|from '\$lib\/server\/(documentLibrary|mediaAccess|publicationAssets|storage\/index)/;
+const SERVICE_ROLE = /SERVICE_ROLE_KEY|getSvc\(|from '#lib\/server\/(documentLibrary|mediaAccess|publicationAssets|storage\/index)/;
 const SPECIFIC = /\b(requireAdmin|requireAppAccess|canListDocuments|canAccessDocument|canAttachDocument|canDeleteOwn|canViewFile|canDeleteFile)\(/;
 
 const API = join(process.cwd(), 'src', 'routes', 'api');

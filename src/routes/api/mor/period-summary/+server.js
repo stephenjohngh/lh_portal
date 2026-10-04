@@ -25,22 +25,22 @@ import {
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL }       from '$env/static/public';
 import { env } from '$env/dynamic/private';
-import { requireAppAccess } from '$lib/server/requireAuth';
-import { getLogger }   from '$lib/utils/logger';
+import { requireAppAccess } from '#lib/server/requireAuth.js';
+import { getLogger }   from '#lib/utils/logger.js';
 import {
   CONTENT_W, COLOURS, BORDERS,
   hCell, dCell, run, para,
   makeHeader, makeFooter,
   DOC_STYLES, pageProps,
-} from '$lib/server/docxHelpers.js';
-import { fmtDateLong, fmtGenerated } from '$lib/utils/dates';
+} from '#lib/server/docxHelpers.js';
+import { fmtDateLong, fmtGenerated } from '#lib/utils/dates.js';
 import {
   STATUS_LABEL, OPEN_STATUSES, STATUS_ORDER,
   TRIAGE_LABEL, DECISION_LABEL,
   CHANNEL_LABEL, MECHANISM_LABEL, bsrReportClock,
-} from '$lib/apps/mor/utils/morHelpers';
-import { readAllPages } from '$lib/utils/readAllPages.js';
-import { getIdentity } from '$lib/server/identity.js';
+} from '#lib/apps/mor/utils/morHelpers.js';
+import { readAllPages } from '#lib/utils/readAllPages.js';
+import { getIdentity } from '#lib/server/identity.js';
 
 const logger = getLogger('mor/period-summary');
 

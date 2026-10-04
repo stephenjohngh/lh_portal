@@ -196,7 +196,7 @@ npx tailwindcss -i src/app.css -o dist/app.css --watch --watch-stats
      rather than scoped to either app: the target usually lives inside {@html}
      output or inside ProseMirror's DOM, neither of which carries a Svelte
      scoping class, and one keyframe beats two that drift apart.
-     Applied by $lib/utils/revealElement.js. */
+     Applied by #lib/utils/revealElement.js. */
   .lh-reveal {
     animation: lh-reveal 4s ease-out;
     border-radius: 3px;
@@ -244,7 +244,7 @@ npx tailwindcss -i src/app.css -o dist/app.css --watch --watch-stats
   }
 
   /* ========== FIND IN EDITOR ==========
-     Applied as ProseMirror decorations by $lib/utils/editorSearchExtension.js.
+     Applied as ProseMirror decorations by #lib/utils/editorSearchExtension.js.
      Global because the target lives inside ProseMirror's own DOM, which carries
      no Svelte scoping class.
 

@@ -20,7 +20,7 @@ if (!PUBLIC_SUPABASE_URL || !PUBLIC_SUPABASE_ANON_KEY) {
  * database.types) makes direct `supabase.from('table')…` calls return typed
  * Row/Insert/Update shapes, so destructured query results are checked instead
  * of `any`. Regenerate types with `node scripts/gen-db-types.mjs`.
- * @type {import('@supabase/supabase-js').SupabaseClient<import('$lib/database.types').Database>}
+ * @type {import('@supabase/supabase-js').SupabaseClient<import('#lib/database.types.ts').Database>}
  */
 export const supabase    = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
 // The project this build talks to — shown in the env banner and the home page's

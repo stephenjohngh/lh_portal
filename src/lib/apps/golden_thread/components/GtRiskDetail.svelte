@@ -4,23 +4,23 @@
      supports a MOR-case / GT-document picker and a raw id for other targets. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { gtRiskStore } from '$lib/apps/golden_thread/stores/gtRiskStore';
-  import { permissions } from '$lib/stores/permissions';
-  import { nextRiskStates, RISK_STATUS_LABELS, RISK_STATUS_BADGE } from '$lib/apps/golden_thread/utils/gtRiskLifecycle.js';
+  import { gtRiskStore } from '#lib/apps/golden_thread/stores/gtRiskStore.js';
+  import { permissions } from '#lib/stores/permissions.js';
+  import { nextRiskStates, RISK_STATUS_LABELS, RISK_STATUS_BADGE } from '#lib/apps/golden_thread/utils/gtRiskLifecycle.js';
   import {
     RISK_DOMAIN_LABELS, effectiveScore, scoreBand, liveRating, ALERT_LABELS,
-  } from '$lib/apps/golden_thread/utils/gtRiskScoring.js';
-  import { listCases as listMorCases, morCaseLabel } from '$lib/apps/mor/public.js';
-  import { LINK_TARGET_TYPES, RISK_LINK_RELATIONS } from '$lib/apps/golden_thread/utils/gtConstants.js';
-  import Badge         from '$lib/components/common/Badge.svelte';
-  import Button        from '$lib/components/common/Button.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-  import Modal         from '$lib/components/common/Modal.svelte';
-  import FormInput     from '$lib/components/common/FormInput.svelte';
-  import FormSelect    from '$lib/components/common/FormSelect.svelte';
-  import FormTextarea  from '$lib/components/common/FormTextarea.svelte';
-  import { fmtDate }   from '$lib/utils/dates';
+  } from '#lib/apps/golden_thread/utils/gtRiskScoring.js';
+  import { listCases as listMorCases, morCaseLabel } from '#lib/apps/mor/public.js';
+  import { LINK_TARGET_TYPES, RISK_LINK_RELATIONS } from '#lib/apps/golden_thread/utils/gtConstants.js';
+  import Badge         from '#lib/components/common/Badge.svelte';
+  import Button        from '#lib/components/common/Button.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
+  import Modal         from '#lib/components/common/Modal.svelte';
+  import FormInput     from '#lib/components/common/FormInput.svelte';
+  import FormSelect    from '#lib/components/common/FormSelect.svelte';
+  import FormTextarea  from '#lib/components/common/FormTextarea.svelte';
+  import { fmtDate }   from '#lib/utils/dates.js';
 
   export let risk;
   export let links = [];

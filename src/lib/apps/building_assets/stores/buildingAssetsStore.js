@@ -10,16 +10,16 @@
 //   annotationActions     — annotations CRUD
 
 import { writable }                     from 'svelte/store';
-import { api }                          from '$lib/utils/api';
-import { getLogger }                    from '$lib/utils/logger';
-import { supabase }                     from '$lib/supabaseClient';
-import { resolveHierarchy }             from '$lib/utils/attrResolution.js';
+import { api }                          from '#lib/utils/api.js';
+import { getLogger }                    from '#lib/utils/logger.js';
+import { supabase }                     from '#lib/supabaseClient.js';
+import { resolveHierarchy }             from '#lib/utils/attrResolution.js';
 import { createTypeHierarchyActions }   from './typeHierarchyActions.js';
 import { createComponentActions }       from './componentActions.js';
 import { createPlanActions }            from './planActions.js';
 import { createSpaceActions }           from './spaceActions.js';
 import { createAnnotationActions }      from './annotationActions.js';
-import { storeLoader } from '$lib/utils/storeLoad.js';
+import { storeLoader } from '#lib/utils/storeLoad.js';
 
 const logger = getLogger('BuildingAssets');
 

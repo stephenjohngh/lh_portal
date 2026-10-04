@@ -13,9 +13,9 @@
 // Lifecycle MUTATORS (submit/accept/supersede/withdraw) are NOT here — they are
 // admin/editor-gated store methods on gtStore, not a cross-app surface.
 
-import { api } from '$lib/utils/api';
-import { uploadDocument } from '$lib/utils/documentApi';
-import { postJson } from '$lib/utils/request';
+import { api } from '#lib/utils/api.js';
+import { uploadDocument } from '#lib/utils/documentApi.js';
+import { postJson } from '#lib/utils/request.js';
 
 /** Discriminator stored in gt_links.*_type for a register document. */
 export const GT_DOCUMENT_TYPE = 'gt_document';

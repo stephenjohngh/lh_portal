@@ -4,7 +4,7 @@
 // sentence the register stores.
 //
 // ⚠ DELIBERATELY IMPORTS NOTHING, and that is the whole reason it is its own
-// file. It began in `registerFilter.js`, which imports `$lib/...` — unreachable
+// file. It began in `registerFilter.js`, which imports `#lib/...` — unreachable
 // from a plain `node scripts/…` run, and `check:obligations` is such a run.
 // Copying the classifier into the script would be a second copy of a rule, and
 // the two would eventually disagree about what a role is: the app's facet would

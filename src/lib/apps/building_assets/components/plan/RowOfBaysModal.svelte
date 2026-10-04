@@ -10,13 +10,13 @@
   import { splitQuad, longSide, bayNumbers, numberClashes, validateRow } from '../../utils/bayRow.js';
   import { typesForKind } from '../../utils/spaceTypeOptions.js';
   import { measureSides, fmt1 } from './planMeasure.js';
-  import { buildSpaceRef } from '$lib/utils/spaceRef.js';
-  import Modal        from '$lib/components/common/Modal.svelte';
-  import Button       from '$lib/components/common/Button.svelte';
-  import FormInput    from '$lib/components/common/FormInput.svelte';
-  import FormSelect   from '$lib/components/common/FormSelect.svelte';
-  import Checkbox     from '$lib/components/common/Checkbox.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import { buildSpaceRef } from '#lib/utils/spaceRef.js';
+  import Modal        from '#lib/components/common/Modal.svelte';
+  import Button       from '#lib/components/common/Button.svelte';
+  import FormInput    from '#lib/components/common/FormInput.svelte';
+  import FormSelect   from '#lib/components/common/FormSelect.svelte';
+  import Checkbox     from '#lib/components/common/Checkbox.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
 
   export let show = false;
   export let space = null;          // the outline being split

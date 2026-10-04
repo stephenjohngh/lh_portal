@@ -6,9 +6,9 @@
 // actions to arbitrary users, or flood the table anonymously.
 
 import { json } from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/requireAuth';
-import { logAudit, getIpAddress, getUserAgent } from '$lib/server/auditLogger';
-import { getLogger } from '$lib/utils/logger';
+import { requireAuth } from '#lib/server/requireAuth.js';
+import { logAudit, getIpAddress, getUserAgent } from '#lib/server/auditLogger.js';
+import { getLogger } from '#lib/utils/logger.js';
 
 const logger = getLogger('AuditAPI');
 

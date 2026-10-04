@@ -31,8 +31,8 @@ const h = vi.hoisted(() => {
   return { supabase, setResult: (r) => { result = r; } };
 });
 
-vi.mock('$lib/supabaseClient', () => ({ supabase: h.supabase }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/supabaseClient.js', () => ({ supabase: h.supabase }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 
 const { listAttachments, addAttachments, purgeAttachments, setAttachments, deleteStorageObjects } =
   await import('./mediaAttachments.js');

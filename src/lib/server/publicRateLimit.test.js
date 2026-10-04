@@ -25,14 +25,14 @@ const h = vi.hoisted(() => {
   return { svc, setCount: (n, error = null) => { countResult = { count: n, error }; } };
 });
 
-vi.mock('$lib/server/policies.js', async () => { const u = await import('$lib/utils/policies.js'); return { loadServerPolicies: async () => {}, serverPolicy: async (k) => u.policy(k), serverRateLimit: async (a) => u.rateLimit(a) }; });
+vi.mock('#lib/server/policies.js', async () => { const u = await import('#lib/utils/policies.js'); return { loadServerPolicies: async () => {}, serverPolicy: async (k) => u.policy(k), serverRateLimit: async (a) => u.rateLimit(a) }; });
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => h.svc }));
 vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://local' }));
 vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'svc' } }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 
 const { checkKeyRateLimit, checkRateLimit } = await import('./publicRateLimit.js');
-const { rateLimit } = await import('$lib/utils/policies.js');
+const { rateLimit } = await import('#lib/utils/policies.js');
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -58,7 +58,7 @@ describe('checkKeyRateLimit', () => {
   });
 
   it('enforces the limit an admin set, not the shipped one', async () => {
-    const { setPolicies } = await import('$lib/utils/policies.js');
+    const { setPolicies } = await import('#lib/utils/policies.js');
     setPolicies({ rate_case_submit: 7 });
     try {
       h.setCount(6);

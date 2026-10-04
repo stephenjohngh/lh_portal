@@ -70,23 +70,23 @@ describe('every evidence source is read through its owner', () => {
   const src = read(POSITION);
 
   it('walk sessions come from the Inspection app', () => {
-    expect(src).toMatch(/listWalkSessions[\s\S]*?from '\$lib\/apps\/inspection\/public\.js'/);
+    expect(src).toMatch(/listWalkSessions[\s\S]*?from '#lib\/apps\/inspection\/public\.js'/);
   });
 
   it('maintenance jobs come from the Maintenance app', () => {
-    expect(src).toMatch(/listJobEvidence[\s\S]*?from '\$lib\/apps\/maintenance\/public\.js'/);
+    expect(src).toMatch(/listJobEvidence[\s\S]*?from '#lib\/apps\/maintenance\/public\.js'/);
   });
 
   it('components and works lines come from Building Assets', () => {
     expect(src).toMatch(
-      /listComponentsByStatus[\s\S]*?listWorksLinesFor[\s\S]*?from '\$lib\/apps\/building_assets\/public\.js'/);
+      /listComponentsByStatus[\s\S]*?listWorksLinesFor[\s\S]*?from '#lib\/apps\/building_assets\/public\.js'/);
   });
 
   // ⛔ And nothing reaches round the back. A direct table read would work and
   // would tell nobody; the point of a public.js is that reading it lists every
   // cross-app consumer.
   it('does not touch another app’s store or the api wrapper directly', () => {
-    expect(src).not.toMatch(/from '\$lib\/utils\/api'/);
+    expect(src).not.toMatch(/from '#lib\/utils\/api(\.js)?'/);
     expect(src).not.toMatch(/maintenanceStore/);
     expect(src).not.toMatch(/buildingAssetsStore/);
     expect(src).not.toMatch(/inspectionStore/);
@@ -177,12 +177,12 @@ describe('the walk evidence lives with the compliance domain', () => {
   // here would work perfectly and tell nobody.
   it('reaches walk sessions only through the Inspection app', () => {
     const src = read(WALKS);
-    expect(src).toMatch(/from '\$lib\/apps\/inspection\/public\.js'/);
+    expect(src).toMatch(/from '#lib\/apps\/inspection\/public\.js'/);
     // ⚠ Asserts the two things you would NEED to query a table, not the
     // table's name: the header legitimately says "backed by `walk_sessions`",
     // and banning the word would be asserting the prose rather than the rule.
-    expect(src, 'a direct api import is a way round the owning app').not.toMatch(/from '\$lib\/utils\/api'/);
-    expect(src, 'a direct supabase client is the same thing').not.toMatch(/from '\$lib\/supabaseClient'/);
+    expect(src, 'a direct api import is a way round the owning app').not.toMatch(/from '#lib\/utils\/api(\.js)?'/);
+    expect(src, 'a direct supabase client is the same thing').not.toMatch(/from '#lib\/supabaseClient(\.js)?'/);
   });
 
   // ⚠ What it MAY read directly, stated so the rule above cannot be read as

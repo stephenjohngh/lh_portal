@@ -3,18 +3,18 @@
      single date happens on the agenda row; this is the pattern itself. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Modal         from '$lib/components/common/Modal.svelte';
-  import Button        from '$lib/components/common/Button.svelte';
-  import FormInput     from '$lib/components/common/FormInput.svelte';
-  import FormSelect    from '$lib/components/common/FormSelect.svelte';
-  import FormTextarea  from '$lib/components/common/FormTextarea.svelte';
-  import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
+  import Modal         from '#lib/components/common/Modal.svelte';
+  import Button        from '#lib/components/common/Button.svelte';
+  import FormInput     from '#lib/components/common/FormInput.svelte';
+  import FormSelect    from '#lib/components/common/FormSelect.svelte';
+  import FormTextarea  from '#lib/components/common/FormTextarea.svelte';
+  import ErrorDisplay  from '#lib/components/common/ErrorDisplay.svelte';
   import RecurrenceFields from './RecurrenceFields.svelte';
   import { pickable } from '../utils/categories.js';
   import { isRecurring } from '../utils/recurrence.js';
-  import { today } from '$lib/utils/dates';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import { today } from '#lib/utils/dates.js';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
 
   export let show = false;
   /** The series being edited, or null to create one. */

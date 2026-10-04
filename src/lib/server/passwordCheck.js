@@ -10,9 +10,9 @@
 // switched-off Email provider read as a wrong password).
 //
 // The steps, in order:
-//   1. the lockout ($lib/server/loginLockout.js) — refuse before asking Supabase
+//   1. the lockout (#lib/server/loginLockout.js) — refuse before asking Supabase
 //   2. Supabase Auth checks the password (anon key)
-//   3. $lib/server/signInOutcome.js decides what an error means: only a WRONG
+//   3. #lib/server/signInOutcome.js decides what an error means: only a WRONG
 //      PASSWORD counts towards the lockout; anything else was not checked
 //   4. the attempt is recorded in login_attempts (service role; that table has
 //      RLS on and no policies, so nothing else can read or write it)
@@ -21,11 +21,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import { env } from '$env/dynamic/private';
-import { logFailedLogin, getIpAddress, getUserAgent } from '$lib/server/auditLogger';
-import { lockoutState, lockoutLimits } from '$lib/server/loginLockout';
-import { loadServerPolicies } from '$lib/server/policies.js';
-import { signInOutcome } from '$lib/server/signInOutcome';
-import { getLogger } from '$lib/utils/logger';
+import { logFailedLogin, getIpAddress, getUserAgent } from '#lib/server/auditLogger.js';
+import { lockoutState, lockoutLimits } from '#lib/server/loginLockout.js';
+import { loadServerPolicies } from '#lib/server/policies.js';
+import { signInOutcome } from '#lib/server/signInOutcome.js';
+import { getLogger } from '#lib/utils/logger.js';
 
 const logger = getLogger('PasswordCheck');
 

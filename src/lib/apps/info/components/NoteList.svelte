@@ -1,13 +1,13 @@
 <!-- src/lib/apps/info/components/NoteList.svelte -->
 <script>
-  import { matchesSearch } from '$lib/utils/textSearch.js';
+  import { matchesSearch } from '#lib/utils/textSearch.js';
   import { createEventDispatcher } from 'svelte';
-  import { permissions } from '$lib/stores/permissions';
-  import Icon            from '$lib/components/icons/Icon.svelte';
-  import Button          from '$lib/components/common/Button.svelte';
-  import LoadingSpinner  from '$lib/components/common/LoadingSpinner.svelte';
-  import { fmtDate }     from '$lib/utils/dates.js';
-  import { getPref, setPref } from '$lib/utils/prefs';
+  import { permissions } from '#lib/stores/permissions.js';
+  import Icon            from '#lib/components/icons/Icon.svelte';
+  import Button          from '#lib/components/common/Button.svelte';
+  import LoadingSpinner  from '#lib/components/common/LoadingSpinner.svelte';
+  import { fmtDate }     from '#lib/utils/dates.js';
+  import { getPref, setPref } from '#lib/utils/prefs.js';
   import { stripHtml, VISIBILITY_BADGES } from '../utils/infoHelpers.js';
 
   export let notes       = [];

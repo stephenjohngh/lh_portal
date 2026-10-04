@@ -11,7 +11,7 @@ const h = vi.hoisted(() => ({
   authHeaders: vi.fn(() => Promise.resolve({ Authorization: 'Bearer tok', 'Content-Type': 'application/json' })),
 }));
 
-vi.mock('$lib/utils/authHeaders', () => ({ authHeaders: h.authHeaders }));
+vi.mock('#lib/utils/authHeaders.js', () => ({ authHeaders: h.authHeaders }));
 
 const { getJson, postJson, patchJson, del, SESSION_EXPIRED } = await import('./request.js');
 

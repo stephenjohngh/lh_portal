@@ -10,13 +10,13 @@ import { createHash }            from 'crypto';
 import { createClient }          from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }                 from '$env/dynamic/private';
-import { getLogger } from '$lib/utils/logger';
-import { serverRateLimit } from '$lib/server/policies.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { serverRateLimit } from '#lib/server/policies.js';
 
 const logger = getLogger('publicRateLimit');
 
 // The limits are admin policies (Admin → Other Config → Policies): the number
-// allowed per window, with the window fixed, declared in $lib/utils/policies.js
+// allowed per window, with the window fixed, declared in #lib/utils/policies.js
 // (RATE_LIMIT_WINDOWS) and read fresh here (serverRateLimit). Each action is
 // also in public_upload_attempts' CHECK — dbRulesParity.test.js holds the two
 // lists together, because until migration 233 the four Dossier actions were

@@ -11,9 +11,9 @@
      it. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Modal        from '$lib/components/common/Modal.svelte';
-  import Button       from '$lib/components/common/Button.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import Modal        from '#lib/components/common/Modal.svelte';
+  import Button       from '#lib/components/common/Button.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import { actionLabel } from '../../utils/worksSchedule.js';
 
   export let show = false;

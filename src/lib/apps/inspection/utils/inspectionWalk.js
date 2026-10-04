@@ -12,7 +12,7 @@
 // makeWalkBuilder() folds both into one (floorComponents) => walkList closure,
 // which the floor-scanning helpers below take as their filter.
 
-import { applyInspectionScope } from '$lib/apps/building_assets/utils/inspectionScope.js';
+import { applyInspectionScope } from '#lib/apps/building_assets/utils/inspectionScope.js';
 
 // Walk order 0 marks an "internal / not on the walk" component (e.g. inside
 // a riser or ceiling void) — exclude it from every inspection walk and from

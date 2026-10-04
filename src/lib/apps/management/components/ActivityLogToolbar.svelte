@@ -5,7 +5,7 @@
      combined with a <select bind:value> and a bit of internal logic
      (toggleSortDir). See CLAUDE.md "Testing". -->
 <script>
-  import Button from '$lib/components/common/Button.svelte';
+  import Button from '#lib/components/common/Button.svelte';
 
   export let historicCount = 0;
   export let showHistoric  = false;        // bindable

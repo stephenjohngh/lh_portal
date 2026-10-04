@@ -7,7 +7,7 @@
   import { createEventDispatcher } from 'svelte';
   import { parkingStore } from '../stores/parkingStore.js';
   import { normaliseReg, STATUS_LABEL } from '../utils/agreementModel.js';
-  import { fmtDate } from '$lib/utils/dates.js';
+  import { fmtDate } from '#lib/utils/dates.js';
 
   const dispatch = createEventDispatcher();
   let q = '';

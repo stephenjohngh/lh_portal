@@ -5,8 +5,8 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '../../stores/buildingAssetsStore.js';
-  import Modal    from '$lib/components/common/Modal.svelte';
-  import Button   from '$lib/components/common/Button.svelte';
+  import Modal    from '#lib/components/common/Modal.svelte';
+  import Button   from '#lib/components/common/Button.svelte';
 
   export let show   = false;
   export let mode   = 'new';   // 'new' | 'edit' | 'copy'

@@ -4,9 +4,9 @@
   import { createEventDispatcher } from 'svelte';
   import { maintenanceStore }      from '../stores/maintenanceStore.js';
   import { docTypeLabel, docTypeIcon, expiryRag, fmtBytes } from '../utils/maintenanceHelpers.js';
-  import { fmtDate }             from '$lib/utils/dates.js';
-  import { normalisePhotoUrl }   from '$lib/utils/driveUtils.js';
-  import Button                  from '$lib/components/common/Button.svelte';
+  import { fmtDate }             from '#lib/utils/dates.js';
+  import { normalisePhotoUrl }   from '#lib/utils/driveUtils.js';
+  import Button                  from '#lib/components/common/Button.svelte';
   import GtRegisterButton        from './GtRegisterButton.svelte';
 
   export let jobId;

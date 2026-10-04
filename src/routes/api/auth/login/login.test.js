@@ -2,7 +2,7 @@
 //
 // The server-routed login is a security control: it enforces a failed-attempt
 // lockout (5 per email from one address, 20 per email from anywhere —
-// $lib/server/loginLockout.js) BEFORE forwarding to Supabase Auth, returns generic
+// #lib/server/loginLockout.js) BEFORE forwarding to Supabase Auth, returns generic
 // errors (no email enumeration), and fails OPEN if the attempts table is
 // unreachable (a DB blip shouldn't lock everyone out). These tests pin that.
 
@@ -37,13 +37,13 @@ vi.mock('@sveltejs/kit', () => ({ json: (body, init) => ({ body, status: init?.s
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => h.client }));
 vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://local', PUBLIC_SUPABASE_ANON_KEY: 'anon' }));
 vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'svc' } }));
-vi.mock('$lib/server/auditLogger', () => ({
+vi.mock('#lib/server/auditLogger.js', () => ({
   logLogin:       vi.fn(() => Promise.resolve()),
   logFailedLogin: vi.fn(() => Promise.resolve()),
   getIpAddress:   () => '1.2.3.4',
   getUserAgent:   () => 'test-agent',
 }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 
 const { POST } = await import('./+server.js');
 const req = (body) => ({ json: () => Promise.resolve(body), headers: { get: () => null } });

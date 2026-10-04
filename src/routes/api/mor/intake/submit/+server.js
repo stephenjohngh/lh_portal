@@ -20,18 +20,18 @@ import { json }                       from '@sveltejs/kit';
 import { createClient }               from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL }        from '$env/static/public';
 import { env } from '$env/dynamic/private';
-import { checkRateLimit }             from '$lib/server/publicRateLimit.js';
+import { checkRateLimit }             from '#lib/server/publicRateLimit.js';
 import { isSameOrigin,
-         isTrustedStorageUrl }        from '$lib/server/verifyOrigin.js';
-import { verifyUrlSignature }         from '$lib/server/urlSignature.js';
+         isTrustedStorageUrl }        from '#lib/server/verifyOrigin.js';
+import { verifyUrlSignature }         from '#lib/server/urlSignature.js';
 import { generateVerificationCode,
-         formatVerificationCode }      from '$lib/utils/caseVerificationCode';
+         formatVerificationCode }      from '#lib/utils/caseVerificationCode.js';
 import { logAudit,
          getIpAddress,
-         getUserAgent }                from '$lib/server/auditLogger';
-import { getLogger }                  from '$lib/utils/logger';
-import { storageProviderName }        from '$lib/server/storage/index.js';
-import { serverPolicy } from '$lib/server/policies.js';
+         getUserAgent }                from '#lib/server/auditLogger.js';
+import { getLogger }                  from '#lib/utils/logger.js';
+import { storageProviderName }        from '#lib/server/storage/index.js';
+import { serverPolicy } from '#lib/server/policies.js';
 
 const logger = getLogger('mor/intake/submit');
 

@@ -18,7 +18,7 @@
 //   4. Find your Drive ID: Graph Explorer → GET /me/drive (personal)
 //      or /sites/{site-id}/drive (SharePoint) → copy 'id'
 
-import { getLogger } from '$lib/utils/logger';
+import { getLogger } from '#lib/utils/logger.js';
 // $env/dynamic/private — vars read at runtime so missing vars don't fail the
 // build when OneDrive is not the active storage provider.
 import { env } from '$env/dynamic/private';

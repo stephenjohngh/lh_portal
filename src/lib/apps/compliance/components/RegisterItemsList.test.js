@@ -16,8 +16,8 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/svelte';
 import RegisterItemsList from './RegisterItemsList.svelte';
-import { REGISTER_ITEMS } from '$lib/utils/registerItemsData.js';
-import { ofKind, ACTION_CATEGORIES } from '$lib/utils/registerKinds.js';
+import { REGISTER_ITEMS } from '#lib/utils/registerItemsData.js';
+import { ofKind, ACTION_CATEGORIES } from '#lib/utils/registerKinds.js';
 
 afterEach(cleanup);
 
@@ -35,7 +35,9 @@ describe('every item of the kind reaches the page', () => {
         // rendered with its markers still in it.
         expect(screen.getByText(item.name, { exact: true }), item.key).toBeInTheDocument();
       }
-    });
+    // 55 text searches over a large DOM: about 2 s alone, past the 5 s default
+    // under a full parallel run (2026-10-04). A budget for real work, not a retry.
+    }, 20_000);
   }
 
   it('shows no item of another kind', () => {

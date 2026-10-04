@@ -3,20 +3,20 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { get }           from 'svelte/store';
-  import { getLogger }  from '$lib/utils/logger';
-  import { errMessage } from '$lib/utils/errors.js';
-  import { permissions } from '$lib/stores/permissions';
-  import { auth }       from '$lib/stores/auth';
+  import { getLogger }  from '#lib/utils/logger.js';
+  import { errMessage } from '#lib/utils/errors.js';
+  import { permissions } from '#lib/stores/permissions.js';
+  import { auth }       from '#lib/stores/auth.js';
   import { inspectionStore } from './stores/inspectionStore.js';
   import { startSync, stopSync } from './utils/syncRunner.js';
-  import { online } from '$lib/stores/online.js';
-  import { getPref, setPref } from '$lib/utils/prefs.js';
+  import { online } from '#lib/stores/online.js';
+  import { getPref, setPref } from '#lib/utils/prefs.js';
   import InspectionHome           from './components/InspectionHome.svelte';
   import InspectionSessionStart   from './components/InspectionSessionStart.svelte';
   import InspectionRepairStart    from './components/InspectionRepairStart.svelte';
   import InspectionSession        from './components/InspectionSession.svelte';
   import InspectionSessionSummary from './components/InspectionSessionSummary.svelte';
-  import WalkError            from '$lib/apps/inspection/components/common/WalkError.svelte';
+  import WalkError            from '#lib/apps/inspection/components/common/WalkError.svelte';
 
 
   const logger = getLogger('InspectionApp');

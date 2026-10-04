@@ -8,8 +8,8 @@ import { get } from 'svelte/store';
 
 const h = vi.hoisted(() => ({ api: { get: vi.fn(() => Promise.resolve([])) } }));
 
-vi.mock('$lib/utils/api',    () => ({ api: h.api }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/api.js',    () => ({ api: h.api }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 
 const { profiles, profilesStore } = await import('./profiles.js');
 

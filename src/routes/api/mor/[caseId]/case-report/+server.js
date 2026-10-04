@@ -25,20 +25,20 @@ import {
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL }       from '$env/static/public';
 import { env } from '$env/dynamic/private';
-import { requireAppAccess } from '$lib/server/requireAuth';
-import { getLogger }   from '$lib/utils/logger';
+import { requireAppAccess } from '#lib/server/requireAuth.js';
+import { getLogger }   from '#lib/utils/logger.js';
 import {
   CONTENT_W, COLOURS, BORDERS,
   hCell, dCell, run, para,
   makeHeader, makeFooter,
   DOC_STYLES, pageProps,
-} from '$lib/server/docxHelpers.js';
-import { fmtDateLong, fmtDateTime, fmtGenerated } from '$lib/utils/dates';
+} from '#lib/server/docxHelpers.js';
+import { fmtDateLong, fmtDateTime, fmtGenerated } from '#lib/utils/dates.js';
 import {
   STATUS_LABEL, MECHANISM_LABEL, CHANNEL_LABEL, REPORTER_TYPE_LABEL,
   DECISION_LABEL, TRIAGE_LABEL,
   ENTRY_TYPE_LABEL, CONTACT_KIND_LABEL,
-} from '$lib/apps/mor/utils/morHelpers';
+} from '#lib/apps/mor/utils/morHelpers.js';
 
 const logger = getLogger('mor/case-report');
 

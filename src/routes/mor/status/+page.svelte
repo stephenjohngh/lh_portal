@@ -4,14 +4,14 @@
      page can link straight here. The resident still has to enter their
      verification code, which acts as a bearer token. -->
 <script>
-  import { fmtDateTime } from '$lib/utils/dates';
+  import { fmtDateTime } from '#lib/utils/dates.js';
   import { onMount } from 'svelte';
-  import { page }     from '$app/stores';
-  import { LOGO as lhLogo, LOGO_ALT } from '$lib/branding.js';
+  import { page }     from '$app/state';
+  import { LOGO as lhLogo, LOGO_ALT } from '#lib/branding.js';
   import {
     normalizeVerificationCode,
     formatVerificationCode,
-  } from '$lib/utils/caseVerificationCode';
+  } from '#lib/utils/caseVerificationCode.js';
 
   // ── Form state ───────────────────────────────────────────────────────
   let reference   = '';
@@ -37,7 +37,7 @@
 
   // Pre-fill reference from ?ref= query param.
   onMount(() => {
-    const q = $page.url.searchParams.get('ref');
+    const q = page.url.searchParams.get('ref');
     if (q) reference = q.trim().toUpperCase();
   });
 

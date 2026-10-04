@@ -3,7 +3,7 @@
 //
 // Import from:
 //   Tailwind config  →  './src/lib/theme.js'  (relative, Node.js context)
-//   SvelteKit files  →  '$lib/theme.js'        (SvelteKit alias)
+//   SvelteKit files  →  '#lib/theme.js'        (SvelteKit alias)
 //
 // Do NOT use $app / $env / SvelteKit-specific imports here.
 

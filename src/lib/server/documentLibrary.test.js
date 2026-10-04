@@ -66,7 +66,7 @@ vi.mock('./storage/index.js', () => ({
 vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://db.test' }));
 vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'svc' } }));
 // Pulled in transitively by logger.js, which is not otherwise part of this.
-vi.mock('$app/environment', () => ({ browser: false, dev: false }));
+vi.mock('$app/env', () => ({ browser: false, dev: false }));
 
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({

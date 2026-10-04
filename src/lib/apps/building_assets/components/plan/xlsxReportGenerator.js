@@ -15,7 +15,7 @@
 
 import { today } from '../../../../utils/dates.js';
 import { buildComponentsMatrix, buildStatusPivot } from '../../utils/reportModel.js';
-import { requestDownload } from '$lib/utils/download.js';
+import { requestDownload } from '#lib/utils/download.js';
 
 export async function generateXlsxDocument(params) {
   const {

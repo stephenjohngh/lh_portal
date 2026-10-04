@@ -3,11 +3,11 @@
      and its own saving/error state (done()/fail() callbacks, house pattern). -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Modal        from '$lib/components/common/Modal.svelte';
-  import Button       from '$lib/components/common/Button.svelte';
-  import FormInput    from '$lib/components/common/FormInput.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import Modal        from '#lib/components/common/Modal.svelte';
+  import Button       from '#lib/components/common/Button.svelte';
+  import FormInput    from '#lib/components/common/FormInput.svelte';
+  import FormTextarea from '#lib/components/common/FormTextarea.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
 
   export let show = false;
   export let pack = null;   // null = create, object = edit

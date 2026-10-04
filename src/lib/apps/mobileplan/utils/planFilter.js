@@ -9,7 +9,7 @@
 // at SYSTEM granularity — a system's checkbox toggles all of its types — so these
 // helpers translate between the two.
 
-import { statusLabel } from '$lib/utils/resultConstants.js';
+import { statusLabel } from '#lib/utils/resultConstants.js';
 
 /** The four component statuses, in display order. */
 export const STATUSES = ['ok', 'problem', 'failed', 'inactive'];

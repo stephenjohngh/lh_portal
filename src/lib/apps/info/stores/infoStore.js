@@ -3,10 +3,10 @@
 // All document I/O goes through /api/documents/* — never direct Supabase storage.
 
 import { writable }    from 'svelte/store';
-import { api }         from '$lib/utils/api';
-import * as docApi     from '$lib/utils/documentApi';
-import { logAudit }    from '$lib/utils/auditLogger';
-import { sanitizeHtml } from '$lib/utils/sanitizeHtml';
+import { api }         from '#lib/utils/api.js';
+import * as docApi     from '#lib/utils/documentApi.js';
+import { logAudit }    from '#lib/utils/auditLogger.js';
+import { sanitizeHtml } from '#lib/utils/sanitizeHtml.js';
 import { archiveNotePatch } from '../utils/infoHelpers.js';
 
 const NOTE_SELECT =
@@ -28,9 +28,9 @@ function createInfoStore() {
  * `& Record<string, any>` tolerates the joined aliases these queries select;
  * without it a bare Tables<> swaps one error message for another.
    *
-   * @typedef {import('$lib/database.types').Tables<'info_notes'> & Record<string, any>} Note
+   * @typedef {import('#lib/database.types.ts').Tables<'info_notes'> & Record<string, any>} Note
    * @typedef {{
-   *   sections: (import('$lib/database.types').Tables<'info_sections'> & Record<string, any>)[],
+   *   sections: (import('#lib/database.types.ts').Tables<'info_sections'> & Record<string, any>)[],
    *   notes: Note[],
    *   selectedNote: Note | null,
    *   loadingSections: boolean,

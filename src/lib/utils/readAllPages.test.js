@@ -19,8 +19,8 @@ const h = vi.hoisted(() => {
   return { setPages: (p) => { pages = p; }, calls, supabase: { from: vi.fn(() => builder()) } };
 });
 
-vi.mock('$lib/supabaseClient', () => ({ supabase: h.supabase }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/supabaseClient.js', () => ({ supabase: h.supabase }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 
 const { readAllPages, chunks } = await import('./readAllPages.js');
 const { api } = await import('./api.js');

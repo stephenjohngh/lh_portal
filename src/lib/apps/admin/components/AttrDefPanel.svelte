@@ -2,9 +2,9 @@
 <!-- Panel 3 of 4: Attribute Definitions for the selected Type. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
-  import { inp } from '$lib/apps/building_assets/ui.js';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import { buildingAssetsStore } from '#lib/apps/building_assets/stores/buildingAssetsStore.js';
+  import { inp } from '#lib/apps/building_assets/ui.js';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
 
   export let attrDefs          = [];   // effective type_attributes[], each with _scope: 'system'|'type'
   export let mode              = null; // 'type' | 'system' | null

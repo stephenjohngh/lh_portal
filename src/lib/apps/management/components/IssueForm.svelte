@@ -1,15 +1,15 @@
 <!-- src/lib/apps/management/components/IssueForm.svelte -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Button from '$lib/components/common/Button.svelte';
-  import FormInput from '$lib/components/common/FormInput.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
-  import FormSelect from '$lib/components/common/FormSelect.svelte';
-  import Modal from '$lib/components/common/Modal.svelte';
-  import { PRIORITIES } from '$lib/utils/constants';
-  import { ISSUE_STATUS, ISSUE_STATUS_OPTIONS } from '$lib/utils/constants';
-  import { fmtDate, toDateTimeLocal } from '$lib/utils/dates.js';
-  import { permissions } from '$lib/stores/permissions';
+  import Button from '#lib/components/common/Button.svelte';
+  import FormInput from '#lib/components/common/FormInput.svelte';
+  import FormTextarea from '#lib/components/common/FormTextarea.svelte';
+  import FormSelect from '#lib/components/common/FormSelect.svelte';
+  import Modal from '#lib/components/common/Modal.svelte';
+  import { PRIORITIES } from '#lib/utils/constants.js';
+  import { ISSUE_STATUS, ISSUE_STATUS_OPTIONS } from '#lib/utils/constants.js';
+  import { fmtDate, toDateTimeLocal } from '#lib/utils/dates.js';
+  import { permissions } from '#lib/stores/permissions.js';
 
   export let show = false;
   export let issue = null; // null for new, object for edit

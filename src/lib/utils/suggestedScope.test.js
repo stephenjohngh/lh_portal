@@ -11,7 +11,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { STATUTORY_TEMPLATE } from './statutoryTemplate.js';
-import { matchesAttrFilter } from '$lib/apps/building_assets/utils/attrFilters.js';
+import { matchesAttrFilter } from '#lib/apps/building_assets/utils/attrFilters.js';
 
 const SCOPE_KEYS = new Set(['typeCodes', 'systemIds', 'floorIds', 'statuses', 'fixedAttrFilters', 'conditionAttrFilters']);
 const OPS = new Set(['in', 'is_true', 'is_false', 'lt', 'lte', 'eq', 'gte', 'gt', 'contains', 'starts', 'eq_text']);

@@ -1,17 +1,17 @@
 // src/lib/apps/management/stores/issuesStore.js
 // UPDATED: comments → activities; comment_text → body; decisions merged into activities
 import { get, writable }    from 'svelte/store';
-import { supabase }         from '$lib/supabaseClient';
-import { api }              from '$lib/utils/api';
-import { ISSUE_STATUS }     from '$lib/utils/constants';
-import { getLogger }        from '$lib/utils/logger';
-import { logAudit }         from '$lib/utils/auditLogger';
-import { sanitizeHtml }     from '$lib/utils/sanitizeHtml';
-import { del }              from '$lib/utils/request';
-import * as docApi          from '$lib/utils/documentApi';
+import { supabase }         from '#lib/supabaseClient.js';
+import { api }              from '#lib/utils/api.js';
+import { ISSUE_STATUS }     from '#lib/utils/constants.js';
+import { getLogger }        from '#lib/utils/logger.js';
+import { logAudit }         from '#lib/utils/auditLogger.js';
+import { sanitizeHtml }     from '#lib/utils/sanitizeHtml.js';
+import { del }              from '#lib/utils/request.js';
+import * as docApi          from '#lib/utils/documentApi.js';
 import { currentMeeting }   from './meetingsStore';
-import { storeLoader } from '$lib/utils/storeLoad.js';
-import { currentUser } from '$lib/utils/currentUser.js';
+import { storeLoader } from '#lib/utils/storeLoad.js';
+import { currentUser } from '#lib/utils/currentUser.js';
 
 const logger = getLogger('issuesStore');
 
@@ -37,7 +37,7 @@ function createIssuesStore() {
  * `& Record<string, any>` tolerates the joined aliases these queries select;
  * without it a bare Tables<> swaps one error message for another.
    *
-   * @typedef {{ issues: (import('$lib/database.types').Tables<'issues'> & Record<string, any>)[], loading: boolean, error: string }} IssuesState
+   * @typedef {{ issues: (import('#lib/database.types.ts').Tables<'issues'> & Record<string, any>)[], loading: boolean, error: string }} IssuesState
    */
   const { subscribe, set, update } = writable(/** @type {IssuesState} */ ({
     issues: [],

@@ -2,7 +2,7 @@
 // Shared utilities used across all building_assets action modules.
 
 import { get } from 'svelte/store';
-import { auth } from '$lib/stores/auth';
+import { auth } from '#lib/stores/auth.js';
 
 // -- Auth guard -------------------------------------------------------------
 // Call at the top of any write method. Throws immediately if no user is

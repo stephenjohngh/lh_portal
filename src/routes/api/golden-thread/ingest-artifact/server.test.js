@@ -10,7 +10,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://localhost' }));
 vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'service-role' } }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 
 const h = vi.hoisted(() => ({
   draft:   { id: '22222222-2222-4222-8222-222222222222', status: 'draft', created_by: 'u1' },
@@ -26,14 +26,14 @@ vi.mock('@supabase/supabase-js', () => ({
     from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: h.draft, error: null }) }) }) }),
   }),
 }));
-vi.mock('$lib/server/requireAuth', () => ({
+vi.mock('#lib/server/requireAuth.js', () => ({
   requireAuth: async () => ({ user: { id: 'u1' }, isAdmin: false, error: null }),
 }));
-vi.mock('$lib/server/documentLibrary', () => ({
+vi.mock('#lib/server/documentLibrary.js', () => ({
   copyDocument: h.copyDocument,
   getDocument:  async () => { if (h.sourceError) throw h.sourceError; return h.source; },
 }));
-vi.mock('$lib/server/documentAccess.js', () => ({
+vi.mock('#lib/server/documentAccess.js', () => ({
   canAccessDocument: h.canAccessDocument,
   bearerToken: () => 'tok',
 }));

@@ -15,10 +15,10 @@ const h = vi.hoisted(() => {
   let val = { loading: false, isAdmin: true, canModify: true, isReadOnly: false };
   return { permissions: { subscribe: (run) => { run(val); subs.add(run); return () => subs.delete(run); } } };
 });
-vi.mock('$lib/stores/permissions', () => ({ permissions: h.permissions }));
+vi.mock('#lib/stores/permissions.js', () => ({ permissions: h.permissions }));
 
 const { default: RegisterRow } = await import('./RegisterRow.svelte');
-const { STATUTORY_TEMPLATE } = await import('$lib/utils/statutoryTemplate.js');
+const { STATUTORY_TEMPLATE } = await import('#lib/utils/statutoryTemplate.js');
 const { DISPLAY_DUTY_KEY } = await import('../utils/displayRegisterLink.js');
 
 const anEntry = STATUTORY_TEMPLATE.find((e) => e.evidencedBy && !e.suggestedScope);

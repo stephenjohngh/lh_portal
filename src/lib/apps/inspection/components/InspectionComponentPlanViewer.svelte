@@ -3,7 +3,7 @@
      Only shown when currentComponent.plan_id is set (component is placed). -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import { drawComponentOnPlan } from '$lib/utils/planMarker.js';
+  import { drawComponentOnPlan } from '#lib/utils/planMarker.js';
 
   const dispatch = createEventDispatcher();
 
@@ -16,7 +16,7 @@
   let imageLoaded = false;
   let error       = null;
 
-  // The drawing lives in $lib/utils/planMarker.js, shared with Building Assets'
+  // The drawing lives in #lib/utils/planMarker.js, shared with Building Assets'
   // works schedules. Only the picture is shared — this app's chrome stays its
   // own, which is why the accent and the marker centre are passed in.
   onMount(async () => {

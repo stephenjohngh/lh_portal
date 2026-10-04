@@ -4,7 +4,7 @@
 // A server `load` rather than a client fetch against an /api/pack endpoint,
 // which is what the plan originally sketched. The load function has the same
 // isolation properties — it runs server-side and goes through
-// $lib/server/publicationReader, the single token→content path — and it is
+// #lib/server/publicationReader, the single token→content path — and it is
 // strictly better here: the token never has to be handed to client JavaScript,
 // there is no second endpoint to secure, and the page renders server-side for a
 // recipient who may be on a phone in a meeting.
@@ -15,10 +15,10 @@
 import {
   findServablePublication, readPublicationContent, publicPublicationFields,
   stripStorageIds, readerRefusal,
-} from '$lib/server/publicationReader.js';
-import { checkRateLimit } from '$lib/server/publicRateLimit.js';
-import { needsPassphrase, hasGrant } from '$lib/server/publicationPassphrase.js';
-import { serverWording } from '$lib/server/wording.js';
+} from '#lib/server/publicationReader.js';
+import { checkRateLimit } from '#lib/server/publicRateLimit.js';
+import { needsPassphrase, hasGrant } from '#lib/server/publicationPassphrase.js';
+import { serverWording } from '#lib/server/wording.js';
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ params, request, setHeaders, cookies }) {

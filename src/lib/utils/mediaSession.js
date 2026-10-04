@@ -2,7 +2,7 @@
 // Open and close the media session — the HttpOnly cookie that lets <img src>
 // and plain links reach the file proxy (/api/media/file/:id), which a bearer
 // token cannot do. Security review, 2026-09-27; the server half is
-// src/routes/api/auth/media-session/+server.js and $lib/server/mediaAccess.js.
+// src/routes/api/auth/media-session/+server.js and #lib/server/mediaAccess.js.
 //
 // Both are best-effort: a failure here must never stop someone logging in or
 // out. The cost of a failure is images that do not load until the next token

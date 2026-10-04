@@ -14,8 +14,8 @@ const h = vi.hoisted(() => ({
 
 vi.mock('$env/static/public',  () => ({ PUBLIC_SUPABASE_URL: 'http://x' }));
 vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'svc' } }));
-vi.mock('$lib/server/requireAuth.js', () => ({ requireAuth: async () => h.auth }));
-vi.mock('$lib/server/documentLibrary.js', () => ({ deleteDocument: (...a) => h.deleteDocument(...a) }));
+vi.mock('#lib/server/requireAuth.js', () => ({ requireAuth: async () => h.auth }));
+vi.mock('#lib/server/documentLibrary.js', () => ({ deleteDocument: (...a) => h.deleteDocument(...a) }));
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({
     from(table) {

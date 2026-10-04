@@ -25,10 +25,10 @@ const h = vi.hoisted(() => {
   return { supabase, api, setResult: (r) => { result = r; } };
 });
 
-vi.mock('$lib/supabaseClient',   () => ({ supabase: h.supabase }));
-vi.mock('$lib/utils/api',        () => ({ api: h.api }));
-vi.mock('$lib/utils/authHeaders',() => ({ authHeaders: () => Promise.resolve({ Authorization: 'Bearer tok' }) }));
-vi.mock('$lib/utils/logger',     () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/supabaseClient.js',   () => ({ supabase: h.supabase }));
+vi.mock('#lib/utils/api.js',        () => ({ api: h.api }));
+vi.mock('#lib/utils/authHeaders.js',() => ({ authHeaders: () => Promise.resolve({ Authorization: 'Bearer tok' }) }));
+vi.mock('#lib/utils/logger.js',     () => ({ getLogger: () => () => {} }));
 
 const { usersStore } = await import('./usersStore.js');
 

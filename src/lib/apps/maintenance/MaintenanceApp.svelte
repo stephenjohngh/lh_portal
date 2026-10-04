@@ -16,12 +16,12 @@
      horizon. ⚠ And that is about to matter — 57 of the 80 planned obligations
      are evidenced by a maintenance job, and this table has never held a row. -->
 <script>
-  import { permissions }      from '$lib/stores/permissions';
-  import AppGate        from '$lib/components/common/AppGate.svelte';
-  import TabBar         from '$lib/components/common/TabBar.svelte';
+  import { permissions }      from '#lib/stores/permissions.js';
+  import AppGate        from '#lib/components/common/AppGate.svelte';
+  import TabBar         from '#lib/components/common/TabBar.svelte';
   import { maintenanceStore } from './stores/maintenanceStore.js';
   import { maintenanceGroupsStore } from './stores/maintenanceGroupsStore.js';
-  import { buildingAssetsStore }    from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
+  import { buildingAssetsStore }    from '#lib/apps/building_assets/stores/buildingAssetsStore.js';
   import StatsBar       from './components/StatsBar.svelte';
   import DueWorkTab     from './components/DueWorkTab.svelte';
   import JobsTab        from './components/JobsTab.svelte';
@@ -29,7 +29,7 @@
   import SchedulerPanel from './components/SchedulerPanel.svelte';
   import MaintenanceGroupsTab from './components/MaintenanceGroupsTab.svelte';
   import TenYearPlanTab       from './components/TenYearPlanTab.svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
+  import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
 
   $: store   = $maintenanceStore;
   $: jobs    = store.jobs;

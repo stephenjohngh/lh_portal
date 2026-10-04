@@ -13,14 +13,14 @@
   Dispatches 'submit' with the cleaned form payload, or 'close' on cancel.
 -->
 <script>
-  import { today } from '$lib/utils/dates';
+  import { today } from '#lib/utils/dates.js';
   import { onMount, createEventDispatcher } from 'svelte';
-  import { profiles, profilesStore } from '$lib/stores/profiles';
+  import { profiles, profilesStore } from '#lib/stores/profiles.js';
   import { meetingsStore }  from '../../stores/meetingsStore';
-  import Modal              from '$lib/components/common/Modal.svelte';
-  import Button             from '$lib/components/common/Button.svelte';
-  import FormInput          from '$lib/components/common/FormInput.svelte';
-  import FormTextarea       from '$lib/components/common/FormTextarea.svelte';
+  import Modal              from '#lib/components/common/Modal.svelte';
+  import Button             from '#lib/components/common/Button.svelte';
+  import FormInput          from '#lib/components/common/FormInput.svelte';
+  import FormTextarea       from '#lib/components/common/FormTextarea.svelte';
 
   export let show    = false;
   export let meeting = null;       // null = create, object = edit

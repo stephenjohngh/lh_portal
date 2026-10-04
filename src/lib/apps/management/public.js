@@ -10,7 +10,7 @@
 // of one fact, and they would disagree. Completing an action stays in the app
 // that owns it.
 
-import { api } from '$lib/utils/api';
+import { api } from '#lib/utils/api.js';
 
 /**
  * Ranges are filtered HERE, not in the query.

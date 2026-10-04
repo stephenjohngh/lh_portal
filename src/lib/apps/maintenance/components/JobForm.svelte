@@ -5,11 +5,11 @@
   import { maintenanceStore }      from '../stores/maintenanceStore.js';
   import { frequencyLabel, scopeTypeLabel, today } from '../utils/maintenanceHelpers.js';
   import { scopeSummary } from '../utils/obligationJobScope.js';
-  import Modal       from '$lib/components/common/Modal.svelte';
-  import Button      from '$lib/components/common/Button.svelte';
-  import FormInput   from '$lib/components/common/FormInput.svelte';
-  import FormSelect  from '$lib/components/common/FormSelect.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
+  import Modal       from '#lib/components/common/Modal.svelte';
+  import Button      from '#lib/components/common/Button.svelte';
+  import FormInput   from '#lib/components/common/FormInput.svelte';
+  import FormSelect  from '#lib/components/common/FormSelect.svelte';
+  import FormTextarea from '#lib/components/common/FormTextarea.svelte';
 
   export let job  = null;   // null = create mode; object = edit mode
   export let show = true;

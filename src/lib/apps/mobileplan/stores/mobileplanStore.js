@@ -7,9 +7,9 @@
 
 import { DAY_MS } from '../../../utils/dates.js';
 import { writable, get } from 'svelte/store';
-import { api }           from '$lib/utils/api';
-import { getLogger }     from '$lib/utils/logger';
-import { resolveHierarchy } from '$lib/utils/attrResolution.js';
+import { api }           from '#lib/utils/api.js';
+import { getLogger }     from '#lib/utils/logger.js';
+import { resolveHierarchy } from '#lib/utils/attrResolution.js';
 
 const logger = getLogger('mobileplanStore');
 
@@ -40,19 +40,19 @@ const FETCH_TIMEOUT_MS    = 8000;
  * @typedef {Record<string, any>} Loose
  * @typedef {{
  *   building: Loose | null,
- *   floors: (import('$lib/database.types').Tables<'floors'> & Record<string, any>)[],
- *   systems: (import('$lib/database.types').Tables<'building_systems'> & Record<string, any>)[],
- *   types: (import('$lib/database.types').Tables<'component_types'> & Record<string, any>)[],
+ *   floors: (import('#lib/database.types.ts').Tables<'floors'> & Record<string, any>)[],
+ *   systems: (import('#lib/database.types.ts').Tables<'building_systems'> & Record<string, any>)[],
+ *   types: (import('#lib/database.types.ts').Tables<'component_types'> & Record<string, any>)[],
  *   attrDefs: Record<string, Loose[]>,
- *   plans: (import('$lib/database.types').Tables<'plans'> & Record<string, any>)[],
+ *   plans: (import('#lib/database.types.ts').Tables<'plans'> & Record<string, any>)[],
  *   currentFloor: Loose | null,
  *   currentPlan: Loose | null,
- *   components: (import('$lib/database.types').Tables<'components'> & Record<string, any>)[],
+ *   components: (import('#lib/database.types.ts').Tables<'components'> & Record<string, any>)[],
  *   spaces: Loose[],
  *   annotations: Loose[],
  *   inspections: Record<string, Loose>,
  *   componentAttrs: Record<string, Loose[]>,
- *   allComponents: (import('$lib/database.types').Tables<'components'> & Record<string, any>)[],
+ *   allComponents: (import('#lib/database.types.ts').Tables<'components'> & Record<string, any>)[],
  *   loadingAll: boolean,
  *   hiddenTypes: Set<string>,
  *   hiddenStatuses: Set<string>,

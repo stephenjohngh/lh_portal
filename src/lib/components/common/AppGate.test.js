@@ -31,8 +31,8 @@ const h = vi.hoisted(() => {
   };
 });
 
-vi.mock('$lib/stores/permissions', () => ({ permissions: h.permissions }));
-vi.mock('$lib/stores/auth', () => ({ auth: h.auth }));
+vi.mock('#lib/stores/permissions.js', () => ({ permissions: h.permissions }));
+vi.mock('#lib/stores/auth.js', () => ({ auth: h.auth }));
 
 const Harness = (await import('./AppGate.harness.svelte')).default;
 

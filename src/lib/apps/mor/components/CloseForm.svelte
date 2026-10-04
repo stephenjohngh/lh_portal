@@ -2,9 +2,9 @@
 <!-- Close a remediated case and capture lessons learned. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Modal        from '$lib/components/common/Modal.svelte';
-  import Button       from '$lib/components/common/Button.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import Modal        from '#lib/components/common/Modal.svelte';
+  import Button       from '#lib/components/common/Button.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
 
   export let show   = false;
   export let saving = false;

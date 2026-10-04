@@ -4,20 +4,20 @@
      component's type. -->
 
 <script>
-  import { errMessage } from '$lib/utils/errors';
+  import { errMessage } from '#lib/utils/errors.js';
   import { createEventDispatcher, onMount } from 'svelte';
-  import { getLogger }    from '$lib/utils/logger';
+  import { getLogger }    from '#lib/utils/logger.js';
   import { inspectionStore }  from '../stores/inspectionStore.js';
   import { resultLabel }  from '../utils/inspectionHelpers.js';
-  import { buildComponentRef } from '$lib/utils/componentRef.js';
-  import { noAccessReasonLabel } from '$lib/utils/resultConstants.js';
+  import { buildComponentRef } from '#lib/utils/componentRef.js';
+  import { noAccessReasonLabel } from '#lib/utils/resultConstants.js';
   import { applyChecklistMode } from '../utils/checklistRules.js';
-  import { fmtDate, fmtTime } from '$lib/utils/dates';
+  import { fmtDate, fmtTime } from '#lib/utils/dates.js';
   import InspectionResultSection from './InspectionResultSection.svelte';
-  import WalkButton         from '$lib/apps/inspection/components/common/WalkButton.svelte';
-  import WalkSpinner        from '$lib/apps/inspection/components/common/WalkSpinner.svelte';
-  import WalkBadge          from '$lib/apps/inspection/components/common/WalkBadge.svelte';
-  import WalkPhotoLightbox  from '$lib/apps/inspection/components/common/WalkPhotoLightbox.svelte';
+  import WalkButton         from '#lib/apps/inspection/components/common/WalkButton.svelte';
+  import WalkSpinner        from '#lib/apps/inspection/components/common/WalkSpinner.svelte';
+  import WalkBadge          from '#lib/apps/inspection/components/common/WalkBadge.svelte';
+  import WalkPhotoLightbox  from '#lib/apps/inspection/components/common/WalkPhotoLightbox.svelte';
 
   const logger   = getLogger('InspectionPanel');
   const dispatch = createEventDispatcher();

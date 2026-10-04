@@ -22,10 +22,10 @@
 import { createClient }        from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }                 from '$env/dynamic/private';
-import { hashToken, isWellFormedToken } from '$lib/apps/dossier/utils/publicationToken.js';
-import { isServable, READER_REFUSAL }   from '$lib/apps/dossier/utils/publicationState.js';
-import { buildSnapshot, buildManifest, withCurrentFieldKeys } from '$lib/apps/dossier/utils/snapshot.js';
-import { readAllPages, chunks } from '$lib/utils/readAllPages.js';
+import { hashToken, isWellFormedToken } from '#lib/apps/dossier/utils/publicationToken.js';
+import { isServable, READER_REFUSAL }   from '#lib/apps/dossier/utils/publicationState.js';
+import { buildSnapshot, buildManifest, withCurrentFieldKeys } from '#lib/apps/dossier/utils/snapshot.js';
+import { readAllPages, chunks } from '#lib/utils/readAllPages.js';
 
 let _svc = null;
 function svc() {

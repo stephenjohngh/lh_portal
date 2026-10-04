@@ -7,30 +7,30 @@
   B–E all built.
 -->
 <script>
-  import { errMessage } from '$lib/utils/errors';
-  import { permissions } from '$lib/stores/permissions';
-  import AppGate from '$lib/components/common/AppGate.svelte';
-  import TabBar  from '$lib/components/common/TabBar.svelte';
-  import { gtStore }     from '$lib/apps/golden_thread/stores/gtStore';
-  import { GT_STATUS_LABELS, GT_STATUS_BADGE, GT_STATUSES } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
-  import { REVIEW_BAND_LABEL, REVIEW_BAND_BADGE } from '$lib/apps/golden_thread/utils/gtConstants.js';
-  import { reviewBand, daysToReview } from '$lib/apps/golden_thread/utils/gtReview.js';
-  import { documentsCurrentOn } from '$lib/apps/golden_thread/public.js';
-  import { postJson }   from '$lib/utils/request';
-  import { requestDownload } from '$lib/utils/download.js';
-  import Badge         from '$lib/components/common/Badge.svelte';
-  import Button        from '$lib/components/common/Button.svelte';
-  import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
-  import GtIngestForm  from '$lib/apps/golden_thread/components/GtIngestForm.svelte';
-  import GtDocumentDetail from '$lib/apps/golden_thread/components/GtDocumentDetail.svelte';
-  import GtPeople      from '$lib/apps/golden_thread/components/GtPeople.svelte';
-  import GtAccountability from '$lib/apps/golden_thread/components/GtAccountability.svelte';
-  import GtSafetyCase  from '$lib/apps/golden_thread/components/GtSafetyCase.svelte';
-  import GtRisks       from '$lib/apps/golden_thread/components/GtRisks.svelte';
-  import { buildSafetyCaseModel } from '$lib/apps/golden_thread/utils/gtSafetyCase.js';
-  import { listCases as listMorCases } from '$lib/apps/mor/public.js';
-  import { fmtDate, today }   from '$lib/utils/dates';
+  import { errMessage } from '#lib/utils/errors.js';
+  import { permissions } from '#lib/stores/permissions.js';
+  import AppGate from '#lib/components/common/AppGate.svelte';
+  import TabBar  from '#lib/components/common/TabBar.svelte';
+  import { gtStore }     from '#lib/apps/golden_thread/stores/gtStore.js';
+  import { GT_STATUS_LABELS, GT_STATUS_BADGE, GT_STATUSES } from '#lib/apps/golden_thread/utils/gtLifecycle.js';
+  import { REVIEW_BAND_LABEL, REVIEW_BAND_BADGE } from '#lib/apps/golden_thread/utils/gtConstants.js';
+  import { reviewBand, daysToReview } from '#lib/apps/golden_thread/utils/gtReview.js';
+  import { documentsCurrentOn } from '#lib/apps/golden_thread/public.js';
+  import { postJson }   from '#lib/utils/request.js';
+  import { requestDownload } from '#lib/utils/download.js';
+  import Badge         from '#lib/components/common/Badge.svelte';
+  import Button        from '#lib/components/common/Button.svelte';
+  import ErrorDisplay  from '#lib/components/common/ErrorDisplay.svelte';
+  import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
+  import GtIngestForm  from '#lib/apps/golden_thread/components/GtIngestForm.svelte';
+  import GtDocumentDetail from '#lib/apps/golden_thread/components/GtDocumentDetail.svelte';
+  import GtPeople      from '#lib/apps/golden_thread/components/GtPeople.svelte';
+  import GtAccountability from '#lib/apps/golden_thread/components/GtAccountability.svelte';
+  import GtSafetyCase  from '#lib/apps/golden_thread/components/GtSafetyCase.svelte';
+  import GtRisks       from '#lib/apps/golden_thread/components/GtRisks.svelte';
+  import { buildSafetyCaseModel } from '#lib/apps/golden_thread/utils/gtSafetyCase.js';
+  import { listCases as listMorCases } from '#lib/apps/mor/public.js';
+  import { fmtDate, today }   from '#lib/utils/dates.js';
 
 
   const todayISO = today();

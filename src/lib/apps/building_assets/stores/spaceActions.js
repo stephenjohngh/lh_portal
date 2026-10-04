@@ -3,12 +3,12 @@
 // polygon: [{ x: float, y: float }] — fractional coordinates 0–1
 // colour:  hex string WITHOUT leading '#', e.g. '3c9683'
 
-import { api }           from '$lib/utils/api';
-import { getLogger }     from '$lib/utils/logger';
-import { logAudit }      from '$lib/utils/auditLogger';
+import { api }           from '#lib/utils/api.js';
+import { getLogger }     from '#lib/utils/logger.js';
+import { logAudit }      from '#lib/utils/auditLogger.js';
 import { requireUserId } from './helpers.js';
 import { buildSpacesRegisterRows } from '../utils/spaceReport.js';
-import { deriveSpaceName } from '$lib/utils/spaceRef.js';
+import { deriveSpaceName } from '#lib/utils/spaceRef.js';
 
 const logger = getLogger('BuildingAssets');
 

@@ -8,15 +8,15 @@
   import { createEventDispatcher }   from 'svelte';
   import { buildingAssetsStore }     from '../stores/buildingAssetsStore.js';
   import { typeByCode, conditionChecklistDisplay } from '../lookups.js';
-  import { buildSpaceRef }             from '$lib/utils/spaceRef.js';
-  import { buildComponentRef }         from '$lib/utils/componentRef.js';
+  import { buildSpaceRef }             from '#lib/utils/spaceRef.js';
+  import { buildComponentRef }         from '#lib/utils/componentRef.js';
   import { spacesForComponent }        from '../utils/spaceMembership.js';
   import ComponentLinks              from './ComponentLinks.svelte';
   import ComponentInspectionHistory  from './ComponentInspectionHistory.svelte';
   import ComponentMaintenanceHistory from './ComponentMaintenanceHistory.svelte';
   import ConditionChecklistChips     from './ConditionChecklistChips.svelte';
   import { sec, STATUSES }           from '../ui.js';
-  import { fmtDate, fmtDateTime }    from '$lib/utils/dates.js';
+  import { fmtDate, fmtDateTime }    from '#lib/utils/dates.js';
 
   export let component;         // components row
   export let types       = [];

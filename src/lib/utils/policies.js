@@ -13,7 +13,7 @@
 // ⛔ READ A POLICY WHEN IT IS USED — policy('parkingOfferDays') inside the
 // function — never once at module scope: a module loads before the setting
 // does. On the server, ensure the setting is fresh first
-// (`$lib/server/policies.js` → `loadServerPolicies()`).
+// (`#lib/server/policies.js` → `loadServerPolicies()`).
 //
 // ⚠ Bounds are deliberate: an admin is trusted, but a sign-in lockout of 0 or
 // a rate limit of 100,000 is not a policy, it is the control switched off.

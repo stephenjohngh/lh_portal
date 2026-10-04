@@ -11,13 +11,13 @@ import { join } from 'node:path';
 
 vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://localhost', PUBLIC_SUPABASE_ANON_KEY: 'anon' }));
 vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'service-role' } }));
-vi.mock('$app/environment', () => ({ browser: false, dev: false, building: false }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('$app/env', () => ({ browser: false, dev: false, building: false }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 // The building as an admin named it (Admin → Building & business).
-vi.mock('$lib/server/identity.js', () => ({ documentBuildingName: async () => 'Riverside Court' }));
+vi.mock('#lib/server/identity.js', () => ({ documentBuildingName: async () => 'Riverside Court' }));
 
 const auth = vi.hoisted(() => ({ result: null }));
-vi.mock('$lib/server/requireAuth', () => ({ requireAuth: async () => auth.result }));
+vi.mock('#lib/server/requireAuth.js', () => ({ requireAuth: async () => auth.result }));
 
 const { POST } = await import('./+server.js');
 const { json } = await import('@sveltejs/kit');

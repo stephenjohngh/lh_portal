@@ -5,7 +5,7 @@
 // Golden Thread citation picker lists cases here to link a register document to
 // the occurrence report it evidences. See docs/design/Inter_App_Interfaces.md.
 
-import { api } from '$lib/utils/api';
+import { api } from '#lib/utils/api.js';
 import { bsrReportClock, OPEN_STATUSES } from './utils/morHelpers.js';
 
 // Lightweight case shape for pickers / cross-app references — never the full row.

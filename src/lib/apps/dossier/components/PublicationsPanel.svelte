@@ -6,10 +6,10 @@
      at RLS, admin-only, for genuine mistakes.) -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Badge          from '$lib/components/common/Badge.svelte';
-  import { permissions } from '$lib/stores/permissions';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import { fmtDateTime } from '$lib/utils/dates';
+  import Badge          from '#lib/components/common/Badge.svelte';
+  import { permissions } from '#lib/stores/permissions.js';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import { fmtDateTime } from '#lib/utils/dates.js';
   import {
     publicationState, describePublication, STATE_LABEL, STATE_BADGE,
   } from '../utils/publicationState.js';

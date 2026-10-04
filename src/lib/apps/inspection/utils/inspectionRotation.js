@@ -12,8 +12,8 @@
 //
 // See docs/requirements/build_plans/Configurable_Inspections_Build_Plan.md §6.
 
-import { applyInspectionScope } from '$lib/apps/building_assets/utils/inspectionScope.js';
-import { findComponentByRef }   from '$lib/utils/componentRef.js';
+import { applyInspectionScope } from '#lib/apps/building_assets/utils/inspectionScope.js';
+import { findComponentByRef }   from '#lib/utils/componentRef.js';
 
 /**
  * The definition's trigger pool: components matching its scope, restricted to

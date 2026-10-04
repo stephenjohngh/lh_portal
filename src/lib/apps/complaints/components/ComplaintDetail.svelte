@@ -9,14 +9,14 @@
      vanishes leaves somebody wondering where it went. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Button        from '$lib/components/common/Button.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import FormTextarea  from '$lib/components/common/FormTextarea.svelte';
-  import FormSelect    from '$lib/components/common/FormSelect.svelte';
-  import Badge         from '$lib/components/common/Badge.svelte';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import Button        from '#lib/components/common/Button.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import FormTextarea  from '#lib/components/common/FormTextarea.svelte';
+  import FormSelect    from '#lib/components/common/FormSelect.svelte';
+  import Badge         from '#lib/components/common/Badge.svelte';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
   import ComplaintTimeline from './ComplaintTimeline.svelte';
-  import { fmtDateTime, fmtDate } from '$lib/utils/dates';
+  import { fmtDateTime, fmtDate } from '#lib/utils/dates.js';
   import { statusMeta, nextStatuses, blockedReason, STATUS } from '../utils/complaintLifecycle.js';
   import { categoryLabel, channelLabel, complainantLabel,
            OUTCOMES, asOptions } from '../utils/complaintOptions.js';

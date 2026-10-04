@@ -8,12 +8,12 @@ const h = vi.hoisted(() => ({ on: true, rate: vi.fn(async () => false), call: vi
 
 vi.mock('@sveltejs/kit', () => ({ json: (body, init) => ({ body, status: init?.status ?? 200 }) }));
 vi.mock('$env/dynamic/private', () => ({ env: { ANTHROPIC_API_KEY: 'k' } }));
-vi.mock('$lib/server/requireAuth', () => ({ requireAuth: async () => ({ user: { id: 'u1', email: 'a@b' }, error: null }) }));
-vi.mock('$lib/server/publicRateLimit', () => ({ checkKeyRateLimit: h.rate }));
-vi.mock('$lib/server/aiSwitch.js', () => ({ aiSwitchedOn: async () => h.on }));
-vi.mock('$lib/server/aiModel.js', () => ({ callWithModel: h.call }));
-vi.mock('$lib/server/auditLogger', () => ({ logAudit: () => Promise.resolve() }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/server/requireAuth.js', () => ({ requireAuth: async () => ({ user: { id: 'u1', email: 'a@b' }, error: null }) }));
+vi.mock('#lib/server/publicRateLimit.js', () => ({ checkKeyRateLimit: h.rate }));
+vi.mock('#lib/server/aiSwitch.js', () => ({ aiSwitchedOn: async () => h.on }));
+vi.mock('#lib/server/aiModel.js', () => ({ callWithModel: h.call }));
+vi.mock('#lib/server/auditLogger.js', () => ({ logAudit: () => Promise.resolve() }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 
 const { POST } = await import('./+server.js');
 const request = () => ({ json: async () => ({ body: 'Some activity text', activity_type: 'comment' }) });

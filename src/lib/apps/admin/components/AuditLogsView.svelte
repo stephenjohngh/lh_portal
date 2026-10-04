@@ -9,10 +9,10 @@
   import AuditLogFilters from './AuditLogFilters.svelte';
   import AuditLogCard from './AuditLogCard.svelte';
   import AuditDashboard from './AuditDashboard.svelte';
-  import Button from '$lib/components/common/Button.svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import Button from '#lib/components/common/Button.svelte';
+  import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
 
   let filters = {
     appId:         null,

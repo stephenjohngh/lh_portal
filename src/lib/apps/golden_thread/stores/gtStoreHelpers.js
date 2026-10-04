@@ -12,7 +12,7 @@ import { errMessage } from '../../../utils/errors.js';
 // The current auth user id, or null — the portal's one helper. Imported, then
 // exported, because makeRun below calls it: `export { x } from` alone creates
 // no local name, and every Golden Thread save would throw.
-import { currentUserId } from '$lib/utils/currentUser.js';
+import { currentUserId } from '#lib/utils/currentUser.js';
 export { currentUserId };
 
 /**

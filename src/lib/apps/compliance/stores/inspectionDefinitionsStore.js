@@ -9,14 +9,14 @@
 
 import { today } from '../../../utils/dates.js';
 import { writable }  from 'svelte/store';
-import { api }       from '$lib/utils/api';
-import { getLogger } from '$lib/utils/logger';
-import { logAudit }  from '$lib/utils/auditLogger';
-import { EVIDENCE_ROUTES } from '$lib/utils/obligationEvidence.js';
-import { activeRegister, templateEntry, templateToObligation } from '$lib/utils/statutoryTemplate.js';
-import { excludedKeys, isRecordableReason } from '$lib/utils/statutoryExclusions.js';
+import { api }       from '#lib/utils/api.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { logAudit }  from '#lib/utils/auditLogger.js';
+import { EVIDENCE_ROUTES } from '#lib/utils/obligationEvidence.js';
+import { activeRegister, templateEntry, templateToObligation } from '#lib/utils/statutoryTemplate.js';
+import { excludedKeys, isRecordableReason } from '#lib/utils/statutoryExclusions.js';
 import { storeLoader } from '../../../utils/storeLoad.js';
-import { currentUserId as userId } from '$lib/utils/currentUser.js';
+import { currentUserId as userId } from '#lib/utils/currentUser.js';
 
 const logger = getLogger('InspectionDefinitions');
 
@@ -28,7 +28,7 @@ function numOrNull(v) {
 }
 
 /**
- * @typedef {import('$lib/database.types').Tables<'statutory_obligations'>} InspectionDefinition
+ * @typedef {import('#lib/database.types.ts').Tables<'statutory_obligations'>} InspectionDefinition
  * @typedef {{ definitions: InspectionDefinition[], exclusions: object[], dismissedKeys: string[], loading: boolean, error: string|null }} State
  */
 

@@ -2,23 +2,23 @@
 <!-- Admin → Other Config → Document categories: what a document IS to this
      building (an EICR, a fire risk assessment…), offered when one is uploaded.
 
-     An admin setting since 2026-10-04 ($lib/utils/documentCategories.js). The
+     An admin setting since 2026-10-04 (#lib/utils/documentCategories.js). The
      shipped list is the start; a category can be renamed, added or RETIRED.
      ⛔ Never deleted: documents store the category's value, so a deleted one
      would leave them labelled with a code. A retired one is not offered any
      more and still names the documents that carry it. -->
 <script>
   import { onMount } from 'svelte';
-  import { portalSettings } from '$lib/stores/portalSettings.js';
+  import { portalSettings } from '#lib/stores/portalSettings.js';
   import {
     documentCategories, shippedDocumentCategories, validateDocumentCategories, categoryValueFor,
-  } from '$lib/utils/documentCategories.js';
-  import { logAudit } from '$lib/utils/auditLogger';
-  import { errMessage } from '$lib/utils/errors';
-  import { getLogger } from '$lib/utils/logger';
-  import Button from '$lib/components/common/Button.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  } from '#lib/utils/documentCategories.js';
+  import { logAudit } from '#lib/utils/auditLogger.js';
+  import { errMessage } from '#lib/utils/errors.js';
+  import { getLogger } from '#lib/utils/logger.js';
+  import Button from '#lib/components/common/Button.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
 
   const logger = getLogger('DocumentCategoriesPanel');
   const SHIPPED_LABEL = Object.fromEntries(shippedDocumentCategories().map((c) => [c.value, c.label]));

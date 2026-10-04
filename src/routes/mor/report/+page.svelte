@@ -4,8 +4,8 @@
      "a safety concern", not an "MOR". -->
 <script>
   import { onDestroy } from 'svelte';
-  import { LOGO as lhLogo, LOGO_ALT } from '$lib/branding.js';
-  import { POLICY_DEFAULTS } from '$lib/utils/policies.js';
+  import { LOGO as lhLogo, LOGO_ALT } from '#lib/branding.js';
+  import { POLICY_DEFAULTS } from '#lib/utils/policies.js';
 
   // ── Form state ─────────────────────────────────────────────────────────
   let description     = '';

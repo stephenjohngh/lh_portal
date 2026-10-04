@@ -1,10 +1,10 @@
 // POST /api/documents/upload — upload a file to storage + index it
 import { json }                 from '@sveltejs/kit';
-import { uploadDocument }       from '$lib/server/documentLibrary';
-import { requireAuth }          from '$lib/server/requireAuth';
-import { friendlyStorageError } from '$lib/server/storage/storageErrors';
-import { resolveMimeType } from '$lib/utils/mimeTypes';
-import { canAttachDocument, bearerToken } from '$lib/server/documentAccess';
+import { uploadDocument }       from '#lib/server/documentLibrary.js';
+import { requireAuth }          from '#lib/server/requireAuth.js';
+import { friendlyStorageError } from '#lib/server/storage/storageErrors.js';
+import { resolveMimeType } from '#lib/utils/mimeTypes.js';
+import { canAttachDocument, bearerToken } from '#lib/server/documentAccess.js';
 
 const MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 

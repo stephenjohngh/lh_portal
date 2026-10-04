@@ -1,18 +1,19 @@
 <!-- src/routes/+page.svelte -->
-<!-- Updated to use apps.js config from $lib/apps/apps -->
+<!-- Updated to use apps.js config from #lib/apps/apps -->
 <script>
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
+  import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
   import { onMount } from 'svelte';
-  import { auth } from '$lib/stores/auth';
+  import { auth } from '#lib/stores/auth.js';
   import { beforeNavigate, goto } from '$app/navigation';
-  import { supabase } from '$lib/supabaseClient';
-  import { isAdmin as checkIsAdmin } from '$lib/utils/auth';
-  import { getLogger } from '$lib/utils/logger';
-  import { AVAILABLE_APPS, getAppsForUser } from '$lib/apps/apps';
-  import { portalSettings } from '$lib/stores/portalSettings.js';
-  import { activeDbUrl } from '$lib/supabaseClient';
-  import { version } from '$app/environment';
-  import { page } from '$app/stores';
+  import { supabase } from '#lib/supabaseClient.js';
+  import { isAdmin as checkIsAdmin } from '#lib/utils/auth.js';
+  import { getLogger } from '#lib/utils/logger.js';
+  import { AVAILABLE_APPS, getAppsForUser } from '#lib/apps/apps.js';
+  import { portalSettings } from '#lib/stores/portalSettings.js';
+  import { activeDbUrl } from '#lib/supabaseClient.js';
+  import { version } from '$app/env';
+  import { page } from '$app/state';
+  import { PUBLIC_ENV_LABEL as envLabel } from '$app/env/public';
 
   /**
    * What the footer shows.
@@ -24,11 +25,11 @@
    * fallback: it is the real answer on Netlify and locally, where the build can
    * see git.
    */
-  $: deployedVersion = $page.data.deployedSha ?? version;
+  $: deployedVersion = page.data.deployedSha ?? version;
 
-  // Optional var — import.meta.env returns undefined (not an error) when unset.
-  // $env/static/public would throw if the variable isn't defined in .env.
-  const PUBLIC_ENV_LABEL = import.meta.env.PUBLIC_ENV_LABEL ?? '';
+  // Declared optional in src/env.js (SvelteKit 3 exports only declared
+  // variables), so an unset label reads as undefined rather than an error.
+  const PUBLIC_ENV_LABEL = envLabel ?? '';
   // Injected by vite.config.js at build time — "25 May 2026" format.
   const buildDate = __BUILD_DATE__;
 
@@ -42,10 +43,10 @@
   const dbRef    = activeDbUrl?.split('//')[1]?.split('.')[0] ?? '?';
   const dbName   = KNOWN_DBS[dbRef] ?? dbRef;
   const viteMode = import.meta.env.MODE;   // development | devdb | production
-  import Button        from '$lib/components/common/Button.svelte';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-  import Icon from '$lib/components/icons/Icon.svelte';
-  import { LOGO as lhLogo, LOGO_ALT } from '$lib/branding.js';
+  import Button        from '#lib/components/common/Button.svelte';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
+  import Icon from '#lib/components/icons/Icon.svelte';
+  import { LOGO as lhLogo, LOGO_ALT } from '#lib/branding.js';
 
   const logger = getLogger('MainApp');
 
@@ -53,22 +54,22 @@
   // first open instead of in the initial bundle (Management alone pulls in
   // Tiptap). Loaded constructors are cached in appComponents below.
   const APP_LOADERS = {
-    'admin':            () => import('$lib/apps/admin/AdminApp.svelte'),
-    'management':       () => import('$lib/apps/management/ManagementApp.svelte'),
-    'settings':         () => import('$lib/apps/settings/SettingsApp.svelte'),
-    'building_assets':  () => import('$lib/apps/building_assets/BuildingAssetsApp.svelte'),
-    'inspection':       () => import('$lib/apps/inspection/InspectionApp.svelte'),
-    'mobileplan':       () => import('$lib/apps/mobileplan/MobilePlanApp.svelte'),
-    'managementmobile': () => import('$lib/apps/managementmobile/ManagementMobileApp.svelte'),
-    'maintenance':      () => import('$lib/apps/maintenance/MaintenanceApp.svelte'),
-    'info':             () => import('$lib/apps/info/InfoApp.svelte'),
-    'mor':              () => import('$lib/apps/mor/MorApp.svelte'),
-    'golden_thread':    () => import('$lib/apps/golden_thread/GoldenThreadApp.svelte'),
-    'dossier':          () => import('$lib/apps/dossier/DossierApp.svelte'),
-    'planner':          () => import('$lib/apps/planner/PlannerApp.svelte'),
-    'compliance':       () => import('$lib/apps/compliance/ComplianceApp.svelte'),
-    'complaints':       () => import('$lib/apps/complaints/ComplaintsApp.svelte'),
-    'parking':          () => import('$lib/apps/parking/ParkingApp.svelte'),
+    'admin':            () => import('#lib/apps/admin/AdminApp.svelte'),
+    'management':       () => import('#lib/apps/management/ManagementApp.svelte'),
+    'settings':         () => import('#lib/apps/settings/SettingsApp.svelte'),
+    'building_assets':  () => import('#lib/apps/building_assets/BuildingAssetsApp.svelte'),
+    'inspection':       () => import('#lib/apps/inspection/InspectionApp.svelte'),
+    'mobileplan':       () => import('#lib/apps/mobileplan/MobilePlanApp.svelte'),
+    'managementmobile': () => import('#lib/apps/managementmobile/ManagementMobileApp.svelte'),
+    'maintenance':      () => import('#lib/apps/maintenance/MaintenanceApp.svelte'),
+    'info':             () => import('#lib/apps/info/InfoApp.svelte'),
+    'mor':              () => import('#lib/apps/mor/MorApp.svelte'),
+    'golden_thread':    () => import('#lib/apps/golden_thread/GoldenThreadApp.svelte'),
+    'dossier':          () => import('#lib/apps/dossier/DossierApp.svelte'),
+    'planner':          () => import('#lib/apps/planner/PlannerApp.svelte'),
+    'compliance':       () => import('#lib/apps/compliance/ComplianceApp.svelte'),
+    'complaints':       () => import('#lib/apps/complaints/ComplaintsApp.svelte'),
+    'parking':          () => import('#lib/apps/parking/ParkingApp.svelte'),
   };
 
   let appComponents = {};   // appId -> component constructor (loaded chunks)

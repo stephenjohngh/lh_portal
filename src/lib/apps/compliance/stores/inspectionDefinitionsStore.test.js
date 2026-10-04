@@ -2,14 +2,14 @@
 // CHARACTERIZATION tests for inspectionDefinitionsStore (Compliance > Planned obligations).
 // Asserts which DB calls each method makes, the persisted row shape built by
 // toRow (defaults + field normalisation), and the resulting store state.
-// Seams mocked: api, supabaseClient (auth.getSession — the signed-in user, via $lib/utils/currentUser.js), auditLogger, logger.
+// Seams mocked: api, supabaseClient (auth.getSession — the signed-in user, via #lib/utils/currentUser.js), auditLogger, logger.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
 // Read register values rather than transcribing them — a corrected citation or
 // a renamed entry must not fail a test about store behaviour. See the note at
 // the top of src/lib/utils/statutoryTemplate.test.js.
-import { templateEntry, TEMPLATE_KEYS, STATUTORY_TEMPLATE, setActiveRegister } from '$lib/utils/statutoryTemplate.js';
+import { templateEntry, TEMPLATE_KEYS, STATUTORY_TEMPLATE, setActiveRegister } from '#lib/utils/statutoryTemplate.js';
 
 const h = vi.hoisted(() => {
   const api = {
@@ -25,10 +25,10 @@ const h = vi.hoisted(() => {
   return { api, supabase, logAudit };
 });
 
-vi.mock('$lib/utils/api',         () => ({ api: h.api }));
-vi.mock('$lib/supabaseClient',    () => ({ supabase: h.supabase }));
-vi.mock('$lib/utils/auditLogger', () => ({ logAudit: h.logAudit }));
-vi.mock('$lib/utils/logger',      () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/api.js',         () => ({ api: h.api }));
+vi.mock('#lib/supabaseClient.js',    () => ({ supabase: h.supabase }));
+vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: h.logAudit }));
+vi.mock('#lib/utils/logger.js',      () => ({ getLogger: () => () => {} }));
 
 const { inspectionDefinitionsStore: defs } = await import('./inspectionDefinitionsStore.js');
 

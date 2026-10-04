@@ -8,9 +8,9 @@
 //
 // NOTE: uploads are multipart/form-data, so the Authorization header must be
 // sent WITHOUT a Content-Type (the browser sets the multipart boundary). That
-// is why this can't reuse $lib/utils/authHeaders, which forces JSON.
+// is why this can't reuse #lib/utils/authHeaders, which forces JSON.
 
-import { accessToken } from '$lib/utils/authHeaders';
+import { accessToken } from '#lib/utils/authHeaders.js';
 
 /**
  * Authorization-only header (no Content-Type).

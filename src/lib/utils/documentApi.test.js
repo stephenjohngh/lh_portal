@@ -12,7 +12,7 @@ const h = vi.hoisted(() => ({
   session: { access_token: 'tok' },
 }));
 
-vi.mock('$lib/supabaseClient', () => ({
+vi.mock('#lib/supabaseClient.js', () => ({
   supabase: { auth: { getSession: () => Promise.resolve({ data: { session: h.session } }) } },
 }));
 

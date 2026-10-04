@@ -19,8 +19,8 @@ const h = vi.hoisted(() => {
   };
 });
 
-vi.mock('$lib/supabaseClient', () => ({ supabase: h.supabase }));
-vi.mock('$lib/utils/logger',   () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/supabaseClient.js', () => ({ supabase: h.supabase }));
+vi.mock('#lib/utils/logger.js',   () => ({ getLogger: () => () => {} }));
 
 const { isAdmin, isReadOnly, canModify, getPermissionLevel } = await import('./auth.js');
 

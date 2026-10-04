@@ -21,7 +21,7 @@
 // Every caller turns it on today. Off, the editor is the plain comment box it
 // started as: bold, italic, underline, lists, links.
 //
-// ⚠ Whatever this schema can hold, $lib/utils/sanitizeHtml.js must let through
+// ⚠ Whatever this schema can hold, #lib/utils/sanitizeHtml.js must let through
 // on save and on display, or it is lost on the way to the database with no
 // error — the table tags were added there for exactly this.
 

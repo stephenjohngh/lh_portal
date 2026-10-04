@@ -1,8 +1,8 @@
 <!-- src/lib/apps/management/components/reports/ReportIssueCard.svelte -->
 <script>
-  import { sanitizeHtml } from '$lib/utils/sanitizeHtml';
-  import { getPriorityLabel, ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG } from '$lib/utils/constants';
-  import { fmtDate, isOverdue, wasModified } from '$lib/utils/dates';
+  import { sanitizeHtml } from '#lib/utils/sanitizeHtml.js';
+  import { getPriorityLabel, ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG } from '#lib/utils/constants.js';
+  import { fmtDate, isOverdue, wasModified } from '#lib/utils/dates.js';
   import { buildFieldSummary, formatTimestamp, STATUS_COLORS } from './reportUtils';
 
   export let issue;

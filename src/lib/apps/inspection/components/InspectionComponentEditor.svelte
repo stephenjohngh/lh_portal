@@ -2,12 +2,12 @@
 <!-- Admin-only: full component + attribute editing during an inspection walk. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { getLogger }   from '$lib/utils/logger';
+  import { getLogger }   from '#lib/utils/logger.js';
   import { inspectionStore } from '../stores/inspectionStore.js';
-  import { buildComponentRef } from '$lib/utils/componentRef.js';
-  import WalkButton   from '$lib/apps/inspection/components/common/WalkButton.svelte';
-  import WalkError    from '$lib/apps/inspection/components/common/WalkError.svelte';
-  import WalkTextarea from '$lib/apps/inspection/components/common/WalkTextarea.svelte';
+  import { buildComponentRef } from '#lib/utils/componentRef.js';
+  import WalkButton   from '#lib/apps/inspection/components/common/WalkButton.svelte';
+  import WalkError    from '#lib/apps/inspection/components/common/WalkError.svelte';
+  import WalkTextarea from '#lib/apps/inspection/components/common/WalkTextarea.svelte';
 
   const logger   = getLogger('InspectionComponentEditor');
   const dispatch = createEventDispatcher();

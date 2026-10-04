@@ -19,7 +19,7 @@
 //
 // Pure + Type-1 tested (groupMembership.test.js).
 
-import { componentSpaceIdMap } from '$lib/apps/building_assets/utils/spaceMembership.js';
+import { componentSpaceIdMap } from '#lib/apps/building_assets/utils/spaceMembership.js';
 
 /**
  * Build a resolver bound to the current building-assets reference data. Shared

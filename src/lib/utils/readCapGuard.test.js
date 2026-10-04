@@ -10,7 +10,7 @@
 // purge listing at most 1,000 photos and then deleting the rows of all of them.
 //
 // Read every page instead: `api.getAll` / `api.getAllIn` for eq filters,
-// `readAllPages` ($lib/utils/readAllPages.js) for anything else. This test
+// `readAllPages` (#lib/utils/readAllPages.js) for anything else. This test
 // fails the shapes that brought the faults:
 //
 //   1. a "list everything" api.get of a growing table — no filter, no limit

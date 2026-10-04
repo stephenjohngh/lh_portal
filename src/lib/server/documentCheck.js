@@ -21,7 +21,7 @@
 // it starts from the rows. Document Demo's help text says so.
 
 import { ENTITY_PARENT_TABLE } from './documentAccess.js';
-import { errMessage } from '$lib/utils/errors.js';
+import { errMessage } from '#lib/utils/errors.js';
 
 const OWNER_CHUNK = 100;       // ids per .in() — keeps the request URL short
 const FILE_CONCURRENCY = 5;    // storage lookups in flight at once

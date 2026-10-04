@@ -1,6 +1,6 @@
 <!-- src/lib/components/common/Button.svelte -->
 <script>
-  import Icon from '$lib/components/icons/Icon.svelte';
+  import Icon from '#lib/components/icons/Icon.svelte';
 
   // Props
   export let variant = 'primary'; // 'primary', 'amber', 'blue', 'green', 'secondary', 'danger'

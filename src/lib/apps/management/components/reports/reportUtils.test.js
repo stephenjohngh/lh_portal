@@ -10,7 +10,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { buildFieldSummary } from './reportUtils.js';
-import { ACTIVITY_TYPE_CONFIG } from '$lib/utils/constants.js';
+import { ACTIVITY_TYPE_CONFIG } from '#lib/utils/constants.js';
 
 const sample = (field) =>
   field.type === 'date' ? '2026-09-01'

@@ -1,6 +1,6 @@
 // src/lib/utils/documentCheckLabels.js
 // What Admin → Document Demo → Check files found, in words (2026-09-27).
-// The checking is the server's ($lib/server/documentCheck.js); this only says
+// The checking is the server's (#lib/server/documentCheck.js); this only says
 // what each answer means, so the list and the summary cannot disagree.
 //
 // ⛔ "Could not tell" is never "fine". A row whose file could not be checked is

@@ -18,9 +18,9 @@
 // written before it, permanently and silently. 30 files accumulated that way.
 // PROJECT_STATUS §6hh.
 
-import { supabase } from '$lib/supabaseClient';
-import { accessToken } from '$lib/utils/authHeaders';
-import { api } from '$lib/utils/api';
+import { supabase } from '#lib/supabaseClient.js';
+import { accessToken } from '#lib/utils/authHeaders.js';
+import { api } from '#lib/utils/api.js';
 
 /**
  * List attachments for one or more owning entities.

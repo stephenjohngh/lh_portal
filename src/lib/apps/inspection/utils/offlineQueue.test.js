@@ -5,7 +5,7 @@
 // `ops` (the generated seq is written onto the stored record), keyPath keys for
 // `photos`/`readcache`, add() rejecting a duplicate key, and value cloning so a
 // caller mutating a returned object can't reach into the store. Same contract as
-// the real IdbHandle from $lib/utils/idb.js, so these tests characterise
+// the real IdbHandle from #lib/utils/idb.js, so these tests characterise
 // behaviour the browser store must also honour.
 
 import { describe, it, expect, beforeEach } from 'vitest';

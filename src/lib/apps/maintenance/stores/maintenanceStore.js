@@ -11,19 +11,19 @@
 // inspection and have no business generating contractor jobs.
 
 import { writable, get } from 'svelte/store';
-import { getLogger }     from '$lib/utils/logger';
-import { logAudit }      from '$lib/utils/auditLogger';
-import { api }           from '$lib/utils/api';
-import { uploadMedia }   from '$lib/utils/mediaUpload.js';
-import { deleteStorageObjects } from '$lib/utils/mediaAttachments.js';
-import { uploadDocument as uploadToLibrary, deleteDocument as deleteFromLibrary, deleteDocumentsFor } from '$lib/utils/documentApi.js';
-import { DOC_FOLDERS, entityFolderPath } from '$lib/utils/documentUtils.js';
+import { getLogger }     from '#lib/utils/logger.js';
+import { logAudit }      from '#lib/utils/auditLogger.js';
+import { api }           from '#lib/utils/api.js';
+import { uploadMedia }   from '#lib/utils/mediaUpload.js';
+import { deleteStorageObjects } from '#lib/utils/mediaAttachments.js';
+import { uploadDocument as uploadToLibrary, deleteDocument as deleteFromLibrary, deleteDocumentsFor } from '#lib/utils/documentApi.js';
+import { DOC_FOLDERS, entityFolderPath } from '#lib/utils/documentUtils.js';
 import { jobRag, addDaysISO } from '../utils/maintenanceHelpers.js';
-import { listPlannedObligations } from '$lib/apps/compliance/public.js';
-import { isJobEvidenced } from '$lib/utils/obligationEvidence.js';
+import { listPlannedObligations } from '#lib/apps/compliance/public.js';
+import { isJobEvidenced } from '#lib/utils/obligationEvidence.js';
 import { plannedOccurrenceDates } from '../utils/obligationJobScope.js';
-import { storeLoader } from '$lib/utils/storeLoad.js';
-import { currentUserId } from '$lib/utils/currentUser.js';
+import { storeLoader } from '#lib/utils/storeLoad.js';
+import { currentUserId } from '#lib/utils/currentUser.js';
 
 const logger = getLogger('maintenanceStore');
 
@@ -38,18 +38,18 @@ function createMaintenanceStore() {
    * queries add (a job carries `.rag`, documents carry embedded job info) —
    * without it, every such read would swap one error for another.
    *
-   * @typedef {import('$lib/database.types').Tables<'maintenance_jobs'> & Record<string, any>} Job
-   * @typedef {import('$lib/database.types').Tables<'maintenance_documents'> & Record<string, any>} MaintDoc
-   * @typedef {import('$lib/database.types').Tables<'maintenance_job_components'> & Record<string, any>} JobComponent
+   * @typedef {import('#lib/database.types.ts').Tables<'maintenance_jobs'> & Record<string, any>} Job
+   * @typedef {import('#lib/database.types.ts').Tables<'maintenance_documents'> & Record<string, any>} MaintDoc
+   * @typedef {import('#lib/database.types.ts').Tables<'maintenance_job_components'> & Record<string, any>} JobComponent
    * @typedef {{
    *   jobs: Job[],
    *   allDocs: MaintDoc[],
    *   docsByJob: Record<string, MaintDoc[]>,
    *   jobComponents: Record<string, JobComponent[]>,
-   *   systems: (import('$lib/database.types').Tables<'building_systems'> & Record<string, any>)[],
-   *   types: (import('$lib/database.types').Tables<'component_types'> & Record<string, any>)[],
-   *   obligations: (import('$lib/database.types').Tables<'statutory_obligations'> & Record<string, any>)[],
-   *   contractors: (import('$lib/database.types').Tables<'profiles'> & Record<string, any>)[],
+   *   systems: (import('#lib/database.types.ts').Tables<'building_systems'> & Record<string, any>)[],
+   *   types: (import('#lib/database.types.ts').Tables<'component_types'> & Record<string, any>)[],
+   *   obligations: (import('#lib/database.types.ts').Tables<'statutory_obligations'> & Record<string, any>)[],
+   *   contractors: (import('#lib/database.types.ts').Tables<'profiles'> & Record<string, any>)[],
    *   isContractor: boolean,
    *   loading: boolean,
    *   error: string | null

@@ -7,13 +7,13 @@
   import { createEventDispatcher } from 'svelte';
   import { parkingStore } from '../stores/parkingStore.js';
   import { TENURES, UNIT_TENURES, BAY_STATE, validateBayFacts } from '../utils/bayModel.js';
-  import Button       from '$lib/components/common/Button.svelte';
-  import FormSelect   from '$lib/components/common/FormSelect.svelte';
-  import FormInput    from '$lib/components/common/FormInput.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
-  import Checkbox     from '$lib/components/common/Checkbox.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
-  import { fmtDate } from '$lib/utils/dates.js';
+  import Button       from '#lib/components/common/Button.svelte';
+  import FormSelect   from '#lib/components/common/FormSelect.svelte';
+  import FormInput    from '#lib/components/common/FormInput.svelte';
+  import FormTextarea from '#lib/components/common/FormTextarea.svelte';
+  import Checkbox     from '#lib/components/common/Checkbox.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
+  import { fmtDate } from '#lib/utils/dates.js';
   import { basesForTenure, LIVE, STATUS_LABEL, BASIS_LABEL } from '../utils/agreementModel.js';
   import { nextFor } from '../utils/waitingListModel.js';
 

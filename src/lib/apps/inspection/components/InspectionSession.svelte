@@ -2,22 +2,22 @@
 <!-- Core inspection walk screen: navigate components, record inspections, edit, jump, close -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { getLogger }    from '$lib/utils/logger';
-  import { buildComponentRef } from '$lib/utils/componentRef.js';
-  import { noAccessReasonLabel } from '$lib/utils/resultConstants.js';
+  import { getLogger }    from '#lib/utils/logger.js';
+  import { buildComponentRef } from '#lib/utils/componentRef.js';
+  import { noAccessReasonLabel } from '#lib/utils/resultConstants.js';
   import { inspectionStore }  from '../stores/inspectionStore.js';
   import { sessionKindLabel, sessionFloorLabel, mapSyncByInspection, syncGlyph } from '../utils/inspectionHelpers.js';
   import { syncState, retryErrors } from '../utils/syncRunner.js';
-  import { online } from '$lib/stores/online.js';
+  import { online } from '#lib/stores/online.js';
   import InspectionPanel             from './InspectionPanel.svelte';
   import InspectionComponentEditor   from './InspectionComponentEditor.svelte';
   import InspectionJumpList          from './InspectionJumpList.svelte';
   import InspectionComponentPlanViewer from './InspectionComponentPlanViewer.svelte';
-  import WalkStatsBars from '$lib/apps/inspection/components/common/WalkStatsBars.svelte';
-  import WalkBadge     from '$lib/apps/inspection/components/common/WalkBadge.svelte';
-  import WalkTextarea  from '$lib/apps/inspection/components/common/WalkTextarea.svelte';
-  import WalkButton    from '$lib/apps/inspection/components/common/WalkButton.svelte';
-  import WalkError     from '$lib/apps/inspection/components/common/WalkError.svelte';
+  import WalkStatsBars from '#lib/apps/inspection/components/common/WalkStatsBars.svelte';
+  import WalkBadge     from '#lib/apps/inspection/components/common/WalkBadge.svelte';
+  import WalkTextarea  from '#lib/apps/inspection/components/common/WalkTextarea.svelte';
+  import WalkButton    from '#lib/apps/inspection/components/common/WalkButton.svelte';
+  import WalkError     from '#lib/apps/inspection/components/common/WalkError.svelte';
 
   const logger   = getLogger('InspectionSession');
   const dispatch = createEventDispatcher();

@@ -15,16 +15,16 @@
   import {
     intervalNote, BASIS_LABEL, HANDLED_BY_LABEL, isRecurring, supersededNote,
     triggerTypeOf, TRIGGER_TYPE_LABEL,
-  } from '$lib/utils/statutoryTemplate.js';
-  import { reviewState } from '$lib/utils/statutoryExclusions.js';
-  import { frequencyLabel } from '$lib/utils/inspectionSchedule';
-  import { fmtDate } from '$lib/utils/dates.js';
+  } from '#lib/utils/statutoryTemplate.js';
+  import { reviewState } from '#lib/utils/statutoryExclusions.js';
+  import { frequencyLabel } from '#lib/utils/inspectionSchedule.js';
+  import { fmtDate } from '#lib/utils/dates.js';
   import {
     REGISTER_STATUS_LABEL, REGISTER_STATUS_CLASS, dutyHolderRole, DUTY_HOLDER_ROLE_LABEL, rowFacetSummary,
   } from '../utils/registerFilter.js';
-  import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
-  import Button from '$lib/components/common/Button.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
+  import { EVIDENCE_ROUTE_LABEL } from '#lib/utils/obligationEvidence.js';
+  import Button from '#lib/components/common/Button.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
 
   /** A register entry. */
   export let entry;

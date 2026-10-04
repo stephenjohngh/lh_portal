@@ -11,14 +11,14 @@
      (P3). The columns those need already exist, so each is behaviour rather
      than schema. -->
 <script>
-  import { errMessage } from '$lib/utils/errors';
-  import { permissions } from '$lib/stores/permissions';
-  import AppGate from '$lib/components/common/AppGate.svelte';
+  import { errMessage } from '#lib/utils/errors.js';
+  import { permissions } from '#lib/stores/permissions.js';
+  import AppGate from '#lib/components/common/AppGate.svelte';
   import { complaintsStore } from './stores/complaintsStore.js';
 
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import LoadingSpinner  from '$lib/components/common/LoadingSpinner.svelte';
-  import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import LoadingSpinner  from '#lib/components/common/LoadingSpinner.svelte';
+  import ErrorDisplay    from '#lib/components/common/ErrorDisplay.svelte';
   import ComplaintList      from './components/ComplaintList.svelte';
   import ComplaintDetail    from './components/ComplaintDetail.svelte';
   import ComplaintFormModal from './components/ComplaintFormModal.svelte';

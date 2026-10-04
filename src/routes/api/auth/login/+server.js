@@ -8,7 +8,7 @@
 //   1. POST { email, password } from auth.js (client)
 //   2. Look up this email's failed attempts in login_attempts (last 15 min)
 //   3. If locked (5 from this address, or 20 from anywhere —
-//      $lib/server/loginLockout.js), reject with 429 and audit-log it
+//      #lib/server/loginLockout.js), reject with 429 and audit-log it
 //   4. Otherwise call supabase.auth.signInWithPassword() using the anon
 //      key — this is the same call the client used to make directly,
 //      but going via the server lets us record the outcome
@@ -16,18 +16,18 @@
 //      a success, or a WRONG PASSWORD. Any other Supabase error (email
 //      logins switched off, Supabase down) never checked the password, so it
 //      is not recorded as a failure and the person is told so
-//      ($lib/server/signInOutcome.js)
+//      (#lib/server/signInOutcome.js)
 //   6. On success, return the Supabase session so the client can hydrate
 //      its local Supabase client via supabase.auth.setSession(...)
 //   7. Audit log via logLogin / logFailedLogin (writes to audit_logs)
 //
-// Steps 2–5 are $lib/server/passwordCheck.js, shared with
+// Steps 2–5 are #lib/server/passwordCheck.js, shared with
 // /api/auth/change-password so a password is checked one way only.
 
 import { json }                     from '@sveltejs/kit';
-import { logLogin }                 from '$lib/server/auditLogger';
-import { checkPassword, pauseMinutes } from '$lib/server/passwordCheck';
-import { getLogger }                from '$lib/utils/logger';
+import { logLogin }                 from '#lib/server/auditLogger.js';
+import { checkPassword, pauseMinutes } from '#lib/server/passwordCheck.js';
+import { getLogger }                from '#lib/utils/logger.js';
 
 const logger = getLogger('AuthLogin');
 

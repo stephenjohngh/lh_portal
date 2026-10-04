@@ -4,7 +4,7 @@
 // admin sets them (Admin → Other Config → Building & business), never as code.
 // User, 2026-10-03: "things that can change e.g. business address, ai models,
 // management preferences should have an admin parameter". Logo and colours are
-// deployment branding and are NOT here ($lib/branding.js, $lib/theme.js).
+// deployment branding and are NOT here (#lib/branding.js, #lib/theme.js).
 //
 // Two homes, because they are two things:
 //   · the BUILDING is the `facilities` row (name, short name, address) — the

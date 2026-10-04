@@ -23,7 +23,7 @@
 // app's context. (Component create/delete are intentionally NOT here — they have
 // a single in-app caller, so they stay private to building_assets.)
 
-import { api } from '$lib/utils/api';
+import { api } from '#lib/utils/api.js';
 
 /**
  * Update component fields. The single canonical write: Building Assets' own store

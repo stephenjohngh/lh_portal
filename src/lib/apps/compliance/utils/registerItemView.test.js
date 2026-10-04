@@ -8,10 +8,10 @@
 // invariant that holds whatever the items happen to say.
 
 import { describe, it, expect } from 'vitest';
-import { REGISTER_ITEMS } from '$lib/utils/registerItemsData.js';
+import { REGISTER_ITEMS } from '#lib/utils/registerItemsData.js';
 import {
   ACTION_CATEGORIES, ACTION_PRIORITIES, KIND_KEYS, ofKind, priorityRank,
-} from '$lib/utils/registerKinds.js';
+} from '#lib/utils/registerKinds.js';
 import {
   filterItems, groupByCategory, groupItems, inAuthorOrder,
   itemTally, itemFilterFields, citableRef, KIND_SECTION,
@@ -19,7 +19,7 @@ import {
 // ⚠ A server module, imported HERE only. The screen must not pull `docx` into
 // the client bundle — but the one thing worth cross-checking is that the screen
 // and the document agree about what the optional sections are.
-import { SECTION_KEYS } from '$lib/server/registerDocx.js';
+import { SECTION_KEYS } from '#lib/server/registerDocx.js';
 
 const ACTIONS = ofKind(REGISTER_ITEMS, 'action');
 const DISPLAYED_KINDS = KIND_KEYS.filter(k => k !== 'requirement');

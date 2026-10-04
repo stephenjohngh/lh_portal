@@ -10,7 +10,7 @@
 //   generatedAt:   string
 
 import { json } from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/requireAuth';
+import { requireAuth } from '#lib/server/requireAuth.js';
 import {
   Document, Packer,
   Paragraph, TextRun,
@@ -19,15 +19,15 @@ import {
   WidthType, AlignmentType, TableLayoutType,
   BorderStyle
 } from 'docx';
-import { getLogger } from '$lib/utils/logger';
-import { fmtDateOnly, fmtToday, today } from '$lib/utils/dates';
+import { getLogger } from '#lib/utils/logger.js';
+import { fmtDateOnly, fmtToday, today } from '#lib/utils/dates.js';
 import {
   CONTENT_W, COLOURS, BORDERS, CELL_PAD,
   hCell, dCell, run, para,
   makeHeader, makeFooter,
   DOC_STYLES, pageProps
-} from '$lib/server/docxHelpers.js';
-import { documentBuildingName } from '$lib/server/identity.js';
+} from '#lib/server/docxHelpers.js';
+import { documentBuildingName } from '#lib/server/identity.js';
 
 const logger = getLogger('maintenance:generate-certificate');
 

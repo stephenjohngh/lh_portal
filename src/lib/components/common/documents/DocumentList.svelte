@@ -1,10 +1,10 @@
 <script>
-  import { fileViewUrl } from '$lib/utils/driveUtils.js';
+  import { fileViewUrl } from '#lib/utils/driveUtils.js';
   import { createEventDispatcher } from 'svelte';
   import { mimeIcon, formatFileSize, docTypeLabel, categoryLabel, getExpiryStatus,
-           folderLabel, sortDocsByFolder } from '$lib/utils/documentUtils';
-  import { fmtDate } from '$lib/utils/dates';
-  import { checkProblems } from '$lib/utils/documentCheckLabels.js';
+           folderLabel, sortDocsByFolder } from '#lib/utils/documentUtils.js';
+  import { fmtDate } from '#lib/utils/dates.js';
+  import { checkProblems } from '#lib/utils/documentCheckLabels.js';
 
   /** @type {Object[]} document_library rows */
   export let docs       = [];

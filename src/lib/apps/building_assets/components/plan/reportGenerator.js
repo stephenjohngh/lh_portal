@@ -38,7 +38,7 @@
 
 import { today } from '../../../../utils/dates.js';
 import { drawAnnotatedPlanImage } from './planImageRenderer.js';
-import { requestDownload } from '$lib/utils/download.js';
+import { requestDownload } from '#lib/utils/download.js';
 
 export async function generateReportDocument(params) {
   const {

@@ -1,14 +1,14 @@
 // src/routes/api/parking/bay-plan/+server.js
 // The caretaker's printable bay plan, as Word. Thin on purpose: the document
-// is built by $lib/server/parkingBayPlanDocx.js, which is tested; the plan
+// is built by #lib/server/parkingBayPlanDocx.js, which is tested; the plan
 // images arrive already drawn by the browser (parking/utils/bayPlanImage.js).
 
 import { today } from '../../../../lib/utils/dates.js';
 import { json } from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/requireAuth';
-import { getLogger } from '$lib/utils/logger';
-import { buildBayPlanBuffer } from '$lib/server/parkingBayPlanDocx.js';
-import { documentBuildingName } from '$lib/server/identity.js';
+import { requireAuth } from '#lib/server/requireAuth.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { buildBayPlanBuffer } from '#lib/server/parkingBayPlanDocx.js';
+import { documentBuildingName } from '#lib/server/identity.js';
 
 const logger = getLogger('parkingBayPlan');
 

@@ -17,7 +17,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/svelte';
 
-vi.mock('$app/environment', () => ({ browser: true, dev: true, building: false }));
+vi.mock('$app/env', () => ({ browser: true, dev: true, building: false }));
 
 const JumpList = (await import('./InspectionJumpList.svelte')).default;
 

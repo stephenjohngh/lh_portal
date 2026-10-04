@@ -1,7 +1,7 @@
 <!-- src/lib/components/common/ProtectedButton.svelte -->
 <!-- Button that automatically hides for read-only users based on action type -->
 <script>
-  import { permissions } from '$lib/stores/permissions';
+  import { permissions } from '#lib/stores/permissions.js';
   import { determineVisibility, getTooltipText } from './protectedButtonVisibility.js';
   import Button from './Button.svelte';
 

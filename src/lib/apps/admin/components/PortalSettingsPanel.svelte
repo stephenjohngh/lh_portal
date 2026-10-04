@@ -3,20 +3,20 @@
      Currently: which apps appear in the top navigation bar. -->
 <script>
   import { onMount }        from 'svelte';
-  import { AVAILABLE_APPS } from '$lib/apps/apps.js';
-  import { portalSettings } from '$lib/stores/portalSettings.js';
-  import { api }            from '$lib/utils/api';
-  import { auth }           from '$lib/stores/auth';
-  import { logAudit }       from '$lib/utils/auditLogger';
-  import { getLogger }      from '$lib/utils/logger';
-  import { getJson }        from '$lib/utils/request.js';
-  import { fmtDate }        from '$lib/utils/dates';
-  import { errMessage }     from '$lib/utils/errors';
-  import Checkbox     from '$lib/components/common/Checkbox.svelte';
-  import Button       from '$lib/components/common/Button.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import Icon         from '$lib/components/icons/Icon.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import { AVAILABLE_APPS } from '#lib/apps/apps.js';
+  import { portalSettings } from '#lib/stores/portalSettings.js';
+  import { api }            from '#lib/utils/api.js';
+  import { auth }           from '#lib/stores/auth.js';
+  import { logAudit }       from '#lib/utils/auditLogger.js';
+  import { getLogger }      from '#lib/utils/logger.js';
+  import { getJson }        from '#lib/utils/request.js';
+  import { fmtDate }        from '#lib/utils/dates.js';
+  import { errMessage }     from '#lib/utils/errors.js';
+  import Checkbox     from '#lib/components/common/Checkbox.svelte';
+  import Button       from '#lib/components/common/Button.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import Icon         from '#lib/components/icons/Icon.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
 
   const logger = getLogger('PortalSettingsPanel');
 

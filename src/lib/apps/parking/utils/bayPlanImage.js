@@ -7,8 +7,8 @@
 // (building_assets/components/plan/planImageRenderer.js): only the browser
 // can load the plan image and draw on it. The labels and the list are pure
 // and tested; the canvas is not, because jsdom has none.
-import { requestDownload } from '$lib/utils/download.js';
-import { fmtGenerated, today } from '$lib/utils/dates.js';
+import { requestDownload } from '#lib/utils/download.js';
+import { fmtGenerated, today } from '#lib/utils/dates.js';
 import { BAY_STATES, BAY_STATE } from './bayModel.js';
 
 const short = (s, n = 18) => (s && s.length > n ? `${s.slice(0, n - 1)}…` : s ?? '');

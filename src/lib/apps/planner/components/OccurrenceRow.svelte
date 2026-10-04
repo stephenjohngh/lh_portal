@@ -6,7 +6,7 @@
      skip — is behind the row rather than in front of it. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { fmtDate } from '$lib/utils/dates';
+  import { fmtDate } from '#lib/utils/dates.js';
   import { STATUS, firstLine } from '../utils/agenda.js';
   import { categoryOf } from '../utils/categories.js';
   import { describeRule, isRecurring } from '../utils/recurrence.js';

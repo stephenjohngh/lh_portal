@@ -14,7 +14,7 @@
 // Pure — builds `{ headers, rows }` and nothing else. The server route only
 // styles what it is given, so the sheet cannot disagree with the screen.
 
-import { REGISTER_COLUMNS, PROVENANCE_COLUMNS, toField } from '$lib/utils/registerRowMapping.js';
+import { REGISTER_COLUMNS, PROVENANCE_COLUMNS, toField } from '#lib/utils/registerRowMapping.js';
 import { REGISTER_STATUS_LABEL } from './registerFilter.js';
 
 /**

@@ -12,14 +12,14 @@
      doesn't ask the user to reclassify a slot. -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import Modal        from '$lib/components/common/Modal.svelte';
-  import Button       from '$lib/components/common/Button.svelte';
-  import FormInput    from '$lib/components/common/FormInput.svelte';
-  import FormSelect   from '$lib/components/common/FormSelect.svelte';
-  import { profiles, profilesStore } from '$lib/stores/profiles';
-  import { listCurrentDocuments } from '$lib/apps/golden_thread/public.js';
+  import Modal        from '#lib/components/common/Modal.svelte';
+  import Button       from '#lib/components/common/Button.svelte';
+  import FormInput    from '#lib/components/common/FormInput.svelte';
+  import FormSelect   from '#lib/components/common/FormSelect.svelte';
+  import { profiles, profilesStore } from '#lib/stores/profiles.js';
+  import { listCurrentDocuments } from '#lib/apps/golden_thread/public.js';
 
-  /** @typedef {import('$lib/database.types').Tables<'display_items'>} DisplayItem */
+  /** @typedef {import('#lib/database.types.ts').Tables<'display_items'>} DisplayItem */
   /** @type {DisplayItem|null} */
   export let item = null;   // row or null (create — only for compliance_notice/other)
   /** @type {'ap_notice'|'bac'|'compliance_notice'|'other'} */

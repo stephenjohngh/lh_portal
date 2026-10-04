@@ -11,7 +11,7 @@
 // release's improvement to it.
 //
 // ⛔ READ WORDING WHEN IT IS USED — never captured at module scope, which loads
-// before the setting does. On the server, `$lib/server/wording.js` first.
+// before the setting does. On the server, `#lib/server/wording.js` first.
 //
 // ── Tokens ────────────────────────────────────────────────────────────────────
 // A text may carry {tokens} the code fills in — {building}, a date, a case's

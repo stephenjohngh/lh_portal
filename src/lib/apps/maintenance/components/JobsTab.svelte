@@ -1,12 +1,12 @@
 <!-- src/lib/apps/maintenance/components/JobsTab.svelte -->
 <!-- Full filterable list of all maintenance jobs. -->
 <script>
-  import { matchesSearch } from '$lib/utils/textSearch.js';
-  import { permissions }   from '$lib/stores/permissions';
+  import { matchesSearch } from '#lib/utils/textSearch.js';
+  import { permissions }   from '#lib/stores/permissions.js';
   import {
     ragConfig, resultConfig, scopeTypeLabel, daysRelative,
   } from '../utils/maintenanceHelpers.js';
-  import { fmtDate } from '$lib/utils/dates.js';
+  import { fmtDate } from '#lib/utils/dates.js';
   import JobDetailPanel       from './JobDetailPanel.svelte';
   import RecordCompletionForm from './RecordCompletionForm.svelte';
   import JobForm              from './JobForm.svelte';

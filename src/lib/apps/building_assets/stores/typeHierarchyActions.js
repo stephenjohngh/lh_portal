@@ -10,12 +10,12 @@
 // Receives the writable `update` function from buildingAssetsStore so all mutations
 // land in the single shared store state.
 
-import { api }              from '$lib/utils/api';
-import { getLogger }        from '$lib/utils/logger';
-import { logAudit }         from '$lib/utils/auditLogger';
-import { resolveHierarchy } from '$lib/utils/attrResolution.js';
+import { api }              from '#lib/utils/api.js';
+import { getLogger }        from '#lib/utils/logger.js';
+import { logAudit }         from '#lib/utils/auditLogger.js';
+import { resolveHierarchy } from '#lib/utils/attrResolution.js';
 import { requireUserId }    from './helpers.js';
-import { storeLoader }      from '$lib/utils/storeLoad.js';
+import { storeLoader }      from '#lib/utils/storeLoad.js';
 
 const logger = getLogger('BuildingAssets');
 

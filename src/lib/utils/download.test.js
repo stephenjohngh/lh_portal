@@ -162,7 +162,7 @@ describe('reports are fetched through requestDownload', () => {
     const offenders = files
       .filter((f) => f !== 'src/lib/utils/download.js' && !OWN_FETCH[f])
       .filter(fetchesBytes);
-    expect(offenders, 'use requestDownload from $lib/utils/download.js, or name the file in OWN_FETCH with the reason').toEqual([]);
+    expect(offenders, 'use requestDownload from #lib/utils/download.js, or name the file in OWN_FETCH with the reason').toEqual([]);
   });
 
   it('every exception still has something to excuse', () => {

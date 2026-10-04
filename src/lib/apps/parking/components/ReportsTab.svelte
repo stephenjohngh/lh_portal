@@ -4,8 +4,8 @@
   import { parkingStore } from '../stores/parkingStore.js';
   import { REPORTS, downloadParkingReport } from '../utils/parkingReports.js';
   import { downloadBayPlan } from '../utils/bayPlanImage.js';
-  import Button       from '$lib/components/common/Button.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import Button       from '#lib/components/common/Button.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import RetentionPanel from './RetentionPanel.svelte';
 
   const HINT = {

@@ -16,11 +16,11 @@ import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
  * Import storage/index.js with STORAGE_PROVIDER set to `value`.
  *
  * The logger is mocked because the providers pull it transitively and it
- * imports `$app/environment`, which does not exist outside a SvelteKit build.
+ * imports `$app/env`, which does not exist outside a SvelteKit build.
  */
 async function loadWith(value) {
   vi.resetModules();
-  vi.doMock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+  vi.doMock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
   vi.doMock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'https://example.supabase.co' }));
   vi.doMock('$env/dynamic/private', () => ({
     env: value === undefined ? {} : { STORAGE_PROVIDER: value },

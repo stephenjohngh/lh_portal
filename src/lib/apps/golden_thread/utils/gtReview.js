@@ -12,8 +12,8 @@
 
 // Day arithmetic has one owner (dates.js, 2026-10-02); re-exported so this
 // module's callers keep their import.
-import { daysBetween } from '$lib/utils/dates.js';
-import { policy } from '$lib/utils/policies.js';
+import { daysBetween } from '#lib/utils/dates.js';
+import { policy } from '#lib/utils/policies.js';
 export { daysBetween };
 
 /**

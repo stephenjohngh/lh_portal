@@ -1,7 +1,7 @@
 <!-- src/lib/components/common/Modal.svelte -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Icon from '$lib/components/icons/Icon.svelte';
+  import Icon from '#lib/components/icons/Icon.svelte';
 
   export let show = false;
   export let title = '';

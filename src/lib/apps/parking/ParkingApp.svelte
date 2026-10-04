@@ -13,15 +13,15 @@
      table's RLS is gated on the grant too, so the gate below is the screen's
      courtesy, not the control. -->
 <script>
-  import { permissions } from '$lib/stores/permissions';
-  import { hasAppAccess } from '$lib/utils/appAccess.js';
-  import AppGate from '$lib/components/common/AppGate.svelte';
-  import TabBar  from '$lib/components/common/TabBar.svelte';
+  import { permissions } from '#lib/stores/permissions.js';
+  import { hasAppAccess } from '#lib/utils/appAccess.js';
+  import AppGate from '#lib/components/common/AppGate.svelte';
+  import TabBar  from '#lib/components/common/TabBar.svelte';
   import { parkingStore } from './stores/parkingStore.js';
   import { filterBays, baySummary, BAY_STATES } from './utils/bayModel.js';
-  import { PARKING_BAY_TYPES } from '$lib/apps/building_assets/utils/spaceTypeOptions.js';
+  import { PARKING_BAY_TYPES } from '#lib/apps/building_assets/utils/spaceTypeOptions.js';
 
-  import ErrorDisplay   from '$lib/components/common/ErrorDisplay.svelte';
+  import ErrorDisplay   from '#lib/components/common/ErrorDisplay.svelte';
   import BayMap   from './components/BayMap.svelte';
   import BayList  from './components/BayList.svelte';
   import BayPanel from './components/BayPanel.svelte';
@@ -33,7 +33,7 @@
   import ReportsTab         from './components/ReportsTab.svelte';
   import PricesTab          from './components/PricesTab.svelte';
   import { downloadBayPlan } from './utils/bayPlanImage.js';
-  import Button             from '$lib/components/common/Button.svelte';
+  import Button             from '#lib/components/common/Button.svelte';
 
   // The caretaker's printable plan, from the Bays tab where they look.
   let printing = false;

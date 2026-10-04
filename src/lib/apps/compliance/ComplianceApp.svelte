@@ -29,11 +29,11 @@
      action tracker and that declined G4. A compliance record may point at an
      app's record; it may never replace one. -->
 <script>
-  import { permissions } from '$lib/stores/permissions';
-  import AppGate from '$lib/components/common/AppGate.svelte';
-  import TabBar  from '$lib/components/common/TabBar.svelte';
-  import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
+  import { permissions } from '#lib/stores/permissions.js';
+  import AppGate from '#lib/components/common/AppGate.svelte';
+  import TabBar  from '#lib/components/common/TabBar.svelte';
+  import { buildingAssetsStore } from '#lib/apps/building_assets/stores/buildingAssetsStore.js';
+  import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
   import ComplianceObligationsTab from './components/ComplianceObligationsTab.svelte';
   import PlannedObligationsTab from './components/PlannedObligationsTab.svelte';
   import CompliancePositionTab from './components/CompliancePositionTab.svelte';

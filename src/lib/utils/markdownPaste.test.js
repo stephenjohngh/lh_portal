@@ -10,7 +10,7 @@ import {
   isTableRow, isTableDelimiter, tableCells,
   isTableRow, isTableDelimiter, tableCells,
 } from './markdownPaste.js';
-import { blocksToMarkdown } from '$lib/apps/dossier/utils/packArchive.js';
+import { blocksToMarkdown } from '#lib/apps/dossier/utils/packArchive.js';
 
 // Pack-internal links are opt-in: only Dossier has other pages for
 // `./overview.md` to name, so the tests that want them ask for them.

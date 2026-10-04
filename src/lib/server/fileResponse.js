@@ -14,7 +14,7 @@
 //   · everything else is an opaque `application/octet-stream` DOWNLOAD under
 //     its own name, with a sandboxing CSP in case a browser renders it anyway.
 
-import { declarableMime } from '$lib/utils/mimeTypes';
+import { declarableMime } from '#lib/utils/mimeTypes.js';
 
 /**
  * A Content-Disposition header that cannot break, whatever the file is called.

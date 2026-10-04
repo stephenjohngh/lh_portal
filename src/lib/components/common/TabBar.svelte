@@ -12,8 +12,8 @@
      "Other Config" dropdown — goes in the slot. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { permissions } from '$lib/stores/permissions';
-  import { visibleTabs } from '$lib/utils/appAccess.js';
+  import { permissions } from '#lib/stores/permissions.js';
+  import { visibleTabs } from '#lib/utils/appAccess.js';
 
   /** @type {Array<{ key: string, label: string, icon?: string, count?: number|null, adminOnly?: boolean }>} */
   export let tabs = [];

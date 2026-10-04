@@ -5,19 +5,19 @@
      Bottom: the per-group setup/assumptions table, where every figure that drives
      the forecast is editable (R0 — derivation assists, the planner decides). -->
 <script>
-  import { dueSoonDays } from '$lib/utils/dueWindows';
+  import { dueSoonDays } from '#lib/utils/dueWindows.js';
   import { onMount } from 'svelte';
   import { maintenanceGroupsStore } from '../stores/maintenanceGroupsStore.js';
   import { buildTenYearForecast, renewalOccurrences, addYearsFractionalISO } from '../utils/tenYearPlan.js';
   import { makeGroupMembershipResolver } from '../utils/groupMembership.js';
   import { suggestLastRenewal }     from '../utils/jobHistorySuggest.js';
   import { buildPlanReportPayload } from '../utils/planReport.js';
-  import Modal        from '$lib/components/common/Modal.svelte';
-  import Button       from '$lib/components/common/Button.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
-  import { fmtDate, fmtToday, today, daysUntil } from '$lib/utils/dates.js';
-  import { requestDownload } from '$lib/utils/download.js';
+  import Modal        from '#lib/components/common/Modal.svelte';
+  import Button       from '#lib/components/common/Button.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
+  import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
+  import { fmtDate, fmtToday, today, daysUntil } from '#lib/utils/dates.js';
+  import { requestDownload } from '#lib/utils/download.js';
 
   // Building-assets reference data (from AdminApp) — drives the live membership
   // roll-up. All optional: with none loaded, every group reads as a manual line.

@@ -10,8 +10,8 @@
 // the `parking` grant protects, so each of those carries a line in its header
 // saying it contains personal data, and the filename says PARKING. That is the
 // control this portal has: it cannot follow a file once downloaded.
-import { requestDownload } from '$lib/utils/download.js';
-import { fmtGenerated, fmtDate, today } from '$lib/utils/dates.js';
+import { requestDownload } from '#lib/utils/download.js';
+import { fmtGenerated, fmtDate, today } from '#lib/utils/dates.js';
 import { BAY_STATE, TENURE_LABEL } from './bayModel.js';
 import {
   STATUS_LABEL, BASIS_LABEL, HOLDER_TYPE_LABEL, VAT_TREATMENTS, LIVE,

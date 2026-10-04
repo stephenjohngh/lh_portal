@@ -6,12 +6,12 @@ const h = vi.hoisted(() => ({
   obligations: [], sessions: [], jobs: [], jobsFail: false,
 }));
 
-vi.mock('$lib/utils/api', () => ({
+vi.mock('#lib/utils/api.js', () => ({
   api: (() => { const get = vi.fn(async () => h.obligations); return { get, getAll: get }; })(),
 }));
 vi.mock('./stores/inspectionDefinitionsStore.js', () => ({ inspectionDefinitionsStore: {} }));
-vi.mock('$lib/apps/inspection/public.js', () => ({ listWalkSessions: vi.fn(async () => h.sessions) }));
-vi.mock('$lib/apps/maintenance/public.js', () => ({
+vi.mock('#lib/apps/inspection/public.js', () => ({ listWalkSessions: vi.fn(async () => h.sessions) }));
+vi.mock('#lib/apps/maintenance/public.js', () => ({
   listJobEvidence: vi.fn(async () => { if (h.jobsFail) throw new Error('boom'); return h.jobs; }),
 }));
 

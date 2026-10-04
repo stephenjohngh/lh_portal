@@ -17,13 +17,13 @@ const h = vi.hoisted(() => ({
   listAttachments:  vi.fn(() => Promise.resolve([])),
 }));
 
-vi.mock('$lib/utils/api',                () => ({ api: h.api }));
-vi.mock('$lib/utils/mediaAttachments.js', () => ({ purgeAttachments: h.purgeAttachments, listAttachments: h.listAttachments }));
-vi.mock('$lib/utils/driveUtils.js',      () => ({ normalisePhotoUrl: (u) => `norm:${u}` }));
+vi.mock('#lib/utils/api.js',                () => ({ api: h.api }));
+vi.mock('#lib/utils/mediaAttachments.js', () => ({ purgeAttachments: h.purgeAttachments, listAttachments: h.listAttachments }));
+vi.mock('#lib/utils/driveUtils.js',      () => ({ normalisePhotoUrl: (u) => `norm:${u}` }));
 // public.js also imports the GT register path + authHeaders — stub the seams so
 // importing the module doesn't pull $env/$app.
-vi.mock('$lib/utils/authHeaders',        () => ({ authHeaders: vi.fn(async () => ({})) }));
-vi.mock('$lib/apps/golden_thread/public.js', () => ({ registerDocument: vi.fn(), findDocumentBySource: vi.fn() }));
+vi.mock('#lib/utils/authHeaders.js',        () => ({ authHeaders: vi.fn(async () => ({})) }));
+vi.mock('#lib/apps/golden_thread/public.js', () => ({ registerDocument: vi.fn(), findDocumentBySource: vi.fn() }));
 
 const { deleteWalkSession, listWalkSessions, loadSessionInspections } = await import('./public.js');
 
@@ -99,7 +99,7 @@ describe('loadSessionInspections', () => {
 // a duplicate, and refuses when it cannot check (2026-10-03, §6ccc item 2).
 describe('registerSessionReportToGoldenThread refuses a duplicate', () => {
   it('when the session report is already registered, before building anything', async () => {
-    const gt = await import('$lib/apps/golden_thread/public.js');
+    const gt = await import('#lib/apps/golden_thread/public.js');
     const { registerSessionReportToGoldenThread } = await import('./public.js');
     vi.mocked(gt.findDocumentBySource).mockResolvedValueOnce({ id: 'gt-1', reference: 'GT-000001' });
     globalThis.fetch = vi.fn();
@@ -109,7 +109,7 @@ describe('registerSessionReportToGoldenThread refuses a duplicate', () => {
   });
 
   it('when it cannot check', async () => {
-    const gt = await import('$lib/apps/golden_thread/public.js');
+    const gt = await import('#lib/apps/golden_thread/public.js');
     const { registerSessionReportToGoldenThread } = await import('./public.js');
     vi.mocked(gt.findDocumentBySource).mockRejectedValueOnce(new Error('network down'));
     await expect(registerSessionReportToGoldenThread({ id: 's1' }, [], {}, 'u')).rejects.toThrow('network down');

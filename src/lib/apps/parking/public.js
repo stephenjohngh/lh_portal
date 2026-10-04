@@ -9,9 +9,9 @@
 // needs one of those is asking for the wrong thing, and should link to the
 // Parking app instead.
 
-import { api } from '$lib/utils/api';
-import { listParkingBaySpaces } from '$lib/apps/building_assets/public.js';
-import { buildSpaceRef } from '$lib/utils/spaceRef.js';
+import { api } from '#lib/utils/api.js';
+import { listParkingBaySpaces } from '#lib/apps/building_assets/public.js';
+import { buildSpaceRef } from '#lib/utils/spaceRef.js';
 import { parkingDueItems } from './utils/parkingDue.js';
 import { todayISO } from './utils/agreementModel.js';
 

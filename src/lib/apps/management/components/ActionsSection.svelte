@@ -2,19 +2,19 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { issuesStore } from '../stores/issuesStore';
-  import { profilesStore } from '$lib/stores/profiles';
-  import { permissions }   from '$lib/stores/permissions';
-  import { auth }          from '$lib/stores/auth';
-  import { canDeleteOwn }  from '$lib/utils/permissions';
-  import { fmtDate, fmtDateTime, isOverdue, wasModified, toDateTimeLocal } from '$lib/utils/dates';
-  import { ACTION_STATUS, ACTION_STATUS_OPTIONS } from '$lib/utils/constants';
-  import Icon from '$lib/components/icons/Icon.svelte';
-  import Button from '$lib/components/common/Button.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import { profilesStore } from '#lib/stores/profiles.js';
+  import { permissions }   from '#lib/stores/permissions.js';
+  import { auth }          from '#lib/stores/auth.js';
+  import { canDeleteOwn }  from '#lib/utils/permissions.js';
+  import { fmtDate, fmtDateTime, isOverdue, wasModified, toDateTimeLocal } from '#lib/utils/dates.js';
+  import { ACTION_STATUS, ACTION_STATUS_OPTIONS } from '#lib/utils/constants.js';
+  import Icon from '#lib/components/icons/Icon.svelte';
+  import Button from '#lib/components/common/Button.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
   import ActionForm     from './ActionForm.svelte';
   import MeetingBadge   from './meetings/MeetingBadge.svelte';
-  import { sortActions } from '$lib/utils/actionSort';
+  import { sortActions } from '#lib/utils/actionSort.js';
 
   export let issueId;
   export let actions  = [];

@@ -82,17 +82,17 @@
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { writable } from 'svelte/store';
   import { Editor }      from '@tiptap/core';
-  import { fmtTime }     from '$lib/utils/dates';
-  import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
-  import Modal           from '$lib/components/common/Modal.svelte';
-  import Button          from '$lib/components/common/Button.svelte';
-  import FormInput       from '$lib/components/common/FormInput.svelte';
+  import { fmtTime }     from '#lib/utils/dates.js';
+  import ErrorDisplay    from '#lib/components/common/ErrorDisplay.svelte';
+  import Modal           from '#lib/components/common/Modal.svelte';
+  import Button          from '#lib/components/common/Button.svelte';
+  import FormInput       from '#lib/components/common/FormInput.svelte';
   import { editorExtensions, EMPTY_DOC } from '../utils/blockSchema.js';
   import { CALLOUT_VARIANTS } from '../utils/calloutNode.js';
   import BlockContent from './BlockContent.svelte';
   import { shouldFocusEnd } from '../utils/paddingClick.js';
-  import { EditorSearch } from '$lib/utils/editorSearchExtension.js';
-  import EditorFindBar from '$lib/components/common/EditorFindBar.svelte';
+  import { EditorSearch } from '#lib/utils/editorSearchExtension.js';
+  import EditorFindBar from '#lib/components/common/EditorFindBar.svelte';
 
   /** The dossier_docs row being edited. */
   export let doc;

@@ -1,6 +1,6 @@
 // src/routes/api/reports/generate-ten-year-plan/+server.js
 // Renders the 10-Year Capital Plan Word document from the payload built by
-// $lib/apps/maintenance/utils/planReport.js (buildPlanReportPayload). The endpoint is a
+// #lib/apps/maintenance/utils/planReport.js (buildPlanReportPayload). The endpoint is a
 // pure renderer — all figures are computed client-side and posted here.
 //
 // POST body: the buildPlanReportPayload(...) object.
@@ -8,19 +8,19 @@
 // assumptions register) followed by a landscape appendix (year-by-year matrix).
 
 import { json } from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/requireAuth';
+import { requireAuth } from '#lib/server/requireAuth.js';
 import {
   Document, Packer, Paragraph, Table, TableRow,
   HeadingLevel, WidthType, TableLayoutType,
 } from 'docx';
-import { getLogger } from '$lib/utils/logger';
-import { fmtShortDate, today as todayLondon } from '$lib/utils/dates';
+import { getLogger } from '#lib/utils/logger.js';
+import { fmtShortDate, today as todayLondon } from '#lib/utils/dates.js';
 import {
   CONTENT_W, CONTENT_W_L, COLOURS, BORDERS,
   hCell, dCell, run, para,
   makeHeader, makeFooter, DOC_STYLES, pageProps,
-} from '$lib/server/docxHelpers.js';
-import { documentBuildingName } from '$lib/server/identity.js';
+} from '#lib/server/docxHelpers.js';
+import { documentBuildingName } from '#lib/server/identity.js';
 
 const logger = getLogger('generate-ten-year-plan');
 

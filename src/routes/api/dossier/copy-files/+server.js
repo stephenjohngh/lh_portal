@@ -20,9 +20,9 @@
 
 import { errMessage } from '../../../../lib/utils/errors.js';
 import { json }                 from '@sveltejs/kit';
-import { requireAuth }          from '$lib/server/requireAuth.js';
-import { canListDocuments, bearerToken } from '$lib/server/documentAccess.js';
-import { copyPackFiles }        from '$lib/server/dossierPackFiles.js';
+import { requireAuth }          from '#lib/server/requireAuth.js';
+import { canListDocuments, bearerToken } from '#lib/server/documentAccess.js';
+import { copyPackFiles }        from '#lib/server/dossierPackFiles.js';
 
 export async function POST({ request }) {
   const auth = await requireAuth(request);

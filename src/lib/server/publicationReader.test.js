@@ -48,7 +48,7 @@ const {
   findServablePublication, readPublicationContent, stripStorageIds,
   publicPublicationFields, readerRefusal,
 } = await import('./publicationReader.js');
-const { generateToken } = await import('$lib/apps/dossier/utils/publicationToken.js');
+const { generateToken } = await import('#lib/apps/dossier/utils/publicationToken.js');
 
 const TOKEN = generateToken();
 const NOW = new Date('2026-08-12T12:00:00.000Z').getTime();

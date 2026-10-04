@@ -2,16 +2,16 @@
 <!-- Manage a user's role (Admin / Editor / Viewer) and per-app access level. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { auth }        from '$lib/stores/auth';
+  import { auth }        from '#lib/stores/auth.js';
   import { usersStore }  from '../../stores/usersStore';
-  import { getLogger }   from '$lib/utils/logger';
-  import { getPermissionedApps } from '$lib/apps/apps';
-  import Modal           from '$lib/components/common/Modal.svelte';
-  import Button          from '$lib/components/common/Button.svelte';
-  import Checkbox        from '$lib/components/common/Checkbox.svelte';
-  import Icon            from '$lib/components/icons/Icon.svelte';
-  import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
-  import LoadingSpinner  from '$lib/components/common/LoadingSpinner.svelte';
+  import { getLogger }   from '#lib/utils/logger.js';
+  import { getPermissionedApps } from '#lib/apps/apps.js';
+  import Modal           from '#lib/components/common/Modal.svelte';
+  import Button          from '#lib/components/common/Button.svelte';
+  import Checkbox        from '#lib/components/common/Checkbox.svelte';
+  import Icon            from '#lib/components/icons/Icon.svelte';
+  import ErrorDisplay    from '#lib/components/common/ErrorDisplay.svelte';
+  import LoadingSpinner  from '#lib/components/common/LoadingSpinner.svelte';
 
   const logger = getLogger('ManageAppsModal');
 

@@ -1,9 +1,9 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { documentsStore } from '$lib/stores/documentsStore';
-  import { docTypeFromMime, categoryFromFilename, formatFileSize, DOC_TYPES, documentCategories } from '$lib/utils/documentUtils';
-  import { portalSettings } from '$lib/stores/portalSettings.js';
-  import { resolveMimeType } from '$lib/utils/mimeTypes';
+  import { documentsStore } from '#lib/stores/documentsStore.js';
+  import { docTypeFromMime, categoryFromFilename, formatFileSize, DOC_TYPES, documentCategories } from '#lib/utils/documentUtils.js';
+  import { portalSettings } from '#lib/stores/portalSettings.js';
+  import { resolveMimeType } from '#lib/utils/mimeTypes.js';
 
   /** @type {string|null} Pre-set entity type (optional) */
   export let entityType  = null;

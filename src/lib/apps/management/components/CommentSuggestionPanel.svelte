@@ -19,14 +19,14 @@
     'deleteLinkedRequest' — open the delete-linked-action confirm dialog
 -->
 <script>
-  import { portalSettings } from '$lib/stores/portalSettings.js';
+  import { portalSettings } from '#lib/stores/portalSettings.js';
   import { createEventDispatcher } from 'svelte';
-  import { auth }           from '$lib/stores/auth';
-  import { permissions }    from '$lib/stores/permissions';
-  import { canDeleteOwn }   from '$lib/utils/permissions';
-  import Icon              from '$lib/components/icons/Icon.svelte';
-  import Button            from '$lib/components/common/Button.svelte';
-  import ProtectedButton   from '$lib/components/common/ProtectedButton.svelte';
+  import { auth }           from '#lib/stores/auth.js';
+  import { permissions }    from '#lib/stores/permissions.js';
+  import { canDeleteOwn }   from '#lib/utils/permissions.js';
+  import Icon              from '#lib/components/icons/Icon.svelte';
+  import Button            from '#lib/components/common/Button.svelte';
+  import ProtectedButton   from '#lib/components/common/ProtectedButton.svelte';
 
   /** @type {'ai'|'ai_declined'|'ai_failed'|'comment'|'already_linked'} */
   export let mode             = 'comment';

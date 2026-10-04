@@ -1,13 +1,13 @@
 <!-- src/lib/apps/maintenance/components/DocumentsTab.svelte -->
 <!-- All maintenance documents across all jobs, with expiry alerts and filters. -->
 <script>
-  import { matchesSearch } from '$lib/utils/textSearch.js';
-  import { dueSoonDays } from '$lib/utils/dueWindows';
+  import { matchesSearch } from '#lib/utils/textSearch.js';
+  import { dueSoonDays } from '#lib/utils/dueWindows.js';
   import { maintenanceStore } from '../stores/maintenanceStore.js';
   import { docTypeLabel, docTypeIcon, expiryRag, fmtBytes } from '../utils/maintenanceHelpers.js';
-  import { fmtDate }           from '$lib/utils/dates.js';
-  import { normalisePhotoUrl } from '$lib/utils/driveUtils.js';
-  import { findDocumentsBySources } from '$lib/apps/golden_thread/public.js';
+  import { fmtDate }           from '#lib/utils/dates.js';
+  import { normalisePhotoUrl } from '#lib/utils/driveUtils.js';
+  import { findDocumentsBySources } from '#lib/apps/golden_thread/public.js';
   import GtRegisterButton      from './GtRegisterButton.svelte';
 
   export let docs = [];   // store.allDocs — passed from parent

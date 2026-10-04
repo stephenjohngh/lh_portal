@@ -1,6 +1,6 @@
 // src/lib/consoleGuard.test.js
 //
-// Browser code logs through $lib/utils/logger (getLogger), which a dev build
+// Browser code logs through #lib/utils/logger (getLogger), which a dev build
 // switches on and a production build leaves quiet. A bare console.* call
 // prints for every user. Two temporary sign-out diagnostics were added in June;
 // one was removed in July as "the only stray console.* in client code", and
@@ -45,7 +45,7 @@ describe('browser code does not print to the console', () => {
 
   it('no file prints, unless it says why', () => {
     const offenders = files.filter((f) => !MAY_PRINT[f]).filter((f) => PRINTS.test(code(readFileSync(f, 'utf8'))));
-    expect(offenders, 'use getLogger from $lib/utils/logger, or name the file in MAY_PRINT with the reason').toEqual([]);
+    expect(offenders, 'use getLogger from #lib/utils/logger, or name the file in MAY_PRINT with the reason').toEqual([]);
   });
 
   it('every exception still prints', () => {

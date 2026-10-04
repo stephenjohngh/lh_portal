@@ -25,7 +25,7 @@
 //   }
 //
 // ⭐ The building and the business are admin settings, not code
-// ($lib/utils/identity.js): read here so every screen and export names them
+// (#lib/utils/identity.js): read here so every screen and export names them
 // from one place.
 //
 // ⭐ The due windows are handed to dueWindows.js (setDueWindows) as they load,
@@ -35,17 +35,17 @@
 // arrive.
 
 import { writable }  from 'svelte/store';
-import { supabase }  from '$lib/supabaseClient';
-import { getLogger } from '$lib/utils/logger';
-import { setDueWindows, cleanDueWindows, activeDueWindows } from '$lib/utils/dueWindows.js';
-import { currentUserId } from '$lib/utils/currentUser.js';
-import { ORGANISATION_KEY, cleanOrganisation } from '$lib/utils/identity.js';
-import { POLICIES_KEY, setPolicies, cleanPolicies, validatePolicies, activePolicies } from '$lib/utils/policies.js';
-import { WORDING_KEY, setWording, cleanWording, validateWording, activeWording } from '$lib/utils/wording.js';
+import { supabase }  from '#lib/supabaseClient.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { setDueWindows, cleanDueWindows, activeDueWindows } from '#lib/utils/dueWindows.js';
+import { currentUserId } from '#lib/utils/currentUser.js';
+import { ORGANISATION_KEY, cleanOrganisation } from '#lib/utils/identity.js';
+import { POLICIES_KEY, setPolicies, cleanPolicies, validatePolicies, activePolicies } from '#lib/utils/policies.js';
+import { WORDING_KEY, setWording, cleanWording, validateWording, activeWording } from '#lib/utils/wording.js';
 import {
   DOCUMENT_CATEGORIES_KEY, setDocumentCategories, cleanDocumentCategories, validateDocumentCategories,
-} from '$lib/utils/documentCategories.js';
-import { AI_ENABLED_KEY, aiEnabledFrom } from '$lib/utils/aiSwitch.js';
+} from '#lib/utils/documentCategories.js';
+import { AI_ENABLED_KEY, aiEnabledFrom } from '#lib/utils/aiSwitch.js';
 
 const logger     = getLogger('portalSettings');
 const TOPBAR_KEY = 'topbar_apps';
@@ -65,7 +65,7 @@ const DUE_KEY    = 'due_soon_days';
  *   policiesInForce: Record<string, number>,
  *   wording: Record<string, string>,
  *   wordingInForce: Record<string, string>,
- *   documentCategories: import('$lib/utils/documentCategories.js').CategoryChanges,
+ *   documentCategories: import('#lib/utils/documentCategories.js').CategoryChanges,
  *   aiEnabled: boolean,
  * }} PortalSettingsState
  */

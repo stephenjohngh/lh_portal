@@ -6,13 +6,13 @@
        annotationDragController — annotation drag-to-reposition
        spaceEditController      — space drawing buffer, vertex drag, polygon move  -->
 <script>
-  import { matchesSearch } from '$lib/utils/textSearch.js';
+  import { matchesSearch } from '#lib/utils/textSearch.js';
   import { buildingAssetsStore }                 from '../stores/buildingAssetsStore.js';
   import { typeByCode, checkableDefs, resolveComponentHalo } from '../lookups.js';
   import { computeMetresPerUnit }         from './plan/planMeasure.js';
-  import { ACCENT }                       from '$lib/theme.js';
-  import { getPref, setPref, getJSON, setJSON } from '$lib/utils/prefs';
-  import { permissions }                  from '$lib/stores/permissions';
+  import { ACCENT }                       from '#lib/theme.js';
+  import { getPref, setPref, getJSON, setJSON } from '#lib/utils/prefs.js';
+  import { permissions }                  from '#lib/stores/permissions.js';
   import { createComponentDragController }  from './plan/componentDragController.js';
   import { createAnnotationDragController } from './plan/annotationDragController.js';
   import { createSpaceEditController }      from './plan/spaceEditController.js';
@@ -30,7 +30,7 @@
   import QuickAddForm        from './QuickAddForm.svelte';
   import AnnotationSidebar   from './plan/AnnotationSidebar.svelte';
   import PlanAdminModal      from './plan/PlanAdminModal.svelte';
-  import ConfirmDialog       from '$lib/components/common/ConfirmDialog.svelte';
+  import ConfirmDialog       from '#lib/components/common/ConfirmDialog.svelte';
 
   // -- Store bindings ------------------------------------------------
   $: store          = $buildingAssetsStore;

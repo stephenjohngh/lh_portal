@@ -5,15 +5,15 @@
   soft-warn on an under-competent reviewer. Editor-gated.
 -->
 <script>
-  import { gtStore } from '$lib/apps/golden_thread/stores/gtStore';
-  import { PERSON_ROLES } from '$lib/apps/golden_thread/utils/gtConstants.js';
-  import { COMPETENCIES, COMPETENCE_LABELS, competenceExpired } from '$lib/apps/golden_thread/utils/gtCompetence.js';
-  import FormInput    from '$lib/components/common/FormInput.svelte';
-  import FormSelect   from '$lib/components/common/FormSelect.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
-  import Button     from '$lib/components/common/Button.svelte';
-  import Badge      from '$lib/components/common/Badge.svelte';
-  import Modal      from '$lib/components/common/Modal.svelte';
+  import { gtStore } from '#lib/apps/golden_thread/stores/gtStore.js';
+  import { PERSON_ROLES } from '#lib/apps/golden_thread/utils/gtConstants.js';
+  import { COMPETENCIES, COMPETENCE_LABELS, competenceExpired } from '#lib/apps/golden_thread/utils/gtCompetence.js';
+  import FormInput    from '#lib/components/common/FormInput.svelte';
+  import FormSelect   from '#lib/components/common/FormSelect.svelte';
+  import FormTextarea from '#lib/components/common/FormTextarea.svelte';
+  import Button     from '#lib/components/common/Button.svelte';
+  import Badge      from '#lib/components/common/Badge.svelte';
+  import Modal      from '#lib/components/common/Modal.svelte';
 
   export let saving = false;
 

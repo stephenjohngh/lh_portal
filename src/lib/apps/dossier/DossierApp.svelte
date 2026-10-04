@@ -3,12 +3,12 @@
      P0: internal authoring only. Nothing published, nothing leaves the portal.
      Plan: docs/requirements/build_plans/Dossier_P0_Build_Plan.md -->
 <script>
-  import { errMessage } from '$lib/utils/errors';
+  import { errMessage } from '#lib/utils/errors.js';
   import { onMount, onDestroy } from 'svelte';
-  import { auth }        from '$lib/stores/auth';
-  import { permissions } from '$lib/stores/permissions';
-  import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
-  import ConfirmDialog   from '$lib/components/common/ConfirmDialog.svelte';
+  import { auth }        from '#lib/stores/auth.js';
+  import { permissions } from '#lib/stores/permissions.js';
+  import ErrorDisplay    from '#lib/components/common/ErrorDisplay.svelte';
+  import ConfirmDialog   from '#lib/components/common/ConfirmDialog.svelte';
 
   import { dossierStore } from './stores/dossierStore.js';
   import PackList         from './components/PackList.svelte';

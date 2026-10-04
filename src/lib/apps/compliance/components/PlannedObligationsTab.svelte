@@ -13,22 +13,22 @@
 <script>
   import { onMount } from 'svelte';
   import { inspectionDefinitionsStore } from '../stores/inspectionDefinitionsStore.js';
-  import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
-  import { applyInspectionScope } from '$lib/apps/building_assets/utils/inspectionScope.js';
-  import { frequencyLabel } from '$lib/utils/inspectionSchedule';
-  import { isWalkEvidenced, isJobEvidenced, EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
-  import Button        from '$lib/components/common/Button.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-  import Modal from '$lib/components/common/Modal.svelte';
-  import FormInput from '$lib/components/common/FormInput.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
-  import { isRecordableReason } from '$lib/utils/statutoryExclusions.js';
-  import { fmtDate, today } from '$lib/utils/dates.js';
+  import { buildingAssetsStore } from '#lib/apps/building_assets/stores/buildingAssetsStore.js';
+  import { applyInspectionScope } from '#lib/apps/building_assets/utils/inspectionScope.js';
+  import { frequencyLabel } from '#lib/utils/inspectionSchedule.js';
+  import { isWalkEvidenced, isJobEvidenced, EVIDENCE_ROUTE_LABEL } from '#lib/utils/obligationEvidence.js';
+  import Button        from '#lib/components/common/Button.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import ErrorDisplay  from '#lib/components/common/ErrorDisplay.svelte';
+  import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
+  import Modal from '#lib/components/common/Modal.svelte';
+  import FormInput from '#lib/components/common/FormInput.svelte';
+  import FormTextarea from '#lib/components/common/FormTextarea.svelte';
+  import { isRecordableReason } from '#lib/utils/statutoryExclusions.js';
+  import { fmtDate, today } from '#lib/utils/dates.js';
   import PlannedObligationModal from './PlannedObligationModal.svelte';
-  import FilterBar from '$lib/components/common/FilterBar.svelte';
+  import FilterBar from '#lib/components/common/FilterBar.svelte';
   import {
     filterObligations, obligationFilterFields, hasEmptyScope,
   } from '../utils/registerFilter.js';

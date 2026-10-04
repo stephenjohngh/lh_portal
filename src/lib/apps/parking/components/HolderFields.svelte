@@ -9,9 +9,9 @@
      belongs to. -->
 <script>
   import { HOLDER_TYPES, isExternal } from '../utils/agreementModel.js';
-  import FormSelect   from '$lib/components/common/FormSelect.svelte';
-  import FormInput    from '$lib/components/common/FormInput.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
+  import FormSelect   from '#lib/components/common/FormSelect.svelte';
+  import FormInput    from '#lib/components/common/FormInput.svelte';
+  import FormTextarea from '#lib/components/common/FormTextarea.svelte';
 
   export let holder = {};
 </script>

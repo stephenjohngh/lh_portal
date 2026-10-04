@@ -1,24 +1,24 @@
 <!-- src/lib/apps/info/components/NoteView.svelte -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { permissions }  from '$lib/stores/permissions';
-  import Icon             from '$lib/components/icons/Icon.svelte';
-  import Button           from '$lib/components/common/Button.svelte';
-  import ProtectedButton  from '$lib/components/common/ProtectedButton.svelte';
-  import LoadingSpinner   from '$lib/components/common/LoadingSpinner.svelte';
-  import ConfirmDialog    from '$lib/components/common/ConfirmDialog.svelte';
-  import { fmtDate, fmtDateTime } from '$lib/utils/dates.js';
-  import { sanitizeHtml } from '$lib/utils/sanitizeHtml.js';
+  import { permissions }  from '#lib/stores/permissions.js';
+  import Icon             from '#lib/components/icons/Icon.svelte';
+  import Button           from '#lib/components/common/Button.svelte';
+  import ProtectedButton  from '#lib/components/common/ProtectedButton.svelte';
+  import LoadingSpinner   from '#lib/components/common/LoadingSpinner.svelte';
+  import ConfirmDialog    from '#lib/components/common/ConfirmDialog.svelte';
+  import { fmtDate, fmtDateTime } from '#lib/utils/dates.js';
+  import { sanitizeHtml } from '#lib/utils/sanitizeHtml.js';
   import { VISIBILITY_BADGES } from '../utils/infoHelpers.js';
-  import AttachedDocuments from '$lib/components/common/documents/AttachedDocuments.svelte';
-  import { DOC_FOLDERS, entityFolderPath } from '$lib/utils/documentUtils.js';
+  import AttachedDocuments from '#lib/components/common/documents/AttachedDocuments.svelte';
+  import { DOC_FOLDERS, entityFolderPath } from '#lib/utils/documentUtils.js';
 
   /**
    * The full note, with its section and creator joined on. `& Record<string,
    * any>` is deliberate — the query adds `section` and `creator`, which a bare
    * Tables<> would reject. Without the annotation the prop infers `never` and
    * every property read on it is an error.
-   * @type {(import('$lib/database.types').Tables<'info_notes'> & Record<string, any>)|null}
+   * @type {(import('#lib/database.types.ts').Tables<'info_notes'> & Record<string, any>)|null}
    */
   export let note    = null;
   export let loading = false;

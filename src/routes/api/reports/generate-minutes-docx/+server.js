@@ -1,13 +1,13 @@
 // src/routes/api/reports/generate-minutes-docx/+server.js
 // Meeting minutes as a Word document. The document is built in
-// $lib/server/managementDocx.js from the same grouping the minutes screens use
+// #lib/server/managementDocx.js from the same grouping the minutes screens use
 // (management/utils/meetingMinutes.js).
 
 import { json } from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/requireAuth';
-import { getLogger } from '$lib/utils/logger';
-import { today } from '$lib/utils/dates';
-import { buildMinutesReport, reportDocument, packReport } from '$lib/server/managementDocx.js';
+import { requireAuth } from '#lib/server/requireAuth.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { today } from '#lib/utils/dates.js';
+import { buildMinutesReport, reportDocument, packReport } from '#lib/server/managementDocx.js';
 
 const logger = getLogger('GenerateMinutesDocx');
 

@@ -4,8 +4,8 @@
 // register data is what broke tests four rounds running here.
 
 import { describe, it, expect } from 'vitest';
-import { STATUTORY_TEMPLATE } from '$lib/utils/statutoryTemplate.js';
-import { REGISTER_COLUMNS, PROVENANCE_COLUMNS } from '$lib/utils/registerRowMapping.js';
+import { STATUTORY_TEMPLATE } from '#lib/utils/statutoryTemplate.js';
+import { REGISTER_COLUMNS, PROVENANCE_COLUMNS } from '#lib/utils/registerRowMapping.js';
 import { filterRegister, REGISTER_STATUS_LABEL } from './registerFilter.js';
 import { buildRegisterSheet, EXPORT_COLUMNS, STATUS_FILL } from './registerExport.js';
 

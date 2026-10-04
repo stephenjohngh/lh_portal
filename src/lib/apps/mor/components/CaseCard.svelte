@@ -2,13 +2,13 @@
 <!-- Summary row in the case list. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Badge from '$lib/components/common/Badge.svelte';
+  import Badge from '#lib/components/common/Badge.svelte';
   import {
     STATUS_LABEL, STATUS_COLOUR,
     MECHANISM_LABEL, MECHANISM_COLOUR,
     bsrReportClock, BSR_TRACK_STATUSES,
-  } from '$lib/apps/mor/utils/morHelpers';
-  import { fmtDate } from '$lib/utils/dates';
+  } from '#lib/apps/mor/utils/morHelpers.js';
+  import { fmtDate } from '#lib/utils/dates.js';
 
   export let c; // mor_cases row
 

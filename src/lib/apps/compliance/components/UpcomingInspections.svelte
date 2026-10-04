@@ -8,14 +8,14 @@
      diverge). Rotating definitions also show their derived next trigger.
      Read-only: walks are started from the mobile Inspection app. -->
 <script>
-  import { computeInspectionSchedule, sortByDisplayOrder, frequencyLabel, scheduleDueText } from '$lib/utils/inspectionSchedule';
-  import { fmtDate } from '$lib/utils/dates';
-  import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
-  import { buildRotatingWalk } from '$lib/apps/inspection/utils/inspectionRotation.js';
-  import { lastDefinitionInspections } from '$lib/apps/inspection/public.js';
-  import { awaitingAccessByDefinition } from '$lib/apps/inspection/utils/inspectionHelpers.js';
-  import { buildComponentRef } from '$lib/utils/componentRef.js';
-  import { noAccessReasonLabel } from '$lib/utils/resultConstants.js';
+  import { computeInspectionSchedule, sortByDisplayOrder, frequencyLabel, scheduleDueText } from '#lib/utils/inspectionSchedule.js';
+  import { fmtDate } from '#lib/utils/dates.js';
+  import { buildingAssetsStore } from '#lib/apps/building_assets/stores/buildingAssetsStore.js';
+  import { buildRotatingWalk } from '#lib/apps/inspection/utils/inspectionRotation.js';
+  import { lastDefinitionInspections } from '#lib/apps/inspection/public.js';
+  import { awaitingAccessByDefinition } from '#lib/apps/inspection/utils/inspectionHelpers.js';
+  import { buildComponentRef } from '#lib/utils/componentRef.js';
+  import { noAccessReasonLabel } from '#lib/utils/resultConstants.js';
 
   export let definitions = [];   // active statutory_obligations rows
   export let sessions    = [];   // walk_sessions (only closed ones with a definition_id contribute)

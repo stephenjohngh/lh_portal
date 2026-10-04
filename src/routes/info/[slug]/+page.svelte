@@ -4,18 +4,18 @@
      'registered' AND the caller is authenticated with Info app access, or admin. -->
 <script>
   import { onMount }      from 'svelte';
-  import { page }         from '$app/stores';
-  import { supabase }     from '$lib/supabaseClient';
-  import { fmtDateLong }  from '$lib/utils/dates';
-  import { sanitizeHtml } from '$lib/utils/sanitizeHtml';
-  import { LOGO as lhLogo, LOGO_ALT } from '$lib/branding.js';
+  import { page }         from '$app/state';
+  import { supabase }     from '#lib/supabaseClient.js';
+  import { fmtDateLong }  from '#lib/utils/dates.js';
+  import { sanitizeHtml } from '#lib/utils/sanitizeHtml.js';
+  import { LOGO as lhLogo, LOGO_ALT } from '#lib/branding.js';
 
   let article  = null;
   let loading  = true;
   let notFound = false;
   let error    = '';
 
-  $: slug = $page.params.slug;
+  $: slug = page.params.slug;
 
   onMount(async () => {
     try {

@@ -14,7 +14,7 @@ localStorage.debug = "app:*"
  *
   */
 import createDebug from "debug";
-import { browser } from "$app/environment";
+import { browser } from "$app/env";
 
 if (browser) {
   if (import.meta.env.DEV) {

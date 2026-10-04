@@ -1,13 +1,13 @@
 <!-- src/lib/apps/settings/SettingsApp.svelte -->
 <script>
-  import { auth } from '$lib/stores/auth';
-  import { postJson } from '$lib/utils/request';
-  import { errMessage } from '$lib/utils/errors.js';
-  import { getLogger } from '$lib/utils/logger';
-  import Button from '$lib/components/common/Button.svelte';
-  import FormInput from '$lib/components/common/FormInput.svelte';
-  import Modal from '$lib/components/common/Modal.svelte';
-  import Icon from '$lib/components/icons/Icon.svelte';
+  import { auth } from '#lib/stores/auth.js';
+  import { postJson } from '#lib/utils/request.js';
+  import { errMessage } from '#lib/utils/errors.js';
+  import { getLogger } from '#lib/utils/logger.js';
+  import Button from '#lib/components/common/Button.svelte';
+  import FormInput from '#lib/components/common/FormInput.svelte';
+  import Modal from '#lib/components/common/Modal.svelte';
+  import Icon from '#lib/components/icons/Icon.svelte';
 
   const logger = getLogger('SettingsApp');
 
@@ -34,7 +34,7 @@
     passwordSuccess = '';
     try {
       // ⛔ Checked on the server, under the login lockout and with an audit
-      // entry ($lib/server/passwordCheck.js). It used to sign in from the
+      // entry (#lib/server/passwordCheck.js). It used to sign in from the
       // browser, which skipped both and called every error a wrong password.
       await postJson('/api/auth/change-password', {
         currentPassword: passwordForm.currentPassword,

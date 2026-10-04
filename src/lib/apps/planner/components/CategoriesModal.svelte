@@ -13,11 +13,11 @@
      colour at all. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Modal         from '$lib/components/common/Modal.svelte';
-  import Button        from '$lib/components/common/Button.svelte';
-  import FormInput     from '$lib/components/common/FormInput.svelte';
-  import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import Modal         from '#lib/components/common/Modal.svelte';
+  import Button        from '#lib/components/common/Button.svelte';
+  import FormInput     from '#lib/components/common/FormInput.svelte';
+  import ErrorDisplay  from '#lib/components/common/ErrorDisplay.svelte';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
   import { PALETTE, swatch, pickable } from '../utils/categories.js';
 
   export let show = false;

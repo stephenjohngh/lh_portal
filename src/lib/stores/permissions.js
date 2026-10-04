@@ -2,8 +2,8 @@
 // Permission management store with per-app read-only support
 
 import { writable } from 'svelte/store';
-import { supabase } from '$lib/supabaseClient';
-import { getLogger } from '$lib/utils/logger';
+import { supabase } from '#lib/supabaseClient.js';
+import { getLogger } from '#lib/utils/logger.js';
 
 const logger = getLogger('Permissions');
 

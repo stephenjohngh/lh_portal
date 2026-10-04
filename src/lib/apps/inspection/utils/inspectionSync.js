@@ -16,7 +16,7 @@
 //   • the status patch and the session-complete update set fixed values.
 // Running an op twice therefore lands on the same server state as running it once.
 
-import { errMessage } from '$lib/utils/errors.js';
+import { errMessage } from '#lib/utils/errors.js';
 
 /**
  * @param {{ type: string, payload: object }} op

@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 import {
   holderClass, tariffFor, matchesTariff, termsFromTariff, validateTariff, reopenedBy, priceList, tariffRow,
 } from './tariffModel.js';
-import { PARKING_BAY_TYPES } from '$lib/apps/building_assets/utils/spaceTypeOptions.js';
+import { PARKING_BAY_TYPES } from '#lib/apps/building_assets/utils/spaceTypeOptions.js';
 
 const t = (o) => ({ id: o.id, bay_size: 'Car', holder_class: 'all', amount: 60, period: 'month',
   vat_treatment: 'not_decided', deposit_amount: null, effective_from: '2026-01-01', effective_to: null, ...o });

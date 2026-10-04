@@ -24,11 +24,11 @@
 // for them here, we recompute reactively in the UI from $issuesStore.
 
 import { writable, derived } from 'svelte/store';
-import { supabase } from '$lib/supabaseClient';
-import { api }      from '$lib/utils/api';
-import { logAudit } from '$lib/utils/auditLogger';
-import { getLogger } from '$lib/utils/logger';
-import { currentUser } from '$lib/utils/currentUser.js';
+import { supabase } from '#lib/supabaseClient.js';
+import { api }      from '#lib/utils/api.js';
+import { logAudit } from '#lib/utils/auditLogger.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { currentUser } from '#lib/utils/currentUser.js';
 
 const logger = getLogger('meetingsStore');
 
@@ -48,7 +48,7 @@ function createMeetingsStore() {
  * Store state, typed so consumers get Row types instead of `never`.
  * `& Record<string, any>` tolerates the joined aliases these queries select.
    *
-   * @typedef {import('$lib/database.types').Tables<'meetings'> & Record<string, any>} Meeting
+   * @typedef {import('#lib/database.types.ts').Tables<'meetings'> & Record<string, any>} Meeting
    * @typedef {{ list: Meeting[], current: Meeting | null, loaded: boolean, error: string | null }} MeetingsState
    */
   const _state = writable(/** @type {MeetingsState} */ ({

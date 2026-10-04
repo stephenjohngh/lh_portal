@@ -2,8 +2,8 @@
 // Authentication and authorization utilities
 // NOW WITH READ-ONLY USER SUPPORT
 
-import { supabase } from '$lib/supabaseClient';
-import { getLogger } from '$lib/utils/logger';
+import { supabase } from '#lib/supabaseClient.js';
+import { getLogger } from '#lib/utils/logger.js';
 
 const logger = getLogger('auth');
 

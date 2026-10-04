@@ -4,11 +4,11 @@
      is a Svelte a11y compile error. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Button          from '$lib/components/common/Button.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import LoadingSpinner  from '$lib/components/common/LoadingSpinner.svelte';
-  import Icon            from '$lib/components/icons/Icon.svelte';
-  import { fmtDate }     from '$lib/utils/dates';
+  import Button          from '#lib/components/common/Button.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import LoadingSpinner  from '#lib/components/common/LoadingSpinner.svelte';
+  import Icon            from '#lib/components/icons/Icon.svelte';
+  import { fmtDate }     from '#lib/utils/dates.js';
 
   export let packs   = [];
   export let loading = false;

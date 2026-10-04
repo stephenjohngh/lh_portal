@@ -1,6 +1,6 @@
 // src/lib/server/signInOutcome.js
 // What a Supabase sign-in error means for the person at the login page, and
-// whether it counts towards the lockout ($lib/server/loginLockout.js).
+// whether it counts towards the lockout (#lib/server/loginLockout.js).
 //
 // ⛔ WHY THIS EXISTS (2026-10-02). The login route answered EVERY Supabase
 // error with "Invalid email or password" and recorded it as a failed attempt.

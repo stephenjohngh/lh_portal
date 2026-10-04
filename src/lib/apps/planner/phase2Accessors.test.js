@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const h = vi.hoisted(() => ({ tables: {} }));
-vi.mock('$lib/utils/api', () => ({
+vi.mock('#lib/utils/api.js', () => ({
   api: {
     get: vi.fn(async (table) => h.tables[table] ?? []),
     getAll: vi.fn(async (table) => h.tables[table] ?? []),
@@ -14,12 +14,12 @@ vi.mock('$lib/utils/api', () => ({
 }));
 
 // Transitive imports reach the Supabase client and $env; neither is under test.
-vi.mock('$lib/supabaseClient', () => ({ supabase: {} }));
+vi.mock('#lib/supabaseClient.js', () => ({ supabase: {} }));
 vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://x', PUBLIC_SUPABASE_ANON_KEY: 'k' }));
 
-import { listBsrReportDeadlines } from '$lib/apps/mor/public.js';
-import { listCertificateExpiries } from '$lib/apps/maintenance/public.js';
-import { listReviewsDue, listRiskReviewsDue, listCompetenceExpiries } from '$lib/apps/golden_thread/public.js';
+import { listBsrReportDeadlines } from '#lib/apps/mor/public.js';
+import { listCertificateExpiries } from '#lib/apps/maintenance/public.js';
+import { listReviewsDue, listRiskReviewsDue, listCompetenceExpiries } from '#lib/apps/golden_thread/public.js';
 
 beforeEach(() => { h.tables = {}; });
 

@@ -35,8 +35,8 @@ const h = vi.hoisted(() => {
   return { api, defaultGet, setTables: (t) => { tables = t; }, setFailFloors: (v) => { failFloors = v; } };
 });
 
-vi.mock('$lib/utils/api',    () => ({ api: h.api }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/api.js',    () => ({ api: h.api }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 
 const { mobileplanStore } = await import('./mobileplanStore.js');
 

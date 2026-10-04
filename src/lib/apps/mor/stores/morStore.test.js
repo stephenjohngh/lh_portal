@@ -51,11 +51,11 @@ const h = vi.hoisted(() => {
   };
 });
 
-vi.mock('$lib/supabaseClient',            () => ({ supabase: h.supabase }));
-vi.mock('$lib/utils/api',                 () => ({ api: h.api }));
-vi.mock('$lib/utils/auditLogger',         () => ({ logAudit: h.logAudit }));
-vi.mock('$lib/utils/logger',              () => ({ getLogger: () => () => {} }));
-vi.mock('$lib/utils/caseVerificationCode', () => ({ generateVerificationCode: () => 'R7PQK2' }));
+vi.mock('#lib/supabaseClient.js',            () => ({ supabase: h.supabase }));
+vi.mock('#lib/utils/api.js',                 () => ({ api: h.api }));
+vi.mock('#lib/utils/auditLogger.js',         () => ({ logAudit: h.logAudit }));
+vi.mock('#lib/utils/logger.js',              () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/caseVerificationCode.js', () => ({ generateVerificationCode: () => 'R7PQK2' }));
 
 const { morStore } = await import('./morStore.js');
 

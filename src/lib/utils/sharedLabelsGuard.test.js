@@ -2,10 +2,10 @@
 //
 // Words the portal shows for its own values are written ONCE (2026-10-02,
 // PROJECT_STATUS §6aaa item 7):
-//   · issue priorities and action statuses → $lib/utils/constants.js
+//   · issue priorities and action statuses → #lib/utils/constants.js
 //     (getPriorityLabel, getActionStatusLabel);
-//   · component statuses → $lib/utils/resultConstants.js (statusLabel);
-//   · a thrown value as text → $lib/utils/errors.js (errMessage).
+//   · component statuses → #lib/utils/resultConstants.js (statusLabel);
+//   · a thrown value as text → #lib/utils/errors.js (errMessage).
 // The phone issues app, Mobile Plan, the plan marker and the component Word
 // report each kept their own copy. A copy agrees until the day one changes.
 // Colours are NOT checked: the phone apps have their own theme.
@@ -15,7 +15,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { statusLabel } from './resultConstants.js';
 import { getActionStatusLabel, getPriorityLabel, ACTION_STATUS } from './constants.js';
-import { STATUS_LABELS, resultLabel } from '$lib/apps/mobileplan/utils/planFilter.js';
+import { STATUS_LABELS, resultLabel } from '#lib/apps/mobileplan/utils/planFilter.js';
 
 function sources(dir, out = []) {
   for (const name of readdirSync(dir)) {

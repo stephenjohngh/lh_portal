@@ -12,7 +12,7 @@
 import ExcelJS from 'exceljs';
 import {
   buildSheetPreview, parseCsv, normalisePreviewRows,
-} from '$lib/apps/dossier/utils/sheetPreview.js';
+} from '#lib/apps/dossier/utils/sheetPreview.js';
 
 /** Above this we decline rather than pull a whole workbook into memory to show 12 rows. */
 export const MAX_SHEET_BYTES = 15 * 1024 * 1024;

@@ -12,12 +12,12 @@
 -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Button from '$lib/components/common/Button.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import { fmtDate } from '$lib/utils/dates.js';
-  import { describeDiff } from '$lib/utils/registerDiff.js';
+  import Button from '#lib/components/common/Button.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import { fmtDate } from '#lib/utils/dates.js';
+  import { describeDiff } from '#lib/utils/registerDiff.js';
 
-  /** @type {ReturnType<typeof import('$lib/utils/registerDiff.js').diffRegister>} */
+  /** @type {ReturnType<typeof import('#lib/utils/registerDiff.js').diffRegister>} */
   export let diff;
   export let busy = false;
 

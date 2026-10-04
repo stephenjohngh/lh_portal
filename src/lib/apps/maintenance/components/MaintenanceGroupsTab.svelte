@@ -3,12 +3,12 @@
      Each group collects a set of building systems, component types, and spaces
      that should be planned for renewal together. -->
 <script>
-  import { matchesSearch } from '$lib/utils/textSearch.js';
+  import { matchesSearch } from '#lib/utils/textSearch.js';
   import { maintenanceGroupsStore } from '../stores/maintenanceGroupsStore.js';
-  import Modal         from '$lib/components/common/Modal.svelte';
-  import Button        from '$lib/components/common/Button.svelte';
-  import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
+  import Modal         from '#lib/components/common/Modal.svelte';
+  import Button        from '#lib/components/common/Button.svelte';
+  import ErrorDisplay  from '#lib/components/common/ErrorDisplay.svelte';
+  import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
 
   // Building-assets reference data passed in from AdminApp
   export let systems    = [];   // building_systems[]

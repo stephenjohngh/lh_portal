@@ -16,7 +16,7 @@
 // Reading in a component's markup: use $auth.user (the auth store), which is
 // reactive. These are for code that is about to write.
 
-import { supabase } from '$lib/supabaseClient';
+import { supabase } from '#lib/supabaseClient.js';
 
 /**
  * The signed-in user, or null.

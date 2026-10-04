@@ -3,6 +3,10 @@
 	"private": true,
 	"version": "1.0.0",
 	"type": "module",
+	"imports": {
+		"#lib": "./src/lib/index.js",
+		"#lib/*": "./src/lib/*"
+	},
 	"engines": {
 		"node": "24.x"
 	},
@@ -24,10 +28,11 @@
 		"db:rules": "node scripts/db-rules.mjs"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-netlify": "^5.2.4",
-		"@sveltejs/adapter-node": "5.5.7",
-		"@sveltejs/kit": "^2.49.1",
-		"@sveltejs/vite-plugin-svelte": "^6.2.1",
+		"@sveltejs/adapter-netlify": "^7.0.0",
+		"@sveltejs/adapter-node": "6.0.0",
+		"@sveltejs/kit": "^3.0.0",
+		"@sveltejs/vite-plugin-svelte": "^7.3.1",
+		"@tailwindcss/vite": "^4.3.3",
 		"@testing-library/jest-dom": "^6.9.1",
 		"@testing-library/svelte": "^5.4.2",
 		"@types/node": "^24.19.1",
@@ -40,14 +45,13 @@
 		"svelte-check": "^4.7.6",
 		"tailwindcss": "^4.3.3",
 		"typescript": "^6.0.3",
-		"vite": "^7.3.6",
+		"vite": "^8.3.2",
 		"vitest": "^4.1.11"
 	},
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.91.1",
 		"@sentry/sveltekit": "^10.76.0",
 		"@supabase/supabase-js": "^2.117.2",
-		"@tailwindcss/postcss": "^4.3.3",
 		"@tiptap/core": "3.31.3",
 		"@tiptap/extension-table": "3.31.3",
 		"@tiptap/starter-kit": "3.31.3",
@@ -57,10 +61,5 @@
 		"dompurify": "^3.4.5",
 		"exceljs": "^4.4.0",
 		"googleapis": "^171.4.0"
-	},
-	"overrides": {
-		"@sveltejs/kit": {
-			"cookie": "^0.7.0"
-		}
 	}
 }

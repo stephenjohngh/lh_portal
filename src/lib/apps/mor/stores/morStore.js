@@ -1,16 +1,16 @@
 // src/lib/apps/mor/stores/morStore.js
 import { errMessage } from '../../../utils/errors.js';
 import { writable } from 'svelte/store';
-import { supabase } from '$lib/supabaseClient';
-import { readAllPages, chunks } from '$lib/utils/readAllPages.js';
-import { api }      from '$lib/utils/api';
-import { logAudit } from '$lib/utils/auditLogger';
-import { getLogger } from '$lib/utils/logger';
-import { isValidTransition } from '$lib/apps/mor/utils/morHelpers';
-import { generateVerificationCode } from '$lib/utils/caseVerificationCode';
-import { listDocumentsCiting } from '$lib/apps/golden_thread/public.js';
-import { storeLoader } from '$lib/utils/storeLoad.js';
-import { currentUser } from '$lib/utils/currentUser.js';
+import { supabase } from '#lib/supabaseClient.js';
+import { readAllPages, chunks } from '#lib/utils/readAllPages.js';
+import { api }      from '#lib/utils/api.js';
+import { logAudit } from '#lib/utils/auditLogger.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { isValidTransition } from '#lib/apps/mor/utils/morHelpers.js';
+import { generateVerificationCode } from '#lib/utils/caseVerificationCode.js';
+import { listDocumentsCiting } from '#lib/apps/golden_thread/public.js';
+import { storeLoader } from '#lib/utils/storeLoad.js';
+import { currentUser } from '#lib/utils/currentUser.js';
 
 const logger = getLogger('morStore');
 
@@ -37,9 +37,9 @@ const CASE_SELECT = `
  * for a "does not exist on type 'MorCase'". The intersection keeps the real
  * column types — which is the whole benefit — while tolerating the joins.
  *
- * @typedef {import('$lib/database.types').Tables<'mor_cases'> & Record<string, any>} MorCase
- * @typedef {import('$lib/database.types').Tables<'mor_timeline_entries'> & Record<string, any>} TimelineEntry
- * @typedef {import('$lib/database.types').Tables<'mor_mitigations'> & Record<string, any>} Mitigation
+ * @typedef {import('#lib/database.types.ts').Tables<'mor_cases'> & Record<string, any>} MorCase
+ * @typedef {import('#lib/database.types.ts').Tables<'mor_timeline_entries'> & Record<string, any>} TimelineEntry
+ * @typedef {import('#lib/database.types.ts').Tables<'mor_mitigations'> & Record<string, any>} Mitigation
  * @typedef {{
  *   cases: MorCase[],
  *   selectedCase: MorCase | null,

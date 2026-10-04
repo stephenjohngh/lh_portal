@@ -234,7 +234,7 @@ export function sanitiseFolderSegment(value, maxLength = 60) {
  * Drive provider looked folders up by WHOLE name, so `New title (1a2b3c4d)`
  * started a second folder beside `Old title (1a2b3c4d)`. Since 2026-09-27 it
  * finds a record's folder by the suffix and renames it
- * ($lib/server/storage/folderNames.js reads the suffix — keep the two in
+ * (#lib/server/storage/folderNames.js reads the suffix — keep the two in
  * step), and an emptied record folder is binned when its last file is deleted.
  *
  * Falls back to the bare parent when there is nothing to name the child with,

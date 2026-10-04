@@ -26,7 +26,7 @@
 // never see an action, not because they remember not to count it.
 //
 // ⚠ NO IMPORTS, deliberately. The compliance guard scripts run under plain node
-// with no Vite, so anything they need has to be importable without `$lib`.
+// with no Vite, so anything they need has to be importable without `#lib`.
 
 /** @typedef {'requirement'|'action'|'absence'|'caveat'} RegisterKind */
 

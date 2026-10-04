@@ -4,9 +4,9 @@
      All CRUD is handled in child panels; this component manages
      selection state and calls reload() after any save. -->
 <script>
-  import { today } from '$lib/utils/dates';
-  import { downloadCsvRows } from '$lib/utils/download';
-  import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
+  import { today } from '#lib/utils/dates.js';
+  import { downloadCsvRows } from '#lib/utils/download.js';
+  import { buildingAssetsStore } from '#lib/apps/building_assets/stores/buildingAssetsStore.js';
   import SystemPanel      from './SystemPanel.svelte';
   import TypePanel        from './TypePanel.svelte';
   import AttrDefPanel     from './AttrDefPanel.svelte';

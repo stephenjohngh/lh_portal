@@ -16,9 +16,9 @@ const h = vi.hoisted(() => ({
   uploadDocument: vi.fn(),
 }));
 
-vi.mock('$lib/utils/api',         () => ({ api: h.api }));
-vi.mock('$lib/utils/request',     () => ({ postJson: h.postJson }));
-vi.mock('$lib/utils/documentApi', () => ({ uploadDocument: h.uploadDocument }));
+vi.mock('#lib/utils/api.js',         () => ({ api: h.api }));
+vi.mock('#lib/utils/request.js',     () => ({ postJson: h.postJson }));
+vi.mock('#lib/utils/documentApi.js', () => ({ uploadDocument: h.uploadDocument }));
 
 const { registerExistingArtifact, findDocumentBySource, findDocumentsBySources, listDocumentsCiting } = await import('./public.js');
 

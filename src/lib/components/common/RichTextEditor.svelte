@@ -2,7 +2,7 @@
 <!--
   Lightweight WYSIWYG editor for Info notes and Management activities.
   Built on Tiptap (headless ProseMirror wrapper). Its extension list lives in
-  $lib/utils/richTextExtensions.js, where a test can build the same editor.
+  #lib/utils/richTextExtensions.js, where a test can build the same editor.
 
   Toolbar: Bold · Italic · Underline · Bullet list · Numbered list · Undo · Redo
   Keyboard shortcuts work natively: Ctrl+B, Ctrl+I, Ctrl+U.
@@ -19,7 +19,7 @@
 <script>
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { Editor } from '@tiptap/core';
-  import { richTextExtensions } from '$lib/utils/richTextExtensions.js';
+  import { richTextExtensions } from '#lib/utils/richTextExtensions.js';
   import EditorFindBar from './EditorFindBar.svelte';
 
   export let value       = '';

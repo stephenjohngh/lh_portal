@@ -22,7 +22,7 @@
 <script>
   import { createEventDispatcher, tick } from 'svelte';
   import { configMatches }   from '../componentPresets.js';
-  import { permissions }     from '$lib/stores/permissions';
+  import { permissions }     from '#lib/stores/permissions.js';
 
   export let currentConfig = null;   // { filters, columns } — live state from parent
   export let presets       = [];     // all DB presets visible to this user

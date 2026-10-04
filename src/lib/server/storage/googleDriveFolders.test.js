@@ -14,7 +14,7 @@ const h = vi.hoisted(() => ({
 
 const FOLDER = 'application/vnd.google-apps.folder';
 
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 vi.mock('$env/dynamic/private', () => ({
   env: {
     GOOGLE_DRIVE_ROOT_FOLDER_ID: 'ROOT',

@@ -25,12 +25,12 @@ vi.mock('@sveltejs/kit', () => ({ json: (body, init) => ({ body, status: init?.s
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({ from: vi.fn(() => ({})) }) }));
 vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'https://proj.supabase.co' }));
 vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'svc' } }));
-vi.mock('$lib/server/publicRateLimit.js', () => ({ checkRateLimit: h.checkRateLimit }));
-vi.mock('$lib/server/verifyOrigin.js', () => ({ isSameOrigin: h.isSameOrigin, isTrustedStorageUrl: h.isTrustedStorageUrl }));
-vi.mock('$lib/server/urlSignature.js', () => ({ verifyUrlSignature: h.verifyUrlSignature }));
-vi.mock('$lib/utils/caseVerificationCode', () => ({ generateVerificationCode: () => 'R7PQK2', formatVerificationCode: (c) => c }));
-vi.mock('$lib/server/auditLogger', () => ({ logAudit: vi.fn(), getIpAddress: () => '1.2.3.4', getUserAgent: () => 'ua' }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/server/publicRateLimit.js', () => ({ checkRateLimit: h.checkRateLimit }));
+vi.mock('#lib/server/verifyOrigin.js', () => ({ isSameOrigin: h.isSameOrigin, isTrustedStorageUrl: h.isTrustedStorageUrl }));
+vi.mock('#lib/server/urlSignature.js', () => ({ verifyUrlSignature: h.verifyUrlSignature }));
+vi.mock('#lib/utils/caseVerificationCode.js', () => ({ generateVerificationCode: () => 'R7PQK2', formatVerificationCode: (c) => c }));
+vi.mock('#lib/server/auditLogger.js', () => ({ logAudit: vi.fn(), getIpAddress: () => '1.2.3.4', getUserAgent: () => 'ua' }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 
 const { POST } = await import('./+server.js');
 // POST receives { request, url } — pass them separately.

@@ -28,18 +28,18 @@
 <script>
   import { onMount, createEventDispatcher } from 'svelte';
   import { inspectionDefinitionsStore } from '../stores/inspectionDefinitionsStore.js';
-  import { templateEntry } from '$lib/utils/statutoryTemplate.js';
-  import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
+  import { templateEntry } from '#lib/utils/statutoryTemplate.js';
+  import { EVIDENCE_ROUTE_LABEL } from '#lib/utils/obligationEvidence.js';
   import { DISPLAY_DUTY_KEY, displayDutyPlan } from '../utils/displayRegisterLink.js';
   import { displayRegisterStore, SINGLETON_CATEGORIES } from '../stores/displayRegisterStore.js';
   import { attentionReason, attentionLabel } from '../utils/displayRegisterStatus.js';
-  import { listCurrentDocuments } from '$lib/apps/golden_thread/public.js';
-  import { fmtDateOnly, fmtDate, today as todayLondon } from '$lib/utils/dates';
-  import Button         from '$lib/components/common/Button.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import ErrorDisplay   from '$lib/components/common/ErrorDisplay.svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
-  import ConfirmDialog  from '$lib/components/common/ConfirmDialog.svelte';
+  import { listCurrentDocuments } from '#lib/apps/golden_thread/public.js';
+  import { fmtDateOnly, fmtDate, today as todayLondon } from '#lib/utils/dates.js';
+  import Button         from '#lib/components/common/Button.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import ErrorDisplay   from '#lib/components/common/ErrorDisplay.svelte';
+  import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
+  import ConfirmDialog  from '#lib/components/common/ConfirmDialog.svelte';
   import DisplayItemModal from './DisplayItemModal.svelte';
 
   const dispatch = createEventDispatcher();

@@ -1,10 +1,10 @@
 <!-- src/lib/apps/mor/components/CaseList.svelte -->
 <script>
-  import { matchesSearch } from '$lib/utils/textSearch.js';
+  import { matchesSearch } from '#lib/utils/textSearch.js';
   import { createEventDispatcher } from 'svelte';
-  import CaseCard from '$lib/apps/mor/components/CaseCard.svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
-  import { STATUS_LABEL, OPEN_STATUSES } from '$lib/apps/mor/utils/morHelpers';
+  import CaseCard from '#lib/apps/mor/components/CaseCard.svelte';
+  import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
+  import { STATUS_LABEL, OPEN_STATUSES } from '#lib/apps/mor/utils/morHelpers.js';
 
   export let cases   = [];
   export let loading = false;

@@ -21,7 +21,7 @@
 
 import { google }  from 'googleapis';
 import { Readable } from 'stream';
-import { getLogger } from '$lib/utils/logger';
+import { getLogger } from '#lib/utils/logger.js';
 // $env/dynamic/private reads from process.env at runtime — variables do not
 // need to be defined at build time.  This is intentional: service account
 // vars (GOOGLE_DRIVE_CLIENT_EMAIL / GOOGLE_DRIVE_PRIVATE_KEY) are optional

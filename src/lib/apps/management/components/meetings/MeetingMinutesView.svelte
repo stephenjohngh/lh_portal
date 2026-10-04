@@ -13,12 +13,12 @@
 -->
 <script>
   import { onMount }              from 'svelte';
-  import { fmtDate, fmtDateLong, fmtDateTime } from '$lib/utils/dates';
-  import { profiles, profilesStore }           from '$lib/stores/profiles';
+  import { fmtDate, fmtDateLong, fmtDateTime } from '#lib/utils/dates.js';
+  import { profiles, profilesStore }           from '#lib/stores/profiles.js';
   import { buildFieldSummary }                 from '../reports/reportUtils.js';
-  import { sanitizeHtml }                       from '$lib/utils/sanitizeHtml';
+  import { sanitizeHtml }                       from '#lib/utils/sanitizeHtml.js';
   import { buildMeetingMinutes }               from '../../utils/meetingMinutes.js';
-  import { ACTIVITY_TYPE_CONFIG }              from '$lib/utils/constants';
+  import { ACTIVITY_TYPE_CONFIG }              from '#lib/utils/constants.js';
 
   export let meeting = null;
   export let issues  = [];   // already filtered to this meeting's items

@@ -2,8 +2,8 @@
 // Annotations domain: free-form text labels placed on floor plan images.
 // x_position and y_position are 0–1 fractions of the plan image dimensions.
 
-import { api }           from '$lib/utils/api';
-import { logAudit }      from '$lib/utils/auditLogger';
+import { api }           from '#lib/utils/api.js';
+import { logAudit }      from '#lib/utils/auditLogger.js';
 import { requireUserId } from './helpers.js';
 
 const AUDIT_OPTS = { appId: 'building_assets', eventCategory: 'building_assets' };

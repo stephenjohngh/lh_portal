@@ -4,7 +4,7 @@
 // Spec 2 §6 calls inline preview "the most common failure point in homegrown
 // tools", so the decisions live here on their own rather than inside a node.
 
-import { declarableMime } from '$lib/utils/mimeTypes';
+import { declarableMime } from '#lib/utils/mimeTypes.js';
 import { isSheetMime }    from './sheetPreview.js';
 
 /** Ids the media proxy will accept — it applies exactly this guard itself. */
@@ -114,7 +114,7 @@ export function isProxyUrl(url) {
   }
 }
 
-/** Human-readable size. Mirrors $lib/utils/files fmtBytes, kept local so this module stays pure. */
+/** Human-readable size. Mirrors #lib/utils/files fmtBytes, kept local so this module stays pure. */
 export function fmtSize(bytes) {
   const n = Number(bytes);
   if (!Number.isFinite(n) || n <= 0) return '';
@@ -181,7 +181,7 @@ export async function fetchSheetPreview(doc, rows) {
   if (!isSheetMime(doc?.mime_type, doc?.display_name || doc?.filename)) return null;
 
   try {
-    const { getJson } = await import('$lib/utils/request');
+    const { getJson } = await import('#lib/utils/request.js');
     const query = rows ? `?rows=${encodeURIComponent(rows)}` : '';
     const body = await getJson(
       `/api/dossier/sheet-preview/${id}${query}`, 'Could not read the spreadsheet');

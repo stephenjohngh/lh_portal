@@ -8,14 +8,14 @@
 // HttpOnly (no script can read it), SameSite=Lax, scoped to /api/media only,
 // signed, and good for 12 hours. The client renews it on every token refresh
 // (src/lib/stores/auth.js). Security review, 2026-09-27;
-// $lib/server/mediaAccess.js has the rest.
+// #lib/server/mediaAccess.js has the rest.
 
 import { json }        from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/requireAuth.js';
+import { requireAuth } from '#lib/server/requireAuth.js';
 import {
   MEDIA_COOKIE, MEDIA_COOKIE_PATH, mediaSessionSeconds, mediaSessionValue,
-} from '$lib/server/mediaAccess.js';
-import { loadServerPolicies } from '$lib/server/policies.js';
+} from '#lib/server/mediaAccess.js';
+import { loadServerPolicies } from '#lib/server/policies.js';
 
 export async function POST({ request, cookies }) {
   const auth = await requireAuth(request);

@@ -7,11 +7,11 @@
   import { maintenanceStore } from '../stores/maintenanceStore.js';
   import { frequencyLabel, scopeTypeLabel, addDaysISO, today } from '../utils/maintenanceHelpers.js';
   import { obligationJobScope, scopeSummary, plannedOccurrenceDates } from '../utils/obligationJobScope.js';
-  import { planExceedsCeiling } from '$lib/utils/obligationSchedule.js';
-  import { fmtDate, fmtToday } from '$lib/utils/dates.js';
-  import { requestDownload } from '$lib/utils/download.js';
-  import Button from '$lib/components/common/Button.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import { planExceedsCeiling } from '#lib/utils/obligationSchedule.js';
+  import { fmtDate, fmtToday } from '#lib/utils/dates.js';
+  import { requestDownload } from '#lib/utils/download.js';
+  import Button from '#lib/components/common/Button.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
 
   export let jobs = [];   // store.jobs — for computing last/next dates
 

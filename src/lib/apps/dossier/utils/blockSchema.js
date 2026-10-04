@@ -12,7 +12,7 @@
 import { Extension } from '@tiptap/core';
 import StarterKit    from '@tiptap/starter-kit';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
-import { newUuid }   from '$lib/utils/uuid';
+import { newUuid }   from '#lib/utils/uuid.js';
 import { planIdFixes, collectBlocks } from './blockId.js';
 import { Callout }   from './calloutNode.js';
 import { Toggle, ToggleSummary, ToggleBody } from './toggleNode.js';
@@ -20,7 +20,7 @@ import { Asset }   from './assetNode.js';
 import { DocLink } from './docLinkMark.js';
 import { EmbedDoc } from './embedDocNode.js';
 import { EmbedDataset } from './embedDatasetNode.js';
-import { MarkdownPaste } from '$lib/utils/markdownPasteExtension.js';
+import { MarkdownPaste } from '#lib/utils/markdownPasteExtension.js';
 import { Table, TableRow, TableHeader, TableCell } from '@tiptap/extension-table';
 
 /** An empty ProseMirror doc — matches the DB default on dossier_docs.blocks. */

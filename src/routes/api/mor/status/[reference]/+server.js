@@ -17,10 +17,10 @@ import { json }                       from '@sveltejs/kit';
 import { createClient }               from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL }        from '$env/static/public';
 import { env } from '$env/dynamic/private';
-import { checkRateLimit }             from '$lib/server/publicRateLimit.js';
-import { isSameOrigin }               from '$lib/server/verifyOrigin.js';
-import { normalizeVerificationCode }  from '$lib/utils/caseVerificationCode';
-import { getLogger }                  from '$lib/utils/logger';
+import { checkRateLimit }             from '#lib/server/publicRateLimit.js';
+import { isSameOrigin }               from '#lib/server/verifyOrigin.js';
+import { normalizeVerificationCode }  from '#lib/utils/caseVerificationCode.js';
+import { getLogger }                  from '#lib/utils/logger.js';
 
 const logger = getLogger('mor/status');
 

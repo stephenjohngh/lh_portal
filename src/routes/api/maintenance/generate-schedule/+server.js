@@ -7,7 +7,7 @@
 //   generatedAt: string (e.g. "21 Apr 2026")
 
 import { json } from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/requireAuth';
+import { requireAuth } from '#lib/server/requireAuth.js';
 import {
   Document, Packer,
   Paragraph, TextRun,
@@ -15,15 +15,15 @@ import {
   PageBreak, HeadingLevel,
   WidthType, TableLayoutType
 } from 'docx';
-import { getLogger } from '$lib/utils/logger';
-import { fmtToday, today } from '$lib/utils/dates';
+import { getLogger } from '#lib/utils/logger.js';
+import { fmtToday, today } from '#lib/utils/dates.js';
 import {
   CONTENT_W, COLOURS, BORDERS,
   hCell, dCell, run, para,
   makeHeader, makeFooter,
   DOC_STYLES, pageProps
-} from '$lib/server/docxHelpers.js';
-import { documentBuildingName } from '$lib/server/identity.js';
+} from '#lib/server/docxHelpers.js';
+import { documentBuildingName } from '#lib/server/identity.js';
 
 const logger = getLogger('maintenance:generate-schedule');
 

@@ -20,20 +20,20 @@ const h = vi.hoisted(() => ({
   providersForFileIds: vi.fn(async () => new Map([['drive-1', 'google_drive']])),
 }));
 
-vi.mock('$lib/server/storage/index.js', () => ({
+vi.mock('#lib/server/storage/index.js', () => ({
   ownerOf: (name) => {
     if (!name || name === 'google_drive') return { getFileStream: h.getFileStream };
     if (name === 'supabase') return { getFileStream: h.sbStream };
     throw new Error(`unknown provider ${name}`);
   },
 }));
-vi.mock('$lib/server/documentLibrary.js', () => ({ providersForFileIds: h.providersForFileIds }));
-vi.mock('$lib/server/storage/storageErrors.js', () => ({
+vi.mock('#lib/server/documentLibrary.js', () => ({ providersForFileIds: h.providersForFileIds }));
+vi.mock('#lib/server/storage/storageErrors.js', () => ({
   friendlyStorageError: (e) => String(e?.message ?? e),
 }));
-vi.mock('$lib/server/publicRateLimit.js', () => ({ checkRateLimit: h.checkRateLimit }));
-vi.mock('$lib/server/publicationPassphrase.js', () => ({ hasGrant: h.hasGrant }));
-vi.mock('$lib/server/publicationReader.js', () => ({
+vi.mock('#lib/server/publicRateLimit.js', () => ({ checkRateLimit: h.checkRateLimit }));
+vi.mock('#lib/server/publicationPassphrase.js', () => ({ hasGrant: h.hasGrant }));
+vi.mock('#lib/server/publicationReader.js', () => ({
   findServablePublication: h.findServablePublication,
   resolveManifest: h.resolveManifest,
   readerRefusal: () => ({ ok: false, message: 'This link is not available.' }),

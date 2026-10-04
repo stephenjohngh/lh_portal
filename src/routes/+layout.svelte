@@ -1,8 +1,8 @@
 <script>
   import '../app.css';
   import { onMount } from 'svelte';
-import { permissions } from '$lib/stores/permissions';
-import { auth } from '$lib/stores/auth';
+import { permissions } from '#lib/stores/permissions.js';
+import { auth } from '#lib/stores/auth.js';
 
   onMount(() => {
     auth.initialize();

@@ -13,34 +13,34 @@
   import {
     templateCoverage, suggestMatches, basisTally,
     BASIS, BASIS_LABEL, BASIS_DESCRIPTION, isRecurring,
-  } from '$lib/utils/statutoryTemplate.js';
+  } from '#lib/utils/statutoryTemplate.js';
   import {
     currentDecisions, isRecordableReason, reviewsDue, reviewState,
-  } from '$lib/utils/statutoryExclusions.js';
-  import { frequencyLabel } from '$lib/utils/inspectionSchedule';
-  import { dueSoonDays } from '$lib/utils/dueWindows.js';
-  import { profiles, profilesStore } from '$lib/stores/profiles.js';
-  import { statutoryRegister } from '$lib/stores/statutoryRegister.js';
+  } from '#lib/utils/statutoryExclusions.js';
+  import { frequencyLabel } from '#lib/utils/inspectionSchedule.js';
+  import { dueSoonDays } from '#lib/utils/dueWindows.js';
+  import { profiles, profilesStore } from '#lib/stores/profiles.js';
+  import { statutoryRegister } from '#lib/stores/statutoryRegister.js';
   import RegisterEntryModal from './RegisterEntryModal.svelte';
   import RegisterImportDiff from './RegisterImportDiff.svelte';
-  import FormInput from '$lib/components/common/FormInput.svelte';
-  import FilterBar from '$lib/components/common/FilterBar.svelte';
+  import FormInput from '#lib/components/common/FormInput.svelte';
+  import FilterBar from '#lib/components/common/FilterBar.svelte';
   import {
     filterRegister, registerStatusTally, groupRegisterRows, registerFilterFields,
     REGISTER_STATUS, REGISTER_STATUS_LABEL, REGISTER_STATUS_CLASS, REGISTER_STATUS_EXPLAINED,
     dutyHolderTally, citationState, groupRegisterRowsByRoute, routeGroupOf,
   } from '../utils/registerFilter.js';
   import { downloadRegisterXlsx, downloadRegisterDocx } from '../utils/registerDownloads.js';
-  import { ofKind, kindTally, REGISTER_KINDS } from '$lib/utils/registerKinds.js';
+  import { ofKind, kindTally, REGISTER_KINDS } from '#lib/utils/registerKinds.js';
   import { inAuthorOrder, KIND_SECTION } from '../utils/registerItemView.js';
   import RegisterItemsList from './RegisterItemsList.svelte';
   import RegisterRow from './RegisterRow.svelte';
-  import Button from '$lib/components/common/Button.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
-  import Modal from '$lib/components/common/Modal.svelte';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
+  import Button from '#lib/components/common/Button.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
+  import Modal from '#lib/components/common/Modal.svelte';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
+  import FormTextarea from '#lib/components/common/FormTextarea.svelte';
 
   export let definitions = [];
   /** A register row another tab asked to see (the Display register's link).

@@ -7,7 +7,7 @@
 // Type-1 testable (gtRiskScoring.test.js).
 
 import { today as todayLondon } from '../../../utils/dates.js';
-import { policy } from '$lib/utils/policies.js';
+import { policy } from '#lib/utils/policies.js';
 export const RISK_DOMAINS = ['fire', 'structural', 'other'];
 export const RISK_DOMAIN_LABELS = { fire: 'Fire', structural: 'Structural', other: 'Other' };
 export const RISK_SOURCES = ['fra', 'mor', 'inspection', 'safety_case', 'survey', 'manual'];

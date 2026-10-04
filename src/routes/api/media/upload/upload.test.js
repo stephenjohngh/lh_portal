@@ -16,8 +16,8 @@ const h = vi.hoisted(() => {
 });
 
 vi.mock('@sveltejs/kit', () => ({ json: (body, init) => ({ body, status: init?.status ?? 200 }) }));
-vi.mock('$lib/server/requireAuth', () => ({ requireAuth: () => Promise.resolve(h.getAuth()) }));
-vi.mock('$lib/server/storage/index.js', () => ({
+vi.mock('#lib/server/requireAuth.js', () => ({ requireAuth: () => Promise.resolve(h.getAuth()) }));
+vi.mock('#lib/server/storage/index.js', () => ({
   storageProvider: { ensurePath: h.ensurePath, uploadFile: h.uploadFile },
   storageProviderName: 'supabase',
 }));

@@ -10,7 +10,7 @@
 // is the only place the order is decided.
 
 import { LIVE, addDaysISO } from './agreementModel.js';
-import { policy } from '$lib/utils/policies.js';
+import { policy } from '#lib/utils/policies.js';
 
 export const ANY_SIZE = 'any';
 

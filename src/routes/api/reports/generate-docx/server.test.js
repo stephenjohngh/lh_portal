@@ -12,8 +12,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import JSZip from 'jszip';
 
-vi.mock('$lib/server/requireAuth', () => ({ requireAuth: async () => ({ user: { id: 'u1' }, error: null }) }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/server/requireAuth.js', () => ({ requireAuth: async () => ({ user: { id: 'u1' }, error: null }) }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 
 const { POST } = await import('./+server.js');
 

@@ -20,11 +20,11 @@
 -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import FilterBar from '$lib/components/common/FilterBar.svelte';
+  import FilterBar from '#lib/components/common/FilterBar.svelte';
   import {
     filterItems, groupItems, itemTally, itemFilterFields, citableRef,
   } from '../utils/registerItemView.js';
-  import { PRIORITY_MARKER, PRIORITY_LABEL } from '$lib/utils/registerKinds.js';
+  import { PRIORITY_MARKER, PRIORITY_LABEL } from '#lib/utils/registerKinds.js';
 
   /** @type {'action'|'absence'|'caveat'} */
   export let kind = 'action';

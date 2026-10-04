@@ -3,27 +3,27 @@
   Self-contained "attached documents" panel for any entity: lists the
   document_library rows for (entityType, entityId), with inline upload
   (click or drag-and-drop) and delete-with-confirm. All I/O goes through
-  $lib/utils/documentApi. Reusable across apps (Info notes, Golden Thread
+  #lib/utils/documentApi. Reusable across apps (Info notes, Golden Thread
   records, …).
 
   Emits `uploaded` (the new row) and `deleted` (the removed row) so hosts can
   hook in audit logging or their own state — the panel itself owns the list.
 -->
 <script>
-  import { fileViewUrl } from '$lib/utils/driveUtils.js';
+  import { fileViewUrl } from '#lib/utils/driveUtils.js';
   import { createEventDispatcher } from 'svelte';
-  import * as docApi      from '$lib/utils/documentApi';
-  import DocAttachInput   from '$lib/components/common/DocAttachInput.svelte';
-  import FormInput        from '$lib/components/common/FormInput.svelte';
-  import Button           from '$lib/components/common/Button.svelte';
-  import ConfirmDialog    from '$lib/components/common/ConfirmDialog.svelte';
-  import ErrorDisplay     from '$lib/components/common/ErrorDisplay.svelte';
-  import Icon             from '$lib/components/icons/Icon.svelte';
-  import { fmtDate }      from '$lib/utils/dates.js';
-  import { fmtBytes, mimeIcon } from '$lib/utils/files.js';
-  import FormSelect      from '$lib/components/common/FormSelect.svelte';
-  import { documentCategories, categoryFromFilename, categoryLabel } from '$lib/utils/documentUtils.js';
-  import { portalSettings } from '$lib/stores/portalSettings.js';
+  import * as docApi      from '#lib/utils/documentApi.js';
+  import DocAttachInput   from '#lib/components/common/DocAttachInput.svelte';
+  import FormInput        from '#lib/components/common/FormInput.svelte';
+  import Button           from '#lib/components/common/Button.svelte';
+  import ConfirmDialog    from '#lib/components/common/ConfirmDialog.svelte';
+  import ErrorDisplay     from '#lib/components/common/ErrorDisplay.svelte';
+  import Icon             from '#lib/components/icons/Icon.svelte';
+  import { fmtDate }      from '#lib/utils/dates.js';
+  import { fmtBytes, mimeIcon } from '#lib/utils/files.js';
+  import FormSelect      from '#lib/components/common/FormSelect.svelte';
+  import { documentCategories, categoryFromFilename, categoryLabel } from '#lib/utils/documentUtils.js';
+  import { portalSettings } from '#lib/stores/portalSettings.js';
 
   /** @type {string} */ export let entityType;
   /** @type {string} */ export let entityId;

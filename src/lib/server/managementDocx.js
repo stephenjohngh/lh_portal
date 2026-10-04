@@ -25,10 +25,10 @@ import {
   CONTENT_W, COLOURS, BORDERS, makeHeader, makeFooter, pageProps,
 } from './docxHelpers.js';
 import { parseHtmlToDocxParagraphs, htmlToText } from './richTextDocx.js';
-import { fmtShortDate, fmtDateLong, fmtGenerated, isOverdue, wasModified } from '$lib/utils/dates.js';
-import { getPriorityLabel, ACTION_STATUS, ACTIVITY_TYPE_CONFIG } from '$lib/utils/constants.js';
-import { buildFieldSummary } from '$lib/apps/management/components/reports/reportUtils.js';
-import { buildMeetingMinutes } from '$lib/apps/management/utils/meetingMinutes.js';
+import { fmtShortDate, fmtDateLong, fmtGenerated, isOverdue, wasModified } from '#lib/utils/dates.js';
+import { getPriorityLabel, ACTION_STATUS, ACTIVITY_TYPE_CONFIG } from '#lib/utils/constants.js';
+import { buildFieldSummary } from '#lib/apps/management/components/reports/reportUtils.js';
+import { buildMeetingMinutes } from '#lib/apps/management/utils/meetingMinutes.js';
 
 export const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 

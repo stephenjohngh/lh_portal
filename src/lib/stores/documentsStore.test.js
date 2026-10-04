@@ -10,7 +10,7 @@ const h = vi.hoisted(() => ({
   supabase: { auth: { getSession: vi.fn(() => Promise.resolve({ data: { session: { access_token: 'tok' } } })) } },
 }));
 
-vi.mock('$lib/supabaseClient', () => ({ supabase: h.supabase }));
+vi.mock('#lib/supabaseClient.js', () => ({ supabase: h.supabase }));
 
 const { documentsStore } = await import('./documentsStore.js');
 

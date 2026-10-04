@@ -28,9 +28,9 @@
      guard asserts it. -->
 <script>
   import { onMount }         from 'svelte';
-  import { permissions }     from '$lib/stores/permissions';
-  import { getLogger }       from '$lib/utils/logger';
-  import { buildingAssetsStore }    from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
+  import { permissions }     from '#lib/stores/permissions.js';
+  import { getLogger }       from '#lib/utils/logger.js';
+  import { buildingAssetsStore }    from '#lib/apps/building_assets/stores/buildingAssetsStore.js';
   import {
     flattenInspectionRows,
     groupByComponent,
@@ -38,29 +38,29 @@
     worstResult,
     resultLabel,
     sessionFloorLabel,
-  } from '$lib/apps/inspection/utils/inspectionHelpers.js';
-  import { resultBadgeColor } from '$lib/utils/resultConstants.js';
-  import { fmtDate, fmtTime, fmtDateTime, fmtDuration, calendarDate } from '$lib/utils/dates';
-  import Badge           from '$lib/components/common/Badge.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import LoadingSpinner  from '$lib/components/common/LoadingSpinner.svelte';
-  import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
-  import Icon                from '$lib/components/icons/Icon.svelte';
-  import Button              from '$lib/components/common/Button.svelte';
+  } from '#lib/apps/inspection/utils/inspectionHelpers.js';
+  import { resultBadgeColor } from '#lib/utils/resultConstants.js';
+  import { fmtDate, fmtTime, fmtDateTime, fmtDuration, calendarDate } from '#lib/utils/dates.js';
+  import Badge           from '#lib/components/common/Badge.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import LoadingSpinner  from '#lib/components/common/LoadingSpinner.svelte';
+  import ErrorDisplay    from '#lib/components/common/ErrorDisplay.svelte';
+  import Icon                from '#lib/components/icons/Icon.svelte';
+  import Button              from '#lib/components/common/Button.svelte';
   import InspectionsReport       from './InspectionsReport.svelte';
   import InspectionDetailModal   from './InspectionDetailModal.svelte';
-  import ConditionChecklistChips from '$lib/apps/building_assets/components/ConditionChecklistChips.svelte';
-  import PhotoLightbox           from '$lib/components/common/PhotoLightbox.svelte';
-  import { typeByCode, conditionChecklistDisplay } from '$lib/apps/building_assets/lookups.js';
+  import ConditionChecklistChips from '#lib/apps/building_assets/components/ConditionChecklistChips.svelte';
+  import PhotoLightbox           from '#lib/components/common/PhotoLightbox.svelte';
+  import { typeByCode, conditionChecklistDisplay } from '#lib/apps/building_assets/lookups.js';
   import UpcomingInspections from './UpcomingInspections.svelte';
   // walk_sessions + component_inspections belong to the Inspection app — read
   // and delete them through its public interface (one owner of the query shape).
-  import { deleteWalkSession, listWalkSessions, loadSessionInspections, listComponentsAwaitingAccess } from '$lib/apps/inspection/public.js';
+  import { deleteWalkSession, listWalkSessions, loadSessionInspections, listComponentsAwaitingAccess } from '#lib/apps/inspection/public.js';
   // ⛔ Planned obligations come from the Compliance app, which owns
   // `statutory_obligations`. They used to be served by inspection/public.js —
   // an ownership inversion left behind when migration 206 renamed the table.
-  import { listPlannedObligations } from '$lib/apps/compliance/public.js';
-  import { isWalkEvidenced } from '$lib/utils/obligationEvidence.js';
+  import { listPlannedObligations } from '#lib/apps/compliance/public.js';
+  import { isWalkEvidenced } from '#lib/utils/obligationEvidence.js';
 
   const logger = getLogger('InspectionWalksTab');
 
@@ -258,7 +258,7 @@
   }
 
   // -- Badge colours --------------------------------------------------------
-  // resultBadgeColor is imported from $lib/utils/resultConstants.js
+  // resultBadgeColor is imported from #lib/utils/resultConstants.js
   // Lightbox
   let lightboxPhotos = [];
   let lightboxIndex  = 0;

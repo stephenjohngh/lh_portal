@@ -18,7 +18,7 @@
   import { buildYearGrid, cellMarks, columnWeekdays, WEEKDAY_SHORT } from '../utils/yearGrid.js';
   import { buildMonthGrid } from '../utils/monthGrid.js';
   import { categoryOf, swatch, pickable } from '../utils/categories.js';
-  import { fmtGenerated } from '$lib/utils/dates';
+  import { fmtGenerated } from '#lib/utils/dates.js';
 
   export let year;
   /** 'chart' — the whole year on one sheet. 'months' — one month per sheet. */

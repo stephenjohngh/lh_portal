@@ -5,8 +5,8 @@
 // header — the server verifies it via requireAuth() / requireAdmin().
 
 import { writable } from 'svelte/store';
-import * as docApi from '$lib/utils/documentApi';
-import { storeLoader } from '$lib/utils/storeLoad.js';
+import * as docApi from '#lib/utils/documentApi.js';
+import { storeLoader } from '#lib/utils/storeLoad.js';
 
 function createDocumentsStore() {
   const { subscribe, update } = writable({

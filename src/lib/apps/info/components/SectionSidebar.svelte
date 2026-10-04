@@ -1,10 +1,10 @@
 <!-- src/lib/apps/info/components/SectionSidebar.svelte -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { permissions }  from '$lib/stores/permissions';
-  import Icon             from '$lib/components/icons/Icon.svelte';
-  import ProtectedButton  from '$lib/components/common/ProtectedButton.svelte';
-  import ConfirmDialog    from '$lib/components/common/ConfirmDialog.svelte';
+  import { permissions }  from '#lib/stores/permissions.js';
+  import Icon             from '#lib/components/icons/Icon.svelte';
+  import ProtectedButton  from '#lib/components/common/ProtectedButton.svelte';
+  import ConfirmDialog    from '#lib/components/common/ConfirmDialog.svelte';
   import { sectionNotes, publishedCount } from '../utils/infoHelpers.js';
 
   export let sections        = [];

@@ -33,7 +33,7 @@
 // storage file it was given a URL for — any photo, certificate, parking
 // licence or Golden Thread record, and on an OAuth Drive anything in that
 // person's Drive. Each file must now pass canDeleteFile()
-// ($lib/server/mediaAccess.js): an attachment names it, no library document
+// (#lib/server/mediaAccess.js): an attachment names it, no library document
 // does, and the caller is an admin or added every attachment that names it.
 // Both callers (mediaAttachments.js, maintenanceStore.deleteDocument) delete
 // the file BEFORE its row, which is what lets the rows be checked here.
@@ -42,12 +42,12 @@ import { json }                 from '@sveltejs/kit';
 import { createClient }         from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL }  from '$env/static/public';
 import { env }                  from '$env/dynamic/private';
-import { findFileReferences, canDeleteFile } from '$lib/server/mediaAccess.js';
-import { providerByName }       from '$lib/server/storage/index.js';
-import { resolveStorageRef }    from '$lib/server/storage/storageRef.js';
-import { friendlyStorageError } from '$lib/server/storage/storageErrors.js';
-import { requireAuth }          from '$lib/server/requireAuth.js';
-import { getLogger }            from '$lib/utils/logger';
+import { findFileReferences, canDeleteFile } from '#lib/server/mediaAccess.js';
+import { providerByName }       from '#lib/server/storage/index.js';
+import { resolveStorageRef }    from '#lib/server/storage/storageRef.js';
+import { friendlyStorageError } from '#lib/server/storage/storageErrors.js';
+import { requireAuth }          from '#lib/server/requireAuth.js';
+import { getLogger }            from '#lib/utils/logger.js';
 
 const logger = getLogger('MediaFileDelete');
 

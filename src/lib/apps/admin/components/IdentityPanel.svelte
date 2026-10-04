@@ -10,18 +10,18 @@
      Logo and colours are deployment branding and are not here.
 
      The building is the one `facilities` row; the business and signatory are
-     portal_settings.organisation ($lib/utils/identity.js). -->
+     portal_settings.organisation (#lib/utils/identity.js). -->
 <script>
   import { onMount } from 'svelte';
-  import { portalSettings } from '$lib/stores/portalSettings.js';
-  import { ORGANISATION_FIELDS, cleanOrganisation } from '$lib/utils/identity.js';
-  import { logAudit } from '$lib/utils/auditLogger';
-  import { errMessage } from '$lib/utils/errors';
-  import Button from '$lib/components/common/Button.svelte';
-  import FormInput from '$lib/components/common/FormInput.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
+  import { portalSettings } from '#lib/stores/portalSettings.js';
+  import { ORGANISATION_FIELDS, cleanOrganisation } from '#lib/utils/identity.js';
+  import { logAudit } from '#lib/utils/auditLogger.js';
+  import { errMessage } from '#lib/utils/errors.js';
+  import Button from '#lib/components/common/Button.svelte';
+  import FormInput from '#lib/components/common/FormInput.svelte';
+  import FormTextarea from '#lib/components/common/FormTextarea.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
+  import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
 
   let building = /** @type {{ name: string, short_name: string, address: string } | null} */ (null);
   let organisation = /** @type {Record<string, string> | null} */ (null);

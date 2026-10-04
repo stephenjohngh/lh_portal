@@ -4,11 +4,11 @@
      agreements, and finding "who lives at Flat 12" is the one question it must
      not become a way to answer (design §3.2). Search is by name only. -->
 <script>
-  import { matchesSearch } from '$lib/utils/textSearch.js';
+  import { matchesSearch } from '#lib/utils/textSearch.js';
   import { createEventDispatcher } from 'svelte';
   import { parkingStore } from '../stores/parkingStore.js';
   import { HOLDER_TYPE_LABEL, STATUS_LABEL, LIVE } from '../utils/agreementModel.js';
-  import Button      from '$lib/components/common/Button.svelte';
+  import Button      from '#lib/components/common/Button.svelte';
   import HolderModal from './HolderModal.svelte';
 
   export let canEdit = false;

@@ -1,6 +1,6 @@
 // src/routes/api/media/file/fakeDb.js
 // A stand-in for the service-role Supabase client, for the media route tests.
-// Only the query shapes $lib/server/mediaAccess.js uses: from().select() then
+// Only the query shapes #lib/server/mediaAccess.js uses: from().select() then
 // any mix of .eq() / .ilike(), awaited directly or through .maybeSingle().
 // Not imported by the app.
 

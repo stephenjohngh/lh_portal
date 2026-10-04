@@ -23,10 +23,10 @@ const h = vi.hoisted(() => ({
   updateDocument: vi.fn(),
 }));
 
-vi.mock('$lib/utils/documentApi', () => h);
-vi.mock('$lib/utils/auditLogger', () => ({ logAudit: vi.fn() }));
+vi.mock('#lib/utils/documentApi.js', () => h);
+vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: vi.fn() }));
 // The categories are an admin setting read through this store; the shipped list is in force here.
-vi.mock('$lib/stores/portalSettings.js', () => ({
+vi.mock('#lib/stores/portalSettings.js', () => ({
   portalSettings: { subscribe: (/** @type {(v: object) => void} */ fn) => { fn({}); return () => {}; } },
 }));
 

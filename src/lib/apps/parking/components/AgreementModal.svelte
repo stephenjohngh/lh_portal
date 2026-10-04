@@ -9,13 +9,13 @@
     basesForTenure, validateAgreement, validateHolder, normaliseReg,
     FEE_PERIODS, VAT_TREATMENTS, DEFAULT_VAT, todayISO, HOLDER_TYPE_LABEL,
   } from '../utils/agreementModel.js';
-  import Modal        from '$lib/components/common/Modal.svelte';
-  import Button       from '$lib/components/common/Button.svelte';
-  import FormSelect   from '$lib/components/common/FormSelect.svelte';
-  import FormInput    from '$lib/components/common/FormInput.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
-  import Checkbox     from '$lib/components/common/Checkbox.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import Modal        from '#lib/components/common/Modal.svelte';
+  import Button       from '#lib/components/common/Button.svelte';
+  import FormSelect   from '#lib/components/common/FormSelect.svelte';
+  import FormInput    from '#lib/components/common/FormInput.svelte';
+  import FormTextarea from '#lib/components/common/FormTextarea.svelte';
+  import Checkbox     from '#lib/components/common/Checkbox.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import HolderFields from './HolderFields.svelte';
   import { tariffFor, termsFromTariff, matchesTariff, priceLabel, HOLDER_CLASS_LABEL } from '../utils/tariffModel.js';
 

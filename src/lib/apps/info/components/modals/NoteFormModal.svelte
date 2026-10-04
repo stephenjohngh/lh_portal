@@ -1,15 +1,15 @@
 <!-- src/lib/apps/info/components/modals/NoteFormModal.svelte -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { permissions } from '$lib/stores/permissions';
-  import Modal        from '$lib/components/common/Modal.svelte';
-  import Button       from '$lib/components/common/Button.svelte';
-  import FormInput    from '$lib/components/common/FormInput.svelte';
-  import FormSelect   from '$lib/components/common/FormSelect.svelte';
-  import Checkbox     from '$lib/components/common/Checkbox.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import { permissions } from '#lib/stores/permissions.js';
+  import Modal        from '#lib/components/common/Modal.svelte';
+  import Button       from '#lib/components/common/Button.svelte';
+  import FormInput    from '#lib/components/common/FormInput.svelte';
+  import FormSelect   from '#lib/components/common/FormSelect.svelte';
+  import Checkbox     from '#lib/components/common/Checkbox.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   // Shared rich-text editor (common component).
-  import RichTextEditor from '$lib/components/common/LazyRichTextEditor.svelte';
+  import RichTextEditor from '#lib/components/common/LazyRichTextEditor.svelte';
   import { parseTags, tagsToString } from '../../utils/infoHelpers.js';
 
   export let show       = false;

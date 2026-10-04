@@ -17,8 +17,8 @@
 import {
   ACTION_CATEGORIES, ACTION_CATEGORY_LABEL, ACTION_PRIORITIES,
   PRIORITY_LABEL, priorityRank, ofKind,
-} from '$lib/utils/registerKinds.js';
-import { matchesSearch } from '$lib/utils/textSearch.js';
+} from '#lib/utils/registerKinds.js';
+import { matchesSearch } from '#lib/utils/textSearch.js';
 
 const text = v => String(v ?? '').toLowerCase();
 

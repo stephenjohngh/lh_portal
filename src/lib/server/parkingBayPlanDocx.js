@@ -8,7 +8,7 @@
 // because only the browser can load the plan and draw on it.
 // Page 2: the same as a list, for a name too small to read on the plan.
 //
-// Lives in $lib/server so it can be tested: a +server.js may only export HTTP
+// Lives in #lib/server so it can be tested: a +server.js may only export HTTP
 // verbs, and document generation fails at runtime on things static analysis
 // cannot see.
 //

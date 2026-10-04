@@ -1,11 +1,11 @@
 <!-- src/lib/apps/dossier/components/PagePickerModal.svelte -->
 <!-- Choose another page in this pack to link the selected text to. -->
 <script>
-  import { matchesSearch } from '$lib/utils/textSearch.js';
+  import { matchesSearch } from '#lib/utils/textSearch.js';
   import { createEventDispatcher } from 'svelte';
-  import Modal     from '$lib/components/common/Modal.svelte';
-  import Button    from '$lib/components/common/Button.svelte';
-  import FormInput from '$lib/components/common/FormInput.svelte';
+  import Modal     from '#lib/components/common/Modal.svelte';
+  import Button    from '#lib/components/common/Button.svelte';
+  import FormInput from '#lib/components/common/FormInput.svelte';
   import { EMBED_MODES, EMBED_MODE_LABEL } from '../utils/embedGuard.js';
 
   export let show    = false;

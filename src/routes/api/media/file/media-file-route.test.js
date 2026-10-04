@@ -38,20 +38,20 @@ vi.mock('@supabase/supabase-js', () => ({
     maintenance_documents: [],
   }),
 }));
-vi.mock('$lib/server/storage/index.js', () => ({
+vi.mock('#lib/server/storage/index.js', () => ({
   storageProvider: {
     name: 'google_drive',
     getFileStream: (...args) => getFileStream(...args),
     deleteFile: vi.fn(),
   },
 }));
-vi.mock('$lib/server/storage/storageErrors.js', () => ({
+vi.mock('#lib/server/storage/storageErrors.js', () => ({
   friendlyStorageError: (e) => String(e?.message ?? e),
 }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 
 const { GET } = await import('./[fileId]/+server.js');
-const { mediaSessionValue } = await import('$lib/server/mediaAccess.js');
+const { mediaSessionValue } = await import('#lib/server/mediaAccess.js');
 
 const call = (fileId) =>
   GET({

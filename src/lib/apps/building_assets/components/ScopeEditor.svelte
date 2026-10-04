@@ -22,7 +22,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { availableFixedDefs, availableConditionDefs } from '../utils/attrFilters.js';
-  import MultiSelectDropdown from '$lib/components/common/MultiSelectDropdown.svelte';
+  import MultiSelectDropdown from '#lib/components/common/MultiSelectDropdown.svelte';
   import AttrFilterStrip     from './AttrFilterStrip.svelte';
 
   export let scope    = {};

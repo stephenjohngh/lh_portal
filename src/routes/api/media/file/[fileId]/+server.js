@@ -19,11 +19,11 @@
 //   2. that the user still exists (re-read every request, so deleting a user
 //      stops their access at once);
 //   3. that a portal record names the file, and for a parking licence that the
-//      user holds the Parking grant ($lib/server/mediaAccess.js);
+//      user holds the Parking grant (#lib/server/mediaAccess.js);
 // and the Drive provider refuses any file outside the portal's own folder.
 //
 // ⛔ WHAT IT SERVES AS: the portal's own record of the type, then a caller's
-// hint, then the provider's — and $lib/server/fileResponse.js lets only the
+// hint, then the provider's — and #lib/server/fileResponse.js lets only the
 // non-scriptable allow-list render inline. An uploaded .html used to come back
 // as text/html from this origin, and ran.
 //
@@ -33,13 +33,13 @@ import { json }                 from '@sveltejs/kit';
 import { createClient }         from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL }  from '$env/static/public';
 import { env }                  from '$env/dynamic/private';
-import { storageProvider }      from '$lib/server/storage/index.js';
-import { friendlyStorageError } from '$lib/server/storage/storageErrors.js';
-import { declarableMime }       from '$lib/utils/mimeTypes';
-import { fileHeaders }          from '$lib/server/fileResponse.js';
+import { storageProvider }      from '#lib/server/storage/index.js';
+import { friendlyStorageError } from '#lib/server/storage/storageErrors.js';
+import { declarableMime }       from '#lib/utils/mimeTypes.js';
+import { fileHeaders }          from '#lib/server/fileResponse.js';
 import {
   MEDIA_COOKIE, readMediaSession, loadViewer, findFileReferences, canViewFile, describeFile,
-} from '$lib/server/mediaAccess.js';
+} from '#lib/server/mediaAccess.js';
 
 /** @type {any} */
 let _db;

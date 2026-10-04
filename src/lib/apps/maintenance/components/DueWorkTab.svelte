@@ -5,13 +5,13 @@
      different things is the one-word-two-objects fault. This is a work list,
      so it is named for what it holds. -->
 <script>
-  import { dueSoonDays } from '$lib/utils/dueWindows';
-  import { permissions }   from '$lib/stores/permissions';
+  import { dueSoonDays } from '#lib/utils/dueWindows.js';
+  import { permissions }   from '#lib/stores/permissions.js';
   import {
     ragConfig, resultConfig, scopeTypeLabel, daysRelative, frequencyLabel,
     expiringCertificates, docTypeLabel, docTypeIcon,
   } from '../utils/maintenanceHelpers.js';
-  import { fmtDate } from '$lib/utils/dates.js';
+  import { fmtDate } from '#lib/utils/dates.js';
   import JobDetailPanel       from './JobDetailPanel.svelte';
   import RecordCompletionForm from './RecordCompletionForm.svelte';
 

@@ -12,11 +12,11 @@ import { Packer } from 'docx';
 // virtual modules (blueprint pattern) — the doc builder never touches auth/env.
 vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://localhost', PUBLIC_SUPABASE_ANON_KEY: 'anon' }));
 vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'service-role' } }));
-vi.mock('$app/environment', () => ({ browser: false, dev: false, building: false }));
+vi.mock('$app/env', () => ({ browser: false, dev: false, building: false }));
 
 import { _buildPlanDocument } from './+server.js';
-import { buildPlanReportPayload } from '$lib/apps/maintenance/utils/planReport.js';
-import { buildTenYearForecast } from '$lib/apps/maintenance/utils/tenYearPlan.js';
+import { buildPlanReportPayload } from '#lib/apps/maintenance/utils/planReport.js';
+import { buildTenYearForecast } from '#lib/apps/maintenance/utils/tenYearPlan.js';
 
 function samplePayload() {
   const groups = [

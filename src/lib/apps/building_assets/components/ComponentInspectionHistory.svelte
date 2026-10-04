@@ -4,14 +4,14 @@
      checklist_results JSONB. Loads its own data via api.js when
      componentId changes. Purely presentational — no mutations. -->
 <script>
-  import { api }                          from '$lib/utils/api';
-  import { fmtDateTime }                  from '$lib/utils/dates.js';
+  import { api }                          from '#lib/utils/api.js';
+  import { fmtDateTime }                  from '#lib/utils/dates.js';
   import { sec }                          from '../ui.js';
-  import { statusBadgeCls }               from '$lib/utils/resultConstants.js';
+  import { statusBadgeCls }               from '#lib/utils/resultConstants.js';
   import { buildingAssetsStore }          from '../stores/buildingAssetsStore.js';
   import { typeByCode, conditionChecklistDisplay } from '../lookups.js';
   import ConditionChecklistChips          from './ConditionChecklistChips.svelte';
-  import PhotoLightbox                   from '$lib/components/common/PhotoLightbox.svelte';
+  import PhotoLightbox                   from '#lib/components/common/PhotoLightbox.svelte';
 
   export let componentId;   // string | null
   /** Optional — when provided, used to look up the type's condition defs

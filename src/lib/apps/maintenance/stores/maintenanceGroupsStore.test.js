@@ -1,6 +1,6 @@
 // src/lib/apps/maintenance/stores/maintenanceGroupsStore.test.js
 // CHARACTERIZATION tests for maintenanceGroupsStore (Admin > Maint. Groups /
-// 10-Yr Plan). Seams mocked: api, supabaseClient (auth.getSession — the signed-in user, via $lib/utils/currentUser.js), logger.
+// 10-Yr Plan). Seams mocked: api, supabaseClient (auth.getSession — the signed-in user, via #lib/utils/currentUser.js), logger.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
@@ -16,9 +16,9 @@ const h = vi.hoisted(() => {
   return { api, supabase };
 });
 
-vi.mock('$lib/utils/api',      () => ({ api: h.api }));
-vi.mock('$lib/supabaseClient', () => ({ supabase: h.supabase }));
-vi.mock('$lib/utils/logger',   () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/api.js',      () => ({ api: h.api }));
+vi.mock('#lib/supabaseClient.js', () => ({ supabase: h.supabase }));
+vi.mock('#lib/utils/logger.js',   () => ({ getLogger: () => () => {} }));
 
 const { maintenanceGroupsStore: groups } = await import('./maintenanceGroupsStore.js');
 

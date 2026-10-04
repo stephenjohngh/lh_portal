@@ -14,13 +14,13 @@
 // constraint violation afterwards.
 
 import { writable } from 'svelte/store';
-import { api }      from '$lib/utils/api';
-import { logAudit } from '$lib/utils/auditLogger';
-import { getLogger } from '$lib/utils/logger';
+import { api }      from '#lib/utils/api.js';
+import { logAudit } from '#lib/utils/auditLogger.js';
+import { getLogger } from '#lib/utils/logger.js';
 import { STATUS, stampsFor, entryTypeFor, blockedReason } from '../utils/complaintLifecycle.js';
 import { storeLoader } from '../../../utils/storeLoad.js';
-import { currentUser } from '$lib/utils/currentUser.js';
-import { errMessage } from '$lib/utils/errors.js';
+import { currentUser } from '#lib/utils/currentUser.js';
+import { errMessage } from '#lib/utils/errors.js';
 
 const logger = getLogger('complaintsStore');
 
@@ -39,12 +39,12 @@ function createComplaintsStore() {
  * `& Record<string, any>` tolerates the joined aliases these queries select;
  * without it a bare Tables<> swaps one error message for another.
    *
-   * @typedef {import('$lib/database.types').Tables<'complaint_cases'> & Record<string, any>} ComplaintCase
+   * @typedef {import('#lib/database.types.ts').Tables<'complaint_cases'> & Record<string, any>} ComplaintCase
    * @typedef {{
    *   cases: ComplaintCase[],
    *   selected: ComplaintCase | null,
-   *   timeline: (import('$lib/database.types').Tables<'complaint_timeline_entries'> & Record<string, any>)[],
-   *   actions: (import('$lib/database.types').Tables<'complaint_actions'> & Record<string, any>)[],
+   *   timeline: (import('#lib/database.types.ts').Tables<'complaint_timeline_entries'> & Record<string, any>)[],
+   *   actions: (import('#lib/database.types.ts').Tables<'complaint_actions'> & Record<string, any>)[],
    *   loading: boolean,
    *   saving: boolean,
    *   error: string | null

@@ -2,11 +2,11 @@
 // Component domain: components[], component_attributes{}, component_inspections{}.
 // Receives the writable `update` function from buildingAssetsStore.
 
-import { api }           from '$lib/utils/api';
-import { getLogger }     from '$lib/utils/logger';
-import { logAudit }      from '$lib/utils/auditLogger';
+import { api }           from '#lib/utils/api.js';
+import { getLogger }     from '#lib/utils/logger.js';
+import { logAudit }      from '#lib/utils/auditLogger.js';
 import { requireUserId } from './helpers.js';
-import { purgeAttachments } from '$lib/utils/mediaAttachments.js';
+import { purgeAttachments } from '#lib/utils/mediaAttachments.js';
 // The component write rules live in the app's public interface (../public.js),
 // so they are shared verbatim with the Inspection app rather than duplicated.
 import {

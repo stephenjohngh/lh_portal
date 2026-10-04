@@ -30,7 +30,7 @@ const h = vi.hoisted(() => {
 
 vi.mock('../stores/maintenanceStore.js', () => ({ maintenanceStore: h.store }));
 vi.mock('./DocumentUpload.svelte', async () => ({
-  default: (await import('$lib/apps/compliance/EmptyTab.harness.svelte')).default,
+  default: (await import('#lib/apps/compliance/EmptyTab.harness.svelte')).default,
 }));
 
 import RecordCompletionForm from './RecordCompletionForm.svelte';

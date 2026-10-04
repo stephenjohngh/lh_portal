@@ -4,7 +4,7 @@
 // See docs/requirements/app_designs/Spaces_Enhancement_Design.md §4.4. Type-1 testable.
 
 import { csvEsc } from './componentsCsv.js';
-import { buildSpaceRef } from '$lib/utils/spaceRef.js';
+import { buildSpaceRef } from '#lib/utils/spaceRef.js';
 import { componentsInSpace } from './spaceMembership.js';
 import { computeMetresPerUnit, measureArea } from '../components/plan/planMeasure.js';
 

@@ -5,20 +5,20 @@
 
      They used to be numbers in the code; they are an admin's to set (user,
      2026-10-03). Declared once, with their defaults and bounds, in
-     $lib/utils/policies.js; this screen only edits them. Only the values that
+     #lib/utils/policies.js; this screen only edits them. Only the values that
      DIFFER from the default are saved (portal_settings, key `policies`), so one
      set back to its default follows the default again — the Due windows pattern.
      ⚠ Bounds keep each control a control: a lockout cannot be set to 0. -->
 <script>
   import { onMount } from 'svelte';
-  import { portalSettings } from '$lib/stores/portalSettings.js';
-  import { policyInfo, validatePolicies, cleanPolicies } from '$lib/utils/policies.js';
-  import { logAudit } from '$lib/utils/auditLogger';
-  import { errMessage } from '$lib/utils/errors';
-  import { getLogger } from '$lib/utils/logger';
-  import Button from '$lib/components/common/Button.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import { portalSettings } from '#lib/stores/portalSettings.js';
+  import { policyInfo, validatePolicies, cleanPolicies } from '#lib/utils/policies.js';
+  import { logAudit } from '#lib/utils/auditLogger.js';
+  import { errMessage } from '#lib/utils/errors.js';
+  import { getLogger } from '#lib/utils/logger.js';
+  import Button from '#lib/components/common/Button.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
 
   const logger = getLogger('PoliciesPanel');
   const POLICIES = policyInfo();

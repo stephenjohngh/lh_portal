@@ -1,7 +1,7 @@
 // src/routes/api/generate-xlsx/+server.js
 // Generate an Excel (.xlsx) report from data the client has already built.
 //
-// Thin on purpose. The workbook itself is built by `$lib/server/xlsxWorkbook.js`:
+// Thin on purpose. The workbook itself is built by `#lib/server/xlsxWorkbook.js`:
 // a `+server.js` may only export HTTP verbs, so a builder living here could
 // never be unit-tested — and document generation is exactly the kind of code
 // that fails at runtime on something static analysis cannot see.
@@ -25,10 +25,10 @@
 // near-identical route.
 
 import { json } from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/requireAuth';
-import { getLogger } from '$lib/utils/logger';
-import { buildWorkbook, xlsxFilename } from '$lib/server/xlsxWorkbook.js';
-import { documentBuildingName } from '$lib/server/identity.js';
+import { requireAuth } from '#lib/server/requireAuth.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { buildWorkbook, xlsxFilename } from '#lib/server/xlsxWorkbook.js';
+import { documentBuildingName } from '#lib/server/identity.js';
 
 const logger = getLogger('generateXlsx');
 

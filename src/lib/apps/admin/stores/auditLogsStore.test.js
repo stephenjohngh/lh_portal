@@ -26,8 +26,8 @@ const h = vi.hoisted(() => {
   return { supabase, setResult: (r) => { result = r; }, setPages: (p) => { pages = p; } };
 });
 
-vi.mock('$lib/supabaseClient', () => ({ supabase: h.supabase }));
-vi.mock('$lib/utils/logger',   () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/supabaseClient.js', () => ({ supabase: h.supabase }));
+vi.mock('#lib/utils/logger.js',   () => ({ getLogger: () => () => {} }));
 
 const { auditLogsStore } = await import('./auditLogsStore.js');
 

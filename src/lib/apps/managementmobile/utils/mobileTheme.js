@@ -3,7 +3,7 @@
 // This app's colours for priorities and action statuses — ONE copy (2026-10-02).
 // They were written out separately in the issue list, the issue screen and the
 // meeting screen. The colours are this app's own (its dark theme, not Tailwind);
-// the WORDS are the portal's, from $lib/utils/constants.js (getPriorityLabel,
+// the WORDS are the portal's, from #lib/utils/constants.js (getPriorityLabel,
 // getActionStatusLabel), so the phone cannot call a priority something the
 // desktop does not.
 

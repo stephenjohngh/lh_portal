@@ -2,9 +2,9 @@
 <!-- Panel 1 of 4: Building Systems list with inline add / edit. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
-  import { inp } from '$lib/apps/building_assets/ui.js';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import { buildingAssetsStore } from '#lib/apps/building_assets/stores/buildingAssetsStore.js';
+  import { inp } from '#lib/apps/building_assets/ui.js';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
 
   export let systems         = [];
   export let selectedSystemId = null;

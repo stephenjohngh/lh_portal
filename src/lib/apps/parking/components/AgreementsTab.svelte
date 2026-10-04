@@ -1,10 +1,10 @@
 <!-- src/lib/apps/parking/components/AgreementsTab.svelte -->
 <!-- Every agreement, live ones first. Selecting one opens its panel. -->
 <script>
-  import { matchesSearch } from '$lib/utils/textSearch.js';
+  import { matchesSearch } from '#lib/utils/textSearch.js';
   import { parkingStore } from '../stores/parkingStore.js';
   import { STATUSES, STATUS_LABEL, BASIS_LABEL, LIVE, unreturnedAfterEnd } from '../utils/agreementModel.js';
-  import { fmtDate } from '$lib/utils/dates.js';
+  import { fmtDate } from '#lib/utils/dates.js';
   import AgreementPanel from './AgreementPanel.svelte';
 
   export let canEdit = false;

@@ -20,14 +20,14 @@ import { Packer } from 'docx';
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL }       from '$env/static/public';
 import { env } from '$env/dynamic/private';
-import { requireAppAccess } from '$lib/server/requireAuth';
-import { getLogger }     from '$lib/utils/logger';
+import { requireAppAccess } from '#lib/server/requireAuth.js';
+import { getLogger }     from '#lib/utils/logger.js';
 import {
   LETTER_BUILDERS,
   LETTER_FILENAME_SUFFIX,
-} from '$lib/server/morLetterTemplates.js';
-import { getIdentity } from '$lib/server/identity.js';
-import { loadServerWording } from '$lib/server/wording.js';
+} from '#lib/server/morLetterTemplates.js';
+import { getIdentity } from '#lib/server/identity.js';
+import { loadServerWording } from '#lib/server/wording.js';
 
 const logger = getLogger('mor/draft-letter');
 

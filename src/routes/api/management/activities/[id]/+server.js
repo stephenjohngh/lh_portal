@@ -23,9 +23,9 @@ import { json }                from '@sveltejs/kit';
 import { createClient }        from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }                 from '$env/dynamic/private';
-import { requireAuth }         from '$lib/server/requireAuth.js';
-import { deleteDocument }      from '$lib/server/documentLibrary.js';
-import { canDeleteOwn }        from '$lib/utils/permissions.js';
+import { requireAuth }         from '#lib/server/requireAuth.js';
+import { deleteDocument }      from '#lib/server/documentLibrary.js';
+import { canDeleteOwn }        from '#lib/utils/permissions.js';
 
 /** @type {any} */
 let _db;

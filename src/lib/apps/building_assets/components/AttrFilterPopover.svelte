@@ -16,7 +16,7 @@
   below the "+ Add filter" anchor in ComponentsTab.
 -->
 <script>
-  import { matchesSearch } from '$lib/utils/textSearch.js';
+  import { matchesSearch } from '#lib/utils/textSearch.js';
   import { createEventDispatcher, onMount } from 'svelte';
   import { defaultFilterFor, OP_SYMBOL } from '../utils/attrFilters.js';
 

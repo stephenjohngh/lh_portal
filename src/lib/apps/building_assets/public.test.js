@@ -4,7 +4,7 @@
 // behaviour other apps depend on: the read, the canonical update + updated_by
 // stamp, the "inspection result → component status" rule (the full patch it
 // writes), and the delete-then-insert attribute replacement with its filtering.
-// Seam mocked: $lib/utils/api.
+// Seam mocked: #lib/utils/api.
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
@@ -20,7 +20,7 @@ const h = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('$lib/utils/api', () => ({ api: h.api }));
+vi.mock('#lib/utils/api.js', () => ({ api: h.api }));
 
 const {
   updateComponent, applyInspectionResult, replaceComponentAttributes, createComponentInspection, updateFloor,

@@ -11,7 +11,7 @@
 
 import { errMessage } from '../../../../lib/utils/errors.js';
 import { json } from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/requireAuth';
+import { requireAuth } from '#lib/server/requireAuth.js';
 import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, HeadingLevel,
   WidthType, TableLayoutType,
@@ -19,9 +19,9 @@ import {
 import {
   CONTENT_W, COLOURS, BORDERS, hCell, dCell, run, para,
   makeHeader, makeFooter, DOC_STYLES, pageProps,
-} from '$lib/server/docxHelpers.js';
-import { getLogger } from '$lib/utils/logger';
-import { fmtToday } from '$lib/utils/dates';
+} from '#lib/server/docxHelpers.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { fmtToday } from '#lib/utils/dates.js';
 
 const logger = getLogger('reports:works-schedule');
 

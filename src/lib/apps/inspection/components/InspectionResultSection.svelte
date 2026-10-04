@@ -4,13 +4,13 @@
      Photo capture/display is delegated to PhotoPanel; this component owns
      pendingPhotos state so uploadAllPending() can run at save time. -->
 <script>
-  import { today } from '$lib/utils/dates';
+  import { today } from '#lib/utils/dates.js';
   import { createEventDispatcher } from 'svelte';
   import { deriveChecklistOutcome } from '../utils/checklistRules.js';
-  import { NO_ACCESS_REASONS } from '$lib/utils/resultConstants.js';
-  import WalkTextarea from '$lib/apps/inspection/components/common/WalkTextarea.svelte';
-  import WalkError    from '$lib/apps/inspection/components/common/WalkError.svelte';
-  import WalkButton   from '$lib/apps/inspection/components/common/WalkButton.svelte';
+  import { NO_ACCESS_REASONS } from '#lib/utils/resultConstants.js';
+  import WalkTextarea from '#lib/apps/inspection/components/common/WalkTextarea.svelte';
+  import WalkError    from '#lib/apps/inspection/components/common/WalkError.svelte';
+  import WalkButton   from '#lib/apps/inspection/components/common/WalkButton.svelte';
   import PhotoPanel   from './PhotoPanel.svelte';
 
   const dispatch = createEventDispatcher();

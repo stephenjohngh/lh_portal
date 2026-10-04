@@ -10,11 +10,11 @@
      are placed and moved; this answers one question — "which one is that?" —
      without leaving the list you are working through. -->
 <script>
-  import { errMessage } from '$lib/utils/errors';
+  import { errMessage } from '#lib/utils/errors.js';
   import { createEventDispatcher, tick } from 'svelte';
-  import Modal from '$lib/components/common/Modal.svelte';
-  import Button from '$lib/components/common/Button.svelte';
-  import { drawComponentOnPlan } from '$lib/utils/planMarker.js';
+  import Modal from '#lib/components/common/Modal.svelte';
+  import Button from '#lib/components/common/Button.svelte';
+  import { drawComponentOnPlan } from '#lib/utils/planMarker.js';
 
   export let show = false;
   /** The components row — needs plan_id, x_position, y_position. */

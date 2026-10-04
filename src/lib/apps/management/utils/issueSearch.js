@@ -20,8 +20,8 @@
 // around it. Filtering falls out of that (no matches, no row), and the list can
 // show what it found.
 
-import { snippetAround, stripHtml, contains } from '$lib/utils/textSearch.js';
-import { ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPE, ISSUE_STATUS } from '$lib/utils/constants';
+import { snippetAround, stripHtml, contains } from '#lib/utils/textSearch.js';
+import { ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPE, ISSUE_STATUS } from '#lib/utils/constants.js';
 
 /** Below this almost everything matches, which helps nobody. */
 export const MIN_QUERY = 2;

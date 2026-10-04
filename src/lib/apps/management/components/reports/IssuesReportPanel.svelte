@@ -1,15 +1,15 @@
 <!-- src/lib/apps/management/components/reports/IssuesReportPanel.svelte -->
 <script>
-  import Checkbox        from '$lib/components/common/Checkbox.svelte';
-  import Button          from '$lib/components/common/Button.svelte';
+  import Checkbox        from '#lib/components/common/Checkbox.svelte';
+  import Button          from '#lib/components/common/Button.svelte';
   import ReportIssueCard from './ReportIssueCard.svelte';
   import {
     filterIssues, groupIssuesByStatus, getDefaultFilterDate, getTodayDate
   } from './reportUtils';
-  import { requestDownload } from '$lib/utils/download.js';
-  import { getJSON, setJSON } from '$lib/utils/prefs';
-  import { getLogger }        from '$lib/utils/logger';
-  import { fmtDate, today }          from '$lib/utils/dates';
+  import { requestDownload } from '#lib/utils/download.js';
+  import { getJSON, setJSON } from '#lib/utils/prefs.js';
+  import { getLogger }        from '#lib/utils/logger.js';
+  import { fmtDate, today }          from '#lib/utils/dates.js';
 
   const logger = getLogger('IssuesReportPanel');
 

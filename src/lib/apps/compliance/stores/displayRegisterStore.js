@@ -9,16 +9,16 @@
 // this table yet, unlike statutory_obligations/component_types.
 
 import { writable }  from 'svelte/store';
-import { api }       from '$lib/utils/api';
-import { getLogger } from '$lib/utils/logger';
-import { logAudit }  from '$lib/utils/auditLogger';
+import { api }       from '#lib/utils/api.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { logAudit }  from '#lib/utils/auditLogger.js';
 import { storeLoader } from '../../../utils/storeLoad.js';
-import { currentUserId as userId } from '$lib/utils/currentUser.js';
+import { currentUserId as userId } from '#lib/utils/currentUser.js';
 
 const logger = getLogger('DisplayRegister');
 
 /**
- * @typedef {import('$lib/database.types').Tables<'display_items'>} DisplayItem
+ * @typedef {import('#lib/database.types.ts').Tables<'display_items'>} DisplayItem
  * @typedef {{ items: DisplayItem[], loading: boolean, error: string|null }} State
  */
 

@@ -9,7 +9,7 @@
 // says which price it came from, and only while the fee still matches it.
 // ⚠ No accessibility dimension: an accessible bay costs what its size costs.
 
-import { PARKING_BAY_TYPES } from '$lib/apps/building_assets/utils/spaceTypeOptions.js';
+import { PARKING_BAY_TYPES } from '#lib/apps/building_assets/utils/spaceTypeOptions.js';
 import { FEE_PERIODS, VAT_TREATMENTS, DEFAULT_VAT, addDaysISO } from './agreementModel.js';
 
 export const HOLDER_CLASSES = [

@@ -6,9 +6,9 @@
      invisible until the year is wrong. Whatever is chosen is echoed back in
      words underneath (describeRule), so it can be checked before it is saved. -->
 <script>
-  import FormSelect from '$lib/components/common/FormSelect.svelte';
-  import FormInput  from '$lib/components/common/FormInput.svelte';
-  import Checkbox   from '$lib/components/common/Checkbox.svelte';
+  import FormSelect from '#lib/components/common/FormSelect.svelte';
+  import FormInput  from '#lib/components/common/FormInput.svelte';
+  import Checkbox   from '#lib/components/common/Checkbox.svelte';
   import { describeRule, ordinal, PRESETS, presetOf, applyPreset } from '../utils/recurrence.js';
 
   /**

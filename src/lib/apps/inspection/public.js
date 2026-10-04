@@ -8,11 +8,11 @@
 // Stateless, like building_assets/public.js: it does the DB work and returns;
 // each caller refreshes its own view.
 
-import { api }                          from '$lib/utils/api';
-import { purgeAttachments, listAttachments } from '$lib/utils/mediaAttachments.js';
-import { normalisePhotoUrl }             from '$lib/utils/driveUtils.js';
-import { authHeaders }                   from '$lib/utils/authHeaders';
-import { registerDocument, findDocumentBySource } from '$lib/apps/golden_thread/public.js';
+import { api }                          from '#lib/utils/api.js';
+import { purgeAttachments, listAttachments } from '#lib/utils/mediaAttachments.js';
+import { normalisePhotoUrl }             from '#lib/utils/driveUtils.js';
+import { authHeaders }                   from '#lib/utils/authHeaders.js';
+import { registerDocument, findDocumentBySource } from '#lib/apps/golden_thread/public.js';
 import { resolveAwaitingAccess } from './utils/inspectionHelpers.js';
 
 // One place owns the shape of a session's inspection rows: each row joined to its
@@ -22,7 +22,7 @@ const SESSION_INSPECTION_SELECT =
   '*, component:components!component_id(asset_id, label, type_code, floor:floors!floor_id(short_name, level_order))';
 
 // ⛔ `listInspectionDefinitions` AND `listStatutoryExclusions` HAVE MOVED to
-// `$lib/apps/compliance/public.js`, as `listPlannedObligations` and
+// `#lib/apps/compliance/public.js`, as `listPlannedObligations` and
 // `listStatutoryExclusions`. They served `statutory_obligations` and
 // `statutory_exclusions`, which this app has not owned since migration 206
 // renamed `inspection_definitions` — so this file was another app's door onto

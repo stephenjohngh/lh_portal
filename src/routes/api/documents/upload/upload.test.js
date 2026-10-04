@@ -17,9 +17,9 @@ const h = vi.hoisted(() => {
 });
 
 vi.mock('@sveltejs/kit', () => ({ json: (body, init) => ({ body, status: init?.status ?? 200 }) }));
-vi.mock('$lib/server/requireAuth', () => ({ requireAuth: () => Promise.resolve(h.getAuth()) }));
-vi.mock('$lib/server/documentLibrary', () => ({ uploadDocument: h.uploadDocument }));
-vi.mock('$lib/server/documentAccess', () => ({ canAttachDocument: h.canAttachDocument, bearerToken: () => 'tok' }));
+vi.mock('#lib/server/requireAuth.js', () => ({ requireAuth: () => Promise.resolve(h.getAuth()) }));
+vi.mock('#lib/server/documentLibrary.js', () => ({ uploadDocument: h.uploadDocument }));
+vi.mock('#lib/server/documentAccess.js', () => ({ canAttachDocument: h.canAttachDocument, bearerToken: () => 'tok' }));
 
 const { POST } = await import('./+server.js');
 

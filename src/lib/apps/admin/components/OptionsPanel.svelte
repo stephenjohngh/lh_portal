@@ -4,9 +4,9 @@
      Each option can carry a priority_override. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
-  import { inp } from '$lib/apps/building_assets/ui.js';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import { buildingAssetsStore } from '#lib/apps/building_assets/stores/buildingAssetsStore.js';
+  import { inp } from '#lib/apps/building_assets/ui.js';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
 
   export let options  = [];    // type_attribute_options[] for selected attr def
   export let attrDef  = null;  // the selected type_attributes row (or null)

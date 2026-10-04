@@ -10,8 +10,8 @@ import { json } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env } from '$env/dynamic/private';
-import { requireAdmin } from '$lib/server/requireAuth';
-import { getLogger } from '$lib/utils/logger';
+import { requireAdmin } from '#lib/server/requireAuth.js';
+import { getLogger } from '#lib/utils/logger.js';
 
 const logger = getLogger('GtVerifyAudit');
 const db = createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY ?? '');

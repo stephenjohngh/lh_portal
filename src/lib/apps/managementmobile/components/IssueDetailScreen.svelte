@@ -4,10 +4,10 @@
   // Tap an activity row to open the ActivitySheet bottom sheet.
 
   import { createEventDispatcher } from 'svelte';
-  import { ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPE, getPriorityLabel, getActionStatusLabel } from '$lib/utils/constants.js';
+  import { ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPE, getPriorityLabel, getActionStatusLabel } from '#lib/utils/constants.js';
   import { priorityColor, actionStatusColor } from '../utils/mobileTheme.js';
-  import { fmtDate, fmtDateTime, isOverdue } from '$lib/utils/dates.js';
-  import { sortActions } from '$lib/utils/actionSort.js';
+  import { fmtDate, fmtDateTime, isOverdue } from '#lib/utils/dates.js';
+  import { sortActions } from '#lib/utils/actionSort.js';
   import ActivitySheet from './ActivitySheet.svelte';
   import MeetingChip from './MeetingChip.svelte';
 

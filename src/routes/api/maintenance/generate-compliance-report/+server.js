@@ -5,7 +5,7 @@
 //              summary, options }
 //
 // Thin on purpose. The document itself is built by
-// `$lib/server/complianceDocx.js`: a `+server.js` may only export HTTP verbs, so
+// `#lib/server/complianceDocx.js`: a `+server.js` may only export HTTP verbs, so
 // builders living here could never be unit-tested — and document generation is
 // exactly the kind of code that fails at runtime on something static analysis
 // cannot see.
@@ -15,11 +15,11 @@
 // disagree with the report the user was looking at.
 
 import { json } from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/requireAuth';
-import { getLogger } from '$lib/utils/logger';
-import { today } from '$lib/utils/dates';
-import { buildComplianceDocument, printedRows, Packer } from '$lib/server/complianceDocx.js';
-import { documentBuildingName } from '$lib/server/identity.js';
+import { requireAuth } from '#lib/server/requireAuth.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { today } from '#lib/utils/dates.js';
+import { buildComplianceDocument, printedRows, Packer } from '#lib/server/complianceDocx.js';
+import { documentBuildingName } from '#lib/server/identity.js';
 
 const logger = getLogger('maintenance:generate-compliance-report');
 

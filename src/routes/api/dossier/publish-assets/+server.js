@@ -4,7 +4,7 @@
 //
 // Replaces the earlier /api/dossier/checksums. Pinning and checksumming both
 // need the whole file, so they happen in ONE pass — see
-// $lib/server/publicationAssets.js for both, and for why pinning exists at all.
+// #lib/server/publicationAssets.js for both, and for why pinning exists at all.
 //
 // Called at PUBLISH, never when the review dialog opens. Pinning at review time
 // would leave orphaned copies behind every time an author looked and thought
@@ -22,10 +22,10 @@
 // one not in the library: left unread, shown in the review as a gap.
 
 import { json }           from '@sveltejs/kit';
-import { requireAuth }    from '$lib/server/requireAuth.js';
-import { prepareAssets, MAX_FILES } from '$lib/server/publicationAssets.js';
-import { getDocumentByFileId } from '$lib/server/documentLibrary.js';
-import { canAccessDocument, bearerToken } from '$lib/server/documentAccess.js';
+import { requireAuth }    from '#lib/server/requireAuth.js';
+import { prepareAssets, MAX_FILES } from '#lib/server/publicationAssets.js';
+import { getDocumentByFileId } from '#lib/server/documentLibrary.js';
+import { canAccessDocument, bearerToken } from '#lib/server/documentAccess.js';
 
 
 export async function POST({ request }) {

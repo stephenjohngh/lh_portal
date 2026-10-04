@@ -9,8 +9,8 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock('@sveltejs/kit', () => ({ json: (body, init) => ({ body, status: init?.status ?? 200 }) }));
-vi.mock('$lib/server/documentLibrary', () => ({ checkDocumentsById: h.checkDocumentsById }));
-vi.mock('$lib/server/requireAuth', () => ({ requireAdmin: async () => h.auth }));
+vi.mock('#lib/server/documentLibrary.js', () => ({ checkDocumentsById: h.checkDocumentsById }));
+vi.mock('#lib/server/requireAuth.js', () => ({ requireAdmin: async () => h.auth }));
 
 const { POST } = await import('./+server.js');
 const call = (body) => POST({ request: { json: async () => body } });

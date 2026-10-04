@@ -14,8 +14,8 @@
   import { createEventDispatcher } from 'svelte';
   import { meetingsStore } from '../../stores/meetingsStore';
   import { issuesStore }   from '../../stores/issuesStore';
-  import { permissions }   from '$lib/stores/permissions';
-  import { fmtDate, fmtDateLong } from '$lib/utils/dates';
+  import { permissions }   from '#lib/stores/permissions.js';
+  import { fmtDate, fmtDateLong } from '#lib/utils/dates.js';
 
   export let meetingId = null;
   export let rowId     = null;   // row to untag; omit on read-only badge usages

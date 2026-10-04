@@ -6,21 +6,21 @@
      They used to be written in the code (user, 2026-10-03: "things that can
      change … should have an admin parameter"). Declared once, with their
      shipped defaults and the {tokens} each understands, in
-     $lib/utils/wording.js; this screen only edits them. Only texts that DIFFER
+     #lib/utils/wording.js; this screen only edits them. Only texts that DIFFER
      from the default are saved (portal_settings, key `wording`), so one set
      back to its default follows the default again — the Policies pattern.
      ⚠ A text with a {token} it does not understand is refused: a typo would
      otherwise print as itself on a letter sent to a resident. -->
 <script>
   import { onMount } from 'svelte';
-  import { portalSettings } from '$lib/stores/portalSettings.js';
-  import { wordingInfo, validateWording, cleanWording } from '$lib/utils/wording.js';
-  import { logAudit } from '$lib/utils/auditLogger';
-  import { errMessage } from '$lib/utils/errors';
-  import { getLogger } from '$lib/utils/logger';
-  import Button from '$lib/components/common/Button.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import { portalSettings } from '#lib/stores/portalSettings.js';
+  import { wordingInfo, validateWording, cleanWording } from '#lib/utils/wording.js';
+  import { logAudit } from '#lib/utils/auditLogger.js';
+  import { errMessage } from '#lib/utils/errors.js';
+  import { getLogger } from '#lib/utils/logger.js';
+  import Button from '#lib/components/common/Button.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
 
   const logger  = getLogger('WordingPanel');
   const ENTRIES = wordingInfo();

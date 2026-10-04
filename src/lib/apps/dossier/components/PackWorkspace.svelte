@@ -3,17 +3,17 @@
      P0 step 4 fills the tree; the editor pane lands with the Tiptap step. -->
 <script>
   import { createEventDispatcher, tick } from 'svelte';
-  import { auth }        from '$lib/stores/auth';
-  import { permissions } from '$lib/stores/permissions';
-  import { getPref, setPref } from '$lib/utils/prefs';
-  import { requestDownload } from '$lib/utils/download';
-  import { logAudit }    from '$lib/utils/auditLogger';
-  import AttachedDocuments from '$lib/components/common/documents/AttachedDocuments.svelte';
-  import { DOC_FOLDERS, entityFolderPath } from '$lib/utils/documentUtils.js';
-  import Button          from '$lib/components/common/Button.svelte';
-  import LoadingSpinner  from '$lib/components/common/LoadingSpinner.svelte';
-  import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
-  import ConfirmDialog   from '$lib/components/common/ConfirmDialog.svelte';
+  import { auth }        from '#lib/stores/auth.js';
+  import { permissions } from '#lib/stores/permissions.js';
+  import { getPref, setPref } from '#lib/utils/prefs.js';
+  import { requestDownload } from '#lib/utils/download.js';
+  import { logAudit }    from '#lib/utils/auditLogger.js';
+  import AttachedDocuments from '#lib/components/common/documents/AttachedDocuments.svelte';
+  import { DOC_FOLDERS, entityFolderPath } from '#lib/utils/documentUtils.js';
+  import Button          from '#lib/components/common/Button.svelte';
+  import LoadingSpinner  from '#lib/components/common/LoadingSpinner.svelte';
+  import ErrorDisplay    from '#lib/components/common/ErrorDisplay.svelte';
+  import ConfirmDialog   from '#lib/components/common/ConfirmDialog.svelte';
 
   import { dossierStore } from '../stores/dossierStore.js';
   import {
@@ -718,7 +718,7 @@
     const id = publication.id;
     verifyingId = id; verifyResult = null;
     try {
-      const { postJson } = await import('$lib/utils/request');
+      const { postJson } = await import('#lib/utils/request.js');
       const body = await postJson(`/api/dossier/publications/${id}/verify`, {},
         'Could not check the files');
       verifyResult = { id, message: body.message };

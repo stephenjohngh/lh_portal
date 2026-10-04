@@ -204,7 +204,7 @@ describe('frequencyLabel', () => {
   // addDaysISO bug, so pin them as agreeing rather than trusting they do.
   it('agrees with the Maintenance app’s copy on every shared day count', async () => {
     const { frequencyLabel: maintenanceLabel } =
-      await import('$lib/apps/maintenance/utils/maintenanceHelpers.js');
+      await import('#lib/apps/maintenance/utils/maintenanceHelpers.js');
     for (const d of [30, 31, 60, 90, 91, 180, 182, 183, 365, 366, 730, 1825]) {
       expect(frequencyLabel(d), `${d} days`).toBe(maintenanceLabel(d));
     }

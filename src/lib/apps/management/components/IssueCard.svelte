@@ -5,12 +5,12 @@
   import ActivityLogSection from './ActivityLogSection.svelte';
   import ActionsSection from './ActionsSection.svelte';
   import MeetingBadge from './meetings/MeetingBadge.svelte';
-  import Icon from '$lib/components/icons/Icon.svelte';
-  import Button from '$lib/components/common/Button.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-  import { fmtDate, isOverdue } from '$lib/utils/dates';
-  import { ISSUE_STATUS, ACTION_STATUS, ACTIVITY_TYPE, getPriorityLabel } from '$lib/utils/constants';
+  import Icon from '#lib/components/icons/Icon.svelte';
+  import Button from '#lib/components/common/Button.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
+  import { fmtDate, isOverdue } from '#lib/utils/dates.js';
+  import { ISSUE_STATUS, ACTION_STATUS, ACTIVITY_TYPE, getPriorityLabel } from '#lib/utils/constants.js';
 
   export let issue;
   export let showActivity = false;

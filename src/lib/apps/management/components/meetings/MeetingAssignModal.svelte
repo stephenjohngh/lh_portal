@@ -15,11 +15,11 @@
   plus all its visible (filtered) comments and actions in one click.
 -->
 <script>
-  import Modal           from '$lib/components/common/Modal.svelte';
-  import Button          from '$lib/components/common/Button.svelte';
+  import Modal           from '#lib/components/common/Modal.svelte';
+  import Button          from '#lib/components/common/Button.svelte';
   import { meetingsStore } from '../../stores/meetingsStore';
   import { issuesStore }   from '../../stores/issuesStore';
-  import { fmtDate }     from '$lib/utils/dates';
+  import { fmtDate }     from '#lib/utils/dates.js';
 
   export let show    = false;
   export let meeting = null;   // target meeting object

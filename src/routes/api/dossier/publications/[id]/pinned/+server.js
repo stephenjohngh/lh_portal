@@ -1,6 +1,6 @@
 // DELETE /api/dossier/publications/:id/pinned — remove a publication's pinned
 // copies from storage, before the publication row is deleted. Admin only, as
-// deleting the publication is. See $lib/server/pinnedCopies.js.
+// deleting the publication is. See #lib/server/pinnedCopies.js.
 //
 // Returns what was removed and what was not. The caller keeps the publication
 // when anything failed: its manifest is the only record naming those copies,
@@ -9,8 +9,8 @@ import { json }                from '@sveltejs/kit';
 import { createClient }        from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }                 from '$env/dynamic/private';
-import { requireAdmin }        from '$lib/server/requireAuth.js';
-import { removePinnedCopies }  from '$lib/server/pinnedCopies.js';
+import { requireAdmin }        from '#lib/server/requireAuth.js';
+import { removePinnedCopies }  from '#lib/server/pinnedCopies.js';
 
 export async function DELETE({ request, params }) {
   const auth = await requireAdmin(request);

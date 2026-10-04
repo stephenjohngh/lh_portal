@@ -1,13 +1,13 @@
 // src/routes/api/reports/generate-actions-docx/+server.js
 // The actions Word report. Accepts grouped data:
 // { groups: [{ issue, actions }], selectedUser, userName, sortMode }.
-// The document is built in $lib/server/managementDocx.js, where it can be tested.
+// The document is built in #lib/server/managementDocx.js, where it can be tested.
 
 import { json } from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/requireAuth';
-import { getLogger } from '$lib/utils/logger';
-import { today } from '$lib/utils/dates';
-import { buildActionsReport, reportDocument, packReport } from '$lib/server/managementDocx.js';
+import { requireAuth } from '#lib/server/requireAuth.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { today } from '#lib/utils/dates.js';
+import { buildActionsReport, reportDocument, packReport } from '#lib/server/managementDocx.js';
 
 const logger = getLogger('GenerateActionsDocx');
 

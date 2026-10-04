@@ -23,13 +23,13 @@ const h = vi.hoisted(() => ({
   logAudit: vi.fn(),
 }));
 
-vi.mock('$lib/utils/api', () => ({ api: h.api }));
-vi.mock('$lib/utils/auditLogger', () => ({ logAudit: h.logAudit }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/api.js', () => ({ api: h.api }));
+vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: h.logAudit }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 vi.mock('../public.js', () => ({
   replaceComponentAttributes: h.replaceComponentAttributes,
 }));
-vi.mock('$app/environment', () => ({ browser: false, dev: false }));
+vi.mock('$app/env', () => ({ browser: false, dev: false }));
 
 const { worksSchedulesStore } = await import('./worksSchedulesStore.js');
 

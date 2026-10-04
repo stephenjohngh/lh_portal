@@ -3,8 +3,8 @@
   import {
     ENTRY_TYPE_LABEL, ENTRY_TYPE_ICON_COLOUR, STATUS_LABEL,
     CONTACT_KIND_LABEL,
-  } from '$lib/apps/mor/utils/morHelpers';
-  import { fmtDateTime } from '$lib/utils/dates';
+  } from '#lib/apps/mor/utils/morHelpers.js';
+  import { fmtDateTime } from '#lib/utils/dates.js';
 
   export let entry;
 

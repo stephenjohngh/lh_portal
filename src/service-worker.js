@@ -13,13 +13,19 @@
 // activate step below deletes every old cache, whatever the build version.
 
 /// <reference types="@sveltejs/kit" />
-import { build, files, version } from '$service-worker';
+// SvelteKit 3: `$service-worker` is gone. The build's files come from
+// $app/manifest (paths relative to the base path, which is '' here) and the
+// version from $app/env.
+import { immutable, assets } from '$app/manifest';
+import { version } from '$app/env';
 
 const SHELL_CACHE  = `lh-shell-v2-${version}`;
 const IMAGES_CACHE = 'lh-plan-images-v1';
 
 // Assets to pre-cache (app shell)
-const ASSETS = [...build, ...files];
+// $app/manifest gives paths RELATIVE to the base path ('' here), with no
+// leading slash; the fetch handler compares against url.pathname, which has one.
+const ASSETS = [...immutable, ...assets].map(f => '/' + f.path);
 
 // -- Install: pre-cache app shell ---------------------------------------------
 

@@ -1,7 +1,7 @@
 // src/lib/apps/dossier/utils/emailPaste.js
 // Turning a pasted email thread into correspondence rows — pure, Type-1 testable.
 //
-// The parsing itself is NOT redone here: `$lib/utils/emailParser` already reads
+// The parsing itself is NOT redone here: `#lib/utils/emailParser.js` already reads
 // Outlook and Gmail headers, and it is used by the Management app's activity
 // log. This module adds the two things a correspondence table needs and an
 // activity note does not:
@@ -16,7 +16,7 @@
 // as skipped rather than dropped, so the author can see the count did not match
 // what they pasted and paste that part again by hand.
 
-import { parseEmailPaste } from '$lib/utils/emailParser';
+import { parseEmailPaste } from '#lib/utils/emailParser.js';
 import { coerceRecordFields } from './datasetTemplates.js';
 
 /**

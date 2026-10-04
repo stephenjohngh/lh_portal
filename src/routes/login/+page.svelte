@@ -1,8 +1,8 @@
 <script>
-  import { LOGO as lhLogo, LOGO_ALT } from '$lib/branding.js';
-  import { auth } from '$lib/stores/auth';
+  import { LOGO as lhLogo, LOGO_ALT } from '#lib/branding.js';
+  import { auth } from '#lib/stores/auth.js';
   import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
 
   let email = '';
   let password = '';
@@ -12,7 +12,7 @@
   // Read optional redirect destination (e.g. /mobileplan, /inspection)
   // Restrict to relative paths only — no open redirect.
   $: redirectTo = (() => {
-    const r = $page.url.searchParams.get('redirect') ?? '';
+    const r = page.url.searchParams.get('redirect') ?? '';
     return r.startsWith('/') && !r.startsWith('//') ? r : '/';
   })();
 

@@ -12,7 +12,7 @@
 
 import { generateHTML } from '@tiptap/core';
 import DOMPurify        from 'dompurify';
-import { getLogger }    from '$lib/utils/logger';
+import { getLogger }    from '#lib/utils/logger.js';
 import { buildExtensions, EMPTY_DOC } from './blockSchema.js';
 import { isProxyUrl, assetIsMissing } from './assetPreview.js';
 import {
@@ -23,7 +23,7 @@ import { renderSheetPreviewHtml } from './sheetPreview.js';
 
 const logger = getLogger('dossierBlockRender');
 
-// A Dossier-specific allow-list rather than the shared $lib/utils/sanitizeHtml:
+// A Dossier-specific allow-list rather than the shared #lib/utils/sanitizeHtml:
 // that one is documented as matching StarterKit output, and this schema adds
 // callout and toggle. Their styling and every block anchor ride on data-*
 // attributes, so those must survive — hence ALLOW_DATA_ATTR is explicit rather

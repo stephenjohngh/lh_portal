@@ -10,13 +10,13 @@
 // exist — for the same reason every other refusal in this app is uniform.
 
 import { json }               from '@sveltejs/kit';
-import { checkRateLimit }     from '$lib/server/publicRateLimit.js';
-import { isSameOrigin }       from '$lib/server/verifyOrigin.js';
-import { findServablePublication } from '$lib/server/publicationReader.js';
+import { checkRateLimit }     from '#lib/server/publicRateLimit.js';
+import { isSameOrigin }       from '#lib/server/verifyOrigin.js';
+import { findServablePublication } from '#lib/server/publicationReader.js';
 import {
   needsPassphrase, mintGrant, grantCookieName, grantCookieOptions,
-} from '$lib/server/publicationPassphrase.js';
-import { verifyPassphrase } from '$lib/apps/dossier/utils/publicationPassphrase.js';
+} from '#lib/server/publicationPassphrase.js';
+import { verifyPassphrase } from '#lib/apps/dossier/utils/publicationPassphrase.js';
 
 const WRONG = 'That passphrase was not recognised.';
 

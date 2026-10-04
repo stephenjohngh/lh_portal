@@ -6,7 +6,7 @@
 // document set is catalogued; values are stored verbatim in
 // gt_documents.document_type (plain text, no DB constraint).
 
-import { policy } from '$lib/utils/policies.js';
+import { policy } from '#lib/utils/policies.js';
 
 /**
  * Master Document List — document_type options (label === stored value).

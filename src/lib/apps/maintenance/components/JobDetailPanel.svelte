@@ -3,22 +3,22 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { maintenanceStore }  from '../stores/maintenanceStore.js';
-  import { permissions }       from '$lib/stores/permissions';
-  import { normalisePhotoUrl } from '$lib/utils/driveUtils.js';
+  import { permissions }       from '#lib/stores/permissions.js';
+  import { normalisePhotoUrl } from '#lib/utils/driveUtils.js';
   import {
     ragConfig, resultConfig, scopeTypeLabel, docTypeLabel,
     docTypeIcon, fmtBytes, frequencyLabel, daysRelative, expiryRag,
   } from '../utils/maintenanceHelpers.js';
-  import { fmtDate, fmtDateTime, fmtToday, today } from '$lib/utils/dates.js';
-  import { requestDownload } from '$lib/utils/download.js';
+  import { fmtDate, fmtDateTime, fmtToday, today } from '#lib/utils/dates.js';
+  import { requestDownload } from '#lib/utils/download.js';
   import DocumentUpload    from './DocumentUpload.svelte';
   import JobForm           from './JobForm.svelte';
   import RecordCompletionForm from './RecordCompletionForm.svelte';
-  import Modal   from '$lib/components/common/Modal.svelte';
-  import Button  from '$lib/components/common/Button.svelte';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
-  import { errMessage } from '$lib/utils/errors.js';
+  import Modal   from '#lib/components/common/Modal.svelte';
+  import Button  from '#lib/components/common/Button.svelte';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
+  import { errMessage } from '#lib/utils/errors.js';
 
   export let job;
   export let show = true;

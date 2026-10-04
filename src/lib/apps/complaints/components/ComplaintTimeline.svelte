@@ -6,7 +6,7 @@
      makes it evidence rather than notes, and it is why a correction is a new
      entry saying so rather than a change to an old one. -->
 <script>
-  import { fmtDateTime } from '$lib/utils/dates';
+  import { fmtDateTime } from '#lib/utils/dates.js';
   import { statusMeta } from '../utils/complaintLifecycle.js';
 
   export let entries = [];

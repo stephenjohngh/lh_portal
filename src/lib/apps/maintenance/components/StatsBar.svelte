@@ -2,7 +2,7 @@
 <!-- Summary counts: Overdue / Due Soon / Scheduled / Completed / Certificates -->
 <script>
   import { certificateExpirySummary } from '../utils/maintenanceHelpers.js';
-  import { dueSoonDays } from '$lib/utils/dueWindows';
+  import { dueSoonDays } from '#lib/utils/dueWindows.js';
 
   export let jobs = [];
   /** All maintenance_documents, for the certificate card (M5). */

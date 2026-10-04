@@ -22,7 +22,7 @@
      actually needs it. See ComplianceApp's activateTab. -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
+  import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
   import { inspectionDefinitionsStore } from '../stores/inspectionDefinitionsStore.js';
   import StatutoryTemplatePanel from './StatutoryTemplatePanel.svelte';
 

@@ -18,13 +18,13 @@
 
 import { json }                  from '@sveltejs/kit';
 import { storageProvider,
-         storageProviderName }   from '$lib/server/storage/index.js';
-import { friendlyStorageError }  from '$lib/server/storage/storageErrors.js';
-import { checkRateLimit }        from '$lib/server/publicRateLimit.js';
-import { safeSearchScan }        from '$lib/server/visionScan.js';
-import { isSameOrigin }          from '$lib/server/verifyOrigin.js';
-import { signUrl }               from '$lib/server/urlSignature.js';
-import { getLogger }             from '$lib/utils/logger';
+         storageProviderName }   from '#lib/server/storage/index.js';
+import { friendlyStorageError }  from '#lib/server/storage/storageErrors.js';
+import { checkRateLimit }        from '#lib/server/publicRateLimit.js';
+import { safeSearchScan }        from '#lib/server/visionScan.js';
+import { isSameOrigin }          from '#lib/server/verifyOrigin.js';
+import { signUrl }               from '#lib/server/urlSignature.js';
+import { getLogger }             from '#lib/utils/logger.js';
 
 const logger = getLogger('mor/intake/upload');
 

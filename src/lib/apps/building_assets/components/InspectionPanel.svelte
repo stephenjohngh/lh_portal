@@ -9,7 +9,7 @@
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
   import { conditionChecklistDisplay } from '../lookups.js';
   import { STATUSES } from '../ui.js';
-  import { fmtDate } from '$lib/utils/dates.js';
+  import { fmtDate } from '#lib/utils/dates.js';
   import ConditionChecklistChips from './ConditionChecklistChips.svelte';
 
   export let component      = null;  // components row

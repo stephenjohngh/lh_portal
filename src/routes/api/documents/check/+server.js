@@ -5,10 +5,10 @@
 // Returns { results: { [id]: { owner, file, fileDetail? } }, checkedAt }.
 //
 // Admin only, like deleting a library document: it reads every app's records
-// with the service role. ⛔ It changes nothing; see $lib/server/documentCheck.js.
+// with the service role. ⛔ It changes nothing; see #lib/server/documentCheck.js.
 import { json }               from '@sveltejs/kit';
-import { checkDocumentsById } from '$lib/server/documentLibrary';
-import { requireAdmin }       from '$lib/server/requireAuth';
+import { checkDocumentsById } from '#lib/server/documentLibrary.js';
+import { requireAdmin }       from '#lib/server/requireAuth.js';
 
 const MAX_IDS = 200;   // the most Document Demo lists at once
 

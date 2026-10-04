@@ -3,8 +3,8 @@
 // browser-only and not tested here; the labels and the list are.)
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('$lib/utils/authHeaders', () => ({ authHeaders: async () => ({}) }));
-vi.mock('$lib/utils/download.js', () => ({ downloadResponse: vi.fn() }));
+vi.mock('#lib/utils/authHeaders.js', () => ({ authHeaders: async () => ({}) }));
+vi.mock('#lib/utils/download.js', () => ({ downloadResponse: vi.fn() }));
 
 const { bayPlanLabel, bayPlanRows } = await import('./bayPlanImage.js');
 

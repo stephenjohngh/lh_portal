@@ -1,8 +1,8 @@
 // src/lib/apps/parking/utils/parkingReports.test.js
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('$lib/utils/authHeaders', () => ({ authHeaders: async () => ({}) }));
-vi.mock('$lib/utils/download.js', () => ({ downloadResponse: vi.fn() }));
+vi.mock('#lib/utils/authHeaders.js', () => ({ authHeaders: async () => ({}) }));
+vi.mock('#lib/utils/download.js', () => ({ downloadResponse: vi.fn() }));
 
 const {
   annualFee, bayRegisterSheet, agreementsSheet, waitingListSheet, devicesOutSheet,

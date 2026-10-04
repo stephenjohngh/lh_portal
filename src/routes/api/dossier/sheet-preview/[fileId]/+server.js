@@ -1,6 +1,6 @@
 // src/routes/api/dossier/sheet-preview/[fileId]/+server.js
 // GET /api/dossier/sheet-preview/:fileId — a bounded grid preview of a
-// spreadsheet on a pack's shelf. The parse itself is $lib/server/sheetReader.
+// spreadsheet on a pack's shelf. The parse itself is #lib/server/sheetReader.
 //
 // Authenticated by bearer token, and — since the security review (2026-09-27) —
 // only for a caller who may read the DOCUMENT the file belongs to. It EXTRACTS
@@ -9,13 +9,13 @@
 // rather than duplicate it.
 
 import { json }                 from '@sveltejs/kit';
-import { ownerOf }              from '$lib/server/storage/index.js';
-import { isStorageId }          from '$lib/server/storage/storageRef.js';
-import { getDocumentByFileId }  from '$lib/server/documentLibrary.js';
-import { canAccessDocument, bearerToken } from '$lib/server/documentAccess.js';
-import { friendlyStorageError } from '$lib/server/storage/storageErrors.js';
-import { requireAuth }          from '$lib/server/requireAuth.js';
-import { readSheetPreview, MAX_SHEET_BYTES } from '$lib/server/sheetReader.js';
+import { ownerOf }              from '#lib/server/storage/index.js';
+import { isStorageId }          from '#lib/server/storage/storageRef.js';
+import { getDocumentByFileId }  from '#lib/server/documentLibrary.js';
+import { canAccessDocument, bearerToken } from '#lib/server/documentAccess.js';
+import { friendlyStorageError } from '#lib/server/storage/storageErrors.js';
+import { requireAuth }          from '#lib/server/requireAuth.js';
+import { readSheetPreview, MAX_SHEET_BYTES } from '#lib/server/sheetReader.js';
 
 export async function GET({ params, request, url }) {
   const auth = await requireAuth(request);

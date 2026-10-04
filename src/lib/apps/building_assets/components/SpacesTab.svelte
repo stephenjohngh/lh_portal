@@ -6,14 +6,14 @@
      time from the store (membership + area), reusing buildSpacesRegister() +
      spaceReport.js — the same helpers the sidebar used to expose as CSV. -->
 <script>
-  import { matchesSearch } from '$lib/utils/textSearch.js';
-  import { today } from '$lib/utils/dates';
+  import { matchesSearch } from '#lib/utils/textSearch.js';
+  import { today } from '#lib/utils/dates.js';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
   import { buildSpacesRegisterRows, spacesRegisterCsvRows } from '../utils/spaceReport.js';
-  import { KIND_LABEL } from '$lib/utils/spaceRef.js';
-  import { downloadCsvRows } from '$lib/utils/download.js';
-  import { permissions } from '$lib/stores/permissions';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import { KIND_LABEL } from '#lib/utils/spaceRef.js';
+  import { downloadCsvRows } from '#lib/utils/download.js';
+  import { permissions } from '#lib/stores/permissions.js';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
   import SpaceDetailSidebar from './plan/SpaceDetailSidebar.svelte';
   import { computeMetresPerUnit } from './plan/planMeasure.js';
 

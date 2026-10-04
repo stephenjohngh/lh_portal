@@ -5,7 +5,7 @@
      risk. Clicking a cell emits `cell` so the parent can filter the list. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { scoreBand, liveRating, RISK_DOMAIN_LABELS } from '$lib/apps/golden_thread/utils/gtRiskScoring.js';
+  import { scoreBand, liveRating, RISK_DOMAIN_LABELS } from '#lib/apps/golden_thread/utils/gtRiskScoring.js';
 
   export let risks = [];
   export let alertsByRisk = {};

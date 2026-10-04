@@ -5,10 +5,10 @@
 // component/inspection write still goes through the Building Assets public
 // interface — the offline path does not get its own copy of those rules.
 
-import { api } from '$lib/utils/api';
-import { uploadMedia } from '$lib/utils/mediaUpload.js';
-import { setAttachments, listAttachments } from '$lib/utils/mediaAttachments.js';
-import { updateComponent, upsertComponentInspection } from '$lib/apps/building_assets/public.js';
+import { api } from '#lib/utils/api.js';
+import { uploadMedia } from '#lib/utils/mediaUpload.js';
+import { setAttachments, listAttachments } from '#lib/utils/mediaAttachments.js';
+import { updateComponent, upsertComponentInspection } from '#lib/apps/building_assets/public.js';
 
 /**
  * @returns {{

@@ -27,17 +27,17 @@
 // so an origin check would break legitimate use while defending nothing.
 
 import { json }                 from '@sveltejs/kit';
-import { ownerOf }              from '$lib/server/storage/index.js';
-import { isStorageId }          from '$lib/server/storage/storageRef.js';
-import { providersForFileIds } from '$lib/server/documentLibrary.js';
-import { friendlyStorageError } from '$lib/server/storage/storageErrors.js';
-import { checkRateLimit }       from '$lib/server/publicRateLimit.js';
-import { fileHeaders }          from '$lib/server/fileResponse.js';
-import { manifestEntry }        from '$lib/apps/dossier/utils/snapshot.js';
+import { ownerOf }              from '#lib/server/storage/index.js';
+import { isStorageId }          from '#lib/server/storage/storageRef.js';
+import { providersForFileIds } from '#lib/server/documentLibrary.js';
+import { friendlyStorageError } from '#lib/server/storage/storageErrors.js';
+import { checkRateLimit }       from '#lib/server/publicRateLimit.js';
+import { fileHeaders }          from '#lib/server/fileResponse.js';
+import { manifestEntry }        from '#lib/apps/dossier/utils/snapshot.js';
 import {
   findServablePublication, resolveManifest, readerRefusal,
-} from '$lib/server/publicationReader.js';
-import { hasGrant } from '$lib/server/publicationPassphrase.js';
+} from '#lib/server/publicationReader.js';
+import { hasGrant } from '#lib/server/publicationPassphrase.js';
 
 /** Every refusal, whatever the cause. See publicationReader.readerRefusal(). */
 function refuse() {
@@ -97,7 +97,7 @@ export async function GET({ params, request, cookies }) {
   // everything else downloads as an opaque octet-stream under its own name. The
   // bytes are user-uploaded and served from our origin, so this is the same
   // caution the media proxy applies, with the same reasoning.
-  // The rule lives in $lib/server/fileResponse.js, shared with the media proxy.
+  // The rule lives in #lib/server/fileResponse.js, shared with the media proxy.
   return new Response(data, {
     headers: {
       ...fileHeaders({

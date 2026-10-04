@@ -7,9 +7,9 @@
 // the 116 entries currently say.
 
 import { describe, it, expect } from 'vitest';
-import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
+import { EVIDENCE_ROUTE_LABEL } from '#lib/utils/obligationEvidence.js';
 import { STATUTORY_TEMPLATE, isSchedulable, isUnhomed, isSuperseded, BASIS_RANK }
-  from '$lib/utils/statutoryTemplate.js';
+  from '#lib/utils/statutoryTemplate.js';
 import {
   registerStatus, filterRegister, registerStatusTally, groupRegisterRows,
   registerFilterFields, groupRegisterRowsByRoute, routeGroupOf, ROUTE_GROUPS, REGISTER_STATUS, REGISTER_STATUS_LABEL, REGISTER_STATUS_EXPLAINED, REGISTER_STATUS_CLASS,

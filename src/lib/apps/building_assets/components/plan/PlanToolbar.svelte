@@ -4,7 +4,7 @@
      Search has moved to FilterSidebar. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { permissions }          from '$lib/stores/permissions.js';
+  import { permissions }          from '#lib/stores/permissions.js';
 
   export let floors             = [];
   export let plansForFloor      = [];

@@ -4,12 +4,12 @@
 // the server. Read here rather than taken from the request: a route that used
 // a name the browser sent, or one typed into the route as a default, is how
 // one building came to be "Lonsdale House" on some exports and "Lancaster
-// House" on others. See $lib/utils/identity.js.
+// House" on others. See #lib/utils/identity.js.
 
 import { createClient }        from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }                 from '$env/dynamic/private';
-import { ORGANISATION_KEY, cleanOrganisation, buildingName } from '$lib/utils/identity.js';
+import { ORGANISATION_KEY, cleanOrganisation, buildingName } from '#lib/utils/identity.js';
 
 let _db = null;
 const db = () => (_db ??= createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY ?? ''));

@@ -5,15 +5,15 @@
      so the tab stays focused on the session list. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { typeByCode, defsForType, conditionChecklistDisplay, readingsDisplay } from '$lib/apps/building_assets/lookups.js';
-  import { resultBadgeColor, noAccessReasonLabel } from '$lib/utils/resultConstants.js';
-  import { resultLabel }      from '$lib/apps/inspection/utils/inspectionHelpers.js';
-  import { fmtDateTime }      from '$lib/utils/dates';
-  import Modal    from '$lib/components/common/Modal.svelte';
-  import Badge    from '$lib/components/common/Badge.svelte';
-  import ConditionChecklistChips from '$lib/apps/building_assets/components/ConditionChecklistChips.svelte';
+  import { typeByCode, defsForType, conditionChecklistDisplay, readingsDisplay } from '#lib/apps/building_assets/lookups.js';
+  import { resultBadgeColor, noAccessReasonLabel } from '#lib/utils/resultConstants.js';
+  import { resultLabel }      from '#lib/apps/inspection/utils/inspectionHelpers.js';
+  import { fmtDateTime }      from '#lib/utils/dates.js';
+  import Modal    from '#lib/components/common/Modal.svelte';
+  import Badge    from '#lib/components/common/Badge.svelte';
+  import ConditionChecklistChips from '#lib/apps/building_assets/components/ConditionChecklistChips.svelte';
   import InspectionReadings      from './InspectionReadings.svelte';
-  import PhotoLightbox from '$lib/components/common/PhotoLightbox.svelte';
+  import PhotoLightbox from '#lib/components/common/PhotoLightbox.svelte';
 
   export let inspection;   // component_inspections row (includes photo_urls)
   export let group;        // component group: asset_id, label, type_code, floor_name

@@ -11,10 +11,10 @@
      register disagreeing with the paper that went out. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Modal         from '$lib/components/common/Modal.svelte';
-  import Button        from '$lib/components/common/Button.svelte';
-  import FormInput     from '$lib/components/common/FormInput.svelte';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import Modal         from '#lib/components/common/Modal.svelte';
+  import Button        from '#lib/components/common/Button.svelte';
+  import FormInput     from '#lib/components/common/FormInput.svelte';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
   import { specUsage } from '../../utils/worksSchedule.js';
 
   export let show = false;

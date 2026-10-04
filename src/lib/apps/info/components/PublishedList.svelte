@@ -11,9 +11,9 @@
      filed. -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import Icon from '$lib/components/icons/Icon.svelte';
-  import { fmtDate } from '$lib/utils/dates';
-  import { profiles, profilesStore } from '$lib/stores/profiles';
+  import Icon from '#lib/components/icons/Icon.svelte';
+  import { fmtDate } from '#lib/utils/dates.js';
+  import { profiles, profilesStore } from '#lib/stores/profiles.js';
   import { publishedNotes, VISIBILITY_BADGES } from '../utils/infoHelpers.js';
 
   export let notes = [];

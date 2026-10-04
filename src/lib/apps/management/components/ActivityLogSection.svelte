@@ -11,33 +11,33 @@
   This file owns all suggestion-panel state and cross-cutting modals.
 -->
 <script>
-  import { portalSettings } from '$lib/stores/portalSettings.js';
-  import { fileViewUrl } from '$lib/utils/driveUtils.js';
+  import { portalSettings } from '#lib/stores/portalSettings.js';
+  import { fileViewUrl } from '#lib/utils/driveUtils.js';
   import { onMount, createEventDispatcher } from 'svelte';
-  import { auth }             from '$lib/stores/auth';
-  import { profilesStore }    from '$lib/stores/profiles';
-  import { permissions }      from '$lib/stores/permissions';
+  import { auth }             from '#lib/stores/auth.js';
+  import { profilesStore }    from '#lib/stores/profiles.js';
+  import { permissions }      from '#lib/stores/permissions.js';
   import { issuesStore }      from '../stores/issuesStore';
   import { meetingsStore }    from '../stores/meetingsStore';
   import { activitySort }     from '../stores/activitySortStore';
-  import { sanitizeHtml }     from '$lib/utils/sanitizeHtml';
-  import { ACTIVITY_TYPE, ACTIVITY_TYPES, ACTIVITY_TYPE_CONFIG } from '$lib/utils/constants';
-  import { fmtDateTime, wasModified, toDateTimeLocal } from '$lib/utils/dates';
+  import { sanitizeHtml }     from '#lib/utils/sanitizeHtml.js';
+  import { ACTIVITY_TYPE, ACTIVITY_TYPES, ACTIVITY_TYPE_CONFIG } from '#lib/utils/constants.js';
+  import { fmtDateTime, wasModified, toDateTimeLocal } from '#lib/utils/dates.js';
   import { linkedActionsByActivityId, filterActivities, sortActivities } from '../utils/activityList.js';
   import MeetingBadge         from './meetings/MeetingBadge.svelte';
-  import { getLogger }        from '$lib/utils/logger';
-  import { fmtBytes, mimeIcon } from '$lib/utils/files.js';
-  import { postJson }         from '$lib/utils/request';
-  import Icon                 from '$lib/components/icons/Icon.svelte';
-  import Button               from '$lib/components/common/Button.svelte';
-  import Modal                from '$lib/components/common/Modal.svelte';
-  import ProtectedButton      from '$lib/components/common/ProtectedButton.svelte';
-  import ConfirmDialog        from '$lib/components/common/ConfirmDialog.svelte';
+  import { getLogger }        from '#lib/utils/logger.js';
+  import { fmtBytes, mimeIcon } from '#lib/utils/files.js';
+  import { postJson }         from '#lib/utils/request.js';
+  import Icon                 from '#lib/components/icons/Icon.svelte';
+  import Button               from '#lib/components/common/Button.svelte';
+  import Modal                from '#lib/components/common/Modal.svelte';
+  import ProtectedButton      from '#lib/components/common/ProtectedButton.svelte';
+  import ConfirmDialog        from '#lib/components/common/ConfirmDialog.svelte';
   import ActionForm           from './ActionForm.svelte';
   import ActivityItem         from './ActivityItem.svelte';
   import ActivityLogToolbar    from './ActivityLogToolbar.svelte';
   import AddActivityForm       from './AddActivityForm.svelte';
-  import RichTextEditor       from '$lib/components/common/LazyRichTextEditor.svelte';
+  import RichTextEditor       from '#lib/components/common/LazyRichTextEditor.svelte';
 
   const logger = getLogger('ActivityLogSection');
 

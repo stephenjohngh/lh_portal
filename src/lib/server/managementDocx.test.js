@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
 import { Packer } from 'docx';
-import { today, addDaysISO } from '$lib/utils/dates.js';
+import { today, addDaysISO } from '#lib/utils/dates.js';
 import {
   reportDocument, buildIssuesReport, buildActionsReport, buildMinutesReport,
 } from './managementDocx.js';

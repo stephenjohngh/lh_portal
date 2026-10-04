@@ -6,7 +6,7 @@
 
   import { createEventDispatcher, onDestroy } from 'svelte';
   import { mobileplanStore } from '../stores/mobileplanStore.js';
-  import { fmtDateTime } from '$lib/utils/dates.js';
+  import { fmtDateTime } from '#lib/utils/dates.js';
   import { resultLabel as planResultLabel, resultClass } from '../utils/planFilter.js';
 
   const dispatch = createEventDispatcher();

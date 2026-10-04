@@ -10,11 +10,11 @@ import { createClient }              from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }                 from '$env/dynamic/private';
 import { storageProvider, ownerOf } from './storage/index.js';
-import { sanitizeIlikeTerm }          from '$lib/utils/pgFilter.js';
-import { docTypeFromMime, isUnclassifiedDocType } from '$lib/utils/documentUtils.js';
-import { getLogger }                  from '$lib/utils/logger';
+import { sanitizeIlikeTerm }          from '#lib/utils/pgFilter.js';
+import { docTypeFromMime, isUnclassifiedDocType } from '#lib/utils/documentUtils.js';
+import { getLogger }                  from '#lib/utils/logger.js';
 import { checkDocuments }             from './documentCheck.js';
-import { readAllPages, chunks } from '$lib/utils/readAllPages.js';
+import { readAllPages, chunks } from '#lib/utils/readAllPages.js';
 
 const logger = getLogger('DocumentLibrary');
 

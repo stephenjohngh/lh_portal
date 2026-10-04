@@ -6,13 +6,13 @@
      the list on `saved`. Types are shown in presentation_order. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { createSpaceType, updateSpaceType, deleteSpaceType } from '$lib/apps/building_assets/public.js';
-  import { auth } from '$lib/stores/auth';
-  import { getLogger } from '$lib/utils/logger';
-  import Button        from '$lib/components/common/Button.svelte';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-  import { KIND_LABEL } from '$lib/utils/spaceRef.js';
-  import { typeKind } from '$lib/apps/building_assets/utils/spaceTypeOptions.js';
+  import { createSpaceType, updateSpaceType, deleteSpaceType } from '#lib/apps/building_assets/public.js';
+  import { auth } from '#lib/stores/auth.js';
+  import { getLogger } from '#lib/utils/logger.js';
+  import Button        from '#lib/components/common/Button.svelte';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
+  import { KIND_LABEL } from '#lib/utils/spaceRef.js';
+  import { typeKind } from '#lib/apps/building_assets/utils/spaceTypeOptions.js';
 
   export let types = [];   // [{ id, value, presentation_order, kind }]
 

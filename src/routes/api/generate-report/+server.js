@@ -16,7 +16,7 @@
 // Separate final sections follow in order: full_component_list → full_summary.
 
 import { json } from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/requireAuth';
+import { requireAuth } from '#lib/server/requireAuth.js';
 import {
   Document, Packer,
   Paragraph, TextRun,
@@ -25,18 +25,18 @@ import {
   WidthType, HeadingLevel, ShadingType,
   AlignmentType, VerticalAlign, TableLayoutType
 } from 'docx';
-import { getLogger } from '$lib/utils/logger';
-import { statusLabel } from '$lib/utils/resultConstants.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { statusLabel } from '#lib/utils/resultConstants.js';
 import {
   CONTENT_W, CONTENT_W_L, COLOURS, BORDERS, CELL_PAD,
   hCell, dCell, run, para,
   makeHeader, makeFooter,
   DOC_STYLES, pageProps,
-} from '$lib/server/docxHelpers.js';
-import { sortBySystemInspectionAsset } from '$lib/utils/componentSorting.js';
-import { buildStatusPivot } from '$lib/apps/building_assets/utils/reportModel.js';
-import { fmtGenerated, fmtShortDate, today } from '$lib/utils/dates.js';
-import { documentBuildingName } from '$lib/server/identity.js';
+} from '#lib/server/docxHelpers.js';
+import { sortBySystemInspectionAsset } from '#lib/utils/componentSorting.js';
+import { buildStatusPivot } from '#lib/apps/building_assets/utils/reportModel.js';
+import { fmtGenerated, fmtShortDate, today } from '#lib/utils/dates.js';
+import { documentBuildingName } from '#lib/server/identity.js';
 
 const logger = getLogger('generateReport');
 

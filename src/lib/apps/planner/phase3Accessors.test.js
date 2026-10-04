@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const h = vi.hoisted(() => ({ tables: {} }));
-vi.mock('$lib/utils/api', () => ({
+vi.mock('#lib/utils/api.js', () => ({
   api: {
     get: vi.fn(async (table, opts) => {
       const rows = h.tables[table] ?? [];
@@ -22,13 +22,13 @@ vi.mock('$lib/utils/api', () => ({
     getAllIn: vi.fn(async (table, col, ids) => (h.tables[table] ?? []).filter((r) => ids.includes(r[col]))),
   },
 }));
-vi.mock('$lib/supabaseClient', () => ({ supabase: {} }));
+vi.mock('#lib/supabaseClient.js', () => ({ supabase: {} }));
 vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://x', PUBLIC_SUPABASE_ANON_KEY: 'k' }));
-vi.mock('$lib/apps/compliance/stores/inspectionDefinitionsStore.js', () => ({ inspectionDefinitionsStore: {} }));
-vi.mock('$lib/apps/inspection/public.js', () => ({ listWalkSessions: vi.fn(async () => []) }));
+vi.mock('#lib/apps/compliance/stores/inspectionDefinitionsStore.js', () => ({ inspectionDefinitionsStore: {} }));
+vi.mock('#lib/apps/inspection/public.js', () => ({ listWalkSessions: vi.fn(async () => []) }));
 
-import { listWorksDue } from '$lib/apps/building_assets/public.js';
-import { listUnaddressedFaults } from '$lib/apps/compliance/public.js';
+import { listWorksDue } from '#lib/apps/building_assets/public.js';
+import { listUnaddressedFaults } from '#lib/apps/compliance/public.js';
 
 beforeEach(() => { h.tables = {}; });
 

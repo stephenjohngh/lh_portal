@@ -5,25 +5,25 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { parkingStore } from '../stores/parkingStore.js';
-  import { permissions } from '$lib/stores/permissions';
+  import { permissions } from '#lib/stores/permissions.js';
   import {
     STATUS_LABEL, BASIS_LABEL, HOLDER_TYPE_LABEL, VAT_TREATMENTS, FEE_PERIODS,
     canTransition, validateVehicle, todayISO,
     noticeEndDate, DEVICE_TYPES, DEVICE_LABEL, outstandingDevices, depositRefundProblem,
     EVENT_LABEL, eventSummary, basesForTenure,
   } from '../utils/agreementModel.js';
-  import { fmtDate } from '$lib/utils/dates.js';
+  import { fmtDate } from '#lib/utils/dates.js';
   import { HOLDER_CLASS_LABEL } from '../utils/tariffModel.js';
-  import AttachedDocuments from '$lib/components/common/documents/AttachedDocuments.svelte';
-  import { DOC_FOLDERS, entityFolderPath } from '$lib/utils/documentUtils.js';
-  import { logAudit } from '$lib/utils/auditLogger';
-  import Button        from '$lib/components/common/Button.svelte';
-  import FormInput     from '$lib/components/common/FormInput.svelte';
-  import FormSelect    from '$lib/components/common/FormSelect.svelte';
-  import FormTextarea  from '$lib/components/common/FormTextarea.svelte';
-  import Checkbox      from '$lib/components/common/Checkbox.svelte';
-  import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import AttachedDocuments from '#lib/components/common/documents/AttachedDocuments.svelte';
+  import { DOC_FOLDERS, entityFolderPath } from '#lib/utils/documentUtils.js';
+  import { logAudit } from '#lib/utils/auditLogger.js';
+  import Button        from '#lib/components/common/Button.svelte';
+  import FormInput     from '#lib/components/common/FormInput.svelte';
+  import FormSelect    from '#lib/components/common/FormSelect.svelte';
+  import FormTextarea  from '#lib/components/common/FormTextarea.svelte';
+  import Checkbox      from '#lib/components/common/Checkbox.svelte';
+  import ErrorDisplay  from '#lib/components/common/ErrorDisplay.svelte';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
 
   /** @type {import('../utils/bayModel.js').AgreementRow | null} */
   export let agreement = null;

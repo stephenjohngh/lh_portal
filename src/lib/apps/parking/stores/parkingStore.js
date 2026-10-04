@@ -12,13 +12,13 @@
 // sentence before anything is sent.
 
 import { writable, get } from 'svelte/store';
-import { api } from '$lib/utils/api';
-import { postJson } from '$lib/utils/request';
-import { deleteDocumentsFor } from '$lib/utils/documentApi';
-import { auth } from '$lib/stores/auth';
-import { logAudit } from '$lib/utils/auditLogger';
-import { getLogger } from '$lib/utils/logger';
-import { listParkingBaySpaces } from '$lib/apps/building_assets/public.js';
+import { api } from '#lib/utils/api.js';
+import { postJson } from '#lib/utils/request.js';
+import { deleteDocumentsFor } from '#lib/utils/documentApi.js';
+import { auth } from '#lib/stores/auth.js';
+import { logAudit } from '#lib/utils/auditLogger.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { listParkingBaySpaces } from '#lib/apps/building_assets/public.js';
 import { mergeBays, bayFactsRow, validateBayFacts, BAY_DEFAULTS } from '../utils/bayModel.js';
 import {
   validateHolder, holderRow, validateAgreement, agreementRow, canTransition,
@@ -27,7 +27,7 @@ import {
 } from '../utils/agreementModel.js';
 import { validateApplication, validateOffer, offerBlocks } from '../utils/waitingListModel.js';
 import { validateTariff, tariffRow, tariffFor, matchesTariff, reopenedBy } from '../utils/tariffModel.js';
-import { storeLoader } from '$lib/utils/storeLoad.js';
+import { storeLoader } from '#lib/utils/storeLoad.js';
 
 const logger = getLogger('Parking');
 const AUDIT = { appId: 'parking', eventCategory: 'parking' };
@@ -36,8 +36,8 @@ const AUDIT = { appId: 'parking', eventCategory: 'parking' };
  * Each row type is the table's own, intersected with Record<string, any>
  * because these rows are joined and extended after reading (CLAUDE.md, Type
  * checking). Bays are not rows at all: mergeBays builds them.
- * @template {import('$lib/database.types').TableName} T
- * @typedef {import('$lib/database.types').Tables<T> & Record<string, any>} Row
+ * @template {import('#lib/database.types.ts').TableName} T
+ * @typedef {import('#lib/database.types.ts').Tables<T> & Record<string, any>} Row
  */
 /**
  * @typedef {{

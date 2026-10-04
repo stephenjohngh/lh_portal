@@ -5,23 +5,23 @@
      (The legacy Emergency Lighting / Fire Doors / Apartment Doors presets were
      retired in favour of the definitions migration 153 seeds.) -->
 <script>
-  import { errMessage } from '$lib/utils/errors';
+  import { errMessage } from '#lib/utils/errors.js';
   import { createEventDispatcher, onMount } from 'svelte';
-  import { getLogger }    from '$lib/utils/logger';
+  import { getLogger }    from '#lib/utils/logger.js';
   import { inspectionStore }  from '../stores/inspectionStore.js';
   import { generateSessionName } from '../utils/sessionNaming.js';
   import { buildWalkComponentsFromScope } from '../utils/inspectionWalk.js';
   import { buildRotatingWalk } from '../utils/inspectionRotation.js';
   import { lastDefinitionInspections } from '../public.js';
-  import { buildComponentRef } from '$lib/utils/componentRef.js';
-  import { computeInspectionSchedule, sortByDisplayOrder, scheduleDueText } from '$lib/utils/inspectionSchedule';
-  import { isWalkEvidenced } from '$lib/utils/obligationEvidence.js';
-  import { portalSettings } from '$lib/stores/portalSettings.js';
-  import WalkButton from '$lib/apps/inspection/components/common/WalkButton.svelte';
-  import WalkInput  from '$lib/apps/inspection/components/common/WalkInput.svelte';
-  import WalkSelect from '$lib/apps/inspection/components/common/WalkSelect.svelte';
-  import WalkError  from '$lib/apps/inspection/components/common/WalkError.svelte';
-  import WalkSpinner from '$lib/apps/inspection/components/common/WalkSpinner.svelte';
+  import { buildComponentRef } from '#lib/utils/componentRef.js';
+  import { computeInspectionSchedule, sortByDisplayOrder, scheduleDueText } from '#lib/utils/inspectionSchedule.js';
+  import { isWalkEvidenced } from '#lib/utils/obligationEvidence.js';
+  import { portalSettings } from '#lib/stores/portalSettings.js';
+  import WalkButton from '#lib/apps/inspection/components/common/WalkButton.svelte';
+  import WalkInput  from '#lib/apps/inspection/components/common/WalkInput.svelte';
+  import WalkSelect from '#lib/apps/inspection/components/common/WalkSelect.svelte';
+  import WalkError  from '#lib/apps/inspection/components/common/WalkError.svelte';
+  import WalkSpinner from '#lib/apps/inspection/components/common/WalkSpinner.svelte';
 
   const logger   = getLogger('InspectionSessionStart');
   const dispatch = createEventDispatcher();
@@ -50,7 +50,7 @@
   let hiddenTypeCodes = new Set();
 
   // -- Scheduled inspection definitions -------------------------------------------
-  /** @typedef {import('$lib/database.types').Tables<'statutory_obligations'>} InspectionDefinition */
+  /** @typedef {import('#lib/database.types.ts').Tables<'statutory_obligations'>} InspectionDefinition */
   // `isWalkEvidenced` keeps contractor-evidenced obligations out: since the
   // obligation library is shared with Maintenance (migration 203), this table
   // also holds work discharged by a contractor job, which nobody can tick off

@@ -18,9 +18,9 @@
 // Auth: Bearer token required (uses requireAuth).
 
 import { json }              from '@sveltejs/kit';
-import { requireAuth }       from '$lib/server/requireAuth';
-import { storageProvider, storageProviderName } from '$lib/server/storage/index.js';
-import { friendlyStorageError } from '$lib/server/storage/storageErrors';
+import { requireAuth }       from '#lib/server/requireAuth.js';
+import { storageProvider, storageProviderName } from '#lib/server/storage/index.js';
+import { friendlyStorageError } from '#lib/server/storage/storageErrors.js';
 
 const MAX_BYTES = 20 * 1024 * 1024; // 20 MB per photo
 

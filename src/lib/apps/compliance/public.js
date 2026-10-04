@@ -19,16 +19,16 @@
 // A caller that needs to RENDER the list subscribes to the store it already
 // has — what must not cross an app boundary is a WRITE.
 
-import { api } from '$lib/utils/api';
+import { api } from '#lib/utils/api.js';
 import { inspectionDefinitionsStore } from './stores/inspectionDefinitionsStore.js';
-import { listWalkSessions } from '$lib/apps/inspection/public.js';
-import { listJobEvidence } from '$lib/apps/maintenance/public.js';
+import { listWalkSessions } from '#lib/apps/inspection/public.js';
+import { listJobEvidence } from '#lib/apps/maintenance/public.js';
 import {
   computeObligationSchedule, walkEventsFromSessions, jobEventsFromJobs,
-} from '$lib/utils/obligationSchedule.js';
-import { currentDecisions } from '$lib/utils/statutoryExclusions.js';
-import { templateEntry } from '$lib/utils/statutoryTemplate.js';
-import { listComponentsByStatus, listWorksLinesFor } from '$lib/apps/building_assets/public.js';
+} from '#lib/utils/obligationSchedule.js';
+import { currentDecisions } from '#lib/utils/statutoryExclusions.js';
+import { templateEntry } from '#lib/utils/statutoryTemplate.js';
+import { listComponentsByStatus, listWorksLinesFor } from '#lib/apps/building_assets/public.js';
 import { correctiveSummary, faultLabel, FAULT_STATUSES } from './utils/correctiveWork.js';
 
 /**

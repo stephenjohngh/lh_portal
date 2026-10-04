@@ -309,7 +309,7 @@ export function endingProblem(agreement, endDate, vehicles = []) {
 
 // Add days to a YYYY-MM-DD date: one owner (dates.js, 2026-10-02), re-exported
 // so this module's callers keep their import.
-import { addDaysISO } from '$lib/utils/dates.js';
+import { addDaysISO } from '#lib/utils/dates.js';
 export { addDaysISO };
 
 /**

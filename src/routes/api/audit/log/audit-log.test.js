@@ -12,13 +12,13 @@ const h = vi.hoisted(() => {
 });
 
 vi.mock('@sveltejs/kit', () => ({ json: (body, init) => ({ body, status: init?.status ?? 200 }) }));
-vi.mock('$lib/server/requireAuth', () => ({ requireAuth: () => Promise.resolve(h.getAuth()) }));
-vi.mock('$lib/server/auditLogger', () => ({
+vi.mock('#lib/server/requireAuth.js', () => ({ requireAuth: () => Promise.resolve(h.getAuth()) }));
+vi.mock('#lib/server/auditLogger.js', () => ({
   logAudit:     h.logAudit,
   getIpAddress: () => '1.2.3.4',
   getUserAgent: () => 'test-agent',
 }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 
 const { POST } = await import('./+server.js');
 const req = (body) => ({ json: () => Promise.resolve(body), headers: { get: () => null } });

@@ -5,7 +5,7 @@
 // thing it must never be mistaken for is the obligations statement, which is a
 // hand-maintained document that has been through fourteen review rounds.
 //
-// Thin on purpose. The document is built by `$lib/server/registerDocx.js`: a
+// Thin on purpose. The document is built by `#lib/server/registerDocx.js`: a
 // `+server.js` may only export HTTP verbs, so a builder living here could never
 // be unit-tested — and document generation is exactly the kind of code that
 // fails at runtime on something static analysis cannot see.
@@ -16,10 +16,10 @@
 
 import { today } from '../../../../lib/utils/dates.js';
 import { json } from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/requireAuth';
-import { getLogger } from '$lib/utils/logger';
-import { buildRegisterDocument, isWholePicture, Packer } from '$lib/server/registerDocx.js';
-import { documentBuildingName } from '$lib/server/identity.js';
+import { requireAuth } from '#lib/server/requireAuth.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { buildRegisterDocument, isWholePicture, Packer } from '#lib/server/registerDocx.js';
+import { documentBuildingName } from '#lib/server/identity.js';
 
 const logger = getLogger('reports:generate-register-extract');
 

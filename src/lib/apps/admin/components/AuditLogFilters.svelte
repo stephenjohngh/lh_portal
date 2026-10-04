@@ -1,11 +1,11 @@
 <!-- src/lib/apps/admin/components/AuditLogFilters.svelte -->
 <!-- Advanced filtering for audit logs -->
 <script>
-  import { today, addDaysISO, addMonthsISO } from '$lib/utils/dates';
+  import { today, addDaysISO, addMonthsISO } from '#lib/utils/dates.js';
   import { createEventDispatcher } from 'svelte';
-  import FormInput from '$lib/components/common/FormInput.svelte';
-  import FormSelect from '$lib/components/common/FormSelect.svelte';
-  import Button from '$lib/components/common/Button.svelte';
+  import FormInput from '#lib/components/common/FormInput.svelte';
+  import FormSelect from '#lib/components/common/FormSelect.svelte';
+  import Button from '#lib/components/common/Button.svelte';
 
   export let filters;
 

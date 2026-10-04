@@ -3,14 +3,14 @@
 <script>
   import { onMount }      from 'svelte';
   import { get }          from 'svelte/store';
-  import { getPref, setPref } from '$lib/utils/prefs';
-  import { auth }         from '$lib/stores/auth';
-  import { permissions }  from '$lib/stores/permissions';
-  import { getLogger }    from '$lib/utils/logger';
-  import { logAudit }     from '$lib/utils/auditLogger';
-  import ErrorDisplay     from '$lib/components/common/ErrorDisplay.svelte';
-  import ConfirmDialog    from '$lib/components/common/ConfirmDialog.svelte';
-  import LoadingSpinner   from '$lib/components/common/LoadingSpinner.svelte';
+  import { getPref, setPref } from '#lib/utils/prefs.js';
+  import { auth }         from '#lib/stores/auth.js';
+  import { permissions }  from '#lib/stores/permissions.js';
+  import { getLogger }    from '#lib/utils/logger.js';
+  import { logAudit }     from '#lib/utils/auditLogger.js';
+  import ErrorDisplay     from '#lib/components/common/ErrorDisplay.svelte';
+  import ConfirmDialog    from '#lib/components/common/ConfirmDialog.svelte';
+  import LoadingSpinner   from '#lib/components/common/LoadingSpinner.svelte';
 
   import { infoStore }    from './stores/infoStore.js';
   import { isPublished }  from './utils/infoHelpers.js';

@@ -34,9 +34,9 @@ const h = vi.hoisted(() => {
   };
 });
 
-vi.mock('$lib/stores/permissions', () => ({ permissions: h.permissions }));
-vi.mock('$lib/stores/auth', () => ({ auth: h.auth }));
-vi.mock('$lib/apps/building_assets/stores/buildingAssetsStore.js', () => ({
+vi.mock('#lib/stores/permissions.js', () => ({ permissions: h.permissions }));
+vi.mock('#lib/stores/auth.js', () => ({ auth: h.auth }));
+vi.mock('#lib/apps/building_assets/stores/buildingAssetsStore.js', () => ({
   buildingAssetsStore: { subscribe: h.assets.subscribe, load: vi.fn(), loadComponents: vi.fn() },
 }));
 // vi.mock is hoisted, so it cannot be looped — one call per tab.

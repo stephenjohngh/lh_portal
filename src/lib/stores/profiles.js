@@ -19,8 +19,8 @@
 //                             actions.name_text shape — string, not uuid).
 
 import { writable, derived } from 'svelte/store';
-import { api } from '$lib/utils/api';
-import { getLogger } from '$lib/utils/logger';
+import { api } from '#lib/utils/api.js';
+import { getLogger } from '#lib/utils/logger.js';
 
 const logger = getLogger('profilesStore');
 

@@ -2,7 +2,7 @@
 
 // fmtBytes and mimeIcon live in the shared utils — re-exported here for
 // backwards compatibility so existing Info-app imports don't need updating.
-export { fmtBytes, mimeIcon } from '$lib/utils/files.js';
+export { fmtBytes, mimeIcon } from '#lib/utils/files.js';
 
 /** Parse a comma-separated tag string into a trimmed, deduplicated array. */
 /**
@@ -109,7 +109,7 @@ export function tagsToString(tags) {
  * rendering). The shared one (2026-10-02): this file had its own copy, which
  * left `&quot;` and `&#39;` in the text.
  */
-export { stripHtml } from '$lib/utils/textSearch.js';
+export { stripHtml } from '#lib/utils/textSearch.js';
 
 /** Visibility badge metadata for a note. */
 export const VISIBILITY_BADGES = {

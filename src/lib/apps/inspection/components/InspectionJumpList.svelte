@@ -7,8 +7,8 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { resultLabel, syncGlyph } from '../utils/inspectionHelpers.js';
-  import { buildComponentRef } from '$lib/utils/componentRef.js';
-  import WalkButton from '$lib/apps/inspection/components/common/WalkButton.svelte';
+  import { buildComponentRef } from '#lib/utils/componentRef.js';
+  import WalkButton from '#lib/apps/inspection/components/common/WalkButton.svelte';
 
   const dispatch = createEventDispatcher();
 

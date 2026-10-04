@@ -3,7 +3,7 @@
 // Posts to /api/audit/log and never throws (fire-and-forget safe).
 //
 // Usage (never await — fire-and-forget):
-//   import { logAudit } from '$lib/utils/auditLogger';
+//   import { logAudit } from '#lib/utils/auditLogger.js';
 //   logAudit('create', 'plan', plan.id, plan.name, { appId: 'plans' });
 //   logAudit('update', 'issue', issue.id, issue.name, { beforeData: {...}, afterData: {...} });
 //
@@ -11,8 +11,8 @@
 // sent in the Authorization header — the endpoint ignores any user fields
 // in the body, so audit entries cannot be forged.
 
-import { accessToken } from '$lib/utils/authHeaders';
-import { getLogger } from '$lib/utils/logger';
+import { accessToken } from '#lib/utils/authHeaders.js';
+import { getLogger } from '#lib/utils/logger.js';
 
 const logger = getLogger('auditLogger');
 

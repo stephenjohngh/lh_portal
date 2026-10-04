@@ -6,8 +6,8 @@
 <script>
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
   import { inp, sec }                      from '../ui.js';
-  import { permissions }                   from '$lib/stores/permissions.js';
-  import { fmtComponentRef, findComponentByRef } from '$lib/utils/componentRef.js';
+  import { permissions }                   from '#lib/stores/permissions.js';
+  import { fmtComponentRef, findComponentByRef } from '#lib/utils/componentRef.js';
   import ComponentDetailView               from './ComponentDetailView.svelte';
 
   export let componentId;     // string — the component whose links we manage

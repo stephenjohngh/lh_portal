@@ -1,7 +1,7 @@
 <!-- src/lib/components/common/ErrorDisplay.svelte -->
 <!-- Standardized error display component with consistent styling -->
 <script>
-  import Icon from '$lib/components/icons/Icon.svelte';
+  import Icon from '#lib/components/icons/Icon.svelte';
   
   export let message = '';
   export let onDismiss = null;

@@ -24,11 +24,11 @@ const h = vi.hoisted(() => {
   return { supabase, setResult: (r) => { result = r; } };
 });
 
-vi.mock('$lib/supabaseClient', () => ({ supabase: h.supabase }));
-vi.mock('$lib/utils/logger',   () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/supabaseClient.js', () => ({ supabase: h.supabase }));
+vi.mock('#lib/utils/logger.js',   () => ({ getLogger: () => () => {} }));
 
 const { portalSettings } = await import('./portalSettings.js');
-const { dueSoonDays, setDueWindows, DUE_SOON_DEFAULTS } = await import('$lib/utils/dueWindows.js');
+const { dueSoonDays, setDueWindows, DUE_SOON_DEFAULTS } = await import('#lib/utils/dueWindows.js');
 
 beforeEach(() => { vi.clearAllMocks(); h.setResult({ data: [], error: null }); setDueWindows(null); });
 

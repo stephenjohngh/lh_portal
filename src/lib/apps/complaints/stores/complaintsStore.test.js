@@ -13,12 +13,12 @@ import { get } from 'svelte/store';
 const h = vi.hoisted(() => ({
   api: { get: vi.fn(), getById: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), getAll: vi.fn() },
 }));
-vi.mock('$lib/utils/api', () => ({ api: h.api }));
-vi.mock('$lib/supabaseClient', () => ({
+vi.mock('#lib/utils/api.js', () => ({ api: h.api }));
+vi.mock('#lib/supabaseClient.js', () => ({
   supabase: { auth: { getSession: async () => ({ data: { session: { user: { id: 'u1', email: 'u@x' } } } }) } },
 }));
-vi.mock('$lib/utils/auditLogger', () => ({ logAudit: vi.fn() }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: vi.fn() }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 
 const { complaintsStore } = await import('./complaintsStore.js');
 

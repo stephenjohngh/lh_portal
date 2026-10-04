@@ -4,12 +4,12 @@
      that is already on the shelf, so P3 can enumerate exactly what a
      publication exposes. Upload happens in the sidebar Files panel. -->
 <script>
-  import { matchesSearch } from '$lib/utils/textSearch.js';
+  import { matchesSearch } from '#lib/utils/textSearch.js';
   import { createEventDispatcher } from 'svelte';
-  import Modal          from '$lib/components/common/Modal.svelte';
-  import Button         from '$lib/components/common/Button.svelte';
-  import FormInput      from '$lib/components/common/FormInput.svelte';
-  import { fmtDate }    from '$lib/utils/dates';
+  import Modal          from '#lib/components/common/Modal.svelte';
+  import Button         from '#lib/components/common/Button.svelte';
+  import FormInput      from '#lib/components/common/FormInput.svelte';
+  import { fmtDate }    from '#lib/utils/dates.js';
   import { previewKind, fmtSize } from '../utils/assetPreview.js';
 
   export let show  = false;

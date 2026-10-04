@@ -2,7 +2,7 @@
 // The GRANT half of passphrase access — server-only.
 //
 // Hashing and checking the passphrase itself lives in
-// $lib/apps/dossier/utils/publicationPassphrase.js, because the author's
+// #lib/apps/dossier/utils/publicationPassphrase.js, because the author's
 // browser has to hash one at publish time. What is here is the thing only a
 // server can do: mint and verify a signed grant.
 //
@@ -16,7 +16,7 @@
 
 import { createHmac, timingSafeEqual } from 'crypto';
 import { env } from '$env/dynamic/private';
-import { needsPassphrase } from '$lib/apps/dossier/utils/publicationPassphrase.js';
+import { needsPassphrase } from '#lib/apps/dossier/utils/publicationPassphrase.js';
 
 export { needsPassphrase };
 

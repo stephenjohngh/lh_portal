@@ -24,8 +24,8 @@ import { buildZip }             from './zip.js';
 import { ownerOf }              from './storage/index.js';
 import { isStorageId }          from './storage/storageRef.js';
 import { friendlyStorageError } from './storage/storageErrors.js';
-import { buildArchiveText, safeName, uniqueName } from '$lib/apps/dossier/utils/packArchive.js';
-import { getLogger }            from '$lib/utils/logger';
+import { buildArchiveText, safeName, uniqueName } from '#lib/apps/dossier/utils/packArchive.js';
+import { getLogger }            from '#lib/utils/logger.js';
 
 const logger = getLogger('PackArchive');
 

@@ -15,12 +15,12 @@
 // See docs/requirements/build_plans/Configurable_Inspections_Build_Plan.md §5 and
 // docs/requirements/build_plans/Obligation_Library_Promotion_Build_Plan.md §7.
 
-import { fmtDate } from '$lib/utils/dates';
-import { computeObligationSchedule, walkEventsFromSessions } from '$lib/utils/obligationSchedule.js';
+import { fmtDate } from '#lib/utils/dates.js';
+import { computeObligationSchedule, walkEventsFromSessions } from '#lib/utils/obligationSchedule.js';
 
 /**
- * @typedef {import('$lib/database.types').Tables<'statutory_obligations'>} InspectionDefinition
- * @typedef {import('$lib/database.types').Tables<'walk_sessions'>} WalkSession
+ * @typedef {import('#lib/database.types.ts').Tables<'statutory_obligations'>} InspectionDefinition
+ * @typedef {import('#lib/database.types.ts').Tables<'walk_sessions'>} WalkSession
  *
  * @typedef {Object} ScheduleState
  * @property {InspectionDefinition} definition

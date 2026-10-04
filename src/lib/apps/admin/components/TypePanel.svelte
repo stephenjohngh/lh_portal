@@ -2,9 +2,9 @@
 <!-- Panel 2 of 4: Component Types for the selected System. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
-  import { inp } from '$lib/apps/building_assets/ui.js';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import { buildingAssetsStore } from '#lib/apps/building_assets/stores/buildingAssetsStore.js';
+  import { inp } from '#lib/apps/building_assets/ui.js';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
 
   export let types           = [];
   export let selectedSystemId = null;

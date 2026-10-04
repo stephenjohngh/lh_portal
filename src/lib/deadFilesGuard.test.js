@@ -31,7 +31,7 @@ const SPEC = new RegExp(
 
 function resolveSpec(from, spec) {
   let base;
-  if (spec.startsWith('$lib/')) base = join(ROOT, 'lib', spec.slice(5));
+  if (spec.startsWith('#lib/')) base = join(ROOT, 'lib', spec.slice(5));
   else if (spec.startsWith('.')) base = resolve(dirname(from), spec);
   else return null;
   base = base.replace(/\?[a-z]+$/, '');
@@ -58,7 +58,7 @@ function unimported() {
 }
 
 const KEPT = {
-  'src/lib/index.js': "SvelteKit's $lib entry stub",
+  'src/lib/index.js': "SvelteKit's #lib entry stub",
   'src/lib/apps/dossier/public.js':
     "the app's cross-app interface, deliberately empty until another app needs Dossier's data",
 };

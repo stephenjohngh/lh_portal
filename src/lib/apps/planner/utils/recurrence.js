@@ -23,7 +23,7 @@
 // see `expandSeries`, which takes the anchor as an argument rather than
 // assuming one.
 
-import { addDaysISO as sharedAddDaysISO, daysBetween } from '$lib/utils/dates.js';
+import { addDaysISO as sharedAddDaysISO, daysBetween } from '#lib/utils/dates.js';
 
 /**
  * The shared helper, typed for what the Planner gives it: dates it has

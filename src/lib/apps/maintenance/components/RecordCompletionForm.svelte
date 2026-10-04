@@ -5,11 +5,11 @@
   import { maintenanceStore }      from '../stores/maintenanceStore.js';
   import { frequencyLabel, today, addDaysISO } from '../utils/maintenanceHelpers.js';
   import DocumentUpload from './DocumentUpload.svelte';
-  import Modal         from '$lib/components/common/Modal.svelte';
-  import Button        from '$lib/components/common/Button.svelte';
-  import FormInput     from '$lib/components/common/FormInput.svelte';
-  import FormTextarea  from '$lib/components/common/FormTextarea.svelte';
-  import Checkbox      from '$lib/components/common/Checkbox.svelte';
+  import Modal         from '#lib/components/common/Modal.svelte';
+  import Button        from '#lib/components/common/Button.svelte';
+  import FormInput     from '#lib/components/common/FormInput.svelte';
+  import FormTextarea  from '#lib/components/common/FormTextarea.svelte';
+  import Checkbox      from '#lib/components/common/Checkbox.svelte';
 
   export let job;
   export let show = true;

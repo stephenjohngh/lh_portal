@@ -11,10 +11,10 @@
 
 import { errMessage } from '../../../utils/errors.js';
 import { writable, get } from 'svelte/store';
-import { api }          from '$lib/utils/api';
-import { logAudit }     from '$lib/utils/auditLogger';
-import { getLogger }    from '$lib/utils/logger';
-import { listDocuments, deleteDocumentsFor } from '$lib/utils/documentApi';
+import { api }          from '#lib/utils/api.js';
+import { logAudit }     from '#lib/utils/auditLogger.js';
+import { getLogger }    from '#lib/utils/logger.js';
+import { listDocuments, deleteDocumentsFor } from '#lib/utils/documentApi.js';
 import { uniqueSlug }   from '../utils/slug.js';
 import { nextOrderIndex } from '../utils/docTree.js';
 import { extractLinks, diffLinks, linkSignature, groupBacklinks } from '../utils/docLinks.js';
@@ -25,8 +25,8 @@ import { planPackCopy } from '../utils/packCopy.js';
 import { buildSnapshot, buildManifest } from '../utils/snapshot.js';
 import { generateToken, hashToken, tokenPrefix } from '../utils/publicationToken.js';
 import { hashPassphrase } from '../utils/publicationPassphrase.js';
-import { storeLoader } from '$lib/utils/storeLoad.js';
-import { policy } from '$lib/utils/policies.js';
+import { storeLoader } from '#lib/utils/storeLoad.js';
+import { policy } from '#lib/utils/policies.js';
 
 const logger = getLogger('dossierStore');
 
@@ -76,10 +76,10 @@ function touch(userId) {
  * CLAUDE.md prescribes for portal stores. It also propagates Row types to
  * consumers.
  *
- * @typedef {import('$lib/database.types').Tables<'dossier_packs'>} Pack
- * @typedef {import('$lib/database.types').Tables<'dossier_docs'>} Doc
- * @typedef {import('$lib/database.types').Tables<'dossier_doc_revisions'>} DocRevision
- * @typedef {import('$lib/database.types').Tables<'document_library'>} LibraryFile
+ * @typedef {import('#lib/database.types.ts').Tables<'dossier_packs'>} Pack
+ * @typedef {import('#lib/database.types.ts').Tables<'dossier_docs'>} Doc
+ * @typedef {import('#lib/database.types.ts').Tables<'dossier_doc_revisions'>} DocRevision
+ * @typedef {import('#lib/database.types.ts').Tables<'document_library'>} LibraryFile
  * @typedef {{
  *   packs: Pack[], loading: boolean, error: string|null,
  *   activePackId: string|null, docs: Doc[], loadingDocs: boolean,
@@ -267,7 +267,7 @@ function createDossierStore() {
       let skippedFiles = [];
 
       if (includeFiles && contents.files.length) {
-        const { postJson } = await import('$lib/utils/request');
+        const { postJson } = await import('#lib/utils/request.js');
         const result = await postJson('/api/dossier/copy-files', {
           sourcePackId: sourceId, targetPackId: pack.id,
         });
@@ -680,7 +680,7 @@ function createDossierStore() {
       .map(f => f.pinned_file_id).filter(Boolean);
 
     if (pinned.length) {
-      const { del } = await import('$lib/utils/request');
+      const { del } = await import('#lib/utils/request.js');
       const result = await del(`/api/dossier/publications/${publication.id}/pinned`,
         'Could not remove the pinned copies');
       const failed = result?.failed?.length ?? pinned.length;

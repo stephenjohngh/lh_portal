@@ -56,9 +56,9 @@ export function isStorageId(id, provider = null) {
 
 /**
  * Google Drive file id from a raw storage_url or webViewLink.
- * Mirrors extractDriveFileId in $lib/utils/driveUtils.js — that one is the
+ * Mirrors extractDriveFileId in #lib/utils/driveUtils.js — that one is the
  * client's display-side copy; this is the server's deletion-side copy, and they
- * are deliberately separate modules because one may not import $lib/server.
+ * are deliberately separate modules because one may not import #lib/server.
  * @param {string|null|undefined} url
  * @returns {string|null}
  */

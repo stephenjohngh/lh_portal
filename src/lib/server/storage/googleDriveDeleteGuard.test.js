@@ -15,7 +15,7 @@ const h = vi.hoisted(() => ({
   failing: /** @type {Set<string>} */ (new Set()),
 }));
 
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 vi.mock('$env/dynamic/private', () => ({
   env: {
     STORAGE_DELETE_WITHIN_ROOT_ONLY: 'true',

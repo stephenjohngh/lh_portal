@@ -20,9 +20,9 @@ const h = vi.hoisted(() => ({
 vi.mock('@sveltejs/kit', () => ({
   json: (body, init) => ({ body, status: init?.status ?? 200 }),
 }));
-vi.mock('$lib/server/documentLibrary', () => ({ listDocuments: h.listDocuments }));
-vi.mock('$lib/server/requireAuth', () => ({ requireAuth: () => Promise.resolve(h.auth) }));
-vi.mock('$lib/server/documentAccess', () => ({
+vi.mock('#lib/server/documentLibrary.js', () => ({ listDocuments: h.listDocuments }));
+vi.mock('#lib/server/requireAuth.js', () => ({ requireAuth: () => Promise.resolve(h.auth) }));
+vi.mock('#lib/server/documentAccess.js', () => ({
   canListDocuments: h.canListDocuments,
   bearerToken: () => 'caller-token',
 }));

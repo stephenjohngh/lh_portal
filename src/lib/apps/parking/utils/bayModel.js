@@ -10,12 +10,12 @@
 //
 // Nothing here reads the database. The store loads, this decides.
 
-import { buildSpaceRef } from '$lib/utils/spaceRef.js';
+import { buildSpaceRef } from '#lib/utils/spaceRef.js';
 import { computeMetresPerUnit, measureArea, measureSides }
-  from '$lib/apps/building_assets/components/plan/planMeasure.js';
-import { PARKING_BAY_TYPES } from '$lib/apps/building_assets/utils/spaceTypeOptions.js';
+  from '#lib/apps/building_assets/components/plan/planMeasure.js';
+import { PARKING_BAY_TYPES } from '#lib/apps/building_assets/utils/spaceTypeOptions.js';
 import { currentAgreement, reservingAgreement, todayISO } from './agreementModel.js';
-import { matchesSearch } from '$lib/utils/textSearch.js';
+import { matchesSearch } from '#lib/utils/textSearch.js';
 
 /** How a bay is held. Only `licensable` may ever be allocated (P1). */
 export const TENURES = [
@@ -109,9 +109,9 @@ export function measureBay(space, plan) {
 }
 
 /**
- * @typedef {import('$lib/database.types').Tables<'parking_bays'>} BayRow
- * @typedef {import('$lib/database.types').Tables<'parking_agreements'> & Record<string, any>} AgreementRow
- * @typedef {import('$lib/database.types').Tables<'parking_applications'> & Record<string, any>} ApplicationRow
+ * @typedef {import('#lib/database.types.ts').Tables<'parking_bays'>} BayRow
+ * @typedef {import('#lib/database.types.ts').Tables<'parking_agreements'> & Record<string, any>} AgreementRow
+ * @typedef {import('#lib/database.types.ts').Tables<'parking_applications'> & Record<string, any>} ApplicationRow
  *
  * A bay as every Parking screen sees it: the parking_bays facts (BAY_DEFAULTS
  * where none have been saved yet, so every field may be absent) joined to its

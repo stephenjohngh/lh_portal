@@ -1,6 +1,6 @@
 <script context="module">
 
-  import { matchesSearch, stripHtml } from '$lib/utils/textSearch.js';
+  import { matchesSearch, stripHtml } from '#lib/utils/textSearch.js';
   // Persist status + search across open/close cycles.
   // Object wrapper avoids a vite-plugin-svelte "module-level reassignment" warning.
   const _persist = { status: 'current', query: '' };
@@ -12,7 +12,7 @@
   // Read-only; tap a row to open detail.
 
   import { createEventDispatcher } from 'svelte';
-  import { fmtDate, isOverdue } from '$lib/utils/dates.js';
+  import { fmtDate, isOverdue } from '#lib/utils/dates.js';
   import MeetingChip from './MeetingChip.svelte';
   import { priorityColor } from '../utils/mobileTheme.js';
 

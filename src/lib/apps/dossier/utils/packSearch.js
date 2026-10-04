@@ -26,7 +26,7 @@
 // author wrote what a file IS rather than what it is called.
 
 import { templateFor, columnFields, rowFields } from './datasetTemplates.js';
-import { snippetAround } from '$lib/utils/textSearch.js';
+import { snippetAround } from '#lib/utils/textSearch.js';
 
 // snippetAround now lives in shared utils — the Management app's search shows
 // hits the same way, and one definition of "how a hit reads" is worth more

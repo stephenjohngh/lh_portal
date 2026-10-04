@@ -1,6 +1,6 @@
 <script context="module">
 
-  import { matchesSearch } from '$lib/utils/textSearch.js';
+  import { matchesSearch } from '#lib/utils/textSearch.js';
   // Persist search + scope across open/close cycles without lifting state.
   // Object wrapper avoids a vite-plugin-svelte "module-level reassignment" warning.
   const _persist = { query: '', scope: 'floor' };

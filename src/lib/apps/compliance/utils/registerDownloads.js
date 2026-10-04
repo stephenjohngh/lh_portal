@@ -27,11 +27,11 @@
 // holding the document, so its internal section numbering is vocabulary from
 // somewhere they cannot see. The same fault as the import buttons — machinery
 // shown to someone who never sees the machinery.
-import { requestDownload } from '$lib/utils/download.js';
-import { describeFilters } from '$lib/components/common/filterSummary.js';
+import { requestDownload } from '#lib/utils/download.js';
+import { describeFilters } from '#lib/components/common/filterSummary.js';
 import { buildRegisterSheet, STATUS_FILL } from './registerExport.js';
 import { REGISTER_STATUS_LABEL } from './registerFilter.js';
-import { fmtGenerated, today } from '$lib/utils/dates.js';
+import { fmtGenerated, today } from '#lib/utils/dates.js';
 
 /**
  * @param {Object} params

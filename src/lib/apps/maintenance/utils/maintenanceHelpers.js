@@ -91,9 +91,9 @@ export function daysRelative(dateStr) {
   return `Due in ${diff} days`;
 }
 
-// Date helpers — single source of truth lives in $lib/utils/dates.js.
+// Date helpers — single source of truth lives in #lib/utils/dates.js.
 // Re-exported here so existing maintenance code keeps working.
-export { addDays, addDaysISO, toDateString, today } from '$lib/utils/dates';
+export { addDays, addDaysISO, toDateString, today } from '#lib/utils/dates.js';
 
 /** Format bytes as human-readable string. */
 export function fmtBytes(bytes) {

@@ -12,16 +12,16 @@
 <script>
   import { onMount }            from 'svelte';
   import { meetingsStore }      from '../../stores/meetingsStore';
-  import { permissions }        from '$lib/stores/permissions';
-  import { profiles, profilesStore } from '$lib/stores/profiles';
-  import { fmtDate, fmtDateTime, today } from '$lib/utils/dates';
-  import { ACTIVITY_TYPE }      from '$lib/utils/constants';
-  import { requestDownload } from '$lib/utils/download.js';
-  import { getLogger }          from '$lib/utils/logger';
-  import Button                 from '$lib/components/common/Button.svelte';
-  import ProtectedButton        from '$lib/components/common/ProtectedButton.svelte';
-  import ConfirmDialog          from '$lib/components/common/ConfirmDialog.svelte';
-  import ErrorDisplay           from '$lib/components/common/ErrorDisplay.svelte';
+  import { permissions }        from '#lib/stores/permissions.js';
+  import { profiles, profilesStore } from '#lib/stores/profiles.js';
+  import { fmtDate, fmtDateTime, today } from '#lib/utils/dates.js';
+  import { ACTIVITY_TYPE }      from '#lib/utils/constants.js';
+  import { requestDownload } from '#lib/utils/download.js';
+  import { getLogger }          from '#lib/utils/logger.js';
+  import Button                 from '#lib/components/common/Button.svelte';
+  import ProtectedButton        from '#lib/components/common/ProtectedButton.svelte';
+  import ConfirmDialog          from '#lib/components/common/ConfirmDialog.svelte';
+  import ErrorDisplay           from '#lib/components/common/ErrorDisplay.svelte';
   import MeetingForm            from './MeetingForm.svelte';
   import SearchMatches          from '../SearchMatches.svelte';
   import { searchMeetings, describeMatches } from '../../utils/issueSearch.js';

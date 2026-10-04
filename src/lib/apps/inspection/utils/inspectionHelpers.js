@@ -2,11 +2,11 @@
 // Helpers for the component_inspections schema:
 // flatten/group inspection rows, session stats, display helpers, preset labels.
 
-import { resultRank as _resultRank, resultLabel as _resultLabel } from '$lib/utils/resultConstants.js';
-import { sortByFloorAsset } from '$lib/utils/componentSorting.js';
+import { resultRank as _resultRank, resultLabel as _resultLabel } from '#lib/utils/resultConstants.js';
+import { sortByFloorAsset } from '#lib/utils/componentSorting.js';
 
 // Re-export so callers that already import these from here keep working.
-export { resultLabel, resultRank } from '$lib/utils/resultConstants.js';
+export { resultLabel, resultRank } from '#lib/utils/resultConstants.js';
 
 // -- Offline sync state (G5) ---------------------------------------------------
 // The walk UI shows whether each recorded inspection has reached the server yet.
@@ -151,7 +151,7 @@ export function statusBeforeSession(historyRows, startedAt) {
 }
 
 // NOTE: there is deliberately no component-display-name helper here. The portal
-// has ONE component ref format — buildComponentRef() in $lib/utils/componentRef.js
+// has ONE component ref format — buildComponentRef() in #lib/utils/componentRef.js
 // ("{floor}/{typeInitial}/{assetId}"), the same string component_links stores.
 // A local "{floor} / {assetId}" variant used to live here; it dropped the type
 // initial and drifted from every other surface. Use the shared builder.

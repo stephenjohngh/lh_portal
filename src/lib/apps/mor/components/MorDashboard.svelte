@@ -3,11 +3,11 @@
      breakdown, recent activity. Reads from the already-loaded store. -->
 <script>
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
-  import { morStore } from '$lib/apps/mor/stores/morStore';
-  import { auth }     from '$lib/stores/auth';
-  import { permissions } from '$lib/stores/permissions';
-  import Badge from '$lib/components/common/Badge.svelte';
-  import Button from '$lib/components/common/Button.svelte';
+  import { morStore } from '#lib/apps/mor/stores/morStore.js';
+  import { auth }     from '#lib/stores/auth.js';
+  import { permissions } from '#lib/stores/permissions.js';
+  import Badge from '#lib/components/common/Badge.svelte';
+  import Button from '#lib/components/common/Button.svelte';
   import {
     bsrReportClock,
     STATUS_LABEL, STATUS_COLOUR,
@@ -16,10 +16,10 @@
     caseSlaSummary,
     shouldShowBsrNotifyNudge, shouldShowClosureNudge, shouldShowStalenessNudge,
     isAwaitingMyApproval, isMyProposalAwaitingApproval, isMineAndOpen,
-  } from '$lib/apps/mor/utils/morHelpers';
-  import { fmtDate, today, DAY_MS } from '$lib/utils/dates';
-  import { requestDownload } from '$lib/utils/download';
-  import { errMessage } from '$lib/utils/errors';
+  } from '#lib/apps/mor/utils/morHelpers.js';
+  import { fmtDate, today, DAY_MS } from '#lib/utils/dates.js';
+  import { requestDownload } from '#lib/utils/download.js';
+  import { errMessage } from '#lib/utils/errors.js';
 
   const dispatch = createEventDispatcher();
 

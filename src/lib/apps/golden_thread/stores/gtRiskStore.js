@@ -8,16 +8,16 @@
 // unavailable, so the register still loads.
 
 import { writable } from 'svelte/store';
-import { api } from '$lib/utils/api';
-import { logAudit } from '$lib/utils/auditLogger';
-import { getLogger } from '$lib/utils/logger';
+import { api } from '#lib/utils/api.js';
+import { logAudit } from '#lib/utils/auditLogger.js';
+import { getLogger } from '#lib/utils/logger.js';
 import { makeRun } from './gtStoreHelpers.js';
-import { isValidRiskTransition } from '$lib/apps/golden_thread/utils/gtRiskLifecycle.js';
-import { riskAlertSignals } from '$lib/apps/golden_thread/utils/gtRiskScoring.js';
+import { isValidRiskTransition } from '#lib/apps/golden_thread/utils/gtRiskLifecycle.js';
+import { riskAlertSignals } from '#lib/apps/golden_thread/utils/gtRiskScoring.js';
 import {
   listRisks, getRisk, createRisk, updateRisk,
   listRiskLinks, listAllRiskLinks, addRiskLink, removeRiskLink,
-} from '$lib/apps/golden_thread/public.js';
+} from '#lib/apps/golden_thread/public.js';
 import { storeLoader } from '../../../utils/storeLoad.js';
 
 const logger = getLogger('gtRiskStore');

@@ -9,14 +9,14 @@
 import { json } from '@sveltejs/kit';
 import Anthropic from '@anthropic-ai/sdk';
 import { env as privateEnv } from '$env/dynamic/private';
-import { requireAuth } from '$lib/server/requireAuth';
-import { checkKeyRateLimit } from '$lib/server/publicRateLimit';
-import { rateLimit } from '$lib/utils/policies.js';
-import { callWithModel } from '$lib/server/aiModel.js';
-import { aiSwitchedOn } from '$lib/server/aiSwitch.js';
-import { logAudit } from '$lib/server/auditLogger';
-import { escapeForPrompt } from '$lib/server/promptEscape';
-import { getLogger } from '$lib/utils/logger';
+import { requireAuth } from '#lib/server/requireAuth.js';
+import { checkKeyRateLimit } from '#lib/server/publicRateLimit.js';
+import { rateLimit } from '#lib/utils/policies.js';
+import { callWithModel } from '#lib/server/aiModel.js';
+import { aiSwitchedOn } from '#lib/server/aiSwitch.js';
+import { logAudit } from '#lib/server/auditLogger.js';
+import { escapeForPrompt } from '#lib/server/promptEscape.js';
+import { getLogger } from '#lib/utils/logger.js';
 
 const logger = getLogger('SuggestSummaryAPI');
 

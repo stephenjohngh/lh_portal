@@ -29,11 +29,11 @@ vi.mock('./offlineQueue.js', async (importOriginal) => {
   const real = /** @type {any} */ (await importOriginal());
   return { ...real, openQueue: async () => h.handle, isOfflineAvailable: () => true };
 });
-vi.mock('$lib/stores/online.js', async () => {
+vi.mock('#lib/stores/online.js', async () => {
   const { writable } = await import('svelte/store');
   return { online: writable(true) };
 });
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 vi.mock('./inspectionSyncDeps.js', () => ({ makeSyncDeps: () => { throw new Error('the test injects its deps'); } }));
 
 /** IndexedDB's semantics, in memory: auto-increment key on ops, clone in and out. */
@@ -166,7 +166,7 @@ const closeSession = (/** @type {any} */ handle, /** @type {number} */ count) =>
 async function loadRunner() {
   vi.resetModules();
   const runner = await import('./syncRunner.js');
-  const { online } = await import('$lib/stores/online.js');
+  const { online } = await import('#lib/stores/online.js');
   return { runner, online, start: async (/** @type {any} */ deps) => {
     // startSync kicks a drain, and another once the stale reset is done; let
     // both settle so a test's own kicks are the only ones in play.

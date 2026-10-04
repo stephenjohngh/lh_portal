@@ -17,7 +17,7 @@
 // existing block never changes identity, which is what makes restore and
 // autosave idempotent); any later duplicate is reassigned.
 
-import { newUuid } from '$lib/utils/uuid';
+import { newUuid } from '#lib/utils/uuid.js';
 
 /**
  * Decide which blocks need a fresh uid.

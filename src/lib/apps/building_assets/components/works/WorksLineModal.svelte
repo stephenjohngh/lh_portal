@@ -10,18 +10,18 @@
      "what are the new values" in the abstract; it is "what changes", and that
      is only readable with the current values beside them. -->
 <script>
-  import { errMessage } from '$lib/utils/errors';
+  import { errMessage } from '#lib/utils/errors.js';
   import { createEventDispatcher, tick } from 'svelte';
-  import Modal        from '$lib/components/common/Modal.svelte';
-  import Button       from '$lib/components/common/Button.svelte';
-  import FormSelect   from '$lib/components/common/FormSelect.svelte';
-  import FormInput    from '$lib/components/common/FormInput.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
+  import Modal        from '#lib/components/common/Modal.svelte';
+  import Button       from '#lib/components/common/Button.svelte';
+  import FormSelect   from '#lib/components/common/FormSelect.svelte';
+  import FormInput    from '#lib/components/common/FormInput.svelte';
+  import FormTextarea from '#lib/components/common/FormTextarea.svelte';
   import AttrField    from '../AttrField.svelte';
   import { WORKS_ACTIONS, actionDef, specSuggestions, countMatchingLines }
     from '../../utils/worksSchedule.js';
   import { attrPairsText, componentAttrPairs } from '../../utils/attrDisplay.js';
-  import { drawComponentOnPlan } from '$lib/utils/planMarker.js';
+  import { drawComponentOnPlan } from '#lib/utils/planMarker.js';
 
   export let show = false;
   /** The works_schedule_items row, with .component joined. */

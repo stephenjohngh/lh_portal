@@ -4,9 +4,9 @@
 // worth more than the metadata, and this route used to check only that the
 // caller was signed in.
 import { json }           from '@sveltejs/kit';
-import { getDocument, getDocumentUrl } from '$lib/server/documentLibrary';
-import { requireAuth }    from '$lib/server/requireAuth';
-import { canAccessDocument, bearerToken } from '$lib/server/documentAccess';
+import { getDocument, getDocumentUrl } from '#lib/server/documentLibrary.js';
+import { requireAuth }    from '#lib/server/requireAuth.js';
+import { canAccessDocument, bearerToken } from '#lib/server/documentAccess.js';
 
 export async function GET({ request, params }) {
   const auth = await requireAuth(request);

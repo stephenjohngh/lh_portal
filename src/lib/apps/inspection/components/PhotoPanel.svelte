@@ -5,9 +5,9 @@
      uploadAllPending() as part of its own save flow. -->
 <script>
   import { onDestroy, tick } from 'svelte';
-  import { getLogger }      from '$lib/utils/logger';
-  import { compressImage }  from '$lib/apps/inspection/utils/imageCompression';
-  import WalkError          from '$lib/apps/inspection/components/common/WalkError.svelte';
+  import { getLogger }      from '#lib/utils/logger.js';
+  import { compressImage }  from '#lib/apps/inspection/utils/imageCompression.js';
+  import WalkError          from '#lib/apps/inspection/components/common/WalkError.svelte';
 
   const logger = getLogger('PhotoPanel');
 

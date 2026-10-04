@@ -12,9 +12,9 @@ import {
 } from './dueWindows.js';
 import { getExpiryStatus } from './documentUtils.js';
 import { reviewState } from './statutoryExclusions.js';
-import { expiryRag, jobRag } from '$lib/apps/maintenance/utils/maintenanceHelpers.js';
-import { fromObligationDue } from '$lib/apps/planner/utils/linked.js';
-import { bucketOf } from '$lib/apps/planner/utils/agenda.js';
+import { expiryRag, jobRag } from '#lib/apps/maintenance/utils/maintenanceHelpers.js';
+import { fromObligationDue } from '#lib/apps/planner/utils/linked.js';
+import { bucketOf } from '#lib/apps/planner/utils/agenda.js';
 import { addDaysISO, today } from './dates.js';
 
 afterEach(() => { setDueWindows(null); });

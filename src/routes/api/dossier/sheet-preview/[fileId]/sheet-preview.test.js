@@ -10,18 +10,18 @@ const h = vi.hoisted(() => ({
   getFileStream: vi.fn(),
 }));
 
-vi.mock('$lib/server/requireAuth.js', () => ({
+vi.mock('#lib/server/requireAuth.js', () => ({
   requireAuth: async () => ({ user: { id: 'u1' }, isAdmin: false, error: null }),
 }));
-vi.mock('$lib/server/documentLibrary.js', () => ({ getDocumentByFileId: async () => h.doc }));
-vi.mock('$lib/server/documentAccess.js', () => ({
+vi.mock('#lib/server/documentLibrary.js', () => ({ getDocumentByFileId: async () => h.doc }));
+vi.mock('#lib/server/documentAccess.js', () => ({
   canAccessDocument: async () => h.allowed,
   bearerToken: () => 'tok',
 }));
-vi.mock('$lib/server/storage/index.js', () => ({ ownerOf: () => ({ getFileStream: h.getFileStream }) }));
-vi.mock('$lib/server/storage/storageRef.js', () => ({ isStorageId: () => true }));
-vi.mock('$lib/server/storage/storageErrors.js', () => ({ friendlyStorageError: (e) => String(e) }));
-vi.mock('$lib/server/sheetReader.js', () => ({
+vi.mock('#lib/server/storage/index.js', () => ({ ownerOf: () => ({ getFileStream: h.getFileStream }) }));
+vi.mock('#lib/server/storage/storageRef.js', () => ({ isStorageId: () => true }));
+vi.mock('#lib/server/storage/storageErrors.js', () => ({ friendlyStorageError: (e) => String(e) }));
+vi.mock('#lib/server/sheetReader.js', () => ({
   MAX_SHEET_BYTES: 1_000_000,
   readSheetPreview: async () => ({ rows: [['a']] }),
 }));

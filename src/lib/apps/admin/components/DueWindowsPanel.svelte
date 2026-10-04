@@ -3,20 +3,20 @@
      each app starts to show it as due soon.
 
      The windows, their defaults and what each one governs are declared once,
-     in $lib/utils/dueWindows.js; this screen only edits them. What is saved is
+     in #lib/utils/dueWindows.js; this screen only edits them. What is saved is
      the windows that DIFFER from the shipped default (portal_settings,
      due_soon_days), so a window put back to its default follows the default
      again — including a later release's. -->
 <script>
   import { onMount } from 'svelte';
-  import { portalSettings } from '$lib/stores/portalSettings.js';
-  import { dueWindowInfo, isValidWindow, cleanDueWindows, DUE_WINDOW_LIMITS } from '$lib/utils/dueWindows.js';
-  import { logAudit } from '$lib/utils/auditLogger';
-  import { errMessage } from '$lib/utils/errors';
-  import { getLogger } from '$lib/utils/logger';
-  import Button from '$lib/components/common/Button.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import { portalSettings } from '#lib/stores/portalSettings.js';
+  import { dueWindowInfo, isValidWindow, cleanDueWindows, DUE_WINDOW_LIMITS } from '#lib/utils/dueWindows.js';
+  import { logAudit } from '#lib/utils/auditLogger.js';
+  import { errMessage } from '#lib/utils/errors.js';
+  import { getLogger } from '#lib/utils/logger.js';
+  import Button from '#lib/components/common/Button.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
 
   const logger = getLogger('DueWindowsPanel');
   const WINDOWS = dueWindowInfo();

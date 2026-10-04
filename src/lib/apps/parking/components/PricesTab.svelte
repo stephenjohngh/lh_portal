@@ -5,19 +5,19 @@
      Everyone with the Parking grant reads it; only an admin sets prices. -->
 <script>
   import { parkingStore } from '../stores/parkingStore.js';
-  import { permissions } from '$lib/stores/permissions';
+  import { permissions } from '#lib/stores/permissions.js';
   import { priceList, priceLabel, validateTariff, HOLDER_CLASSES, HOLDER_CLASS_LABEL } from '../utils/tariffModel.js';
   import { FEE_PERIODS, VAT_TREATMENTS, DEFAULT_VAT, todayISO } from '../utils/agreementModel.js';
-  import { PARKING_BAY_TYPES } from '$lib/apps/building_assets/utils/spaceTypeOptions.js';
-  import { fmtDate } from '$lib/utils/dates';
-  import Modal          from '$lib/components/common/Modal.svelte';
-  import Button         from '$lib/components/common/Button.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import FormInput      from '$lib/components/common/FormInput.svelte';
-  import FormSelect     from '$lib/components/common/FormSelect.svelte';
-  import FormTextarea   from '$lib/components/common/FormTextarea.svelte';
-  import ConfirmDialog  from '$lib/components/common/ConfirmDialog.svelte';
-  import ErrorDisplay   from '$lib/components/common/ErrorDisplay.svelte';
+  import { PARKING_BAY_TYPES } from '#lib/apps/building_assets/utils/spaceTypeOptions.js';
+  import { fmtDate } from '#lib/utils/dates.js';
+  import Modal          from '#lib/components/common/Modal.svelte';
+  import Button         from '#lib/components/common/Button.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import FormInput      from '#lib/components/common/FormInput.svelte';
+  import FormSelect     from '#lib/components/common/FormSelect.svelte';
+  import FormTextarea   from '#lib/components/common/FormTextarea.svelte';
+  import ConfirmDialog  from '#lib/components/common/ConfirmDialog.svelte';
+  import ErrorDisplay   from '#lib/components/common/ErrorDisplay.svelte';
 
   const VAT = Object.fromEntries(VAT_TREATMENTS.map(v => [v.value, v.label]));
 

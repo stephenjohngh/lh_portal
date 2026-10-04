@@ -13,7 +13,7 @@ const h = vi.hoisted(() => ({
 
 vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://localhost' }));
 vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'svc', ANTHROPIC_API_KEY: 'key' } }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({
     from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: h.saved ? { value: h.saved } : null, error: null }) }) }) }),

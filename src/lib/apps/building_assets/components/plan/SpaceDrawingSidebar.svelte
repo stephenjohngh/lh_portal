@@ -7,8 +7,8 @@
   import { SPACE_COLOURS } from './planMeasure.js';
   import { typesForKind } from '../../utils/spaceTypeOptions.js';
   import { inp } from '../../ui.js';
-  import { ACCENT } from '$lib/theme.js';
-  import { deriveSpaceName, KIND_LABEL } from '$lib/utils/spaceRef.js';
+  import { ACCENT } from '#lib/theme.js';
+  import { deriveSpaceName, KIND_LABEL } from '#lib/utils/spaceRef.js';
 
   export let vertices    = [];
   export let saving      = false;

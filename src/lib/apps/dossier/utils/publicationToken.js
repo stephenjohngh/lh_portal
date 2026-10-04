@@ -19,7 +19,7 @@
 // This token is 32 uniformly random bytes. There is nothing to brute-force, so
 // SHA-256 is exactly right and a slow KDF would only cost every request. A
 // passphrase is human-chosen and low-entropy, so it gets scrypt — see
-// $lib/server/publicationPassphrase.js. Using one mechanism for both would be
+// #lib/server/publicationPassphrase.js. Using one mechanism for both would be
 // wrong in one direction or the other.
 
 /** 32 bytes ≈ 256 bits of entropy, rendered as 43 base64url characters. */

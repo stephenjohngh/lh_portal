@@ -1,13 +1,13 @@
 // src/routes/api/reports/generate-docx/+server.js
-// The issues Word report. The document is built in $lib/server/managementDocx.js,
+// The issues Word report. The document is built in #lib/server/managementDocx.js,
 // where it can be tested; this route checks the caller, reads the request and
 // sends the file.
 
 import { json } from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/requireAuth';
-import { getLogger } from '$lib/utils/logger';
-import { today } from '$lib/utils/dates';
-import { buildIssuesReport, reportDocument, packReport } from '$lib/server/managementDocx.js';
+import { requireAuth } from '#lib/server/requireAuth.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { today } from '#lib/utils/dates.js';
+import { buildIssuesReport, reportDocument, packReport } from '#lib/server/managementDocx.js';
 
 const logger = getLogger('GenerateDocx');
 

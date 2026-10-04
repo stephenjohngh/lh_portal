@@ -12,9 +12,9 @@
 
 import { errMessage } from '../../../utils/errors.js';
 import { writable, get } from 'svelte/store';
-import { api }        from '$lib/utils/api';
-import { logAudit }   from '$lib/utils/auditLogger';
-import { getLogger }  from '$lib/utils/logger';
+import { api }        from '#lib/utils/api.js';
+import { logAudit }   from '#lib/utils/auditLogger.js';
+import { getLogger }  from '#lib/utils/logger.js';
 import { replaceComponentAttributes } from '../public.js';
 import { planApply, describeSummary, matchingLines } from '../utils/worksSchedule.js';
 import { storeLoader } from '../../../utils/storeLoad.js';
@@ -34,10 +34,10 @@ function createWorksSchedulesStore() {
  * without it a bare Tables<> swaps one error message for another.
    *
    * @typedef {{
-   *   schedules: (import('$lib/database.types').Tables<'works_schedules'> & Record<string, any>)[],
+   *   schedules: (import('#lib/database.types.ts').Tables<'works_schedules'> & Record<string, any>)[],
    *   loading: boolean,
    *   error: string | null,
-   *   items: (import('$lib/database.types').Tables<'works_schedule_items'> & Record<string, any>)[],
+   *   items: (import('#lib/database.types.ts').Tables<'works_schedule_items'> & Record<string, any>)[],
    *   loadingItems: boolean,
    *   attributes: Record<string, Record<string, any>>,
    *   specs: Record<string, any>[],

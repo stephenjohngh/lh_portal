@@ -8,23 +8,23 @@
      and land in a Documents folder.
      ⚠ A row can outlive its file and the record it was attached to — nothing
      links them (2026-09-27). "Check files" asks, per row shown, and changes
-     nothing: $lib/server/documentCheck.js. -->
+     nothing: #lib/server/documentCheck.js. -->
 <script>
   import { onMount }        from 'svelte';
-  import { documentsStore } from '$lib/stores/documentsStore';
-  import DocumentUploader   from '$lib/components/common/documents/DocumentUploader.svelte';
-  import DocumentList       from '$lib/components/common/documents/DocumentList.svelte';
-  import ConfirmDialog      from '$lib/components/common/ConfirmDialog.svelte';
-  import ErrorDisplay       from '$lib/components/common/ErrorDisplay.svelte';
-  import LoadingSpinner     from '$lib/components/common/LoadingSpinner.svelte';
-  import { permissions }    from '$lib/stores/permissions';
-  import { debounce }       from '$lib/utils/debounce';
-  import { DOC_TYPES, documentCategories, DOC_FOLDERS, getExpiryStatus } from '$lib/utils/documentUtils';
-  import { portalSettings } from '$lib/stores/portalSettings.js';
-  import { checkDocuments }  from '$lib/utils/documentApi';
-  import { checkSummary }    from '$lib/utils/documentCheckLabels.js';
-  import { fmtTime }                 from '$lib/utils/dates';
-  import { errMessage } from '$lib/utils/errors.js';
+  import { documentsStore } from '#lib/stores/documentsStore.js';
+  import DocumentUploader   from '#lib/components/common/documents/DocumentUploader.svelte';
+  import DocumentList       from '#lib/components/common/documents/DocumentList.svelte';
+  import ConfirmDialog      from '#lib/components/common/ConfirmDialog.svelte';
+  import ErrorDisplay       from '#lib/components/common/ErrorDisplay.svelte';
+  import LoadingSpinner     from '#lib/components/common/LoadingSpinner.svelte';
+  import { permissions }    from '#lib/stores/permissions.js';
+  import { debounce }       from '#lib/utils/debounce.js';
+  import { DOC_TYPES, documentCategories, DOC_FOLDERS, getExpiryStatus } from '#lib/utils/documentUtils.js';
+  import { portalSettings } from '#lib/stores/portalSettings.js';
+  import { checkDocuments }  from '#lib/utils/documentApi.js';
+  import { checkSummary }    from '#lib/utils/documentCheckLabels.js';
+  import { fmtTime }                 from '#lib/utils/dates.js';
+  import { errMessage } from '#lib/utils/errors.js';
 
   $: ({ docs, loading, error } = $documentsStore);
 

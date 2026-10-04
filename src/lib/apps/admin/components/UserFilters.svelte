@@ -1,6 +1,6 @@
 <!-- src/lib/apps/admin/components/UserFilters.svelte -->
 <script>
-  import Icon from '$lib/components/icons/Icon.svelte';
+  import Icon from '#lib/components/icons/Icon.svelte';
   
   export let searchTerm = '';
   /** null while the users are still loading: no count is shown, not "0". */

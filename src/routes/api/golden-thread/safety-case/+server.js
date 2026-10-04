@@ -7,16 +7,16 @@
 import { errMessage } from '../../../../lib/utils/errors.js';
 import { json } from '@sveltejs/kit';
 import { Document, Packer, Table, TableRow, WidthType, TableLayoutType } from 'docx';
-import { requireAuth } from '$lib/server/requireAuth';
+import { requireAuth } from '#lib/server/requireAuth.js';
 import {
   para, hCell, dCell, makeHeader, makeFooter, DOC_STYLES, pageProps,
   CONTENT_W, COLOURS, BORDERS,
-} from '$lib/server/docxHelpers.js';
-import { REVIEW_BAND_LABEL, AP_ROLE_LABEL } from '$lib/apps/golden_thread/utils/gtConstants.js';
-import { getLogger } from '$lib/utils/logger';
-import { fmtDate, fmtDateTime, today } from '$lib/utils/dates';
-import { documentBuildingName } from '$lib/server/identity.js';
-import { loadServerPolicies } from '$lib/server/policies.js';
+} from '#lib/server/docxHelpers.js';
+import { REVIEW_BAND_LABEL, AP_ROLE_LABEL } from '#lib/apps/golden_thread/utils/gtConstants.js';
+import { getLogger } from '#lib/utils/logger.js';
+import { fmtDate, fmtDateTime, today } from '#lib/utils/dates.js';
+import { documentBuildingName } from '#lib/server/identity.js';
+import { loadServerPolicies } from '#lib/server/policies.js';
 
 const logger = getLogger('GtSafetyCase');
 

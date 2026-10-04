@@ -15,13 +15,13 @@ const h = vi.hoisted(() => ({
   auth: { subscribe(fn) { fn({ user: { id: 'u1' } }); return () => {}; } },
 }));
 
-vi.mock('$lib/utils/api', () => ({ api: h.api }));
-vi.mock('$lib/stores/auth', () => ({ auth: h.auth }));
-vi.mock('$lib/utils/auditLogger', () => ({ logAudit: h.logAudit }));
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
-vi.mock('$lib/apps/building_assets/public.js', () => ({ listParkingBaySpaces: h.listParkingBaySpaces }));
-vi.mock('$lib/utils/request', () => ({ postJson: h.postJson }));
-vi.mock('$lib/utils/documentApi', () => ({ deleteDocumentsFor: h.deleteDocumentsFor }));
+vi.mock('#lib/utils/api.js', () => ({ api: h.api }));
+vi.mock('#lib/stores/auth.js', () => ({ auth: h.auth }));
+vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: h.logAudit }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/apps/building_assets/public.js', () => ({ listParkingBaySpaces: h.listParkingBaySpaces }));
+vi.mock('#lib/utils/request.js', () => ({ postJson: h.postJson }));
+vi.mock('#lib/utils/documentApi.js', () => ({ deleteDocumentsFor: h.deleteDocumentsFor }));
 
 const { parkingStore } = await import('./parkingStore.js');
 

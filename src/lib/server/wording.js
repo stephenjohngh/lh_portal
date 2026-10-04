@@ -2,10 +2,10 @@
 //
 // The wording an admin set (Admin → Other Config → Wording), for documents and
 // pages built on the server: the MOR letters, the Dossier confidentiality
-// notice. See $lib/utils/wording.js; the cache is $lib/server/settingsCache.js.
+// notice. See #lib/utils/wording.js; the cache is #lib/server/settingsCache.js.
 
-import { cachedSetting } from '$lib/server/settingsCache.js';
-import { WORDING_KEY, setWording, wording, wordingText } from '$lib/utils/wording.js';
+import { cachedSetting } from '#lib/server/settingsCache.js';
+import { WORDING_KEY, setWording, wording, wordingText } from '#lib/utils/wording.js';
 
 /** Make sure the wording in force is no more than a minute old. */
 export const loadServerWording = cachedSetting(WORDING_KEY, setWording);

@@ -52,7 +52,7 @@ describe('stores load through storeLoader', () => {
     const offenders = files
       .filter((f) => f !== OWNER && !OWN_LOAD[f])
       .filter((f) => HAND_WRITTEN.test(code(readFileSync(f, 'utf8'))));
-    expect(offenders, 'use storeLoader from $lib/utils/storeLoad.js, or add the file to OWN_LOAD with the reason').toEqual([]);
+    expect(offenders, 'use storeLoader from #lib/utils/storeLoad.js, or add the file to OWN_LOAD with the reason').toEqual([]);
   });
 
   it('every exception still has a hand-written load to excuse', () => {

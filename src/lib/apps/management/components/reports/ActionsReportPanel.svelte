@@ -1,14 +1,14 @@
 <!-- src/lib/apps/management/components/reports/ActionsReportPanel.svelte -->
 <script>
   import { onMount }      from 'svelte';
-  import Button           from '$lib/components/common/Button.svelte';
-  import Badge            from '$lib/components/common/Badge.svelte';
-  import { profiles, profilesStore } from '$lib/stores/profiles';
+  import Button           from '#lib/components/common/Button.svelte';
+  import Badge            from '#lib/components/common/Badge.svelte';
+  import { profiles, profilesStore } from '#lib/stores/profiles.js';
   import { meetingsStore }           from '../../stores/meetingsStore';
-  import { fmtDate, fmtDateLong, isOverdue, today as todayLondon, calendarDate } from '$lib/utils/dates';
-  import { requestDownload } from '$lib/utils/download.js';
-  import { getLogger }               from '$lib/utils/logger';
-  import { sortActions }             from '$lib/utils/actionSort';
+  import { fmtDate, fmtDateLong, isOverdue, today as todayLondon, calendarDate } from '#lib/utils/dates.js';
+  import { requestDownload } from '#lib/utils/download.js';
+  import { getLogger }               from '#lib/utils/logger.js';
+  import { sortActions }             from '#lib/utils/actionSort.js';
 
   const logger = getLogger('ActionsReportPanel');
 

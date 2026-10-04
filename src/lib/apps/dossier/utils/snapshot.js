@@ -222,7 +222,7 @@ export async function prepareAssets(files = [], { pin = false } = {}) {
   if (!usable.length) return {};
 
   try {
-    const { postJson } = await import('$lib/utils/request');
+    const { postJson } = await import('#lib/utils/request.js');
     const body = await postJson('/api/dossier/publish-assets', {
       pin,
       files: usable.map(f => ({

@@ -5,8 +5,8 @@
   // Reuses issuesStore + meetingsStore (singletons) — no mutations.
 
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
-  import { auth }        from '$lib/stores/auth';
-  import { permissions } from '$lib/stores/permissions';
+  import { auth }        from '#lib/stores/auth.js';
+  import { permissions } from '#lib/stores/permissions.js';
   import { issuesStore }   from '../management/stores/issuesStore.js';
   import { meetingsStore } from '../management/stores/meetingsStore.js';
   import IssueList        from './components/IssueList.svelte';

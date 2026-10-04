@@ -19,25 +19,25 @@ const h = vi.hoisted(() => ({
   logAudit: vi.fn(),
 }));
 
-vi.mock('$lib/utils/api', () => ({ api: {
+vi.mock('#lib/utils/api.js', () => ({ api: {
   getAll: h.getAll, createMany: h.createMany, create: h.create, updateMany: h.updateMany,
   get: h.get, deleteMany: h.deleteMany,
 } }));
-vi.mock('$lib/supabaseClient', () => ({ supabase: { auth: { getSession: h.getSession } } }));
-vi.mock('$lib/utils/auditLogger', () => ({ logAudit: h.logAudit }));
+vi.mock('#lib/supabaseClient.js', () => ({ supabase: { auth: { getSession: h.getSession } } }));
+vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: h.logAudit }));
 // ⚠ logger touches localStorage at module load, so it is one of the seams
 // CLAUDE.md lists for a store-contract test — along with api, supabaseClient
 // and anything that transitively pulls $env / $app.
-vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://x' }));
-vi.mock('$app/environment', () => ({ browser: true, dev: true, building: false }));
+vi.mock('$app/env', () => ({ browser: true, dev: true, building: false }));
 
 const { statutoryRegister } = await import('./statutoryRegister.js');
 const { STATUTORY_TEMPLATE, activeRegister, isUsingSeed, templateEntry, setActiveRegister } =
-  await import('$lib/utils/statutoryTemplate.js');
+  await import('#lib/utils/statutoryTemplate.js');
 
-const { REGISTER_ITEMS } = await import('$lib/utils/registerItemsData.js');
-const { toRow } = await import('$lib/utils/registerRowMapping.js');
+const { REGISTER_ITEMS } = await import('#lib/utils/registerItemsData.js');
+const { toRow } = await import('#lib/utils/registerRowMapping.js');
 
 /** Everything that ships — what a settled table holds. */
 const SHIPPED = [...STATUTORY_TEMPLATE, ...REGISTER_ITEMS];

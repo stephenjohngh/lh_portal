@@ -6,25 +6,25 @@
      (P2) come next, and the model was built first on purpose — the hard part is
      series-versus-occurrence, and everything else depends on it being right. -->
 <script>
-  import { errMessage } from '$lib/utils/errors';
+  import { errMessage } from '#lib/utils/errors.js';
   import { onMount, tick } from 'svelte';
-  import { auth } from '$lib/stores/auth';
-  import { permissions } from '$lib/stores/permissions';
+  import { auth } from '#lib/stores/auth.js';
+  import { permissions } from '#lib/stores/permissions.js';
   import { plannerStore } from './stores/plannerStore.js';
-  import { profiles, profilesStore } from '$lib/stores/profiles';
+  import { profiles, profilesStore } from '#lib/stores/profiles.js';
   import { buildOccurrences, agenda, describeAgenda, BUCKETS, STATUS } from './utils/agenda.js';
   import { addDaysISO, daysBetween, isRecurring } from './utils/recurrence.js';
   import { pickable, swatch, marksByDate } from './utils/categories.js';
   import { SOURCES, visibleSources } from './utils/linked.js';
-  import { today, fmtDateLong } from '$lib/utils/dates';
+  import { today, fmtDateLong } from '#lib/utils/dates.js';
 
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
-  import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
-  import Modal        from '$lib/components/common/Modal.svelte';
-  import Button       from '$lib/components/common/Button.svelte';
-  import FormInput    from '$lib/components/common/FormInput.svelte';
-  import FormSelect   from '$lib/components/common/FormSelect.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
+  import ErrorDisplay  from '#lib/components/common/ErrorDisplay.svelte';
+  import Modal        from '#lib/components/common/Modal.svelte';
+  import Button       from '#lib/components/common/Button.svelte';
+  import FormInput    from '#lib/components/common/FormInput.svelte';
+  import FormSelect   from '#lib/components/common/FormSelect.svelte';
   import OccurrenceRow from './components/OccurrenceRow.svelte';
   import EventFormModal from './components/EventFormModal.svelte';
   import AdminMenu from './components/AdminMenu.svelte';
@@ -32,7 +32,7 @@
   import './planner-print.css';
   import CategoriesModal from './components/CategoriesModal.svelte';
   import DayMarkControl from './components/DayMarkControl.svelte';
-  import MultiSelectDropdown from '$lib/components/common/MultiSelectDropdown.svelte';
+  import MultiSelectDropdown from '#lib/components/common/MultiSelectDropdown.svelte';
   import YearGrid from './components/YearGrid.svelte';
   import MonthGrid from './components/MonthGrid.svelte';
   import { stepMonth, buildMonthGrid } from './utils/monthGrid.js';

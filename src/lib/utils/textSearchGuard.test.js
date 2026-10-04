@@ -47,7 +47,7 @@ describe('search boxes use matchesSearch', () => {
     const offenders = files
       .filter((f) => !OWN_MATCHING[f])
       .filter((f) => HAND_WRITTEN.test(code(readFileSync(f, 'utf8'))));
-    expect(offenders, 'use matchesSearch from $lib/utils/textSearch.js, or add the file to OWN_MATCHING with the reason').toEqual([]);
+    expect(offenders, 'use matchesSearch from #lib/utils/textSearch.js, or add the file to OWN_MATCHING with the reason').toEqual([]);
   });
 
   it('every exception still has something to excuse', () => {

@@ -6,16 +6,16 @@
   permanent. Current tenures listed first, then past.
 -->
 <script>
-  import { gtStore }     from '$lib/apps/golden_thread/stores/gtStore';
-  import { permissions } from '$lib/stores/permissions';
-  import { AP_ROLES, AP_ROLE_LABEL, AP_ROLE_BADGE } from '$lib/apps/golden_thread/utils/gtConstants.js';
-  import FormInput    from '$lib/components/common/FormInput.svelte';
-  import FormSelect   from '$lib/components/common/FormSelect.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
-  import Button       from '$lib/components/common/Button.svelte';
-  import Badge        from '$lib/components/common/Badge.svelte';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-  import { fmtDate, today }  from '$lib/utils/dates';
+  import { gtStore }     from '#lib/apps/golden_thread/stores/gtStore.js';
+  import { permissions } from '#lib/stores/permissions.js';
+  import { AP_ROLES, AP_ROLE_LABEL, AP_ROLE_BADGE } from '#lib/apps/golden_thread/utils/gtConstants.js';
+  import FormInput    from '#lib/components/common/FormInput.svelte';
+  import FormSelect   from '#lib/components/common/FormSelect.svelte';
+  import FormTextarea from '#lib/components/common/FormTextarea.svelte';
+  import Button       from '#lib/components/common/Button.svelte';
+  import Badge        from '#lib/components/common/Badge.svelte';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
+  import { fmtDate, today }  from '#lib/utils/dates.js';
 
   export let saving = false;
 

@@ -2,12 +2,12 @@
 <!-- REFACTORED: Uses new CSS utility classes -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { auth }        from '$lib/stores/auth';
-  import { permissions } from '$lib/stores/permissions.js';
-  import Icon            from '$lib/components/icons/Icon.svelte';
-  import Badge           from '$lib/components/common/Badge.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import { fmtDate }     from '$lib/utils/dates.js';
+  import { auth }        from '#lib/stores/auth.js';
+  import { permissions } from '#lib/stores/permissions.js';
+  import Icon            from '#lib/components/icons/Icon.svelte';
+  import Badge           from '#lib/components/common/Badge.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import { fmtDate }     from '#lib/utils/dates.js';
 
   export let user;
 

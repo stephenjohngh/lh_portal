@@ -7,36 +7,36 @@
      ('all_checks_pass' makes the derived result binding) are editable. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Modal        from '$lib/components/common/Modal.svelte';
-  import Button       from '$lib/components/common/Button.svelte';
-  import FormInput    from '$lib/components/common/FormInput.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
-  import Checkbox     from '$lib/components/common/Checkbox.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
-  import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
-  import ScopeEditor  from '$lib/apps/building_assets/components/ScopeEditor.svelte';
-  import { templateEntry } from '$lib/utils/statutoryTemplate.js';
-  import { applyInspectionScope } from '$lib/apps/building_assets/utils/inspectionScope.js';
-  import { buildRotatingWalk } from '$lib/apps/inspection/utils/inspectionRotation.js';
-  import { applyChecklistMode } from '$lib/apps/inspection/utils/checklistRules.js';
-  import { lastDefinitionInspections } from '$lib/apps/inspection/public.js';
-  import { buildComponentRef } from '$lib/utils/componentRef.js';
+  import Modal        from '#lib/components/common/Modal.svelte';
+  import Button       from '#lib/components/common/Button.svelte';
+  import FormInput    from '#lib/components/common/FormInput.svelte';
+  import FormTextarea from '#lib/components/common/FormTextarea.svelte';
+  import Checkbox     from '#lib/components/common/Checkbox.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
+  import { EVIDENCE_ROUTE_LABEL } from '#lib/utils/obligationEvidence.js';
+  import ScopeEditor  from '#lib/apps/building_assets/components/ScopeEditor.svelte';
+  import { templateEntry } from '#lib/utils/statutoryTemplate.js';
+  import { applyInspectionScope } from '#lib/apps/building_assets/utils/inspectionScope.js';
+  import { buildRotatingWalk } from '#lib/apps/inspection/utils/inspectionRotation.js';
+  import { applyChecklistMode } from '#lib/apps/inspection/utils/checklistRules.js';
+  import { lastDefinitionInspections } from '#lib/apps/inspection/public.js';
+  import { buildComponentRef } from '#lib/utils/componentRef.js';
 
   /**
-   * @typedef {import('$lib/database.types').Tables<'statutory_obligations'>} InspectionDefinition
-   * @typedef {import('$lib/database.types').Tables<'type_attributes'>} TypeAttribute
+   * @typedef {import('#lib/database.types.ts').Tables<'statutory_obligations'>} InspectionDefinition
+   * @typedef {import('#lib/database.types.ts').Tables<'type_attributes'>} TypeAttribute
    */
   /** @type {InspectionDefinition|null} */
   export let definition = null;   // row or null (create)
-  /** @type {import('$lib/database.types').Tables<'component_types'>[]} */
+  /** @type {import('#lib/database.types.ts').Tables<'component_types'>[]} */
   export let types    = [];
   export let systems  = [];
   export let floors   = [];
   /** @type {Record<string, TypeAttribute[]>} */
   export let attrDefs = {};
-  /** @type {Record<string, import('$lib/database.types').Tables<'type_attribute_options'>[]>} */
+  /** @type {Record<string, import('#lib/database.types.ts').Tables<'type_attribute_options'>[]>} */
   export let attrOptions = {};
-  /** @type {import('$lib/database.types').Tables<'components'>[]} */
+  /** @type {import('#lib/database.types.ts').Tables<'components'>[]} */
   export let components     = [];
   export let componentAttrs = {};
   export let componentLinks = {};

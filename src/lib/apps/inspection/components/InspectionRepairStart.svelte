@@ -2,14 +2,14 @@
 <!-- Lists all failed/problem components and starts a single-component repair session. -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import { getLogger }   from '$lib/utils/logger';
+  import { getLogger }   from '#lib/utils/logger.js';
   import { inspectionStore } from '../stores/inspectionStore.js';
   import { buildingInitials } from '../utils/sessionNaming.js';
-  import { buildComponentRef } from '$lib/utils/componentRef.js';
-  import { fmtMonthYearCompact } from '$lib/utils/dates';
-  import WalkError  from '$lib/apps/inspection/components/common/WalkError.svelte';
-  import WalkButton from '$lib/apps/inspection/components/common/WalkButton.svelte';
-  import WalkSpinner from '$lib/apps/inspection/components/common/WalkSpinner.svelte';
+  import { buildComponentRef } from '#lib/utils/componentRef.js';
+  import { fmtMonthYearCompact } from '#lib/utils/dates.js';
+  import WalkError  from '#lib/apps/inspection/components/common/WalkError.svelte';
+  import WalkButton from '#lib/apps/inspection/components/common/WalkButton.svelte';
+  import WalkSpinner from '#lib/apps/inspection/components/common/WalkSpinner.svelte';
 
   const logger   = getLogger('InspectionRepairStart');
   const dispatch = createEventDispatcher();

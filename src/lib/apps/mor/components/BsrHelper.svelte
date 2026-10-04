@@ -4,11 +4,11 @@
      Generates pre-filled content from the case for copy-paste into the BSR portal. -->
 <script>
   import { createEventDispatcher, onDestroy } from 'svelte';
-  import Modal        from '$lib/components/common/Modal.svelte';
-  import Button       from '$lib/components/common/Button.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
-  import { bsrReportClock } from '$lib/apps/mor/utils/morHelpers';
-  import { fmtDateTime, fmtDate } from '$lib/utils/dates';
+  import Modal        from '#lib/components/common/Modal.svelte';
+  import Button       from '#lib/components/common/Button.svelte';
+  import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
+  import { bsrReportClock } from '#lib/apps/mor/utils/morHelpers.js';
+  import { fmtDateTime, fmtDate } from '#lib/utils/dates.js';
 
   export let show   = false;
   export let saving = false;

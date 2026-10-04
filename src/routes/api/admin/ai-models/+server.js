@@ -8,10 +8,10 @@
 // Admin only: it spends a call on the deploy's Anthropic key.
 
 import { json }         from '@sveltejs/kit';
-import { requireAdmin } from '$lib/server/requireAuth';
-import { listAvailableModels, readSavedModel } from '$lib/server/aiModel.js';
-import { chooseModel }  from '$lib/utils/aiModels.js';
-import { errMessage }   from '$lib/utils/errors.js';
+import { requireAdmin } from '#lib/server/requireAuth.js';
+import { listAvailableModels, readSavedModel } from '#lib/server/aiModel.js';
+import { chooseModel }  from '#lib/utils/aiModels.js';
+import { errMessage }   from '#lib/utils/errors.js';
 import { env }          from '$env/dynamic/private';
 
 export async function GET({ request, url }) {

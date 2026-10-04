@@ -19,25 +19,25 @@
   Left-border colour by activity_type — see ACTIVITY_TYPE_CONFIG.
 -->
 <script>
-  import { portalSettings } from '$lib/stores/portalSettings.js';
-  import { fileViewUrl } from '$lib/utils/driveUtils.js';
+  import { portalSettings } from '#lib/stores/portalSettings.js';
+  import { fileViewUrl } from '#lib/utils/driveUtils.js';
   import { createEventDispatcher } from 'svelte';
-  import { sanitizeHtml }         from '$lib/utils/sanitizeHtml';
-  import { fmtBytes, mimeIcon }   from '$lib/utils/files.js';
-  import { fmtDateTime, fmtDate, wasModified } from '$lib/utils/dates';
-  import { ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPES } from '$lib/utils/constants';
-  import { parseEmailPaste }   from '$lib/utils/emailParser';
-  import { canDeleteOwn }      from '$lib/utils/permissions';
-  import { postJson }          from '$lib/utils/request';
+  import { sanitizeHtml }         from '#lib/utils/sanitizeHtml.js';
+  import { fmtBytes, mimeIcon }   from '#lib/utils/files.js';
+  import { fmtDateTime, fmtDate, wasModified } from '#lib/utils/dates.js';
+  import { ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPES } from '#lib/utils/constants.js';
+  import { parseEmailPaste }   from '#lib/utils/emailParser.js';
+  import { canDeleteOwn }      from '#lib/utils/permissions.js';
+  import { postJson }          from '#lib/utils/request.js';
   import { buildFieldSummary } from './reports/reportUtils';
-  import { permissions }    from '$lib/stores/permissions';
-  import { auth }           from '$lib/stores/auth';
-  import Button             from '$lib/components/common/Button.svelte';
-  import ProtectedButton    from '$lib/components/common/ProtectedButton.svelte';
+  import { permissions }    from '#lib/stores/permissions.js';
+  import { auth }           from '#lib/stores/auth.js';
+  import Button             from '#lib/components/common/Button.svelte';
+  import ProtectedButton    from '#lib/components/common/ProtectedButton.svelte';
   import MeetingBadge       from './meetings/MeetingBadge.svelte';
   import { currentMeeting } from '../stores/meetingsStore';
   import CommentSuggestionPanel from './CommentSuggestionPanel.svelte';
-  import RichTextEditor         from '$lib/components/common/LazyRichTextEditor.svelte';
+  import RichTextEditor         from '#lib/components/common/LazyRichTextEditor.svelte';
 
   // -- Props -----------------------------------------------------------
   export let activity;

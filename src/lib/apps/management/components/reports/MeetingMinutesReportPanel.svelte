@@ -1,13 +1,13 @@
 <!-- src/lib/apps/management/components/reports/MeetingMinutesReportPanel.svelte -->
 <script>
   import { onMount }     from 'svelte';
-  import Button          from '$lib/components/common/Button.svelte';
+  import Button          from '#lib/components/common/Button.svelte';
   import MeetingMinutesView from '../meetings/MeetingMinutesView.svelte';
   import { meetingsStore }  from '../../stores/meetingsStore';
-  import { profiles, profilesStore } from '$lib/stores/profiles';
-  import { fmtDate, today }     from '$lib/utils/dates';
-  import { requestDownload } from '$lib/utils/download.js';
-  import { getLogger }   from '$lib/utils/logger';
+  import { profiles, profilesStore } from '#lib/stores/profiles.js';
+  import { fmtDate, today }     from '#lib/utils/dates.js';
+  import { requestDownload } from '#lib/utils/download.js';
+  import { getLogger }   from '#lib/utils/logger.js';
 
   const logger = getLogger('MeetingMinutesReportPanel');
 

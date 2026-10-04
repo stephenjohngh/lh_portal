@@ -9,9 +9,9 @@
   import { inp } from '../../ui.js';
   import { SPACE_COLOURS, measurePerimeter, measureArea, measureVolume, measureSides, fmt1 }
     from './planMeasure.js';
-  import { ACCENT } from '$lib/theme.js';
-  import { buildSpaceRef, KIND_LABEL, deriveSpaceName } from '$lib/utils/spaceRef.js';
-  import { buildComponentRef } from '$lib/utils/componentRef.js';
+  import { ACCENT } from '#lib/theme.js';
+  import { buildSpaceRef, KIND_LABEL, deriveSpaceName } from '#lib/utils/spaceRef.js';
+  import { buildComponentRef } from '#lib/utils/componentRef.js';
   import { componentsInSpace } from '../../utils/spaceMembership.js';
   import { spaceRollup } from '../../utils/spaceReport.js';
   import { typesForKind } from '../../utils/spaceTypeOptions.js';
@@ -20,8 +20,8 @@
   // "Split into a row of parking bays": offered for a four-cornered outline.
   let splitOpen = false;
   let splitDone = '';
-  import { statusDotCls, statusCfg } from '$lib/utils/resultConstants.js';
-  import { permissions } from '$lib/stores/permissions';
+  import { statusDotCls, statusCfg } from '#lib/utils/resultConstants.js';
+  import { permissions } from '#lib/stores/permissions.js';
 
   export let space;
   export let floors               = [];

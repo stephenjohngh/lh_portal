@@ -79,13 +79,13 @@ const h = vi.hoisted(() => {
            setMeeting: (v) => { meetingVal = v; } };
 });
 
-vi.mock('$lib/supabaseClient',     () => ({ supabase: h.supabase }));
-vi.mock('$lib/utils/api',          () => ({ api: h.api }));
-vi.mock('$lib/utils/request',      () => ({ del: h.del }));
-vi.mock('$lib/utils/documentApi',  () => h.docApi);
-vi.mock('$lib/utils/auditLogger',  () => ({ logAudit: h.logAudit }));
-vi.mock('$lib/utils/logger',       () => ({ getLogger: () => () => {} }));
-vi.mock('$lib/utils/sanitizeHtml', () => ({ sanitizeHtml: h.sanitizeHtml }));
+vi.mock('#lib/supabaseClient.js',     () => ({ supabase: h.supabase }));
+vi.mock('#lib/utils/api.js',          () => ({ api: h.api }));
+vi.mock('#lib/utils/request.js',      () => ({ del: h.del }));
+vi.mock('#lib/utils/documentApi.js',  () => h.docApi);
+vi.mock('#lib/utils/auditLogger.js',  () => ({ logAudit: h.logAudit }));
+vi.mock('#lib/utils/logger.js',       () => ({ getLogger: () => () => {} }));
+vi.mock('#lib/utils/sanitizeHtml.js', () => ({ sanitizeHtml: h.sanitizeHtml }));
 vi.mock('../../management/stores/meetingsStore', () => ({ currentMeeting: h.currentMeeting }));
 vi.mock('./meetingsStore',         () => ({ currentMeeting: h.currentMeeting }));
 

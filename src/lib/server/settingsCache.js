@@ -6,12 +6,12 @@
 // ⚠ If the setting cannot be read, what is in force stays as it was (the
 // defaults on a cold start) — a failed read never switches a control off or
 // blanks a text.
-// Used by $lib/server/policies.js and $lib/server/wording.js.
+// Used by #lib/server/policies.js and #lib/server/wording.js.
 
 import { createClient }        from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }                 from '$env/dynamic/private';
-import { getLogger }           from '$lib/utils/logger';
+import { getLogger }           from '#lib/utils/logger.js';
 
 const logger = getLogger('settingsCache');
 const CACHE_MS = 60 * 1000;

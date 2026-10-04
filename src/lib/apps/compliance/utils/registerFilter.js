@@ -19,13 +19,13 @@ import {
   isSchedulable, isRecurring, isUnhomed, isSuperseded, triggerTypeOf,
   GROUPS, GROUP_LABEL, BASIS, BASIS_LABEL, BASIS_RANK, HANDLED_BY_LABEL,
   TRIGGER_TYPE_LABEL,
-} from '$lib/utils/statutoryTemplate.js';
-import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
+} from '#lib/utils/statutoryTemplate.js';
+import { EVIDENCE_ROUTE_LABEL } from '#lib/utils/obligationEvidence.js';
 import {
   DUTY_HOLDER_ROLES, dutyHolderRole, unclassifiedDutyHolders, dutyHolderTally,
-} from '$lib/utils/dutyHolderRole.js';
-import { matchesSearch } from '$lib/utils/textSearch.js';
-import { isEmptyScope } from '$lib/apps/building_assets/utils/inspectionScope.js';
+} from '#lib/utils/dutyHolderRole.js';
+import { matchesSearch } from '#lib/utils/textSearch.js';
+import { isEmptyScope } from '#lib/apps/building_assets/utils/inspectionScope.js';
 
 /**
  * Every state a register entry can be in, most-actionable first. The order is
@@ -320,7 +320,7 @@ export function registerFilterFields(tally, dutyTally, citationTally) {
 // out of its facet — the failure mode of every "infer a category from prose"
 // scheme, and one this project has already been bitten by.
 
-// ⚠ The roles and the derivation moved to `$lib/utils/dutyHolderRole.js`, which
+// ⚠ The roles and the derivation moved to `#lib/utils/dutyHolderRole.js`, which
 // imports nothing — so `check:obligations` runs under plain node and checks the
 // counts §4 of the statement quotes against the SAME classifier this facet uses.
 // A second copy of the rule would let the app's facet and the document's prose

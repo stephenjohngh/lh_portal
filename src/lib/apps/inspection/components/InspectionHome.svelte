@@ -2,11 +2,11 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { inspectionStore }  from '../stores/inspectionStore.js';
-  import { online } from '$lib/stores/online.js';
+  import { online } from '#lib/stores/online.js';
   import { syncState } from '../utils/syncRunner.js';
-  import { fmtDate, fmtTime, fmtDuration, DAY_MS } from '$lib/utils/dates';
+  import { fmtDate, fmtTime, fmtDuration, DAY_MS } from '#lib/utils/dates.js';
   import { sessionKindLabel, sessionFloorLabel, sessionDefinitionName } from '../utils/inspectionHelpers.js';
-  import WalkBadge from '$lib/apps/inspection/components/common/WalkBadge.svelte';
+  import WalkBadge from '#lib/apps/inspection/components/common/WalkBadge.svelte';
 
   const dispatch = createEventDispatcher();
   export let canEdit = false;

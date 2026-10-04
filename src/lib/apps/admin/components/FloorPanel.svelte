@@ -3,9 +3,9 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   // Floors belong to Building Assets — reach them through its public interface.
-  import { updateFloor } from '$lib/apps/building_assets/public.js';
-  import { getLogger } from '$lib/utils/logger';
-  import Button      from '$lib/components/common/Button.svelte';
+  import { updateFloor } from '#lib/apps/building_assets/public.js';
+  import { getLogger } from '#lib/utils/logger.js';
+  import Button      from '#lib/components/common/Button.svelte';
 
   export let floors     = [];   // all floors[] from buildingAssetsStore
   export let facilities = [];   // facilities[] for building label

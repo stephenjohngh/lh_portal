@@ -5,13 +5,13 @@
      same bar, and a find that counts differently or answers Escape differently
      depending on which box you are typing in is worse than no find at all.
 
-     The matching lives in $lib/utils/editorSearch.js (pure) and
+     The matching lives in #lib/utils/editorSearch.js (pure) and
      editorSearchExtension.js (the ProseMirror plugin). -->
 <script>
   import { tick, onDestroy } from 'svelte';
-  import { searchState } from '$lib/utils/editorSearchExtension.js';
-  import { describeMatches } from '$lib/utils/editorSearch.js';
-  import { scrollParent, stickyOffset } from '$lib/utils/revealElement.js';
+  import { searchState } from '#lib/utils/editorSearchExtension.js';
+  import { describeMatches } from '#lib/utils/editorSearch.js';
+  import { scrollParent, stickyOffset } from '#lib/utils/revealElement.js';
 
   /** The Tiptap editor to search. */
   export let editor = null;

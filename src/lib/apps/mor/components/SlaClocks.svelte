@@ -6,8 +6,8 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { allSlaClocks, BSR_TRACK_STATUSES,
-           clockBgClass, clockTextClass } from '$lib/apps/mor/utils/morHelpers';
-  import { fmtDateTime } from '$lib/utils/dates';
+           clockBgClass, clockTextClass } from '#lib/apps/mor/utils/morHelpers.js';
+  import { fmtDateTime } from '#lib/utils/dates.js';
 
   export let c; // mor_cases row
 

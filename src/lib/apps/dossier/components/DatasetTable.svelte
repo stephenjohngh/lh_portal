@@ -7,9 +7,9 @@
      fields, and a per-character autosave would be a write per letter. -->
 <script>
   import { createEventDispatcher, onDestroy } from 'svelte';
-  import Button        from '$lib/components/common/Button.svelte';
-  import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
+  import Button        from '#lib/components/common/Button.svelte';
+  import ErrorDisplay  from '#lib/components/common/ErrorDisplay.svelte';
+  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
   import {
     templateFor, sortRecords, emptyRecordFields, isBlankRecord,
     columnFields, rowFields,

@@ -17,13 +17,13 @@ import {
 import {
   COLOURS, DOC_STYLES, pageProps, makeHeader, makeFooter,
   run, para,
-} from '$lib/server/docxHelpers.js';
-import { fmtDate, fmtDateLong, fmtGenerated } from '$lib/utils/dates';
-import { organisationOrPlaceholders } from '$lib/utils/identity.js';
-import { letterBlocks, wordingText, wording } from '$lib/utils/wording.js';
+} from '#lib/server/docxHelpers.js';
+import { fmtDate, fmtDateLong, fmtGenerated } from '#lib/utils/dates.js';
+import { organisationOrPlaceholders } from '#lib/utils/identity.js';
+import { letterBlocks, wordingText, wording } from '#lib/utils/wording.js';
 
 // ── The building and the signatory ────────────────────────────────────────────
-// From Admin → Other Config → Building & business ($lib/utils/identity.js), via
+// From Admin → Other Config → Building & business (#lib/utils/identity.js), via
 // the route: `opts.building` (its name) and `opts.organisation`. They used to be
 // written here — the building as "Lonsdale House", the signatory as a bracketed
 // placeholder on every letter. An unset field still prints as its placeholder,
@@ -106,7 +106,7 @@ function makeDoc(title, children) {
 
 // ─── The letters ──────────────────────────────────────────────────────────────
 // The WORDS are an admin setting (Admin → Other Config → Wording,
-// $lib/utils/wording.js) — they used to be written here. What stays here is
+// #lib/utils/wording.js) — they used to be written here. What stays here is
 // what must not be edited away: the date, the recipient, the case reference
 // under the title and the signature. The route reads the setting first
 // (loadServerWording), so wordingText() returns what is in force.

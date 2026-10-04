@@ -3,12 +3,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const h = vi.hoisted(() => ({ requireAuth: vi.fn() }));
 
-vi.mock('$lib/server/policies.js', async () => { const u = await import('$lib/utils/policies.js'); return { loadServerPolicies: async () => {}, serverPolicy: async (k) => u.policy(k), serverRateLimit: async (a) => u.rateLimit(a) }; });
+vi.mock('#lib/server/policies.js', async () => { const u = await import('#lib/utils/policies.js'); return { loadServerPolicies: async () => {}, serverPolicy: async (k) => u.policy(k), serverRateLimit: async (a) => u.rateLimit(a) }; });
 vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'test-secret' } }));
-vi.mock('$lib/server/requireAuth.js', () => ({ requireAuth: h.requireAuth }));
+vi.mock('#lib/server/requireAuth.js', () => ({ requireAuth: h.requireAuth }));
 
 const { POST, DELETE } = await import('./+server.js');
-const { readMediaSession, MEDIA_COOKIE } = await import('$lib/server/mediaAccess.js');
+const { readMediaSession, MEDIA_COOKIE } = await import('#lib/server/mediaAccess.js');
 
 const USER = '11111111-1111-4111-8111-111111111111';
 

@@ -24,12 +24,12 @@
     plannedObligations,
     createPlannedObligation, updatePlannedObligation, deletePlannedObligation,
     ensurePlannedObligationsLoaded,
-  } from '$lib/apps/compliance/public.js';
-  import { isWalkEvidenced, isJobEvidenced } from '$lib/utils/obligationEvidence.js';
+  } from '#lib/apps/compliance/public.js';
+  import { isWalkEvidenced, isJobEvidenced } from '#lib/utils/obligationEvidence.js';
   import { obligationsForType, scopedToTypeOnly, typeCount } from '../utils/typeScopedObligations.js';
-  import { frequencyLabel } from '$lib/utils/inspectionSchedule';
-  import { inp } from '$lib/apps/building_assets/ui.js';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import { frequencyLabel } from '#lib/utils/inspectionSchedule.js';
+  import { inp } from '#lib/apps/building_assets/ui.js';
+  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
 
   export let typeCode = '';
   export let typeName = '';

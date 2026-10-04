@@ -10,21 +10,21 @@
      the only path from a token to content. There is no client-side query here,
      no Supabase client, and no store import. -->
 <script>
-  import BlockContent from '$lib/apps/dossier/components/BlockContent.svelte';
-  import PackSearch   from '$lib/apps/dossier/components/PackSearch.svelte';
-  import { pageShowingFile } from '$lib/apps/dossier/utils/packSearch.js';
-  import { revealBlock } from '$lib/apps/dossier/utils/revealBlock.js';
-  import { buildTree } from '$lib/apps/dossier/utils/docTree.js';
-  import { fmtDateLong } from '$lib/utils/dates';
-  import { LOGO as lhLogo, LOGO_ALT } from '$lib/branding.js';
+  import BlockContent from '#lib/apps/dossier/components/BlockContent.svelte';
+  import PackSearch   from '#lib/apps/dossier/components/PackSearch.svelte';
+  import { pageShowingFile } from '#lib/apps/dossier/utils/packSearch.js';
+  import { revealBlock } from '#lib/apps/dossier/utils/revealBlock.js';
+  import { buildTree } from '#lib/apps/dossier/utils/docTree.js';
+  import { fmtDateLong } from '#lib/utils/dates.js';
+  import { LOGO as lhLogo, LOGO_ALT } from '#lib/branding.js';
 
   import { tick, onMount } from 'svelte';
   import {
     pageOutline, outlineDepths, wordCount, describeReadingTime, packReadingTime,
     docIdFromHash, hashForDoc, WORDS_PER_MINUTE,
-  } from '$lib/apps/dossier/utils/pageNav.js';
-  import { invalidateAll } from '$app/navigation';
-  import { page as pageStore } from '$app/stores';
+  } from '#lib/apps/dossier/utils/pageNav.js';
+  import { refreshAll } from '$app/navigation';
+  import { page } from '$app/state';
   import './pack-print.css';
 
   export let data;
@@ -45,7 +45,7 @@
   async function unlock() {
     unlocking = true; unlockError = '';
     try {
-      const res = await fetch(`/api/pack/${$pageStore.params.token}/unlock`, {
+      const res = await fetch(`/api/pack/${page.params.token}/unlock`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ passphrase }),
@@ -57,7 +57,7 @@
       }
       // The grant is an HttpOnly cookie, so the server has to be asked again.
       passphrase = '';
-      await invalidateAll();
+      await refreshAll();
     } catch {
       unlockError = 'Could not check that just now. Please try again.';
     } finally {

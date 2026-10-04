@@ -3,7 +3,7 @@
   // Small read-only badge shown on an issue that's tagged to a meeting.
   // Tapping opens that meeting (dispatches 'open' with the meeting id).
   import { createEventDispatcher } from 'svelte';
-  import { fmtDate } from '$lib/utils/dates.js';
+  import { fmtDate } from '#lib/utils/dates.js';
 
   export let meeting = null;   // resolved meeting row, or null
 
