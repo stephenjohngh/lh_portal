@@ -135,10 +135,10 @@ function walk(dir, out = []) {
   return out;
 }
 
-// ⛔ Named, with the reason, until it is not needed: migration 234 adds
-// mor_timeline_entries.contact_kind. Once applied, regenerate the types and
-// this entry must go — the test fails while it is still here and unused.
-const AWAITING = new Set(['mor_timeline_entries.contact_kind']);
+// A column the code may name before the migration that adds it is applied:
+// named, with the reason, and the last test fails once it exists. Empty since
+// migration 234 brought mor_timeline_entries.contact_kind (2026-10-04).
+const AWAITING = new Set(/** @type {string[]} */ ([]));
 
 describe('reading a select', () => {
   it('reads plain columns, aliases and casts', () => {

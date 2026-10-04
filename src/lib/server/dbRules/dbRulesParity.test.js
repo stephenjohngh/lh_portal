@@ -115,27 +115,11 @@ const VALUE_LISTS = {
 
 // ⛔ MOR's timeline: migration 139 (reporter contact) was never applied, so the
 // database refused every 'reporter_contact' entry and had no contact_kind at
-// all (found 2026-10-04, §6ccc item 6). Migration 234 carries it. UNTIL 234 IS
-// APPLIED AND `npm run db:rules` RUN, the gap is named here and held to
-// exactly that; the moment the snapshot shows it, this fails and asks for the
-// allowance to be removed.
-const AWAITING_234 = { entryTypes: ['reporter_contact'], contactKindList: false };
+// all until migration 234 (2026-10-04, §6ccc item 6). Held both ways now.
 describe('MOR timeline', () => {
-  it('accepts every entry type and contact kind the code writes', () => {
-    const entryTypes = SNAP.checks['mor_timeline_entries.entry_type'] ?? [];
-    const missing = values(mor.ENTRY_TYPE_LABEL).filter((t) => !entryTypes.includes(t)).sort();
-    const extra = entryTypes.filter((t) => !(t in mor.ENTRY_TYPE_LABEL));
-    expect(extra, 'the database accepts an entry type the timeline has no words for').toEqual([]);
-    const kinds = SNAP.checks['mor_timeline_entries.contact_kind'];
-    const hint = 'apply migration 234, npm run db:rules, then delete AWAITING_234 and its branch';
-    if (!kinds) {
-      expect(missing, hint).toEqual(AWAITING_234.entryTypes);
-      expect(AWAITING_234.contactKindList, hint).toBe(false);
-      return;
-    }
-    expect(missing, 'migration 234 is in the snapshot: delete AWAITING_234 and its branch').toEqual([]);
-    expect(sorted(kinds)).toEqual(sorted(values(mor.CONTACT_KIND_LABEL)));
-    expect('AWAITING_234', 'migration 234 is in the snapshot: delete AWAITING_234 and its branch').toBe('removed');
+  it('accepts every entry type and contact kind the code writes, and no other', () => {
+    expect(sorted(SNAP.checks['mor_timeline_entries.entry_type'] ?? [])).toEqual(sorted(values(mor.ENTRY_TYPE_LABEL)));
+    expect(sorted(SNAP.checks['mor_timeline_entries.contact_kind'] ?? [])).toEqual(sorted(values(mor.CONTACT_KIND_LABEL)));
   });
 });
 

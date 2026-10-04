@@ -454,6 +454,7 @@
             "note",
             "rejection",
             "reopened",
+            "reporter_contact",
             "sla_pause",
             "sla_resume",
             "status_change",
@@ -482,6 +483,16 @@
             "fail",
             "n_a",
             "pass"
+        ],
+        "mor_timeline_entries.contact_kind": [
+            "bsr_notified",
+            "bsr_notified_skipped",
+            "closure_reporter",
+            "closure_reporter_skipped",
+            "closure_residents",
+            "holding",
+            "holding_snooze",
+            "other"
         ],
         "statutory_obligations.link_source": [
             "component_links",

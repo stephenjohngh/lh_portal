@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema12.csv
+// Source: docs/ops/supabase_lhportal_schema13.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -3310,6 +3310,7 @@ export type Database = {
           author_id: string | null
           author_name: string
           created_at: string
+          contact_kind: string | null
         }
         Insert: {
           id?: string
@@ -3321,6 +3322,7 @@ export type Database = {
           author_id?: string | null
           author_name?: string
           created_at?: string
+          contact_kind?: string | null
         }
         Update: {
           id?: string
@@ -3332,6 +3334,7 @@ export type Database = {
           author_id?: string | null
           author_name?: string
           created_at?: string
+          contact_kind?: string | null
         }
         Relationships: [
             {
