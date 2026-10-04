@@ -28,7 +28,16 @@ const _state = writable({ pending: 0, syncing: 0, error: 0, online: true, items:
 /** Read-only view for the UI. */
 export const syncState = { subscribe: _state.subscribe };
 
-let draining = false;   // a drain is in progress
+// ⛔ `idle` is the drain in progress, re-runs included. Every caller during a
+// drain gets THIS promise, so `await drain()` / `flush()` really waits for the
+// queue to settle. It used to set a flag and return at once while another
+// drain was running — and one is almost always running, because every recorded
+// inspection kicks one. So Finish, pressed straight after the last component,
+// counted the session's inspections before the last one had synced, and if the
+// session's own create had not synced either, its close updated no row and was
+// lost. Found 2026-10-04 by running a whole walk through this file (§6ccc 7).
+/** @type {Promise<void>|null} */
+let idle     = null;
 let rerun    = false;   // a drain was requested while one was running
 let started  = false;   // startSync() has wired listeners
 let unsubOnline = null;
@@ -61,12 +70,22 @@ async function resetStaleSyncing(handle) {
   }
 }
 
-/** Drain the queue once (no-op offline / when already draining). */
-export async function drain() {
-  if (!isOfflineAvailable()) return;
+/**
+ * Drain the queue, and resolve only when it has settled — including any drain
+ * asked for while this one ran. A call during a drain joins it (no-op offline).
+ * @returns {Promise<void>}
+ */
+export function drain() {
+  if (!isOfflineAvailable()) return Promise.resolve();
+  if (idle) { rerun = true; return idle; }
+  idle = (async () => {
+    do { rerun = false; await drainOnce(); } while (rerun);
+  })().finally(() => { idle = null; });
+  return idle;
+}
+
+async function drainOnce() {
   if (!getStore(online)) { await refreshState(); return; }
-  if (draining) { rerun = true; return; }
-  draining = true;
   try {
     const handle = await openQueue();
     // Photo-store helpers are bound to this handle; a test may override them (and
@@ -102,9 +121,6 @@ export async function drain() {
     await refreshState();
   } catch (/** @type {any} */ e) {
     logger('⚠ drain error:', e.message);
-  } finally {
-    draining = false;
-    if (rerun) { rerun = false; void drain(); }
   }
 }
 
