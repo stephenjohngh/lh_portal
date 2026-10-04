@@ -421,6 +421,10 @@
             "ai_suggest",
             "ai_summary",
             "case_submit",
+            "pack_archive",
+            "pack_asset",
+            "pack_read",
+            "pack_unlock",
             "photo_upload",
             "status_lookup"
         ],

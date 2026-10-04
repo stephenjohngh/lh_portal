@@ -2,10 +2,10 @@
 --
 -- Writes dbRules.snapshot.json: the rules the DATABASE enforces, so a test can
 -- hold the code's copies to them (dbRulesParity.test.js — read its header for
--- why there are two copies at all). Read-only. Re-run after any migration that
--- touches a CHECK list or a lifecycle trigger, and commit the result:
+-- why there are two copies at all). Read-only.
 --
---   PGOPTIONS='-c default_transaction_read_only=on' "/c/Program Files/PostgreSQL/18/bin/psql.exe" "$PROD_DB_URL" -X -q -A -t -f src/lib/server/dbRules/export-db-rules.sql > src/lib/server/dbRules/dbRules.snapshot.json
+-- Run it with:  npm run db:rules   (scripts/db-rules.mjs — it writes the JSON
+-- and lists what changed). `npm run db:push:prod` runs it after every push.
 --
 -- ⭐ Transitions are not parsed out of SQL: each status pair is put to the
 -- database's own *_is_valid_transition function and the answer recorded — what

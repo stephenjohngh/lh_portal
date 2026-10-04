@@ -17,7 +17,8 @@
 		"test:coverage": "vitest run --coverage",
 		"db:push:dev": "node scripts/db-push.mjs dev",
 		"db:push:test": "node scripts/db-push.mjs test",
-		"db:push:prod": "node scripts/db-push.mjs prod"
+		"db:push:prod": "node scripts/db-push.mjs prod",
+		"db:rules": "node scripts/db-rules.mjs"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-netlify": "^5.2.4",

@@ -27,8 +27,9 @@
 // The real risk is narrow: somebody edits one copy and not the other. So the
 // database's rules are exported, read-only, into dbRules.snapshot.json (see
 // export-db-rules.sql beside this file), and this test holds every code copy
-// to that snapshot. ⚠ AFTER A MIGRATION THAT CHANGES A CHECK LIST OR A
-// LIFECYCLE, RE-EXPORT THE SNAPSHOT — the same step as regenerating the types.
+// to that snapshot. It is refreshed by `npm run db:rules`, which
+// `npm run db:push:prod` runs after every push; after applying SQL any other
+// way, run it yourself and commit the snapshot if it changed.
 // If one rule turns out to change often, it can move to a table on its own.
 //
 // Where the code holds no copy (the waiting list's moves, a register action's
@@ -115,19 +116,12 @@ const VALUE_LISTS = {
 // ⛔ The rate-limit actions must all be accepted by public_upload_attempts, or
 // their attempts are never recorded and the limit never limits — which is what
 // the four Dossier actions did until migration 233 (§6ccc item 10, 2026-10-04).
-// UNTIL 233 IS APPLIED AND THE SNAPSHOT RE-EXPORTED, the gap is named here and
-// held to exactly those four; the moment the snapshot shows them, this fails
-// and asks for the allowance to be removed.
-const AWAITING_233 = ['pack_archive', 'pack_asset', 'pack_read', 'pack_unlock'];
 describe('rate limits', () => {
-  it('every rate-limited action is one the attempts table accepts', () => {
+  it('every rate-limited action is one the attempts table accepts, and no other', () => {
     const accepted = SNAP.checks['public_upload_attempts.action'];
-    const missing  = Object.keys(RATE_LIMIT_WINDOWS).filter((a) => !accepted.includes(a)).sort();
-    const extra    = accepted.filter((a) => !(a in RATE_LIMIT_WINDOWS));
-    expect(extra, 'the table accepts an action nothing limits').toEqual([]);
-    expect(missing, missing.length
-      ? 'apply migration 233, re-export the snapshot, then delete AWAITING_233'
-      : 'migration 233 is in the snapshot: delete AWAITING_233 and this branch').toEqual(AWAITING_233);
+    expect(sorted(Object.keys(RATE_LIMIT_WINDOWS)),
+      'a rate limit the attempts table does not accept never counts — widen its CHECK in a migration, then npm run db:rules')
+      .toEqual(sorted(accepted));
   });
 });
 
