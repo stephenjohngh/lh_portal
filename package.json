@@ -16,7 +16,7 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync",
-		"start": "node build",
+		"start": "node start.js",
 		"check": "cross-env NODE_OPTIONS=--max-old-space-size=4096 svelte-check --tsconfig ./tsconfig.check.json",
 		"check:js": "cross-env NODE_OPTIONS=--max-old-space-size=4096 svelte-check --tsconfig ./jsconfig.json",
 		"check:register": "node scripts/check-register-claims.mjs",
