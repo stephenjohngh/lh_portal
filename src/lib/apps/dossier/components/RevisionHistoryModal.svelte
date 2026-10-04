@@ -13,7 +13,7 @@
   import { fmtDateTime } from '$lib/utils/dates';
   import BlockContent   from './BlockContent.svelte';
   import { blocksToText } from '../utils/blockRender.js';
-  import { REVISION_CAP } from '../stores/dossierStore.js';
+  import { revisionCap } from '../stores/dossierStore.js';
 
   export let show      = false;
   export let doc       = null;
@@ -59,7 +59,7 @@
         <p class="text-sm text-slate-400">No earlier versions of this page yet.</p>
         <p class="text-xs text-slate-500 mt-2 max-w-sm mx-auto">
           A version is kept automatically as you work, and whenever you choose
-          “Save version”. The most recent {REVISION_CAP} are kept.
+          “Save version”. The most recent {revisionCap()} are kept.
         </p>
       </div>
 

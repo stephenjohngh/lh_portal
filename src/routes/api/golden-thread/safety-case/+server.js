@@ -16,6 +16,7 @@ import { REVIEW_BAND_LABEL, AP_ROLE_LABEL } from '$lib/apps/golden_thread/utils/
 import { getLogger } from '$lib/utils/logger';
 import { fmtDate, fmtDateTime, today } from '$lib/utils/dates';
 import { documentBuildingName } from '$lib/server/identity.js';
+import { loadServerPolicies } from '$lib/server/policies.js';
 
 const logger = getLogger('GtSafetyCase');
 
@@ -142,6 +143,7 @@ export async function POST({ request }) {
     // The building as an admin named it (Admin → Building & business), never
     // what the request carried or a name in code.
     model.building = await documentBuildingName();
+    await loadServerPolicies();   // the review-band labels follow an admin policy
     if (!model || !model.summary) return json({ error: 'No safety-case model provided' }, { status: 400 });
 
     const generatedAt = fmtDateTime(model.generatedAt);

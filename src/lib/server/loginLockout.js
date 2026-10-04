@@ -20,21 +20,33 @@
 // and the per-address limit behaves exactly as the old per-email one did —
 // the failure mode is the previous behaviour, never a weaker one.
 
-export const PER_ADDRESS_LIMIT = 5;
-export const PER_EMAIL_LIMIT   = 20;
-export const WINDOW_MINUTES    = 15;
+// ⭐ The three numbers are admin policies (Admin → Other Config → Policies,
+// 2026-10-04): 5, 20 and 15 are the shipped defaults, with bounds that keep the
+// lockout a lockout ($lib/utils/policies.js). Read when used — the caller
+// refreshes them first (passwordCheck → loadServerPolicies).
+import { policy } from '$lib/utils/policies.js';
+
+/** The limits in force now. */
+export function lockoutLimits() {
+  return {
+    perAddress:    policy('loginFailuresPerAddress'),
+    perAccount:    policy('loginFailuresPerAccount'),
+    windowMinutes: policy('loginPauseMinutes'),
+  };
+}
 
 /**
  * @param {Array<{ ip_address: string|null }>} recentFailures  this email's failures in the window
  * @param {string|null} address  the caller's address
+ * @param {{ perAddress: number, perAccount: number }} [limits]
  */
-export function lockoutState(recentFailures, address) {
+export function lockoutState(recentFailures, address, limits = lockoutLimits()) {
   const fromAnywhere = recentFailures.length;
   const fromHere = recentFailures.filter((f) => (f.ip_address ?? null) === (address ?? null)).length;
-  const locked = fromHere >= PER_ADDRESS_LIMIT || fromAnywhere >= PER_EMAIL_LIMIT;
+  const locked = fromHere >= limits.perAddress || fromAnywhere >= limits.perAccount;
   // After one more failure, how many would be left before a lock — the lower
   // of the two limits, never negative.
   const remainingAfterFailure = Math.max(0,
-    Math.min(PER_ADDRESS_LIMIT - (fromHere + 1), PER_EMAIL_LIMIT - (fromAnywhere + 1)));
+    Math.min(limits.perAddress - (fromHere + 1), limits.perAccount - (fromAnywhere + 1)));
   return { locked, fromHere, fromAnywhere, remainingAfterFailure };
 }

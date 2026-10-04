@@ -31,10 +31,10 @@ import { logAudit,
          getUserAgent }                from '$lib/server/auditLogger';
 import { getLogger }                  from '$lib/utils/logger';
 import { storageProviderName }        from '$lib/server/storage/index.js';
+import { serverPolicy } from '$lib/server/policies.js';
 
 const logger = getLogger('mor/intake/submit');
 
-const MAX_PHOTOS = 5;
 
 let _svc = null;
 function getSvc() {
@@ -89,8 +89,9 @@ export async function POST({ request, url }) {
   if (!Array.isArray(photos)) {
     return json({ error: 'Invalid photos field.' }, { status: 400 });
   }
-  if (photos.length > MAX_PHOTOS) {
-    return json({ error: `Maximum ${MAX_PHOTOS} photos per report.` }, { status: 400 });
+  const maxPhotos = await serverPolicy('morPhotosPerReport');   // an admin policy
+  if (photos.length > maxPhotos) {
+    return json({ error: `Maximum ${maxPhotos} photos per report.` }, { status: 400 });
   }
   const cleanPhotos = [];
   for (const p of photos) {

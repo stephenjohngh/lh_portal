@@ -13,18 +13,20 @@
 import { json }        from '@sveltejs/kit';
 import { requireAuth } from '$lib/server/requireAuth.js';
 import {
-  MEDIA_COOKIE, MEDIA_COOKIE_PATH, MEDIA_SESSION_SECONDS, mediaSessionValue,
+  MEDIA_COOKIE, MEDIA_COOKIE_PATH, mediaSessionSeconds, mediaSessionValue,
 } from '$lib/server/mediaAccess.js';
+import { loadServerPolicies } from '$lib/server/policies.js';
 
 export async function POST({ request, cookies }) {
   const auth = await requireAuth(request);
   if (auth.error) return auth.error;
 
+  await loadServerPolicies();   // the pass's length is an admin policy
   cookies.set(MEDIA_COOKIE, mediaSessionValue(auth.user.id), {
     path:     MEDIA_COOKIE_PATH,
     httpOnly: true,
     sameSite: 'lax',
-    maxAge:   MEDIA_SESSION_SECONDS,
+    maxAge:   mediaSessionSeconds(),
   });
   return json({ ok: true });
 }

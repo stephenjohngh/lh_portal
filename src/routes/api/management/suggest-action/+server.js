@@ -29,7 +29,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env as privateEnv } from '$env/dynamic/private';
 import { requireAppAccess } from '$lib/server/requireAuth';
-import { checkKeyRateLimit, LIMITS } from '$lib/server/publicRateLimit';
+import { checkKeyRateLimit } from '$lib/server/publicRateLimit';
+import { rateLimit } from '$lib/utils/policies.js';
 import { callWithModel } from '$lib/server/aiModel.js';
 import { logAudit } from '$lib/server/auditLogger';
 import { escapeForPrompt } from '$lib/server/promptEscape';
@@ -178,7 +179,7 @@ export async function POST({ request }) {
       logger('⚠️ Rate limited:', profile.email);
       recordAudit('rate_limited', 'warning', { reason: 'per_user_hourly_cap' });
       return json(
-        { error: `Rate limit exceeded (${LIMITS.ai_suggest.max} suggestions/hour). Try again later.` },
+        { error: `Rate limit exceeded (${rateLimit('ai_suggest')?.max} suggestions/hour). Try again later.` },
         { status: 429 }
       );
     }

@@ -7,6 +7,7 @@
 // Type-1 testable (gtRiskScoring.test.js).
 
 import { today as todayLondon } from '../../../utils/dates.js';
+import { policy } from '$lib/utils/policies.js';
 export const RISK_DOMAINS = ['fire', 'structural', 'other'];
 export const RISK_DOMAIN_LABELS = { fire: 'Fire', structural: 'Structural', other: 'Other' };
 export const RISK_SOURCES = ['fra', 'mor', 'inspection', 'safety_case', 'survey', 'manual'];
@@ -16,17 +17,21 @@ export const IMPACT_LABELS     = { 1: 'Negligible', 2: 'Minor', 3: 'Moderate', 4
 
 /**
  * RAG bands by (residual/inherent) score. Ordered ascending by `max`; the band
- * order also defines escalation steps. Configurable later via portal_settings.
+ * order also defines escalation steps. ⭐ The score thresholds are an admin
+ * policy (Admin → Other Config → Policies: 4 / 9 / 15 shipped), read when the
+ * bands are asked for — riskBands() — never captured once at module scope.
  */
-export const DEFAULT_RISK_BANDS = [
-  { band: 'low',       max: 4,  label: 'Low',       badge: 'bg-green-600' },
-  { band: 'medium',    max: 9,  label: 'Medium',    badge: 'bg-amber-600' },
-  { band: 'high',      max: 15, label: 'High',      badge: 'bg-orange-600' },
-  { band: 'very_high', max: 25, label: 'Very high', badge: 'bg-red-700' },
-];
+export function riskBands() {
+  return [
+    { band: 'low',       max: policy('gtRiskLowMax'),    label: 'Low',       badge: 'bg-green-600' },
+    { band: 'medium',    max: policy('gtRiskMediumMax'), label: 'Medium',    badge: 'bg-amber-600' },
+    { band: 'high',      max: policy('gtRiskHighMax'),   label: 'High',      badge: 'bg-orange-600' },
+    { band: 'very_high', max: 25,                        label: 'Very high', badge: 'bg-red-700' },
+  ];
+}
 
 /** The band a numeric score falls into, or null when score is null. */
-export function scoreBand(score, bands = DEFAULT_RISK_BANDS) {
+export function scoreBand(score, bands = riskBands()) {
   if (score == null || Number.isNaN(score)) return null;
   for (const b of bands) if (score <= b.max) return b;
   return bands[bands.length - 1];
@@ -42,7 +47,7 @@ export function effectiveScore(risk) {
 }
 
 /** Escalate a band by one step (capped at the top band). */
-export function escalateBand(band, bands = DEFAULT_RISK_BANDS) {
+export function escalateBand(band, bands = riskBands()) {
   const i = bands.findIndex((b) => b.band === band?.band);
   if (i < 0) return band;
   return bands[Math.min(i + 1, bands.length - 1)];
@@ -90,7 +95,7 @@ export const ALERT_LABELS = {
  * @param {Array} [bands]
  * @returns {{ band: object|null, base: object|null, escalated: boolean, activeAlerts: string[] }}
  */
-export function liveRating(risk, signals = {}, bands = DEFAULT_RISK_BANDS) {
+export function liveRating(risk, signals = {}, bands = riskBands()) {
   const base = scoreBand(effectiveScore(risk), bands);
   const activeAlerts = Object.keys(signals).filter((k) => signals[k]);
   if (base == null || activeAlerts.length === 0) {

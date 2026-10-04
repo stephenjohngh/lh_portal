@@ -57,6 +57,7 @@ import * as datasetTemplates   from '$lib/apps/dossier/utils/datasetTemplates.js
 import * as spaceTypeOptions   from '$lib/apps/building_assets/utils/spaceTypeOptions.js';
 import { ISSUE_STATUS }        from '$lib/utils/constants.js';
 import { AVAILABLE_APPS }      from '$lib/apps/apps.js';
+import { RATE_LIMIT_WINDOWS }  from '$lib/utils/policies.js';
 
 const SNAP = JSON.parse(readFileSync(join(process.cwd(), 'src/lib/server/dbRules/dbRules.snapshot.json'), 'utf8'));
 
@@ -110,6 +111,25 @@ const VALUE_LISTS = {
   'dossier_datasets.key':             () => values(datasetTemplates.TEMPLATE_KEYS),
   'issues.status':                    () => Object.values(ISSUE_STATUS),
 };
+
+// ⛔ The rate-limit actions must all be accepted by public_upload_attempts, or
+// their attempts are never recorded and the limit never limits — which is what
+// the four Dossier actions did until migration 233 (§6ccc item 10, 2026-10-04).
+// UNTIL 233 IS APPLIED AND THE SNAPSHOT RE-EXPORTED, the gap is named here and
+// held to exactly those four; the moment the snapshot shows them, this fails
+// and asks for the allowance to be removed.
+const AWAITING_233 = ['pack_archive', 'pack_asset', 'pack_read', 'pack_unlock'];
+describe('rate limits', () => {
+  it('every rate-limited action is one the attempts table accepts', () => {
+    const accepted = SNAP.checks['public_upload_attempts.action'];
+    const missing  = Object.keys(RATE_LIMIT_WINDOWS).filter((a) => !accepted.includes(a)).sort();
+    const extra    = accepted.filter((a) => !(a in RATE_LIMIT_WINDOWS));
+    expect(extra, 'the table accepts an action nothing limits').toEqual([]);
+    expect(missing, missing.length
+      ? 'apply migration 233, re-export the snapshot, then delete AWAITING_233'
+      : 'migration 233 is in the snapshot: delete AWAITING_233 and this branch').toEqual(AWAITING_233);
+  });
+});
 
 // App ids are compared one way round on purpose: every app that can be GRANTED
 // must be accepted, or granting it fails. The database also accepts 'settings'

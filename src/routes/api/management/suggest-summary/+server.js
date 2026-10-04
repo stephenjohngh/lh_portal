@@ -10,7 +10,8 @@ import { json } from '@sveltejs/kit';
 import Anthropic from '@anthropic-ai/sdk';
 import { env as privateEnv } from '$env/dynamic/private';
 import { requireAuth } from '$lib/server/requireAuth';
-import { checkKeyRateLimit, LIMITS } from '$lib/server/publicRateLimit';
+import { checkKeyRateLimit } from '$lib/server/publicRateLimit';
+import { rateLimit } from '$lib/utils/policies.js';
 import { callWithModel } from '$lib/server/aiModel.js';
 import { logAudit } from '$lib/server/auditLogger';
 import { escapeForPrompt } from '$lib/server/promptEscape';
@@ -96,7 +97,7 @@ export async function POST({ request }) {
     if (!(await checkKeyRateLimit(`user:${profile.id}`, 'ai_summary'))) {
       recordAudit('rate_limited', 'warning');
       return json(
-        { error: `Rate limit exceeded (${LIMITS.ai_summary.max} summaries/hour). Try again later.` },
+        { error: `Rate limit exceeded (${rateLimit('ai_summary')?.max} summaries/hour). Try again later.` },
         { status: 429 }
       );
     }

@@ -9,6 +9,7 @@ import { describe, it, expect, vi } from 'vitest';
 import JSZip from 'jszip';
 import { buildSafetyCaseModel } from '$lib/apps/golden_thread/utils/gtSafetyCase.js';
 
+vi.mock('$lib/server/policies.js', async () => { const u = await import('$lib/utils/policies.js'); return { loadServerPolicies: async () => {}, serverPolicy: async (k) => u.policy(k), serverRateLimit: async (a) => u.rateLimit(a) }; });
 vi.mock('$lib/server/requireAuth', () => ({ requireAuth: async () => ({ user: { id: 'u1' }, error: null }) }));
 vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
 // The building as an admin named it (Admin → Building & business).

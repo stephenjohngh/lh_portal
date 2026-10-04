@@ -4,7 +4,7 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'test-secret' } }));
 
 const {
-  mediaSessionValue, readMediaSession, MEDIA_SESSION_SECONDS,
+  mediaSessionValue, readMediaSession, mediaSessionSeconds,
   canViewFile, canDeleteFile, describeFile, findFileReferences,
 } = await import('./mediaAccess.js');
 
@@ -18,8 +18,8 @@ describe('the media session cookie', () => {
   it('vouches for the user it was issued to, until it expires', () => {
     const v = mediaSessionValue(U1, now);
     expect(readMediaSession(v, now)).toBe(U1);
-    expect(readMediaSession(v, now + (MEDIA_SESSION_SECONDS - 1) * 1000)).toBe(U1);
-    expect(readMediaSession(v, now + MEDIA_SESSION_SECONDS * 1000)).toBeNull();
+    expect(readMediaSession(v, now + (mediaSessionSeconds() - 1) * 1000)).toBe(U1);
+    expect(readMediaSession(v, now + mediaSessionSeconds() * 1000)).toBeNull();
   });
 
   it('cannot be forged or re-pointed at someone else', () => {

@@ -11,31 +11,16 @@ import { createClient }          from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }                 from '$env/dynamic/private';
 import { getLogger } from '$lib/utils/logger';
+import { serverRateLimit } from '$lib/server/policies.js';
 
 const logger = getLogger('publicRateLimit');
 
-// Limits per action. Exported so endpoints can quote the numbers in
-// user-facing 429 messages without duplicating them.
-export const LIMITS = {
-  photo_upload:  { max: 10, windowMinutes: 15 }, // 10 photos per 15 min (per IP)
-  case_submit:   { max:  3, windowMinutes: 60 }, // 3 submissions per hour (per IP)
-  status_lookup: { max: 10, windowMinutes: 15 }, // 10 status checks per 15 min (per IP)
-  ai_suggest:    { max: 60, windowMinutes: 60 }, // 60 action suggestions per hour (per user)
-  ai_summary:    { max: 60, windowMinutes: 60 }, // 60 summaries per hour (per user)
-  // Dossier published packs (per IP). Generous enough that a solicitor reading
-  // a pack, opening its files and coming back to it never notices; low enough
-  // that enumerating tokens is pointless rather than merely impractical. The
-  // unguessable token is the real defence — this is the belt to its braces.
-  pack_read:     { max: 120, windowMinutes: 15 },
-  pack_asset:    { max: 300, windowMinutes: 15 }, // a page of images is many requests
-  // A passphrase is the low-entropy half of a publication's credential, so
-  // this limiter is what makes guessing it impractical rather than merely slow.
-  pack_unlock:   { max: 10,  windowMinutes: 15 },
-  // The author's offline zip of a whole pack (per USER, not per IP — the
-  // endpoint is authenticated). Metered because one request reads every file
-  // in the pack, which is as expensive as everything else here put together.
-  pack_archive:  { max: 10,  windowMinutes: 15 },
-};
+// The limits are admin policies (Admin → Other Config → Policies): the number
+// allowed per window, with the window fixed, declared in $lib/utils/policies.js
+// (RATE_LIMIT_WINDOWS) and read fresh here (serverRateLimit). Each action is
+// also in public_upload_attempts' CHECK — dbRulesParity.test.js holds the two
+// lists together, because until migration 233 the four Dossier actions were
+// missing from it and their attempts were never recorded.
 
 // Module-level singleton for the service role client
 let _svc = null;
@@ -100,11 +85,11 @@ export async function checkRateLimit(request, action) {
  * storage; the ip_hash column name is historical.
  *
  * @param {string} key     Stable caller identity (raw IP, or 'user:<uuid>')
- * @param {keyof LIMITS} action
+ * @param {string} action  a key of RATE_LIMIT_WINDOWS
  * @returns {Promise<boolean>} true = under limit (allowed), false = over limit (reject)
  */
 export async function checkKeyRateLimit(key, action) {
-  const limit  = LIMITS[action];
+  const limit  = await serverRateLimit(action);
   if (!limit)  { logger('⚠ Unknown action:', action); return true; }
 
   const ipHash = hashIp(key);
@@ -123,8 +108,11 @@ export async function checkKeyRateLimit(key, action) {
     if (cErr) { logger('⚠ Rate limit count error:', cErr.message); return true; }
     if ((count ?? 0) >= limit.max) return false;
 
-    // Record this attempt
-    await svc.from('public_upload_attempts').insert({ ip_hash: ipHash, action });
+    // Record this attempt. ⛔ Read the result: an attempt the table refuses is
+    // never counted, so the limit silently stops limiting — exactly what the
+    // Dossier actions did until migration 233.
+    const { error: iErr } = await svc.from('public_upload_attempts').insert({ ip_hash: ipHash, action });
+    if (iErr) logger('❌ Rate limit attempt NOT recorded — this limit is not limiting:', action, iErr.message);
 
     // Cleanup stale rows (fire-and-forget — don't block the response).
     // Scoped to this action: windows differ per action, so an unscoped

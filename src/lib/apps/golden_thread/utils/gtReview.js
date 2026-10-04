@@ -13,6 +13,7 @@
 // Day arithmetic has one owner (dates.js, 2026-10-02); re-exported so this
 // module's callers keep their import.
 import { daysBetween } from '$lib/utils/dates.js';
+import { policy } from '$lib/utils/policies.js';
 export { daysBetween };
 
 /**
@@ -24,9 +25,12 @@ export { daysBetween };
 export function reviewBand(daysToReview) {
   if (daysToReview == null) return null;
   if (daysToReview < 0)  return 'overdue';
-  if (daysToReview <= 30) return 'due_30';
-  if (daysToReview <= 60) return 'due_60';
-  if (daysToReview <= 90) return 'due_90';
+  // ⭐ The three band edges are an admin policy (Admin → Policies; 30/60/90
+  // shipped). The band NAMES keep the shipped numbers as identities — first,
+  // second, third — and their labels follow the setting (gtConstants).
+  if (daysToReview <= policy('gtReviewBand1')) return 'due_30';
+  if (daysToReview <= policy('gtReviewBand2')) return 'due_60';
+  if (daysToReview <= policy('gtReviewBand3')) return 'due_90';
   return null;
 }
 

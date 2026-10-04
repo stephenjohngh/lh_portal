@@ -10,6 +10,7 @@
 // is the only place the order is decided.
 
 import { LIVE, addDaysISO } from './agreementModel.js';
+import { policy } from '$lib/utils/policies.js';
 
 export const ANY_SIZE = 'any';
 
@@ -23,7 +24,8 @@ export const APPLICATION_STATUS_LABEL = Object.fromEntries(APPLICATION_STATUSES.
 export const OPEN = new Set(['waiting', 'offered']);
 
 /** How long an offer stays open unless the person making it says otherwise. */
-export const DEFAULT_OFFER_DAYS = 14;
+// How long an offer holds a bay by default is an admin policy (Admin →
+// Policies; 14 days shipped), read when an offer is made.
 
 /** Does an application want a bay of this size? */
 export function wants(app, size) {
@@ -101,7 +103,7 @@ export function validateOffer(app, bay, agreements, applications, { made_on, exp
 }
 
 /** The default expiry for an offer made on a date. */
-export function defaultExpiry(madeOn, days = DEFAULT_OFFER_DAYS) {
+export function defaultExpiry(madeOn, days = policy('parkingOfferDays')) {
   return addDaysISO(madeOn, days);
 }
 

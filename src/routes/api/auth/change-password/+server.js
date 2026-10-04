@@ -19,7 +19,7 @@
 import { json } from '@sveltejs/kit';
 import { requireAuth } from '$lib/server/requireAuth';
 import { logAudit, getIpAddress, getUserAgent } from '$lib/server/auditLogger';
-import { checkPassword, adminClient, WINDOW_MINUTES } from '$lib/server/passwordCheck';
+import { checkPassword, adminClient, pauseMinutes } from '$lib/server/passwordCheck';
 import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger('ChangePassword');
@@ -49,7 +49,7 @@ export async function POST({ request, getClientAddress }) {
     email: user.email, password: currentPassword, request, getClientAddress, purpose: 'change password',
   });
   if (result.kind === 'locked') {
-    return json({ error: `Too many wrong passwords. Please try again in ${WINDOW_MINUTES} minutes.`,
+    return json({ error: `Too many wrong passwords. Please try again in ${pauseMinutes()} minutes.`,
                   field: 'currentPassword' }, { status: 429 });
   }
   if (result.kind === 'not_checked') {

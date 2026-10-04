@@ -26,7 +26,7 @@
 
 import { json }                     from '@sveltejs/kit';
 import { logLogin }                 from '$lib/server/auditLogger';
-import { checkPassword, WINDOW_MINUTES } from '$lib/server/passwordCheck';
+import { checkPassword, pauseMinutes } from '$lib/server/passwordCheck';
 import { getLogger }                from '$lib/utils/logger';
 
 const logger = getLogger('AuthLogin');
@@ -47,7 +47,7 @@ export async function POST({ request, getClientAddress }) {
 
   if (result.kind === 'locked') {
     return json({
-      error:  `Too many failed attempts. Please try again in ${WINDOW_MINUTES} minutes.`,
+      error:  `Too many failed attempts. Please try again in ${pauseMinutes()} minutes.`,
       locked: true,
     }, { status: 429 });
   }

@@ -5,6 +5,7 @@
 <script>
   import { onDestroy } from 'svelte';
   import { LOGO as lhLogo, LOGO_ALT } from '$lib/branding.js';
+  import { POLICY_DEFAULTS } from '$lib/utils/policies.js';
 
   // ── Form state ─────────────────────────────────────────────────────────
   let description     = '';
@@ -18,7 +19,9 @@
   // Each photo: { id, file, preview, status, url, mimeType, error }
   // status: 'uploading' | 'done' | 'error'
   let photos = [];
-  const MAX_PHOTOS = 5;
+  // An admin policy (Admin → Policies), read on the server (+page.server.js).
+  export let data;
+  $: MAX_PHOTOS = data?.maxPhotos ?? POLICY_DEFAULTS.morPhotosPerReport;
   const TEMP_REF = typeof crypto !== 'undefined' ? crypto.randomUUID() : Date.now().toString();
 
   // ── Submission state ────────────────────────────────────────────────────

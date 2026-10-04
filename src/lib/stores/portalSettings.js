@@ -16,6 +16,8 @@
 //     windows:    object      — every window in force (defaults + those changes)
 //     building:   object|null — the facilities row: { id, name, short_name, address }
 //     organisation: object    — the business and letter signatory ({} = none set)
+//     policies:   object      — the policy numbers an admin changed ({} = none)
+//     policiesInForce: object — every policy in force (defaults + those changes)
 //   }
 //
 // ⭐ The building and the business are admin settings, not code
@@ -34,6 +36,7 @@ import { getLogger } from '$lib/utils/logger';
 import { setDueWindows, cleanDueWindows, activeDueWindows } from '$lib/utils/dueWindows.js';
 import { currentUserId } from '$lib/utils/currentUser.js';
 import { ORGANISATION_KEY, cleanOrganisation } from '$lib/utils/identity.js';
+import { POLICIES_KEY, setPolicies, cleanPolicies, validatePolicies, activePolicies } from '$lib/utils/policies.js';
 
 const logger     = getLogger('portalSettings');
 const TOPBAR_KEY = 'topbar_apps';
@@ -49,13 +52,15 @@ const DUE_KEY    = 'due_soon_days';
  *   windows: Record<string, number>,
  *   building: { id: string, name: string, short_name: string, address: string|null } | null,
  *   organisation: Record<string, string>,
+ *   policies: Record<string, number>,
+ *   policiesInForce: Record<string, number>,
  * }} PortalSettingsState
  */
 
 function createPortalSettingsStore() {
   const { subscribe, set, update } = writable(/** @type {PortalSettingsState} */ ({
     loaded: false, ids: null, order: null, dueWindows: {}, windows: activeDueWindows(),
-    building: null, organisation: {},
+    building: null, organisation: {}, policies: {}, policiesInForce: activePolicies(),
   }));
 
   /**
@@ -68,7 +73,7 @@ function createPortalSettingsStore() {
         supabase
           .from('portal_settings')
           .select('key, value')
-          .in('key', [TOPBAR_KEY, ORDER_KEY, DUE_KEY, ORGANISATION_KEY]),
+          .in('key', [TOPBAR_KEY, ORDER_KEY, DUE_KEY, ORGANISATION_KEY, POLICIES_KEY]),
         supabase
           .from('facilities')
           .select('id, name, short_name, address')
@@ -83,9 +88,11 @@ function createPortalSettingsStore() {
       const order = /** @type {string[] | null} */ (rows.find(r => r.key === ORDER_KEY)?.value  ?? null);
       const dueWindows = setDueWindows(rows.find(r => r.key === DUE_KEY)?.value ?? null);
       const organisation = cleanOrganisation(rows.find(r => r.key === ORGANISATION_KEY)?.value);
+      const policies = setPolicies(rows.find(r => r.key === POLICIES_KEY)?.value ?? null);
 
       set({ loaded: true, ids, order, dueWindows, windows: activeDueWindows(),
-            building: facility.data ?? null, organisation });
+            building: facility.data ?? null, organisation,
+            policies, policiesInForce: activePolicies() });
       logger('✅ Loaded portal settings — topbar:', ids ?? 'all', '— order:', order ?? 'default');
     } catch (/** @type {any} */ err) {
       logger('⚠ Failed to load portal settings (non-fatal):', err.message);
@@ -205,7 +212,30 @@ function createPortalSettingsStore() {
     return organisation;
   }
 
-  return { subscribe, load, save, saveOrder, saveDueWindows, saveBuilding, saveOrganisation };
+  /**
+   * Save the policy numbers and put them in force at once. Only values that
+   * differ from the shipped default are stored, so one put back to its
+   * default follows the default again. Refuses a set that breaks a bound or
+   * an order (validatePolicies), naming the first problem.
+   * @param {Record<string, unknown>} values  `{ key: number }`
+   */
+  async function savePolicies(values) {
+    const problems = validatePolicies(values);
+    const first = Object.values(problems)[0];
+    if (first) throw new Error(first);
+    const userId = await currentUserId();
+    const changed = cleanPolicies(values);
+    const { error } = await supabase
+      .from('portal_settings')
+      .upsert({ key: POLICIES_KEY, value: changed, updated_by: userId }, { onConflict: 'key' });
+    if (error) throw new Error(error.message);
+    const policies = setPolicies(changed);
+    update(s => ({ ...s, policies, policiesInForce: activePolicies() }));
+    logger('✅ Saved the policies:', changed);
+    return policies;
+  }
+
+  return { subscribe, load, save, saveOrder, saveDueWindows, saveBuilding, saveOrganisation, savePolicies };
 }
 
 export const portalSettings = createPortalSettingsStore();

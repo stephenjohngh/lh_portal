@@ -18,7 +18,7 @@ vi.mock('$lib/server/requireAuth', () => ({ requireAuth: async () => h.auth }));
 vi.mock('$lib/server/passwordCheck', () => ({
   checkPassword: vi.fn(async () => h.check),
   adminClient:   () => ({ auth: { admin: { updateUserById: h.update } } }),
-  WINDOW_MINUTES: 15,
+  pauseMinutes:  () => 15,
 }));
 vi.mock('$lib/server/auditLogger', () => ({
   logAudit: h.audit, getIpAddress: () => '1.2.3.4', getUserAgent: () => 'ua',

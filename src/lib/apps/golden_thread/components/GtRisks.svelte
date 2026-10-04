@@ -8,7 +8,7 @@
   import { permissions } from '$lib/stores/permissions';
   import { listPersons, listCurrentDocuments } from '$lib/apps/golden_thread/public.js';
   import { RISK_STATUSES, RISK_STATUS_LABELS, RISK_STATUS_BADGE } from '$lib/apps/golden_thread/utils/gtRiskLifecycle.js';
-  import { RISK_DOMAINS, RISK_DOMAIN_LABELS, DEFAULT_RISK_BANDS, liveRating } from '$lib/apps/golden_thread/utils/gtRiskScoring.js';
+  import { RISK_DOMAINS, RISK_DOMAIN_LABELS, riskBands, liveRating } from '$lib/apps/golden_thread/utils/gtRiskScoring.js';
   import Badge         from '$lib/components/common/Badge.svelte';
   import Button        from '$lib/components/common/Button.svelte';
   import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
@@ -124,7 +124,7 @@
         <label class="text-xs text-slate-400">Band (live)
           <select bind:value={fBand} class="mt-1 block bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-slate-200">
             <option value="all">All</option>
-            {#each DEFAULT_RISK_BANDS as b}<option value={b.band}>{b.label}</option>{/each}
+            {#each riskBands() as b}<option value={b.band}>{b.label}</option>{/each}
           </select>
         </label>
         <span class="text-xs text-slate-500 pb-1">{filtered.length} of {risks.length}</span>

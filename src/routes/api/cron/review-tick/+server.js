@@ -25,6 +25,7 @@ import { requireAdmin }         from '$lib/server/requireAuth';
 import { computeReviewTick }    from '$lib/apps/golden_thread/utils/gtReview';
 import { getLogger }            from '$lib/utils/logger';
 import { readAllPages } from '$lib/utils/readAllPages.js';
+import { loadServerPolicies } from '$lib/server/policies.js';
 
 const logger = getLogger('gt-review-tick');
 
@@ -69,6 +70,7 @@ export async function POST({ request }) {
     return json({ error: 'Failed to read register' }, { status: 500 });
   }
 
+  await loadServerPolicies();   // the review bands are an admin policy
   const summary = computeReviewTick(data, todayISO());
   return json({ ranAt: new Date().toISOString(), ...summary });
 }

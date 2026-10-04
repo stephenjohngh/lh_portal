@@ -21,6 +21,7 @@
   import PortalSettingsPanel from './components/PortalSettingsPanel.svelte';
   import DueWindowsPanel from './components/DueWindowsPanel.svelte';
   import IdentityPanel from './components/IdentityPanel.svelte';
+  import PoliciesPanel from './components/PoliciesPanel.svelte';
   import DocumentsTab    from './components/DocumentsTab.svelte';
   import TabDropdown     from './components/TabDropdown.svelte';
   import TabBar          from '$lib/components/common/TabBar.svelte';
@@ -49,6 +50,7 @@
     { id: 'identity',  icon: '🏠', label: 'Building & business' },
     { id: 'portal',    icon: '⚙',  label: 'Portal' },
     { id: 'due-windows', icon: '⏳', label: 'Due windows' },
+    { id: 'policies',  icon: '📏', label: 'Policies' },
     { id: 'documents', icon: '📁', label: 'Document Demo' },
   ];
   
@@ -291,6 +293,9 @@
 
   {:else if activeTab === 'due-windows'}
     <DueWindowsPanel />
+
+  {:else if activeTab === 'policies'}
+    <PoliciesPanel />
 
   {:else if activeTab === 'documents'}
     <DocumentsTab />

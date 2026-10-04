@@ -25,12 +25,14 @@ const h = vi.hoisted(() => {
   return { svc, setCount: (n, error = null) => { countResult = { count: n, error }; } };
 });
 
+vi.mock('$lib/server/policies.js', async () => { const u = await import('$lib/utils/policies.js'); return { loadServerPolicies: async () => {}, serverPolicy: async (k) => u.policy(k), serverRateLimit: async (a) => u.rateLimit(a) }; });
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => h.svc }));
 vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://local' }));
 vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'svc' } }));
 vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
 
-const { checkKeyRateLimit, checkRateLimit, LIMITS } = await import('./publicRateLimit.js');
+const { checkKeyRateLimit, checkRateLimit } = await import('./publicRateLimit.js');
+const { rateLimit } = await import('$lib/utils/policies.js');
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -39,7 +41,7 @@ beforeEach(() => {
 
 describe('checkKeyRateLimit', () => {
   it('allows and records the attempt when under the limit', async () => {
-    h.setCount(LIMITS.case_submit.max - 1);
+    h.setCount(rateLimit('case_submit').max - 1);
     const ok = await checkKeyRateLimit('user:1', 'case_submit');
     expect(ok).toBe(true);
     // an INSERT happened (one of the builders had insert called)
@@ -48,11 +50,22 @@ describe('checkKeyRateLimit', () => {
   });
 
   it('blocks (and does not record) when at/over the limit', async () => {
-    h.setCount(LIMITS.case_submit.max);
+    h.setCount(rateLimit('case_submit').max);
     const ok = await checkKeyRateLimit('user:1', 'case_submit');
     expect(ok).toBe(false);
     const inserted = h.svc.from.mock.results.some(r => r.value.insert.mock.calls.length > 0);
     expect(inserted).toBe(false);
+  });
+
+  it('enforces the limit an admin set, not the shipped one', async () => {
+    const { setPolicies } = await import('$lib/utils/policies.js');
+    setPolicies({ rate_case_submit: 7 });
+    try {
+      h.setCount(6);
+      expect(await checkKeyRateLimit('user:1', 'case_submit')).toBe(true);
+      h.setCount(7);
+      expect(await checkKeyRateLimit('user:1', 'case_submit')).toBe(false);
+    } finally { setPolicies(null); }
   });
 
   it('returns true for an unknown action without touching the DB', async () => {

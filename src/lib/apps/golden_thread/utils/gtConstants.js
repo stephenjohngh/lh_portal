@@ -6,6 +6,8 @@
 // document set is catalogued; values are stored verbatim in
 // gt_documents.document_type (plain text, no DB constraint).
 
+import { policy } from '$lib/utils/policies.js';
+
 /**
  * Master Document List — document_type options (label === stored value).
  * A starter set covering the common controlled documents for a residential
@@ -59,12 +61,14 @@ export const DOCUMENT_TYPES = [
  * (gtReview.js) to a user label + a Badge background class. Keyed by band;
  * null bands (not due soon / no review date) render no badge.
  */
-export const REVIEW_BAND_LABEL = {
+// The day counts follow the admin policy (Admin → Policies), so each label is
+// worked out when it is read; the keys are the bands' fixed names.
+export const REVIEW_BAND_LABEL = Object.freeze({
   overdue: 'Review overdue',
-  due_30:  'Review due ≤30d',
-  due_60:  'Review due ≤60d',
-  due_90:  'Review due ≤90d',
-};
+  get due_30() { return `Review due ≤${policy('gtReviewBand1')}d`; },
+  get due_60() { return `Review due ≤${policy('gtReviewBand2')}d`; },
+  get due_90() { return `Review due ≤${policy('gtReviewBand3')}d`; },
+});
 export const REVIEW_BAND_BADGE = {
   overdue: 'bg-red-700',
   due_30:  'bg-amber-600',

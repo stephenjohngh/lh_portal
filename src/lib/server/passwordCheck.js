@@ -22,7 +22,8 @@ import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import { env } from '$env/dynamic/private';
 import { logFailedLogin, getIpAddress, getUserAgent } from '$lib/server/auditLogger';
-import { lockoutState, PER_EMAIL_LIMIT, WINDOW_MINUTES } from '$lib/server/loginLockout';
+import { lockoutState, lockoutLimits } from '$lib/server/loginLockout';
+import { loadServerPolicies } from '$lib/server/policies.js';
 import { signInOutcome } from '$lib/server/signInOutcome';
 import { getLogger } from '$lib/utils/logger';
 
@@ -35,20 +36,21 @@ const supabaseAdmin = createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROL
 export const adminClient = () => supabaseAdmin;
 
 /**
- * This email's failed attempts in the last WINDOW_MINUTES, with the address
+ * This email's failed attempts in the lockout window, with the address
  * each came from. loginLockout.js decides what they mean.
  * @param {string} emailLower
  * @returns {Promise<Array<{ ip_address: string|null }>>}
  */
 async function recentFailures(emailLower) {
-  const since = new Date(Date.now() - WINDOW_MINUTES * 60_000).toISOString();
+  const { windowMinutes, perAccount } = lockoutLimits();
+  const since = new Date(Date.now() - windowMinutes * 60_000).toISOString();
   const { data, error } = await supabaseAdmin
     .from('login_attempts')
     .select('ip_address')
     .eq('email_lower', emailLower)
     .eq('succeeded',   false)
     .gt('attempted_at', since)
-    .limit(PER_EMAIL_LIMIT + 1);
+    .limit(perAccount + 1);
   if (error) {
     // Fail open with a logged warning — DB outage shouldn't lock everyone out.
     logger('⚠ Rate-limit lookup failed, allowing attempt:', error.message);
@@ -103,6 +105,7 @@ export async function checkPassword({ email, password, request, getClientAddress
   const note       = purpose === 'login' ? '' : ` [${purpose}]`;
 
   // 1. The lockout, before Supabase is asked anything.
+  await loadServerPolicies();   // the lockout's numbers are an admin policy
   const lock = lockoutState(await recentFailures(emailLower), ip);
   if (lock.locked) {
     logger('🚨 Locked out by rate limit:', emailLower,
@@ -146,4 +149,5 @@ export async function checkPassword({ email, password, request, getClientAddress
   return { ok: true, data, recentFails: lock.fromAnywhere };
 }
 
-export { WINDOW_MINUTES };
+/** How long a pause lasts, for the message that says so. */
+export const pauseMinutes = () => lockoutLimits().windowMinutes;

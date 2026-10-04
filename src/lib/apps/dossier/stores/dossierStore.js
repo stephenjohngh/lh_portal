@@ -26,6 +26,7 @@ import { buildSnapshot, buildManifest } from '../utils/snapshot.js';
 import { generateToken, hashToken, tokenPrefix } from '../utils/publicationToken.js';
 import { hashPassphrase } from '../utils/publicationPassphrase.js';
 import { storeLoader } from '$lib/utils/storeLoad.js';
+import { policy } from '$lib/utils/policies.js';
 
 const logger = getLogger('dossierStore');
 
@@ -33,7 +34,9 @@ const logger = getLogger('dossierStore');
  * Revision policy (plan §2). Both are PRODUCT rules and deliberately live here
  * rather than in SQL, so they can be tuned without a migration.
  */
-export const REVISION_CAP = 20;
+/** How many saved versions a document keeps: an admin policy (Admin → Policies;
+ *  20 shipped), read when it is used. */
+export const revisionCap = () => policy('dossierRevisionsKept');
 /** Autosaves inside this window reuse the last snapshot instead of making a new one. */
 export const REVISION_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -825,7 +828,7 @@ function createDossierStore() {
   }
 
   /**
-   * Keep only the newest REVISION_CAP revisions. Deleting is permitted by
+   * Keep only the newest revisionCap() revisions. Deleting is permitted by
    * migration 173; UPDATE is still denied, so a snapshot can be pruned but
    * never rewritten.
    */
@@ -835,7 +838,7 @@ function createDossierStore() {
         select: 'id', filters: { doc_id: docId },
         orderBy: 'created_at', ascending: false,
       });
-      for (const row of rows.slice(REVISION_CAP)) {
+      for (const row of rows.slice(revisionCap())) {
         await api.delete('dossier_doc_revisions', row.id);
       }
     } catch (err) {

@@ -33,10 +33,13 @@
 
 import { createHmac, createHash, timingSafeEqual } from 'node:crypto';
 import { env } from '$env/dynamic/private';
+import { policy } from '$lib/utils/policies.js';
 
 export const MEDIA_COOKIE          = 'lh_media';
 export const MEDIA_COOKIE_PATH     = '/api/media';
-export const MEDIA_SESSION_SECONDS = 12 * 60 * 60;
+/** How long a file pass lasts: the admin policy `fileAccessHours` (12 by
+ *  default), read when a pass is made. */
+export const mediaSessionSeconds = () => policy('fileAccessHours') * 60 * 60;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -56,7 +59,7 @@ const sign = (payload) => createHmac('sha256', key()).update(payload).digest('he
  * @param {number} [nowMs]
  */
 export function mediaSessionValue(userId, nowMs = Date.now()) {
-  const exp = Math.floor(nowMs / 1000) + MEDIA_SESSION_SECONDS;
+  const exp = Math.floor(nowMs / 1000) + mediaSessionSeconds();
   const payload = `${userId}.${exp}`;
   return `${payload}.${sign(payload)}`;
 }
