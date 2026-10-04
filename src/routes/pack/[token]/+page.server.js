@@ -18,6 +18,7 @@ import {
 } from '$lib/server/publicationReader.js';
 import { checkRateLimit } from '$lib/server/publicRateLimit.js';
 import { needsPassphrase, hasGrant } from '$lib/server/publicationPassphrase.js';
+import { serverWording } from '$lib/server/wording.js';
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ params, request, setHeaders, cookies }) {
@@ -63,5 +64,9 @@ export async function load({ params, request, setHeaders, cookies }) {
     // The recipient's own path to file bytes. Built from the token they already
     // hold; the manifest check happens server-side on every request.
     assetBase:   `/api/pack/${params.token}/file/`,
+    // Shown on screen and on the printed cover. An admin setting (Admin →
+    // Other Config → Wording), read here because the recipient is not signed
+    // in and cannot read portal_settings themselves.
+    notice:      await serverWording('dossierConfidentialityNotice'),
   };
 }

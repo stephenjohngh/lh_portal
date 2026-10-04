@@ -22,7 +22,8 @@
   import { fmtDate }      from '$lib/utils/dates.js';
   import { fmtBytes, mimeIcon } from '$lib/utils/files.js';
   import FormSelect      from '$lib/components/common/FormSelect.svelte';
-  import { CATEGORIES, categoryFromFilename, categoryLabel } from '$lib/utils/documentUtils.js';
+  import { documentCategories, categoryFromFilename, categoryLabel } from '$lib/utils/documentUtils.js';
+  import { portalSettings } from '$lib/stores/portalSettings.js';
 
   /** @type {string} */ export let entityType;
   /** @type {string} */ export let entityId;
@@ -45,6 +46,9 @@
   let file        = null;
   let description = '';
   let category    = '';
+  // The categories are an admin setting; reading $portalSettings here makes the
+  // list follow a change saved in this session.
+  $: offered = ($portalSettings, documentCategories());
   let uploading   = false;
   let attachRef;
 
@@ -212,7 +216,7 @@
       <FormSelect
         label="Category (optional)"
         bind:value={category}
-        options={CATEGORIES}
+        options={offered}
         placeholder="— none —"
         disabled={uploading}
         helpText={category && category === categoryFromFilename(file?.name)
@@ -260,7 +264,7 @@
                   on:blur={() => editingCatId = null}
                 >
                   <option value="">— no category —</option>
-                  {#each CATEGORIES as c}
+                  {#each ($portalSettings, documentCategories({ keep: doc.category })) as c}
                     <option value={c.value}>{c.label}</option>
                   {/each}
                 </select>

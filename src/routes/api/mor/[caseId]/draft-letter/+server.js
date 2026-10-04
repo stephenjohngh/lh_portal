@@ -27,6 +27,7 @@ import {
   LETTER_FILENAME_SUFFIX,
 } from '$lib/server/morLetterTemplates.js';
 import { getIdentity } from '$lib/server/identity.js';
+import { loadServerWording } from '$lib/server/wording.js';
 
 const logger = getLogger('mor/draft-letter');
 
@@ -95,6 +96,9 @@ export async function POST({ params, request }) {
   let doc;
   // The building and the signatory as an admin set them (Building & business).
   let identity;
+  // The letter's words are an admin setting; a failed read keeps what is in
+  // force (the shipped wording on a cold start), never a blank letter.
+  await loadServerWording();
   try {
     identity = await getIdentity();
   } catch (/** @type {any} */ err) {

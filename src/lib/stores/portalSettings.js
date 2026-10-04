@@ -18,6 +18,9 @@
 //     organisation: object    — the business and letter signatory ({} = none set)
 //     policies:   object      — the policy numbers an admin changed ({} = none)
 //     policiesInForce: object — every policy in force (defaults + those changes)
+//     wording:    object      — the texts an admin changed ({} = none)
+//     wordingInForce: object  — every text in force (defaults + those changes)
+//     documentCategories: object — the category changes ({labels, added, retired})
 //   }
 //
 // ⭐ The building and the business are admin settings, not code
@@ -37,6 +40,10 @@ import { setDueWindows, cleanDueWindows, activeDueWindows } from '$lib/utils/due
 import { currentUserId } from '$lib/utils/currentUser.js';
 import { ORGANISATION_KEY, cleanOrganisation } from '$lib/utils/identity.js';
 import { POLICIES_KEY, setPolicies, cleanPolicies, validatePolicies, activePolicies } from '$lib/utils/policies.js';
+import { WORDING_KEY, setWording, cleanWording, validateWording, activeWording } from '$lib/utils/wording.js';
+import {
+  DOCUMENT_CATEGORIES_KEY, setDocumentCategories, cleanDocumentCategories, validateDocumentCategories,
+} from '$lib/utils/documentCategories.js';
 
 const logger     = getLogger('portalSettings');
 const TOPBAR_KEY = 'topbar_apps';
@@ -54,6 +61,9 @@ const DUE_KEY    = 'due_soon_days';
  *   organisation: Record<string, string>,
  *   policies: Record<string, number>,
  *   policiesInForce: Record<string, number>,
+ *   wording: Record<string, string>,
+ *   wordingInForce: Record<string, string>,
+ *   documentCategories: import('$lib/utils/documentCategories.js').CategoryChanges,
  * }} PortalSettingsState
  */
 
@@ -61,6 +71,8 @@ function createPortalSettingsStore() {
   const { subscribe, set, update } = writable(/** @type {PortalSettingsState} */ ({
     loaded: false, ids: null, order: null, dueWindows: {}, windows: activeDueWindows(),
     building: null, organisation: {}, policies: {}, policiesInForce: activePolicies(),
+    wording: {}, wordingInForce: activeWording(),
+    documentCategories: { labels: {}, added: [], retired: [] },
   }));
 
   /**
@@ -73,7 +85,8 @@ function createPortalSettingsStore() {
         supabase
           .from('portal_settings')
           .select('key, value')
-          .in('key', [TOPBAR_KEY, ORDER_KEY, DUE_KEY, ORGANISATION_KEY, POLICIES_KEY]),
+          .in('key', [TOPBAR_KEY, ORDER_KEY, DUE_KEY, ORGANISATION_KEY, POLICIES_KEY,
+                     WORDING_KEY, DOCUMENT_CATEGORIES_KEY]),
         supabase
           .from('facilities')
           .select('id, name, short_name, address')
@@ -89,10 +102,13 @@ function createPortalSettingsStore() {
       const dueWindows = setDueWindows(rows.find(r => r.key === DUE_KEY)?.value ?? null);
       const organisation = cleanOrganisation(rows.find(r => r.key === ORGANISATION_KEY)?.value);
       const policies = setPolicies(rows.find(r => r.key === POLICIES_KEY)?.value ?? null);
+      const wording = setWording(rows.find(r => r.key === WORDING_KEY)?.value ?? null);
+      const documentCategories = setDocumentCategories(rows.find(r => r.key === DOCUMENT_CATEGORIES_KEY)?.value ?? null);
 
       set({ loaded: true, ids, order, dueWindows, windows: activeDueWindows(),
             building: facility.data ?? null, organisation,
-            policies, policiesInForce: activePolicies() });
+            policies, policiesInForce: activePolicies(),
+            wording, wordingInForce: activeWording(), documentCategories });
       logger('✅ Loaded portal settings — topbar:', ids ?? 'all', '— order:', order ?? 'default');
     } catch (/** @type {any} */ err) {
       logger('⚠ Failed to load portal settings (non-fatal):', err.message);
@@ -235,7 +251,49 @@ function createPortalSettingsStore() {
     return policies;
   }
 
-  return { subscribe, load, save, saveOrder, saveDueWindows, saveBuilding, saveOrganisation, savePolicies };
+  /**
+   * Save the wording and put it in force at once. Only texts that differ from
+   * the shipped default are stored. Refuses a text with a {token} it does not
+   * understand (validateWording), naming the first problem.
+   * @param {Record<string, unknown>} values  `{ key: text }`
+   */
+  async function saveWording(values) {
+    const first = Object.values(validateWording(values))[0];
+    if (first) throw new Error(first);
+    const userId = await currentUserId();
+    const changed = cleanWording(values);
+    const { error } = await supabase
+      .from('portal_settings')
+      .upsert({ key: WORDING_KEY, value: changed, updated_by: userId }, { onConflict: 'key' });
+    if (error) throw new Error(error.message);
+    const wording = setWording(changed);
+    update(s => ({ ...s, wording, wordingInForce: activeWording() }));
+    logger('✅ Saved the wording:', Object.keys(changed));
+    return wording;
+  }
+
+  /**
+   * Save the document category changes (renamed, added, retired) and put them
+   * in force at once. Refuses two categories with one name.
+   * @param {unknown} changes  `{ labels, added, retired }`
+   */
+  async function saveDocumentCategories(changes) {
+    const first = validateDocumentCategories(changes)[0];
+    if (first) throw new Error(first);
+    const userId = await currentUserId();
+    const clean = cleanDocumentCategories(changes);
+    const { error } = await supabase
+      .from('portal_settings')
+      .upsert({ key: DOCUMENT_CATEGORIES_KEY, value: clean, updated_by: userId }, { onConflict: 'key' });
+    if (error) throw new Error(error.message);
+    const documentCategories = setDocumentCategories(clean);
+    update(s => ({ ...s, documentCategories }));
+    logger('✅ Saved the document categories');
+    return documentCategories;
+  }
+
+  return { subscribe, load, save, saveOrder, saveDueWindows, saveBuilding, saveOrganisation, savePolicies,
+           saveWording, saveDocumentCategories };
 }
 
 export const portalSettings = createPortalSettingsStore();

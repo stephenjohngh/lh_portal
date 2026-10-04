@@ -25,6 +25,10 @@ const h = vi.hoisted(() => ({
 
 vi.mock('$lib/utils/documentApi', () => h);
 vi.mock('$lib/utils/auditLogger', () => ({ logAudit: vi.fn() }));
+// The categories are an admin setting read through this store; the shipped list is in force here.
+vi.mock('$lib/stores/portalSettings.js', () => ({
+  portalSettings: { subscribe: (/** @type {(v: object) => void} */ fn) => { fn({}); return () => {}; } },
+}));
 
 const AttachedDocuments = (await import('./AttachedDocuments.svelte')).default;
 

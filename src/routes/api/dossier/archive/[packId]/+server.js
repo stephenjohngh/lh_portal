@@ -23,16 +23,7 @@ import { checkKeyRateLimit } from '$lib/server/publicRateLimit.js';
 import { listDocuments }    from '$lib/server/documentLibrary.js';
 import { buildPackArchive } from '$lib/server/packArchiveBuilder.js';
 import { readDatasetRecords } from '$lib/server/publicationReader.js';
-
-/**
- * The notice that travels with the material — the same words the recipient
- * sees. An archive is precisely the copy most likely to outlive the link and be
- * passed on, so it must not be the copy that arrives without terms.
- */
-const CONFIDENTIALITY_NOTICE =
-  'This document package contains proprietary and confidential information '
-  + 'intended strictly for the designated recipient. Please do not copy, '
-  + 'forward, or distribute these materials without prior written consent.';
+import { serverWording }    from '$lib/server/wording.js';
 
 const db = createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY ?? '');
 
@@ -90,7 +81,11 @@ export async function GET({ params, request }) {
       filename:         f.filename,
       file_size:        f.file_size,
     })),
-    notice: CONFIDENTIALITY_NOTICE,
+    // The notice that travels with the material — the same words the recipient
+    // sees, an admin setting (Admin → Other Config → Wording). An archive is
+    // the copy most likely to outlive the link and be passed on, so it must
+    // not be the copy that arrives without terms.
+    notice: await serverWording('dossierConfidentialityNotice'),
   });
 
   if (!result.ok) return json({ error: result.message }, { status: 413 });

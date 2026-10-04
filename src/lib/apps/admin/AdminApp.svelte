@@ -22,6 +22,8 @@
   import DueWindowsPanel from './components/DueWindowsPanel.svelte';
   import IdentityPanel from './components/IdentityPanel.svelte';
   import PoliciesPanel from './components/PoliciesPanel.svelte';
+  import WordingPanel from './components/WordingPanel.svelte';
+  import DocumentCategoriesPanel from './components/DocumentCategoriesPanel.svelte';
   import DocumentsTab    from './components/DocumentsTab.svelte';
   import TabDropdown     from './components/TabDropdown.svelte';
   import TabBar          from '$lib/components/common/TabBar.svelte';
@@ -51,6 +53,8 @@
     { id: 'portal',    icon: '⚙',  label: 'Portal' },
     { id: 'due-windows', icon: '⏳', label: 'Due windows' },
     { id: 'policies',  icon: '📏', label: 'Policies' },
+    { id: 'wording',   icon: '✍', label: 'Wording' },
+    { id: 'doc-categories', icon: '🗃', label: 'Document categories' },
     { id: 'documents', icon: '📁', label: 'Document Demo' },
   ];
   
@@ -296,6 +300,12 @@
 
   {:else if activeTab === 'policies'}
     <PoliciesPanel />
+
+  {:else if activeTab === 'wording'}
+    <WordingPanel />
+
+  {:else if activeTab === 'doc-categories'}
+    <DocumentCategoriesPanel />
 
   {:else if activeTab === 'documents'}
     <DocumentsTab />

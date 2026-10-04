@@ -30,15 +30,12 @@
   export let data;
 
   /**
-   * Shown to the recipient on screen AND on the printed cover. Defined once:
-   * two copies of a confidentiality notice is how they come to disagree, and
-   * the printed sheet is the copy most likely to be left on a desk or handed
-   * on, so it is the one that can least afford to be missing it.
+   * Shown to the recipient on screen AND on the printed cover — one value, so
+   * the two cannot disagree; the printed sheet is the copy most likely to be
+   * left on a desk or handed on. The words are an admin setting (Admin → Other
+   * Config → Wording), sent by the server load.
    */
-  const CONFIDENTIALITY_NOTICE =
-    'This document package contains proprietary and confidential information '
-    + 'intended strictly for the designated recipient. Please do not copy, '
-    + 'forward, or distribute these materials without prior written consent.';
+  $: CONFIDENTIALITY_NOTICE = data.notice ?? '';
 
   // ── Passphrase gate ───────────────────────────────────────────────────────
   let passphrase = '';

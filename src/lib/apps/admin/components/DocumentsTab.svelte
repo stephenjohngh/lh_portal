@@ -19,7 +19,8 @@
   import LoadingSpinner     from '$lib/components/common/LoadingSpinner.svelte';
   import { permissions }    from '$lib/stores/permissions';
   import { debounce }       from '$lib/utils/debounce';
-  import { DOC_TYPES, CATEGORIES, DOC_FOLDERS, getExpiryStatus } from '$lib/utils/documentUtils';
+  import { DOC_TYPES, documentCategories, DOC_FOLDERS, getExpiryStatus } from '$lib/utils/documentUtils';
+  import { portalSettings } from '$lib/stores/portalSettings.js';
   import { checkDocuments }  from '$lib/utils/documentApi';
   import { checkSummary }    from '$lib/utils/documentCheckLabels.js';
   import { fmtTime }                 from '$lib/utils/dates';
@@ -218,7 +219,7 @@
         on:change={applyFilters}
       >
         <option value="">All categories</option>
-        {#each CATEGORIES as c}
+        {#each ($portalSettings, documentCategories({ includeRetired: true })) as c}
           <option value={c.value}>{c.label}</option>
         {/each}
       </select>

@@ -2,6 +2,10 @@
 // Client-side constants and helpers for the document library.
 
 import { dueSoonDays, dueBandOf } from './dueWindows.js';
+import { isOfferedCategory } from './documentCategories.js';
+// The categories are an admin setting now (documentCategories.js); these two
+// are re-exported so the library's callers keep one import.
+export { categoryLabel, documentCategories } from './documentCategories.js';
 export const MIME_ICONS = {
   'application/pdf':                                                         '📄',
   'application/msword':                                                      '📝',
@@ -32,23 +36,6 @@ export const DOC_TYPES = [
   { value: 'other',       label: 'Other' },
 ];
 
-export const CATEGORIES = [
-  { value: 'installation_cert',    label: 'Installation Certificate' },
-  { value: 'test_cert',            label: 'Test Certificate' },
-  { value: 'commissioning_cert',   label: 'Commissioning Certificate' },
-  { value: 'inspection_report',    label: 'Inspection Report' },
-  { value: 'fire_risk_assessment', label: 'Fire Risk Assessment' },
-  { value: 'structural_report',    label: 'Structural Report' },
-  { value: 'ews1',                 label: 'EWS1' },
-  { value: 'safety_case',          label: 'Safety Case' },
-  { value: 'asbestos_survey',      label: 'Asbestos Survey' },
-  { value: 'eicr',                 label: 'EICR' },
-  { value: 'gas_safety',           label: 'Gas Safety' },
-  { value: 'warranty',             label: 'Warranty' },
-  { value: 'specification',        label: 'Specification' },
-  { value: 'invoice',              label: 'Invoice' },
-  { value: 'other',                label: 'Other' },
-];
 
 /**
  * Human-readable file size string.
@@ -129,14 +116,6 @@ export function docTypeLabel(value) {
   return DOC_TYPES.find(d => d.value === value)?.label ?? value ?? '—';
 }
 
-/**
- * Build the label string for category.
- * @param {string|null|undefined} value
- * @returns {string}
- */
-export function categoryLabel(value) {
-  return CATEGORIES.find(c => c.value === value)?.label ?? value ?? '—';
-}
 
 // ── Category ────────────────────────────────────────────────────────
 // `category` is a statement about what a document IS to this building — an
@@ -149,7 +128,7 @@ export function categoryLabel(value) {
 // nobody made. Assist, don't assert.
 
 /**
- * Filename keywords → a CATEGORIES value. Matched against the filename after
+ * Filename keywords → a category value. Matched against the filename after
  * every separator becomes a space, so ' eicr ' can be required rather than a
  * bare substring — otherwise 'fra' matches "infrastructure" and 'quote'
  * matches "quotes". Ordered: the first match wins, most specific first.
@@ -176,7 +155,7 @@ const CATEGORY_HINTS = [
  * Suggest a category from a filename. Returns '' when nothing matches — an
  * empty suggestion is the honest answer, and better than a confident wrong one.
  * @param {string|null|undefined} filename
- * @returns {string}  a CATEGORIES value, or ''
+ * @returns {string}  a category value, or ''
  */
 export function categoryFromFilename(filename) {
   const name = String(filename ?? '')
@@ -186,7 +165,8 @@ export function categoryFromFilename(filename) {
     .toLowerCase();
   if (!name) return '';
   for (const [pattern, value] of CATEGORY_HINTS) {
-    if (pattern.test(name)) return value;
+    // A category an admin has retired is not suggested.
+    if (pattern.test(name)) return isOfferedCategory(value) ? value : '';
   }
   return '';
 }
