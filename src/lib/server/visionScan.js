@@ -14,7 +14,7 @@
 
 import { google }    from 'googleapis';
 import { getLogger } from '#lib/utils/logger.js';
-import { env }       from '$env/dynamic/private';
+import * as env from '$app/env/private';
 
 const logger = getLogger('visionScan');
 

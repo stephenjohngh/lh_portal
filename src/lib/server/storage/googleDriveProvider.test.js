@@ -13,7 +13,7 @@ import { describe, it, expect, vi } from 'vitest';
 // The provider pulls logger → $app/env, and googleapis → $env, neither
 // of which resolves without the SvelteKit vite plugin. Mock the seams.
 vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
-vi.mock('$env/dynamic/private', () => ({ env: {} }));
+vi.mock('$app/env/private', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('private', {}));
 
 const { readHeader } = await import('./googleDriveProvider.js');
 

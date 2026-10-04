@@ -20,8 +20,8 @@
 // why the two rules above are not stylistic.
 
 import { createClient }        from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { env }                 from '$env/dynamic/private';
+import { PUBLIC_SUPABASE_URL } from '$app/env/public';
+import * as env from '$app/env/private';
 import { hashToken, isWellFormedToken } from '#lib/apps/dossier/utils/publicationToken.js';
 import { isServable, READER_REFUSAL }   from '#lib/apps/dossier/utils/publicationState.js';
 import { buildSnapshot, buildManifest, withCurrentFieldKeys } from '#lib/apps/dossier/utils/snapshot.js';

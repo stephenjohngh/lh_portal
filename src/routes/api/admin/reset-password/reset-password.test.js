@@ -22,8 +22,8 @@ const h = vi.hoisted(() => {
 
 vi.mock('@sveltejs/kit', () => ({ json: (body, init) => ({ body, status: init?.status ?? 200 }) }));
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => h.admin }));
-vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://local' }));
-vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'svc' } }));
+vi.mock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', { PUBLIC_SUPABASE_URL: 'http://local' }));
+vi.mock('$app/env/private', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('private', { SUPABASE_SERVICE_ROLE_KEY: 'svc' }));
 vi.mock('#lib/server/requireAuth.js', () => ({ requireAdmin: () => Promise.resolve(h.getAuth()) }));
 vi.mock('#lib/server/auditLogger.js', () => ({ logPasswordReset: vi.fn() }));
 vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));

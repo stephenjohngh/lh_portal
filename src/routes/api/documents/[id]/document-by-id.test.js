@@ -42,7 +42,7 @@ vi.mock('#lib/server/documentAccess.js', async () => {
     bearerToken: () => 'caller-token',
   };
 });
-vi.mock('$env/static/public', () => ({
+vi.mock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', {
   PUBLIC_SUPABASE_URL: 'http://db.test', PUBLIC_SUPABASE_ANON_KEY: 'anon',
 }));
 

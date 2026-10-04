@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public'
+import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$app/env/public'
 
 // The DB is fixed by the server's env — one server, one database.
 // (A localStorage "lh_db_override" mechanism used to live here, letting an admin

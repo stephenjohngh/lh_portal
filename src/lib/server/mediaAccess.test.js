@@ -1,7 +1,7 @@
 // src/lib/server/mediaAccess.test.js
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'test-secret' } }));
+vi.mock('$app/env/private', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('private', { SUPABASE_SERVICE_ROLE_KEY: 'test-secret' }));
 
 const {
   mediaSessionValue, readMediaSession, mediaSessionSeconds,

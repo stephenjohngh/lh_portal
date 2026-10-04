@@ -12,7 +12,7 @@ import { requireAdmin } from '#lib/server/requireAuth.js';
 import { listAvailableModels, readSavedModel } from '#lib/server/aiModel.js';
 import { chooseModel }  from '#lib/utils/aiModels.js';
 import { errMessage }   from '#lib/utils/errors.js';
-import { env }          from '$env/dynamic/private';
+import * as env from '$app/env/private';
 
 export async function GET({ request, url }) {
   const auth = await requireAdmin(request);

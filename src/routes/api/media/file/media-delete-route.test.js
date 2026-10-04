@@ -39,8 +39,8 @@ vi.mock('#lib/server/storage/storageErrors.js', () => ({
 }));
 vi.mock('#lib/server/requireAuth.js', () => ({ requireAuth: (...a) => requireAuth(...a) }));
 vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
-vi.mock('$env/static/public',  () => ({ PUBLIC_SUPABASE_URL: 'http://x' }));
-vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'test-secret' } }));
+vi.mock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', { PUBLIC_SUPABASE_URL: 'http://x' }));
+vi.mock('$app/env/private', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('private', { SUPABASE_SERVICE_ROLE_KEY: 'test-secret' }));
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({ from: (t) => h.db.from(t) }) }));
 
 const { DELETE } = await import('./+server.js');

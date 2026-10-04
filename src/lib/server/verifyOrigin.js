@@ -10,7 +10,7 @@
 // no auth token, so without an Origin/Referer check anything could POST
 // to them.
 
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
+import { PUBLIC_SUPABASE_URL } from '$app/env/public';
 
 /**
  * Return true if the request comes from a same-origin browser context.

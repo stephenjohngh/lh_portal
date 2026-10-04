@@ -16,11 +16,11 @@
 // can reach it, and trying is what produced `vnogit-1.0.0`.
 //
 // Read here, where runtime env is available, and handed to the page. Only the
-// short SHA crosses to the client: $env/dynamic/private can read anything in
+// short SHA crosses to the client: $app/env/private can read anything in
 // the environment, so what leaves the server is chosen explicitly rather than
 // by a naming convention.
 
-import { env } from '$env/dynamic/private';
+import * as env from '$app/env/private';
 
 /** @type {import('./$types').LayoutServerLoad} */
 export function load() {

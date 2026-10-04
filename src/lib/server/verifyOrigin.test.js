@@ -4,7 +4,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'https://proj.supabase.co' }));
+vi.mock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', { PUBLIC_SUPABASE_URL: 'https://proj.supabase.co' }));
 
 const { isSameOrigin, isTrustedStorageUrl } = await import('./verifyOrigin.js');
 

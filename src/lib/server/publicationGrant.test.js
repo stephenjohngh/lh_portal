@@ -7,9 +7,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('$env/dynamic/private', () => ({
-  env: { DOSSIER_LINK_SECRET: 'test-secret-value' },
-}));
+vi.mock('$app/env/private', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('private', { DOSSIER_LINK_SECRET: 'test-secret-value' }));
 
 const {
   mintGrant, verifyGrant, hasGrant, grantCookieName, grantCookieOptions,

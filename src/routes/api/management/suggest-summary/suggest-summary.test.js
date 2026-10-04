@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const h = vi.hoisted(() => ({ on: true, rate: vi.fn(async () => false), call: vi.fn() }));
 
 vi.mock('@sveltejs/kit', () => ({ json: (body, init) => ({ body, status: init?.status ?? 200 }) }));
-vi.mock('$env/dynamic/private', () => ({ env: { ANTHROPIC_API_KEY: 'k' } }));
+vi.mock('$app/env/private', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('private', { ANTHROPIC_API_KEY: 'k' }));
 vi.mock('#lib/server/requireAuth.js', () => ({ requireAuth: async () => ({ user: { id: 'u1', email: 'a@b' }, error: null }) }));
 vi.mock('#lib/server/publicRateLimit.js', () => ({ checkKeyRateLimit: h.rate }));
 vi.mock('#lib/server/aiSwitch.js', () => ({ aiSwitchedOn: async () => h.on }));

@@ -8,9 +8,9 @@
 
 import { sequence } from '@sveltejs/kit/hooks';
 import * as Sentry from '@sentry/sveltekit';
-// Public env via $env/dynamic/public — NOT import.meta.env, which doesn't
+// Public env via $app/env/public — NOT import.meta.env, which doesn't
 // expose PUBLIC_* vars in SvelteKit (Vite envPrefix is VITE_).
-import { env } from '$env/dynamic/public';
+import * as env from '$app/env/public';
 
 const SENTRY_DSN = env.PUBLIC_SENTRY_DSN ?? '';
 

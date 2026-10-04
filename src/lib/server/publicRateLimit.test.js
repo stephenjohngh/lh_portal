@@ -27,8 +27,8 @@ const h = vi.hoisted(() => {
 
 vi.mock('#lib/server/policies.js', async () => { const u = await import('#lib/utils/policies.js'); return { loadServerPolicies: async () => {}, serverPolicy: async (k) => u.policy(k), serverRateLimit: async (a) => u.rateLimit(a) }; });
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => h.svc }));
-vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://local' }));
-vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'svc' } }));
+vi.mock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', { PUBLIC_SUPABASE_URL: 'http://local' }));
+vi.mock('$app/env/private', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('private', { SUPABASE_SERVICE_ROLE_KEY: 'svc' }));
 vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 
 const { checkKeyRateLimit, checkRateLimit } = await import('./publicRateLimit.js');

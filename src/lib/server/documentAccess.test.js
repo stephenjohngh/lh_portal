@@ -23,7 +23,7 @@ vi.mock('@supabase/supabase-js', () => ({
     },
   }),
 }));
-vi.mock('$env/static/public', () => ({
+vi.mock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', {
   PUBLIC_SUPABASE_URL: 'http://x', PUBLIC_SUPABASE_ANON_KEY: 'anon',
 }));
 

@@ -1,11 +1,13 @@
 // src/env.js — every environment variable the app reads (SvelteKit 3).
 //
-// SvelteKit 3 exports only the variables declared here; the old `$env/*`
-// modules are deprecated aliases of `$app/env/*` and export nothing that is
-// not listed. Each entry mirrors how the code read it under SvelteKit 2:
-//   $env/static/public   → public, static  (inlined at build)
-//   $env/dynamic/public  → public          (read when the app starts)
-//   $env/dynamic/private → private         (read when the app starts)
+// SvelteKit 3 exports only the variables declared here, from `$app/env/public`
+// and `$app/env/private`. Each entry mirrors how the code read it under
+// SvelteKit 2 (the `$env/*` modules, no longer used anywhere):
+//   was $env/static/public   → public, static  (inlined at build)
+//   was $env/dynamic/public  → public          (read when the app starts)
+//   was $env/dynamic/private → private         (read when the app starts)
+// Read a dynamic one as `import * as env from '$app/env/private'` then
+// `env.NAME`, or import the name directly.
 //
 // ⚠ Every one is OPTIONAL (`optional` returns the value, undefined included),
 // because that is how the code treats them: a missing variable was undefined

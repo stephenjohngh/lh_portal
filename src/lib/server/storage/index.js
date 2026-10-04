@@ -7,9 +7,9 @@
 import { googleDriveProvider }     from './googleDriveProvider.js';
 import { oneDriveProvider }        from './oneDriveProvider.js';
 import { supabaseStorageProvider } from './supabaseStorageProvider.js';
-// $env/dynamic/private — read at runtime so deployments only need the vars
+// $app/env/private — read at runtime so deployments only need the vars
 // for their active provider, not all three.
-import { env } from '$env/dynamic/private';
+import * as env from '$app/env/private';
 
 const PROVIDER_NAME = env.STORAGE_PROVIDER ?? 'google_drive';
 

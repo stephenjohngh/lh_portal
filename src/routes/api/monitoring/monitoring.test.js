@@ -7,9 +7,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-vi.mock('$env/dynamic/public', () => ({
-  env: { PUBLIC_SENTRY_DSN: 'https://key@o123.ingest.de.sentry.io/456' },
-}));
+vi.mock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', { PUBLIC_SENTRY_DSN: 'https://key@o123.ingest.de.sentry.io/456' }));
 
 const { POST } = await import('./+server.js');
 
@@ -71,7 +69,7 @@ describe('POST /api/monitoring (Sentry tunnel)', () => {
 describe('POST /api/monitoring when Sentry is not configured', () => {
   it('returns 503 (no DSN configured)', async () => {
     vi.resetModules();
-    vi.doMock('$env/dynamic/public', () => ({ env: {} }));
+    vi.doMock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', {}));
     const { POST: POST2 } = await import('./+server.js');
     const res = await POST2({ request: envelopeReq('https://key@o123.ingest.de.sentry.io/456') });
     expect(res.status).toBe(503);

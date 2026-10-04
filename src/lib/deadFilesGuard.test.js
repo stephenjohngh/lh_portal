@@ -23,7 +23,7 @@ function sources(dir, out = []) {
   return out;
 }
 
-const isTest = (p) => /\.test\.js$|\.harness\.svelte$/.test(p);
+const isTest = (p) => /\.test\.js$|\.test-helper\.js$|\.harness\.svelte$/.test(p);
 
 // Built from a string: Vite's import scanner misreads some regex literals.
 const SPEC = new RegExp(

@@ -26,8 +26,8 @@
 import { json } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { env as privateEnv } from '$env/dynamic/private';
+import { PUBLIC_SUPABASE_URL } from '$app/env/public';
+import * as privateEnv from '$app/env/private';
 import { requireAppAccess } from '#lib/server/requireAuth.js';
 import { checkKeyRateLimit } from '#lib/server/publicRateLimit.js';
 import { rateLimit } from '#lib/utils/policies.js';

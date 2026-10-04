@@ -23,8 +23,8 @@ import { json }             from '@sveltejs/kit';
 import { requireAuth } from '#lib/server/requireAuth.js';
 import { storageProvider }  from '#lib/server/storage/index.js';
 import { createClient }     from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { env }              from '$env/dynamic/private';
+import { PUBLIC_SUPABASE_URL } from '$app/env/public';
+import * as env from '$app/env/private';
 import { findFileReferences, loadViewer, canViewFile } from '#lib/server/mediaAccess.js';
 import {
   Document, Packer,

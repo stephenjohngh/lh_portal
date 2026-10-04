@@ -10,10 +10,10 @@
 
 import { createClient }        from '@supabase/supabase-js';
 import { getLogger }           from '#lib/utils/logger.js';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-// $env/dynamic/private — consistent with other storage providers; avoids
+import { PUBLIC_SUPABASE_URL } from '$app/env/public';
+// $app/env/private — consistent with other storage providers; avoids
 // build failures when this provider is not the active one.
-import { env } from '$env/dynamic/private';
+import * as env from '$app/env/private';
 
 const logger = getLogger('SupabaseStorageProvider');
 const BUCKET = 'documents';

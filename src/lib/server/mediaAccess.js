@@ -32,7 +32,7 @@
 // the two loaders take the client as an argument for the same reason.
 
 import { createHmac, createHash, timingSafeEqual } from 'node:crypto';
-import { env } from '$env/dynamic/private';
+import * as env from '$app/env/private';
 import { policy } from '#lib/utils/policies.js';
 
 export const MEDIA_COOKIE          = 'lh_media';

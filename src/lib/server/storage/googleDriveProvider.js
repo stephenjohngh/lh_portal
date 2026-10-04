@@ -22,13 +22,13 @@
 import { google }  from 'googleapis';
 import { Readable } from 'stream';
 import { getLogger } from '#lib/utils/logger.js';
-// $env/dynamic/private reads from process.env at runtime — variables do not
+// $app/env/private reads from process.env at runtime — variables do not
 // need to be defined at build time.  This is intentional: service account
 // vars (GOOGLE_DRIVE_CLIENT_EMAIL / GOOGLE_DRIVE_PRIVATE_KEY) are optional
-// and only needed if OAuth2 vars are absent.  Using $env/static/private would
+// and only needed if OAuth2 vars are absent.  Using $app/env/private would
 // require all six to be set in every deployment environment, causing build
 // failures on installations that only use OAuth2 mode.
-import { env } from '$env/dynamic/private';
+import * as env from '$app/env/private';
 import { folderKey } from './folderNames.js';
 
 const logger = getLogger('GoogleDriveProvider');

@@ -14,7 +14,7 @@
 
 import { json }             from '@sveltejs/kit';
 import { createClient }     from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$app/env/public';
 import { requireAuth }      from '#lib/server/requireAuth.js';
 import { verifyManifest, describeVerification, withProviders } from '#lib/server/publicationAssets.js';
 import { providersForFileIds } from '#lib/server/documentLibrary.js';

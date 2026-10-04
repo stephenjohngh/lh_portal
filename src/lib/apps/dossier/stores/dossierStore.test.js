@@ -29,7 +29,7 @@ const h = vi.hoisted(() => {
 vi.mock('#lib/utils/api.js',         () => ({ api: h.api }));
 vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: h.logAudit }));
 vi.mock('#lib/utils/logger.js',      () => ({ getLogger: () => () => {} }));
-// documentApi transitively imports supabaseClient → $env/static/public, which
+// documentApi transitively imports supabaseClient → $app/env/public, which
 // does not resolve without the SvelteKit vite plugin.
 vi.mock('#lib/utils/documentApi.js', () => ({
   listDocuments: h.listDocuments, deleteDocumentsFor: h.deleteDocumentsFor,

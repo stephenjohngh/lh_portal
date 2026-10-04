@@ -19,9 +19,9 @@
 //      or /sites/{site-id}/drive (SharePoint) → copy 'id'
 
 import { getLogger } from '#lib/utils/logger.js';
-// $env/dynamic/private — vars read at runtime so missing vars don't fail the
+// $app/env/private — vars read at runtime so missing vars don't fail the
 // build when OneDrive is not the active storage provider.
-import { env } from '$env/dynamic/private';
+import * as env from '$app/env/private';
 
 
 const logger = getLogger('OneDriveProvider');

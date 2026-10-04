@@ -11,8 +11,8 @@ const h = vi.hoisted(() => ({
   listCalls: 0,
 }));
 
-vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://localhost' }));
-vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'svc', ANTHROPIC_API_KEY: 'key' } }));
+vi.mock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', { PUBLIC_SUPABASE_URL: 'http://localhost' }));
+vi.mock('$app/env/private', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('private', { SUPABASE_SERVICE_ROLE_KEY: 'svc', ANTHROPIC_API_KEY: 'key' }));
 vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({

@@ -63,8 +63,8 @@ vi.mock('./storage/index.js', () => ({
     listFiles:     h.listFiles,
   },
 }));
-vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://db.test' }));
-vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'svc' } }));
+vi.mock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', { PUBLIC_SUPABASE_URL: 'http://db.test' }));
+vi.mock('$app/env/private', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('private', { SUPABASE_SERVICE_ROLE_KEY: 'svc' }));
 // Pulled in transitively by logger.js, which is not otherwise part of this.
 vi.mock('$app/env', () => ({ browser: false, dev: false }));
 

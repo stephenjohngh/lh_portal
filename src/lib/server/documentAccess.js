@@ -25,7 +25,7 @@
 // policy. Asking the database is the only version that cannot go stale.
 
 import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$app/env/public';
 
 /**
  * entity_type → the table whose row `entity_id` names.

@@ -23,7 +23,7 @@ vi.mock('#lib/utils/api.js', () => ({
   },
 }));
 vi.mock('#lib/supabaseClient.js', () => ({ supabase: {} }));
-vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://x', PUBLIC_SUPABASE_ANON_KEY: 'k' }));
+vi.mock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', { PUBLIC_SUPABASE_URL: 'http://x', PUBLIC_SUPABASE_ANON_KEY: 'k' }));
 vi.mock('#lib/apps/compliance/stores/inspectionDefinitionsStore.js', () => ({ inspectionDefinitionsStore: {} }));
 vi.mock('#lib/apps/inspection/public.js', () => ({ listWalkSessions: vi.fn(async () => []) }));
 

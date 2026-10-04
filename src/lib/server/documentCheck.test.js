@@ -4,7 +4,7 @@
 // failed lookup is not "deleted", and a storage it cannot ask is not "fine".
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://x', PUBLIC_SUPABASE_ANON_KEY: 'anon' }));
+vi.mock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', { PUBLIC_SUPABASE_URL: 'http://x', PUBLIC_SUPABASE_ANON_KEY: 'anon' }));
 
 const { checkOwners, checkFiles, checkDocuments } = await import('./documentCheck.js');
 

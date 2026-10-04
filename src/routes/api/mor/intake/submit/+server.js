@@ -18,8 +18,8 @@
 
 import { json }                       from '@sveltejs/kit';
 import { createClient }               from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL }        from '$env/static/public';
-import { env } from '$env/dynamic/private';
+import { PUBLIC_SUPABASE_URL }        from '$app/env/public';
+import * as env from '$app/env/private';
 import { checkRateLimit }             from '#lib/server/publicRateLimit.js';
 import { isSameOrigin,
          isTrustedStorageUrl }        from '#lib/server/verifyOrigin.js';

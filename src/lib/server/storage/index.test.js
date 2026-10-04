@@ -21,10 +21,8 @@ import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 async function loadWith(value) {
   vi.resetModules();
   vi.doMock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
-  vi.doMock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'https://example.supabase.co' }));
-  vi.doMock('$env/dynamic/private', () => ({
-    env: value === undefined ? {} : { STORAGE_PROVIDER: value },
-  }));
+  vi.doMock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', { PUBLIC_SUPABASE_URL: 'https://example.supabase.co' }));
+  vi.doMock('$app/env/private', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('private', value === undefined ? {} : { STORAGE_PROVIDER: value }));
   return import('./index.js');
 }
 

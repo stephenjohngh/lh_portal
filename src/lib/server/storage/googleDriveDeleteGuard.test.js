@@ -16,13 +16,11 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
-vi.mock('$env/dynamic/private', () => ({
-  env: {
+vi.mock('$app/env/private', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('private', {
     STORAGE_DELETE_WITHIN_ROOT_ONLY: 'true',
     GOOGLE_DRIVE_ROOT_FOLDER_ID: 'DEV_ROOT',
     GOOGLE_OAUTH_CLIENT_ID: 'id', GOOGLE_OAUTH_CLIENT_SECRET: 's', GOOGLE_OAUTH_REFRESH_TOKEN: 'r',
-  },
-}));
+  }));
 vi.mock('googleapis', () => ({
   google: {
     auth: { OAuth2: class { setCredentials() {} } },

@@ -17,7 +17,7 @@
 // just "this exact URL came out of our uploader", which stays true.
 
 import { createHmac, createHash, timingSafeEqual } from 'node:crypto';
-import { env } from '$env/dynamic/private';
+import * as env from '$app/env/private';
 
 // Domain-separated key: not the raw service key, and useless for anything else.
 function key() {

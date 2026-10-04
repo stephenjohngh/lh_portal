@@ -10,8 +10,8 @@ import { Packer } from 'docx';
 
 // The route imports requireAuth, which reads $env at module load. Stub them as
 // virtual modules (blueprint pattern) — the doc builder never touches auth/env.
-vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://localhost', PUBLIC_SUPABASE_ANON_KEY: 'anon' }));
-vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'service-role' } }));
+vi.mock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', { PUBLIC_SUPABASE_URL: 'http://localhost', PUBLIC_SUPABASE_ANON_KEY: 'anon' }));
+vi.mock('$app/env/private', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('private', { SUPABASE_SERVICE_ROLE_KEY: 'service-role' }));
 vi.mock('$app/env', () => ({ browser: false, dev: false, building: false }));
 
 import { _buildPlanDocument } from './+server.js';

@@ -41,8 +41,8 @@ const h = vi.hoisted(() => {
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({ from: h.from }),
 }));
-vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'https://x.supabase.co' }));
-vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'svc' } }));
+vi.mock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', { PUBLIC_SUPABASE_URL: 'https://x.supabase.co' }));
+vi.mock('$app/env/private', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('private', { SUPABASE_SERVICE_ROLE_KEY: 'svc' }));
 
 const {
   findServablePublication, readPublicationContent, stripStorageIds,

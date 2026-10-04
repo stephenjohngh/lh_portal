@@ -16,7 +16,7 @@
 // arbitrary host (no SSRF). The DSN is public by design, so this exposes
 // nothing the client bundle didn't already.
 
-import { env } from '$env/dynamic/public';
+import * as env from '$app/env/public';
 
 // Cap the relayed envelope size. This app sends errors-only envelopes (no
 // performance traces, no attachments), which are a few KB each; 1 MB is

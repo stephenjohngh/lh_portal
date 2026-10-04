@@ -23,8 +23,8 @@ const h = vi.hoisted(() => {
 
 vi.mock('@sveltejs/kit', () => ({ json: (body, init) => ({ body, status: init?.status ?? 200 }) }));
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({ from: vi.fn(() => ({})) }) }));
-vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'https://proj.supabase.co' }));
-vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'svc' } }));
+vi.mock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', { PUBLIC_SUPABASE_URL: 'https://proj.supabase.co' }));
+vi.mock('$app/env/private', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('private', { SUPABASE_SERVICE_ROLE_KEY: 'svc' }));
 vi.mock('#lib/server/publicRateLimit.js', () => ({ checkRateLimit: h.checkRateLimit }));
 vi.mock('#lib/server/verifyOrigin.js', () => ({ isSameOrigin: h.isSameOrigin, isTrustedStorageUrl: h.isTrustedStorageUrl }));
 vi.mock('#lib/server/urlSignature.js', () => ({ verifyUrlSignature: h.verifyUrlSignature }));

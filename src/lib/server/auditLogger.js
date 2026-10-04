@@ -3,8 +3,8 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { getLogger } from '#lib/utils/logger.js';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { env }                 from '$env/dynamic/private';
+import { PUBLIC_SUPABASE_URL } from '$app/env/public';
+import * as env from '$app/env/private';
 
 const logger = getLogger('auditLogger');
 

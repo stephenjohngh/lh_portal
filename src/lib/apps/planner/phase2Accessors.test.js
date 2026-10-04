@@ -15,7 +15,7 @@ vi.mock('#lib/utils/api.js', () => ({
 
 // Transitive imports reach the Supabase client and $env; neither is under test.
 vi.mock('#lib/supabaseClient.js', () => ({ supabase: {} }));
-vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://x', PUBLIC_SUPABASE_ANON_KEY: 'k' }));
+vi.mock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', { PUBLIC_SUPABASE_URL: 'http://x', PUBLIC_SUPABASE_ANON_KEY: 'k' }));
 
 import { listBsrReportDeadlines } from '#lib/apps/mor/public.js';
 import { listCertificateExpiries } from '#lib/apps/maintenance/public.js';

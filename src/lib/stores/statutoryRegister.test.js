@@ -29,7 +29,7 @@ vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: h.logAudit }));
 // CLAUDE.md lists for a store-contract test — along with api, supabaseClient
 // and anything that transitively pulls $env / $app.
 vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
-vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://x' }));
+vi.mock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', { PUBLIC_SUPABASE_URL: 'http://x' }));
 vi.mock('$app/env', () => ({ browser: true, dev: true, building: false }));
 
 const { statutoryRegister } = await import('./statutoryRegister.js');

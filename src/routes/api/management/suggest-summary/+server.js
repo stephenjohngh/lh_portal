@@ -8,7 +8,7 @@
 
 import { json } from '@sveltejs/kit';
 import Anthropic from '@anthropic-ai/sdk';
-import { env as privateEnv } from '$env/dynamic/private';
+import * as privateEnv from '$app/env/private';
 import { requireAuth } from '#lib/server/requireAuth.js';
 import { checkKeyRateLimit } from '#lib/server/publicRateLimit.js';
 import { rateLimit } from '#lib/utils/policies.js';

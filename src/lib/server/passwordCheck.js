@@ -19,8 +19,8 @@
 //   5. a failure is audit-logged
 
 import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-import { env } from '$env/dynamic/private';
+import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$app/env/public';
+import * as env from '$app/env/private';
 import { logFailedLogin, getIpAddress, getUserAgent } from '#lib/server/auditLogger.js';
 import { lockoutState, lockoutLimits } from '#lib/server/loginLockout.js';
 import { loadServerPolicies } from '#lib/server/policies.js';

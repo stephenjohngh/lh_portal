@@ -24,8 +24,8 @@ const getFileStream = vi.fn();
 const DRIVE_ID = '1AbC_dEfGhIjKlMnOpQrStUvWxYz-0123';
 const USER = '11111111-1111-4111-8111-111111111111';
 
-vi.mock('$env/static/public',  () => ({ PUBLIC_SUPABASE_URL: 'http://x' }));
-vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'test-secret' } }));
+vi.mock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', { PUBLIC_SUPABASE_URL: 'http://x' }));
+vi.mock('$app/env/private', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('private', { SUPABASE_SERVICE_ROLE_KEY: 'test-secret' }));
 // Since the security review the proxy needs a signed-in viewer and a file the
 // portal knows; both are supplied here so these tests stay about the id guard.
 vi.mock('@supabase/supabase-js', () => ({

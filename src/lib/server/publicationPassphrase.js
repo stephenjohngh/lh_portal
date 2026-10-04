@@ -15,7 +15,7 @@
 // X, until Y".
 
 import { createHmac, timingSafeEqual } from 'crypto';
-import { env } from '$env/dynamic/private';
+import * as env from '$app/env/private';
 import { needsPassphrase } from '#lib/apps/dossier/utils/publicationPassphrase.js';
 
 export { needsPassphrase };
