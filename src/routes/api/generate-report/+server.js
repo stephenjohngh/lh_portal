@@ -20,15 +20,14 @@ import { requireAuth } from '#lib/server/requireAuth.js';
 import {
   Document, Packer,
   Paragraph, TextRun,
-  Table, TableRow, TableCell,
   ImageRun, PageBreak,
-  WidthType, HeadingLevel, ShadingType,
-  AlignmentType, VerticalAlign, TableLayoutType
+  HeadingLevel, AlignmentType,
 } from 'docx';
 import { getLogger } from '#lib/utils/logger.js';
+import { runXml, cellXml, rowXml, tableXml, BREAK_XML, tableSlots, fillTablePlaceholders } from '#lib/server/docxTableXml.js';
 import { statusLabel } from '#lib/utils/resultConstants.js';
 import {
-  CONTENT_W, CONTENT_W_L, COLOURS, BORDERS, CELL_PAD,
+  CONTENT_W, CONTENT_W_L, COLOURS, CELL_PAD,
   run, para,
   makeHeader, makeFooter,
   DOC_STYLES, pageProps,
@@ -40,63 +39,33 @@ import { documentBuildingName } from '#lib/server/identity.js';
 
 const logger = getLogger('generateReport');
 
-// -- Lean cells ----------------------------------------------------------------
-// ⛔ MEMORY (2026-10-05). docx packs a document by first building an
-// intermediate copy several times the size of the document model, and the cost
-// is PER TABLE CELL. This report has a row per component (1,092 on this
-// building, most with a condition sub-row), and with the shared helpers'
-// cells — each carrying its own four borders, four margins, white shading,
-// font and size — it peaked near 1 GB and the process was killed (HTTP 503
-// on Netlify and Northflank). The same look costs about 60% less when what
-// every cell shares is said ONCE: borders and margins on the TABLE, font and
-// size by the document default (DOC_STYLES: Arial 9pt), white by leaving the
-// cell unshaded. leanReport.test.js holds the cells to that.
-// ⚠ These are this report's own: the shared hCell/dCell are unchanged, because
-// no other report reaches a thousand rows and their look was settled.
-const TABLE_MARGINS = { ...CELL_PAD, marginUnitType: WidthType.DXA };
+// -- Table cells, written as XML -----------------------------------------------
+// ⛔ MEMORY (2026-10-05). This report's tables are written as XML text
+// (docxTableXml.js) and dropped into the packed document, never built as docx
+// objects: docx's per-cell cost took this report to 200–300 MB at 1,092
+// components, and Northflank's free tier leaves the app about 100 MB. The look
+// is unchanged — borders and margins on the table, the document's default font,
+// white by leaving a cell unshaded (leanReport.test.js).
+const TABLE_STYLE = {
+  width:   CONTENT_W,
+  border:  { size: 1, color: COLOURS.border },
+  margins: CELL_PAD,
+};
 
-/** A run that states only what differs from the document default. */
-function leanRun(text, { size, bold, italics, color } = {}) {
-  return new TextRun({
-    text: String(text ?? ''),
-    ...(size && size !== 18 ? { size } : {}),
-    ...(bold ? { bold: true } : {}),
-    ...(italics ? { italics: true } : {}),
-    ...(color ? { color } : {}),
-  });
-}
-
-/** A cell with no borders or margins of its own — the table carries those. */
-function leanCell(children, widthDxa, { fill, align, columnSpan, vAlign = true } = {}) {
-  return new TableCell({
-    width: { size: widthDxa, type: WidthType.DXA },
-    ...(columnSpan ? { columnSpan } : {}),
-    ...(fill && fill !== 'FFFFFF' ? { shading: { fill, type: ShadingType.CLEAR } } : {}),
-    ...(vAlign ? { verticalAlign: VerticalAlign.CENTER } : {}),
-    children: [new Paragraph({
-      ...(align ? { alignment: align } : {}),
-      spacing: { before: 0, after: 0 },
-      children,
-    })],
-  });
-}
-
-/** Header cell — the shared hCell's look, lean. */
+/** Header cell — the shared hCell's look. */
 function hCell(text, widthDxa, opts = {}) {
-  return leanCell(
-    [leanRun(text, { bold: true, size: opts.size ?? 16, color: opts.color ?? COLOURS.textWhite })],
+  return cellXml(
+    runXml(text, { bold: true, size: opts.size ?? 16, color: opts.color ?? COLOURS.textWhite }),
     widthDxa, { fill: opts.fill ?? COLOURS.headerFill });
 }
 
-/** Data cell — the shared dCell's look, lean; a newline is a line break. */
+/** Data cell — the shared dCell's look; a newline is a line break. */
 function dCell(text, widthDxa, opts = {}) {
   const fill = opts.fill ?? (opts.alt ? COLOURS.altRowFill : 'FFFFFF');
   const ro   = { size: opts.size ?? 18, bold: opts.bold, color: opts.color };
-  const runs = String(text ?? '—').split('\n').flatMap((line, i) => {
-    const r = leanRun(line || ' ', ro);
-    return i === 0 ? [r] : [new TextRun({ break: 1 }), r];
-  });
-  return leanCell(runs, widthDxa, { fill, align: opts.align });
+  const runs = String(text ?? '—').split('\n')
+    .map((line) => runXml(line || ' ', ro)).join(BREAK_XML);
+  return cellXml(runs, widthDxa, { fill, align: opts.align });
 }
 
 // -- Condition sub-row ---------------------------------------------------------
@@ -110,17 +79,15 @@ function buildConditionSubRow(c, columnSpan, alt) {
 
   const dateStr = c.last_inspected ? fmtShortDate(c.last_inspected) : null;
   const runs = [];
-  runs.push(leanRun(dateStr ? `Condition (${dateStr}):  ` : 'Condition:  ', { bold: true, color: '475569', size: 16 }));
+  runs.push(runXml(dateStr ? `Condition (${dateStr}):  ` : 'Condition:  ', { bold: true, color: '475569', size: 16 }));
   items.forEach((it, j) => {
-    if (j > 0) runs.push(leanRun('  ·  ', { color: '94A3B8', size: 16 }));
+    if (j > 0) runs.push(runXml('  ·  ', { color: '94A3B8', size: 16 }));
     const glyph  = it.passed === true ? '✓ ' : it.passed === false ? '✗ ' : '— ';
     const colour = it.passed === true ? '15803D' : it.passed === false ? 'B91C1C' : '6B7280';
-    runs.push(leanRun(`${glyph}${it.name}`, { bold: it.passed === false, color: colour, size: 16 }));
+    runs.push(runXml(`${glyph}${it.name}`, { bold: it.passed === false, color: colour, size: 16 }));
   });
 
-  return new TableRow({
-    children: [leanCell(runs, CONTENT_W, { columnSpan, fill: alt ? 'F8FAFC' : 'FFFFFF', vAlign: false })],
-  });
+  return rowXml([cellXml(runs.join(''), CONTENT_W, { columnSpan, fill: alt ? 'F8FAFC' : 'FFFFFF', vAlign: false })]);
 }
 
 // -- Status helpers ------------------------------------------------------------
@@ -133,21 +100,21 @@ const STATUS_COLOUR = {
 
 function statusCell(status, widthDxa, alt) {
   const colour = STATUS_COLOUR[status] ?? COLOURS.textDark;
-  return leanCell([leanRun(statusLabel(status), { bold: true, color: colour })],
+  return cellXml(runXml(statusLabel(status), { bold: true, color: colour }),
     widthDxa, { fill: alt ? COLOURS.altRowFill : 'FFFFFF' });
 }
 
 function numCell(value, widthDxa, positiveColour) {
-  return leanCell([leanRun(String(value ?? 0), {
+  return cellXml(runXml(String(value ?? 0), {
     bold:  value > 0,
     color: value > 0 ? positiveColour : COLOURS.textMuted,
-  })], widthDxa, { align: AlignmentType.CENTER });
+  }), widthDxa, { align: 'center' });
 }
 
 // navy-fill header numCell (used in grand-total row)
 function numCellHeader(value, widthDxa) {
-  return leanCell([leanRun(String(value ?? 0), { bold: true, color: COLOURS.textWhite })],
-    widthDxa, { fill: COLOURS.headerFill, align: AlignmentType.CENTER });
+  return cellXml(runXml(String(value ?? 0), { bold: true, color: COLOURS.textWhite }),
+    widthDxa, { fill: COLOURS.headerFill, align: 'center' });
 }
 
 // -- Attribute formatting ------------------------------------------------------
@@ -199,9 +166,7 @@ function buildFullComponentListTable(components, colOpts = {}) {
     ...(showInspectionNotes ? [INSP_W] : []),
     STAT_W];
 
-  const headerRow = new TableRow({
-    tableHeader: true,
-    children: [
+  const headerRow = rowXml([
       hCell('F',           FLOOR_W),
       hCell('Type',        TYPE_W),
       hCell('Id',          ID_W),
@@ -212,15 +177,13 @@ function buildFullComponentListTable(components, colOpts = {}) {
       ...(showNotes           ? [hCell('Notes',       NOTE_W)] : []),
       ...(showInspectionNotes ? [hCell('Insp. Notes', INSP_W)] : []),
       hCell('Status',      STAT_W),
-    ],
-  });
+  ], { header: true });
 
   // components arrive pre-sorted (floor_order → system → type → asset_id) from client
   const dataRows = components.flatMap((c, idx) => {
     const alt   = idx % 2 === 1;
     const attrs = fmtAttrs(c.attributes);
-    const main  = new TableRow({
-      children: [
+    const main  = rowXml([
         dCell(c.floor_short  ?? '—', FLOOR_W, { alt }),
         dCell(c.type_name    ?? '—', TYPE_W,  { alt }),
         dCell(c.asset_id     ?? '—', ID_W,    { alt }),
@@ -231,22 +194,14 @@ function buildFullComponentListTable(components, colOpts = {}) {
         ...(showNotes           ? [dCell(c.notes      ?? '',           NOTE_W, { alt })] : []),
         ...(showInspectionNotes ? [dCell(c.last_notes ?? '',           INSP_W, { alt })] : []),
         statusCell(c.status, STAT_W, alt),
-      ],
-    });
+    ]);
     // Sub-row with condition checklist; null when the component has no
     // condition attrs or no inspection, or when conditions are toggled off.
     const sub = showConditions ? buildConditionSubRow(c, colWidths.length, alt) : null;
     return sub ? [main, sub] : [main];
   });
 
-  return new Table({
-    width:        { size: CONTENT_W, type: WidthType.DXA },
-    layout:       TableLayoutType.FIXED,
-    columnWidths: colWidths,
-    borders:      BORDERS,
-    margins:      TABLE_MARGINS,
-    rows:         [headerRow, ...dataRows],
-  });
+  return tableXml({ ...TABLE_STYLE, columnWidths: colWidths, rows: [headerRow, ...dataRows] });
 }
 
 function buildFullComponentListSection(allComponents, building, filterSummary, colOpts = {}) {
@@ -312,9 +267,7 @@ function buildComponentTable(components, colOpts = {}) {
 
   const sorted = sortComponents(components);
 
-  const headerRow = new TableRow({
-    tableHeader: true,
-    children: [
+  const headerRow = rowXml([
       hCell('Type',        TYPE_W),
       hCell('Id',          ID_W),
       hCell('Label',       LABEL_W),
@@ -324,14 +277,12 @@ function buildComponentTable(components, colOpts = {}) {
       ...(showNotes           ? [hCell('Notes',       NOTE_W)] : []),
       ...(showInspectionNotes ? [hCell('Insp. Notes', INSP_W)] : []),
       hCell('Status',      STAT_W),
-    ],
-  });
+  ], { header: true });
 
   const dataRows = sorted.flatMap((c, idx) => {
     const alt   = idx % 2 === 1;
     const attrs = fmtAttrs(c.attributes);
-    const main  = new TableRow({
-      children: [
+    const main  = rowXml([
         dCell(c.type_name  ?? '—', TYPE_W,  { alt }),
         dCell(c.asset_id   ?? '—', ID_W,    { alt }),
         dCell(c.label      ?? '—', LABEL_W, { alt }),
@@ -341,20 +292,12 @@ function buildComponentTable(components, colOpts = {}) {
         ...(showNotes           ? [dCell(c.notes      ?? '',           NOTE_W, { alt })] : []),
         ...(showInspectionNotes ? [dCell(c.last_notes ?? '',           INSP_W, { alt })] : []),
         statusCell(c.status, STAT_W, alt),
-      ],
-    });
+    ]);
     const sub = showConditions ? buildConditionSubRow(c, colWidths.length, alt) : null;
     return sub ? [main, sub] : [main];
   });
 
-  return new Table({
-    width:        { size: CONTENT_W, type: WidthType.DXA },
-    layout:       TableLayoutType.FIXED,
-    columnWidths: colWidths,
-    borders:      BORDERS,
-    margins:      TABLE_MARGINS,
-    rows:         [headerRow, ...dataRows],
-  });
+  return tableXml({ ...TABLE_STYLE, columnWidths: colWidths, rows: [headerRow, ...dataRows] });
 }
 
 // -- Per-floor summary pivot table ---------------------------------------------
@@ -367,9 +310,7 @@ function buildFloorSummaryTable(components) {
   const { pivot } = buildStatusPivot(components);
   if (pivot.length === 0) return null;
 
-  const headerRow = new TableRow({
-    tableHeader: true,
-    children: [
+  const headerRow = rowXml([
       hCell('System',   FS_COLS[0]),
       hCell('Type',     FS_COLS[1]),
       hCell('OK',       FS_COLS[2], { fill: '1a4a2a' }),
@@ -377,13 +318,11 @@ function buildFloorSummaryTable(components) {
       hCell('Failed',   FS_COLS[4], { fill: '5c1a1a' }),
       hCell('Inactive', FS_COLS[5], { fill: '374151' }),
       hCell('Total',    FS_COLS[6]),
-    ],
-  });
+  ], { header: true });
 
   const dataRows = pivot.map(row => {
     const total = row.ok + row.problem + row.failed + row.inactive;
-    return new TableRow({
-      children: [
+    return rowXml([
         dCell(row.system_name, FS_COLS[0]),
         dCell(row.type_name,   FS_COLS[1]),
         numCell(row.ok,        FS_COLS[2], COLOURS.passGreen),
@@ -391,18 +330,10 @@ function buildFloorSummaryTable(components) {
         numCell(row.failed,    FS_COLS[4], COLOURS.failRed),
         numCell(row.inactive,  FS_COLS[5], '9CA3AF'),
         numCell(total,         FS_COLS[6], COLOURS.textDark),
-      ],
-    });
+    ]);
   });
 
-  return new Table({
-    width:        { size: CONTENT_W, type: WidthType.DXA },
-    layout:       TableLayoutType.FIXED,
-    columnWidths: FS_COLS,
-    borders:      BORDERS,
-    margins:      TABLE_MARGINS,
-    rows:         [headerRow, ...dataRows],
-  });
+  return tableXml({ ...TABLE_STYLE, columnWidths: FS_COLS, rows: [headerRow, ...dataRows] });
 }
 
 // -- Full summary pivot table (System | Type | OK | Problem | Failed | Inactive | Total) --
@@ -436,9 +367,7 @@ function buildFullSummarySection(allFloors, building, filterSummary) {
   // Pivot by system + type — shared report model (same source as the XLSX summaries).
   const { pivot, totals } = buildStatusPivot(allComponents);
 
-  const headerRow = new TableRow({
-    tableHeader: true,
-    children: [
+  const headerRow = rowXml([
       hCell('System',   SM_COLS[0]),
       hCell('Type',     SM_COLS[1]),
       hCell('OK',       SM_COLS[2], { fill: '1a4a2a' }),
@@ -446,13 +375,11 @@ function buildFullSummarySection(allFloors, building, filterSummary) {
       hCell('Failed',   SM_COLS[4], { fill: '5c1a1a' }),
       hCell('Inactive', SM_COLS[5], { fill: '374151' }),
       hCell('Total',    SM_COLS[6]),
-    ],
-  });
+  ], { header: true });
 
   const dataRows = pivot.map(row => {
     const total = row.ok + row.problem + row.failed + row.inactive;
-    return new TableRow({
-      children: [
+    return rowXml([
         dCell(row.system_name, SM_COLS[0]),
         dCell(row.type_name,   SM_COLS[1]),
         numCell(row.ok,       SM_COLS[2], COLOURS.passGreen),
@@ -460,30 +387,20 @@ function buildFullSummarySection(allFloors, building, filterSummary) {
         numCell(row.failed,   SM_COLS[4], COLOURS.failRed),
         numCell(row.inactive, SM_COLS[5], '9CA3AF'),
         numCell(total,        SM_COLS[6], COLOURS.textDark),
-      ],
-    });
+    ]);
   });
 
   // Grand total footer row (from the shared pivot's totals).
-  const totalRow = new TableRow({
-    children: [
+  const totalRow = rowXml([
       hCell('TOTAL', SM_COLS[0] + SM_COLS[1], { fill: COLOURS.headerFill }),
       numCellHeader(totals.ok,       SM_COLS[2]),
       numCellHeader(totals.problem,  SM_COLS[3]),
       numCellHeader(totals.failed,   SM_COLS[4]),
       numCellHeader(totals.inactive, SM_COLS[5]),
       numCellHeader(totals.total,    SM_COLS[6]),
-    ],
-  });
+  ]);
 
-  children.push(new Table({
-    width:        { size: CONTENT_W, type: WidthType.DXA },
-    layout:       TableLayoutType.FIXED,
-    columnWidths: SM_COLS,
-    borders:      BORDERS,
-    margins:      TABLE_MARGINS,
-    rows:         [headerRow, ...dataRows, totalRow],
-  }));
+  children.push(tableXml({ ...TABLE_STYLE, columnWidths: SM_COLS, rows: [headerRow, ...dataRows, totalRow] }));
 
   return children;
 }
@@ -664,17 +581,21 @@ export async function POST({ request }) {
     }
 
     // -- Build document --------------------------------------------------------
+    // Each table is XML text; it stands in the document as a placeholder
+    // paragraph and is swapped in after packing (docxTableXml.js).
+    const slots = tableSlots();
+    const docChildren = children.map((c) => (typeof c === 'string' ? slots.placeholder(c) : c));
     const doc = new Document({
       styles:   DOC_STYLES,
       sections: [{
         properties: pageProps({ landscape: planOnly }),
         headers:    { default: makeHeader(docTitle, genAt, planOnly ? CONTENT_W_L : CONTENT_W) },
         footers:    { default: makeFooter() },
-        children,
+        children: docChildren,
       }],
     });
 
-    const buffer = await Packer.toBuffer(doc);
+    const buffer = await fillTablePlaceholders(await Packer.toBuffer(doc), slots.tables);
     logger('✅ Report generated, size:', buffer.byteLength, 'bytes');
 
     const safeBuilding = building.replace(/[^a-z0-9]/gi, '_');
