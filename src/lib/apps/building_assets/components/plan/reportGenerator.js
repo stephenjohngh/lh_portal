@@ -1,5 +1,6 @@
 ﻿// plan/reportGenerator.js
-// Builds the full report payload, POSTs to the API, and triggers the file download.
+// Builds the report payload and the Word file — in this browser by default, or
+// on the server (see BUILD_IN_BROWSER) — and triggers the file download.
 // All pure logic with no Svelte store dependencies — the caller passes in
 // resolved data so this module stays framework-agnostic.
 //
@@ -38,7 +39,19 @@
 
 import { today } from '../../../../utils/dates.js';
 import { drawAnnotatedPlanImage } from './planImageRenderer.js';
-import { requestDownload } from '#lib/utils/download.js';
+import { requestDownload, downloadBlob } from '#lib/utils/download.js';
+
+/**
+ * ⭐ Where the Word file is built (2026-10-05).
+ * true  — in this browser (#lib/docx/componentReport.js, loaded only when a
+ *         report is asked for). The default: a whole building with plans did
+ *         not fit the memory Northflank's free tier leaves the server.
+ * false — on the server, /api/generate-report, which builds the same file with
+ *         the same code. Kept working as the swap-back; nothing else changes.
+ */
+const BUILD_IN_BROWSER = true;
+
+const DOCX_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 export async function generateReportDocument(params) {
   const {
@@ -158,7 +171,26 @@ export async function generateReportDocument(params) {
       )
     : [];
 
-  // -- POST to API -------------------------------------------------------
+  const options = { reportTypes, building, filterSummary, generatedAt, showNotes, showLinked, showInspectionNotes, showAttributes, showConditions, showSpaces };
+
+  // -- Build here ---------------------------------------------------------
+  if (BUILD_IN_BROWSER) {
+    const { buildComponentReport } = await import('#lib/docx/componentReport.js');
+    const { bytes, filename } = await buildComponentReport({
+      building,          // as an admin named it (Admin → Building & business)
+      options,
+      floors:        floorsPayload.map(({ image, ...rest }) => rest),
+      allComponents: allComponentsPayload,
+      async imageOf(fi) {
+        const blob = floorsPayload[fi]?.image;
+        return blob ? new Uint8Array(await blob.arrayBuffer()) : null;
+      },
+    });
+    downloadBlob(new Blob([bytes], { type: DOCX_TYPE }), filename);
+    return { filename };
+  }
+
+  // -- Or POST to the server (the swap-back) -------------------------------
   // The plans travel as binary file parts beside the JSON, never as base64
   // inside it: that cost the server several copies of every plan at once.
   const form = new FormData();
@@ -167,7 +199,7 @@ export async function generateReportDocument(params) {
     return { ...rest, imagePart: image ? `image${i}` : null };
   });
   form.append('payload', JSON.stringify({
-    options:       { reportTypes, building, filterSummary, generatedAt, showNotes, showLinked, showInspectionNotes, showAttributes, showConditions, showSpaces },
+    options,
     floors:        floorsJson,
     allComponents: allComponentsPayload,
   }));

@@ -1,4 +1,4 @@
-// src/lib/server/docxTableXml.js — Word tables written as XML text, for reports
+// src/lib/docx/docxTableXml.js — Word tables written as XML text, for reports
 // too big for the docx library's tables.
 //
 // ⛔ WHY (2026-10-05). docx packs a document by building an intermediate copy of
@@ -112,12 +112,13 @@ export function tableSlots() {
  * Swap each placeholder paragraph in a packed .docx for its table.
  * Throws if any placeholder is not found exactly once — a table silently
  * missing from a report is worse than no report.
- * @param {Buffer|Uint8Array} docxBuffer
+ * Runs in a browser or on the server: bytes in, bytes out, no Node Buffer.
+ * @param {Uint8Array|ArrayBuffer} docxBuffer
  * @param {string[]} tables
- * @returns {Promise<Buffer>}
+ * @returns {Promise<Uint8Array>}
  */
 export async function fillTablePlaceholders(docxBuffer, tables) {
-  if (!tables.length) return Buffer.from(docxBuffer);
+  if (!tables.length) return new Uint8Array(docxBuffer);
   const zip = await JSZip.loadAsync(docxBuffer);
   const file = zip.file('word/document.xml');
   if (!file) throw new Error('The packed document has no word/document.xml.');
@@ -135,5 +136,5 @@ export async function fillTablePlaceholders(docxBuffer, tables) {
   }
 
   zip.file('word/document.xml', filled);
-  return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+  return zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
 }
