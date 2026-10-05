@@ -50,7 +50,7 @@
 	},
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.131.0",
-		"@sentry/sveltekit": "^10.76.0",
+		"@sentry/sveltekit": "^11.4.0",
 		"@supabase/supabase-js": "^2.117.2",
 		"@tiptap/core": "3.31.3",
 		"@tiptap/extension-table": "3.31.3",
