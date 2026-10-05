@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema13.csv
+// Source: docs/ops/supabase_lhportal_schema14.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -3961,86 +3961,6 @@ export type Database = {
             }
           ]
       }
-      schematic_annotations: {
-        Row: {
-          id: string
-          schematic_id: string
-          floor_id: string | null
-          text: string
-          x_position: number
-          y_position: number
-          font_size: string
-          colour: string
-          bold: boolean
-          notes: string | null
-          created_at: string
-          updated_at: string
-          created_by: string | null
-          updated_by: string | null
-        }
-        Insert: {
-          id?: string
-          schematic_id: string
-          floor_id?: string | null
-          text: string
-          x_position?: number
-          y_position?: number
-          font_size?: string
-          colour?: string
-          bold?: boolean
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
-          created_by?: string | null
-          updated_by?: string | null
-        }
-        Update: {
-          id?: string
-          schematic_id?: string
-          floor_id?: string | null
-          text?: string
-          x_position?: number
-          y_position?: number
-          font_size?: string
-          colour?: string
-          bold?: boolean
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
-          created_by?: string | null
-          updated_by?: string | null
-        }
-        Relationships: [
-            {
-              foreignKeyName: "schematic_annotations_schematic_id_fkey"
-              columns: ["schematic_id"]
-              isOneToOne: false
-              referencedRelation: "schematics"
-              referencedColumns: ["id"]
-            },
-            {
-              foreignKeyName: "schematic_annotations_floor_id_fkey"
-              columns: ["floor_id"]
-              isOneToOne: false
-              referencedRelation: "floors"
-              referencedColumns: ["id"]
-            },
-            {
-              foreignKeyName: "schematic_annotations_created_by_fkey"
-              columns: ["created_by"]
-              isOneToOne: false
-              referencedRelation: "profiles"
-              referencedColumns: ["id"]
-            },
-            {
-              foreignKeyName: "schematic_annotations_updated_by_fkey"
-              columns: ["updated_by"]
-              isOneToOne: false
-              referencedRelation: "profiles"
-              referencedColumns: ["id"]
-            }
-          ]
-      }
       planner_categories: {
         Row: {
           id: string
@@ -4324,88 +4244,6 @@ export type Database = {
             }
           ]
       }
-      schematics: {
-        Row: {
-          id: string
-          name: string
-          building: string
-          image_url: string
-          image_width: number | null
-          image_height: number | null
-          description: string | null
-          created_at: string | null
-          updated_at: string | null
-          created_by: string | null
-          updated_by: string | null
-          floor_level: string
-          floor_id: string | null
-          scale_ref: Json | null
-          image_aspect_ratio: number | null
-          security_classification: string
-          contains_pii: boolean
-        }
-        Insert: {
-          id?: string
-          name: string
-          building: string
-          image_url: string
-          image_width?: number | null
-          image_height?: number | null
-          description?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-          created_by?: string | null
-          updated_by?: string | null
-          floor_level?: string
-          floor_id?: string | null
-          scale_ref?: Json | null
-          image_aspect_ratio?: number | null
-          security_classification?: string
-          contains_pii?: boolean
-        }
-        Update: {
-          id?: string
-          name?: string
-          building?: string
-          image_url?: string
-          image_width?: number | null
-          image_height?: number | null
-          description?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-          created_by?: string | null
-          updated_by?: string | null
-          floor_level?: string
-          floor_id?: string | null
-          scale_ref?: Json | null
-          image_aspect_ratio?: number | null
-          security_classification?: string
-          contains_pii?: boolean
-        }
-        Relationships: [
-            {
-              foreignKeyName: "schematics_created_by_fkey"
-              columns: ["created_by"]
-              isOneToOne: false
-              referencedRelation: "profiles"
-              referencedColumns: ["id"]
-            },
-            {
-              foreignKeyName: "schematics_updated_by_fkey"
-              columns: ["updated_by"]
-              isOneToOne: false
-              referencedRelation: "profiles"
-              referencedColumns: ["id"]
-            },
-            {
-              foreignKeyName: "schematics_floor_id_fkey"
-              columns: ["floor_id"]
-              isOneToOne: false
-              referencedRelation: "floors"
-              referencedColumns: ["id"]
-            }
-          ]
-      }
       portal_settings: {
         Row: {
           key: string
@@ -4488,6 +4326,168 @@ export type Database = {
           created_at?: string
         }
         Relationships: []
+      }
+      schematic_annotations: {
+        Row: {
+          id: string
+          schematic_id: string
+          floor_id: string | null
+          text: string
+          x_position: number
+          y_position: number
+          font_size: string
+          colour: string
+          bold: boolean
+          notes: string | null
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          schematic_id: string
+          floor_id?: string | null
+          text: string
+          x_position?: number
+          y_position?: number
+          font_size?: string
+          colour?: string
+          bold?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          schematic_id?: string
+          floor_id?: string | null
+          text?: string
+          x_position?: number
+          y_position?: number
+          font_size?: string
+          colour?: string
+          bold?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "schematic_annotations_schematic_id_fkey"
+              columns: ["schematic_id"]
+              isOneToOne: false
+              referencedRelation: "schematics"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "schematic_annotations_floor_id_fkey"
+              columns: ["floor_id"]
+              isOneToOne: false
+              referencedRelation: "floors"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "schematic_annotations_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "schematic_annotations_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      schematics: {
+        Row: {
+          id: string
+          name: string
+          building: string
+          image_url: string
+          image_width: number | null
+          image_height: number | null
+          description: string | null
+          created_at: string | null
+          updated_at: string | null
+          created_by: string | null
+          updated_by: string | null
+          floor_level: string
+          floor_id: string | null
+          scale_ref: Json | null
+          image_aspect_ratio: number | null
+          security_classification: string
+          contains_pii: boolean
+        }
+        Insert: {
+          id?: string
+          name: string
+          building: string
+          image_url: string
+          image_width?: number | null
+          image_height?: number | null
+          description?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
+          floor_level?: string
+          floor_id?: string | null
+          scale_ref?: Json | null
+          image_aspect_ratio?: number | null
+          security_classification?: string
+          contains_pii?: boolean
+        }
+        Update: {
+          id?: string
+          name?: string
+          building?: string
+          image_url?: string
+          image_width?: number | null
+          image_height?: number | null
+          description?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
+          floor_level?: string
+          floor_id?: string | null
+          scale_ref?: Json | null
+          image_aspect_ratio?: number | null
+          security_classification?: string
+          contains_pii?: boolean
+        }
+        Relationships: [
+            {
+              foreignKeyName: "schematics_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "schematics_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "schematics_floor_id_fkey"
+              columns: ["floor_id"]
+              isOneToOne: false
+              referencedRelation: "floors"
+              referencedColumns: ["id"]
+            }
+          ]
       }
       space_component_overrides: {
         Row: {
