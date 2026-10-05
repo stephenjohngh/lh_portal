@@ -60,7 +60,7 @@
 		"docx": "^9.8.1",
 		"dompurify": "^3.4.5",
 		"exceljs": "^4.4.0",
-		"googleapis": "^171.4.0",
+		"googleapis": "^183.0.0",
 		"jszip": "^3.10.2"
 	}
 }
