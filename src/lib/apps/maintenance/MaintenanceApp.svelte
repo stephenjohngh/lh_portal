@@ -46,7 +46,7 @@
     { key: 'documents', label: 'Documents' },
     { key: 'schedule',  label: 'Schedule',     adminOnly: true },
     { key: 'groups',    label: 'Asset Groups', adminOnly: true },
-    { key: 'capital',   label: 'Capital Plan', adminOnly: true },
+    { key: 'capital',   label: 'Expenditure Plan', adminOnly: true },
   ];
   const CAPITAL_TABS = ['groups', 'capital'];
 
@@ -124,7 +124,7 @@
     <SchedulerPanel {jobs} />
   {:else if activeTab === 'groups'}
     {#if capitalLoading || $buildingAssetsStore.loading}
-      <LoadingSpinner text="Loading the capital plan…" />
+      <LoadingSpinner text="Loading the expenditure plan…" />
     {:else}
       <MaintenanceGroupsTab
         systems={$buildingAssetsStore.systems}
@@ -135,7 +135,7 @@
     {/if}
   {:else if activeTab === 'capital'}
     {#if capitalLoading || $buildingAssetsStore.loading}
-      <LoadingSpinner text="Loading the capital plan…" />
+      <LoadingSpinner text="Loading the expenditure plan…" />
     {:else}
       <TenYearPlanTab
         components={$buildingAssetsStore.components}

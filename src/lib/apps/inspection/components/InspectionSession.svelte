@@ -449,7 +449,7 @@
           </div>
           <button class="plan-btn" on:click={() => showPlan = true}
             disabled={!currentPlan}
-            title={currentPlan ? 'Show on floor plan' : 'Component not placed on a plan'}>
+            title={currentPlan ? 'Show on floor schematic' : 'Component not placed on a schematic'}>
             📍
           </button>
         </div>

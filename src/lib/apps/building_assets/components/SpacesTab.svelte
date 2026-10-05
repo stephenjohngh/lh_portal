@@ -178,7 +178,7 @@
   <!-- Table -->
   {#if registerRows.length === 0}
     <p class="px-4 py-8 text-sm text-slate-600 italic text-center">
-      No spaces have been drawn yet. Add spaces in <strong class="text-slate-400">Plan View</strong>.
+      No spaces have been drawn yet. Add spaces in <strong class="text-slate-400">Schematics</strong>.
     </p>
   {:else if filteredRows.length === 0}
     <p class="px-4 py-8 text-sm text-slate-600 italic text-center">

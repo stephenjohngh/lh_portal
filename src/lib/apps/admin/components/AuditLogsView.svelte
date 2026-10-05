@@ -43,9 +43,9 @@
     { value: 'building_assets', label: '🏢 Building Assets' },
     { value: 'inspection',      label: '🚶 Inspection' },
     { value: 'maintenance',     label: '🔧 Maintenance' },
-    { value: 'mobileplan',      label: '📱 Mobile Plan' },
+    { value: 'mobileplan',      label: '📱 Schematics (M)' },
     { value: 'users',           label: '👥 Users (legacy)' },
-    { value: 'plans',           label: '🗺 Floor Plans (legacy)' }
+    { value: 'plans',           label: '🗺 Floor Schematics (legacy)' }
   ];
 
   $: ({ logs, loading, error, totalCount, hasMore } = $auditLogsStore);

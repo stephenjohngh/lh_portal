@@ -32,7 +32,7 @@
     { mode: 'component',  label: '✏️ Edit',         title: 'Place and reposition components',     activeClass: 'bg-amber-600'  },
     { mode: 'space',      label: '⬡ Spaces',       title: 'Draw space polygons',                 activeClass: 'bg-purple-700' },
     { mode: 'scale',      label: '📏 Scale',        title: 'Set scale reference for measurement', activeClass: 'bg-teal-700'   },
-    { mode: 'annotation', label: '🏷 Annotate',      title: 'Place text annotations on the plan',  activeClass: 'bg-sky-700'    },
+    { mode: 'annotation', label: '🏷 Annotate',      title: 'Place text annotations on the schematic',  activeClass: 'bg-sky-700'    },
   ];
 
   // Spaces, scale and annotations write admin-only tables (spaces / plan_scale /
@@ -69,7 +69,7 @@
   <!-- Plan picker (only when >1 plan for this floor) -->
   {#if plansForFloor.length > 1}
     <div class="flex items-center gap-2">
-      <span class="text-sm text-slate-400">Plan:</span>
+      <span class="text-sm text-slate-400">Schematic:</span>
       <select
         value={selectedPlanId}
         on:change={e => dispatch('planchange', { planId: e.target.value })}
@@ -125,7 +125,7 @@
                bg-slate-700 hover:bg-slate-600 text-slate-300 border border-slate-600
                transition-colors"
       >
-        ⚙ Plan Admin
+        ⚙ Schematic Admin
         <span class="text-slate-500 text-[10px]">{adminOpen ? '▲' : '▼'}</span>
       </button>
 
@@ -142,7 +142,7 @@
             class="flex items-center gap-2 px-3 py-2 text-left text-slate-300
                    hover:bg-slate-700 transition-colors"
           >
-            <span class="w-4 text-center">⊕</span> New Plan
+            <span class="w-4 text-center">⊕</span> New Schematic
           </button>
           {#if hasPlan}
             <button
@@ -157,21 +157,21 @@
               class="flex items-center gap-2 px-3 py-2 text-left text-slate-300
                      hover:bg-slate-700 transition-colors"
             >
-              <span class="w-4 text-center">⎘</span> Copy Plan
+              <span class="w-4 text-center">⎘</span> Copy Schematic
             </button>
             <button
               on:click={() => adminAction('import')}
               class="flex items-center gap-2 px-3 py-2 text-left text-slate-300
                      hover:bg-slate-700 transition-colors"
             >
-              <span class="w-4 text-center">⇶</span> Copy Components to Plan
+              <span class="w-4 text-center">⇶</span> Copy Components to Schematic
             </button>
             <button
               on:click={() => adminAction('importSpaces')}
               class="flex items-center gap-2 px-3 py-2 text-left text-slate-300
                      hover:bg-slate-700 transition-colors"
             >
-              <span class="w-4 text-center">⬡</span> Copy Spaces to Plan
+              <span class="w-4 text-center">⬡</span> Copy Spaces to Schematic
             </button>
           {/if}
         </div>

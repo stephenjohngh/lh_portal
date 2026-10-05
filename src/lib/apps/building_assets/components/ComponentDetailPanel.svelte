@@ -258,9 +258,9 @@
           </select>
         </div>
         <div class="flex flex-col gap-1">
-          <p class="text-xs text-slate-500">Plan <span class="text-slate-600">optional</span></p>
+          <p class="text-xs text-slate-500">Floor schematic <span class="text-slate-600">optional</span></p>
           <select bind:value={planId} on:change={markDirty} class={inp} disabled={!selectedFloorId}>
-            <option value="">Not placed on a plan</option>
+            <option value="">Not placed on a schematic</option>
             {#each plansForFloor as p}
               <option value={p.id}>{p.name ?? p.building}</option>
             {/each}
@@ -346,7 +346,7 @@
             {/each}
           </div>
         {:else}
-          <p class="text-xs text-slate-600 italic">Not within any drawn space on this plan.</p>
+          <p class="text-xs text-slate-600 italic">Not within any drawn space on this schematic.</p>
         {/if}
       </section>
     {/if}

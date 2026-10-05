@@ -28,7 +28,7 @@ describe('ReportSectionToggles', () => {
         includeFullComponentList: true,
       },
     });
-    expect(box(/Plan Graphic/)).toBeChecked();
+    expect(box(/Floor Schematic/)).toBeChecked();
     expect(box(/Component Table/)).not.toBeChecked();
     expect(box(/Floor Summary/)).toBeChecked();
     expect(box(/Full Summary/)).not.toBeChecked();
@@ -37,7 +37,7 @@ describe('ReportSectionToggles', () => {
 
   it('defaults every section to unchecked', () => {
     render(ReportSectionToggles, { props: {} });
-    for (const re of [/Plan Graphic/, /Component Table/, /Floor Summary/, /Full Summary/, /Full Component List/]) {
+    for (const re of [/Floor Schematic/, /Component Table/, /Floor Summary/, /Full Summary/, /Full Component List/]) {
       expect(box(re)).not.toBeChecked();
     }
   });
@@ -50,7 +50,7 @@ describe('ReportSectionToggles', () => {
     expect(cb).toBeChecked();
   });
 
-  it('shows the plan caption options (Asset ID / Label) only when Plan Graphic is on', () => {
+  it('shows the plan caption options (Asset ID / Label) only when Floor Schematic is on', () => {
     const { unmount } = render(ReportSectionToggles, { props: { includePlan: false } });
     expect(screen.queryByRole('checkbox', { name: /Asset ID/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: /^Label$/ })).not.toBeInTheDocument();

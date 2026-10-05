@@ -1455,7 +1455,7 @@ export const REGISTER = [
     retentionPeriodMonths: 120,
     handledBy: 'building_assets',
     handlingNote:
-      '⚠ Nothing detects the trigger. The plans are Building Assets floor plans and the building-work '
+      '⚠ Nothing detects the trigger. The plans are drawn from the Building Assets floor schematics and the building-work '
       + 'screening control is meant to catch layout changes before they happen — but the two are not '
       + 'wired together, so this depends on a person raising it.',
     evidencedBy: null,
@@ -1487,7 +1487,7 @@ export const REGISTER = [
     competencyRequired: 'Person who can confirm the plans against the building as built',
     evidenceRequired: 'Record of the check and of any re-issue to the fire and rescue service',
     handledBy: 'building_assets',
-    handlingNote: 'The plans themselves are Building Assets floor plans; re-issue is a manual step.',
+    handlingNote: 'The plans themselves are drawn from the Building Assets floor schematics; re-issue is a manual step.',
     evidencedBy: 'maintenance_job',
     appliesWhen: 'Always — the building is a high-rise residential building (FSER 2022 reg 3: at least 18 metres or at least 7 storeys, with two or more sets of domestic premises)',
   }),

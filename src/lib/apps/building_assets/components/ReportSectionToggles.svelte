@@ -23,7 +23,7 @@
     <div class="flex flex-wrap gap-x-5 gap-y-1.5">
       <label class="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-300 cursor-pointer">
         <input type="checkbox" bind:checked={includePlan} class="accent-purple-500" />
-        🗺 Plan Graphic
+        🗺 Floor Schematic
       </label>
       {#if includePlan}
         <!-- Marker caption options — indented under Plan Graphic -->

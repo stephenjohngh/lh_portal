@@ -194,7 +194,7 @@
           <button
             class="text-xs text-slate-400 hover:text-purple-300 transition-colors"
             on:click={() => showPlan = !showPlan}
-          >&#9678; {showPlan ? 'Hide plan' : 'Show on plan'}</button>
+          >&#9678; {showPlan ? 'Hide schematic' : 'Show on schematic'}</button>
         {/if}
       </div>
 
@@ -209,7 +209,7 @@
             </div>
             {#if !planPlaced}
               <p class="text-xs text-amber-300 mt-1">
-                On this plan, but without a position set.
+                On this schematic, but without a position set.
               </p>
             {/if}
           {/if}

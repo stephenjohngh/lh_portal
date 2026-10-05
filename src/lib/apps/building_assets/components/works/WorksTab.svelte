@@ -572,8 +572,8 @@
                 <button
                   class="text-slate-600 hover:text-purple-300 transition-colors"
                   title={item.component?.plan_id
-                    ? 'Show where this is on the floor plan'
-                    : 'Not placed on a floor plan'}
+                    ? 'Show where this is on the floor schematic'
+                    : 'Not placed on a floor schematic'}
                   on:click|stopPropagation={() => peekAt(item)}
                 >&#9678;</button>
               </td>

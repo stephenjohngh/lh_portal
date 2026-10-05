@@ -80,7 +80,7 @@
            saying so plainly is more useful than an empty box. -->
       <p class="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/30
                 rounded p-3">
-        This component is not on a floor plan. Place it in <strong>Plan View</strong>
+        This component is not on a floor schematic. Place it in <strong>Schematics</strong>
         to see it here.
       </p>
     {:else if error}
@@ -89,7 +89,7 @@
       </p>
     {:else}
       {#if loading}
-        <p class="text-xs text-slate-500 text-center py-6">Loading plan…</p>
+        <p class="text-xs text-slate-500 text-center py-6">Loading schematic…</p>
       {/if}
       <div class="flex justify-center">
         <canvas bind:this={canvas}
@@ -97,7 +97,7 @@
       </div>
       {#if !placed && !loading}
         <p class="text-xs text-amber-300">
-          On this plan, but without a position set — nothing is marked.
+          On this schematic, but without a position set — nothing is marked.
         </p>
       {/if}
     {/if}

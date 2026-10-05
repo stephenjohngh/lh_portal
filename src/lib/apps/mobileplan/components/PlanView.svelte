@@ -206,7 +206,7 @@
 
   {:else if !plan}
     <div class="plan-placeholder">
-      <p class="no-plan-msg">No plan for this floor</p>
+      <p class="no-plan-msg">No schematic for this floor</p>
       <p class="no-plan-sub">Use the table (☰) to browse components</p>
     </div>
 
@@ -219,7 +219,7 @@
     >
       <img
         src={plan.image_url}
-        alt="Floor plan"
+        alt="Floor schematic"
         bind:this={imgEl}
         on:load={handleImgLoad}
         class:hidden={!imgLoaded}

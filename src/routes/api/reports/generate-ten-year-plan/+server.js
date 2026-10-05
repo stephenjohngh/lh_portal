@@ -49,7 +49,7 @@ export async function POST({ request }) {
 
     const buffer   = await Packer.toBuffer(_buildPlanDocument(plan));
     const today    = todayLondon();
-    const filename = `10_Year_Capital_Plan_${today}.docx`;
+    const filename = `10_Year_Expenditure_Plan_${today}.docx`;
     logger('✅ Generated', filename, buffer.length, 'bytes');
 
     return new Response(buffer, {
@@ -70,7 +70,7 @@ export async function POST({ request }) {
 // +server route) so the docx assembly can be smoke-tested without an auth request.
 
 export function _buildPlanDocument(plan) {
-  const title = '10-Year Capital Plan';
+  const title = '10-Year Expenditure Plan';
   return new Document({
     styles: DOC_STYLES,
     sections: [
@@ -98,7 +98,7 @@ function buildPortrait(plan) {
   const flagged = (plan.assumptions ?? []).filter(a => a.assets?.attention > 0).length;
 
   // Title block
-  c.push(para('10-Year Capital Plan', { heading: HeadingLevel.HEADING_1 }));
+  c.push(para('10-Year Expenditure Plan', { heading: HeadingLevel.HEADING_1 }));
   c.push(para(`${plan.building}  ·  ${window}  ·  Generated ${plan.generatedAt}`, { size: 18, color: COLOURS.textMuted, after: 240 }));
 
   // Basis

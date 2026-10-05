@@ -158,7 +158,7 @@
       <ReportsTab />
     {:else if state.bays.length === 0 && loaded}
       <div class="bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-sm text-slate-300">
-        No parking bays are drawn yet. Draw each bay in <strong>Building Assets → Plan View</strong>
+        No parking bays are drawn yet. Draw each bay in <strong>Building Assets → Schematics</strong>
         as a <strong>Parking bay</strong>, give it a number and a size, and it appears here.
       </div>
     {:else}
@@ -173,7 +173,7 @@
         {/each}
         <span class="flex-1"></span>
         <Button size="small" variant="secondary" loading={printing} disabled={printing} on:click={printPlan}>
-          ⬇ Print bay plan (Word)
+          ⬇ Print bay schematic (Word)
         </Button>
       </div>
       {#if printError}<ErrorDisplay message={printError} />{/if}

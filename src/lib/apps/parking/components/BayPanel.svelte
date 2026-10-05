@@ -103,13 +103,13 @@
       <dt class="text-slate-500">Measured</dt>
       <dd class="text-slate-200">
         {#if bay.measured}{m(bay.measured.width)} × {m(bay.measured.length)} m · {m(bay.measured.area)} m²
-        {:else}<span class="text-slate-500">The plan has no scale</span>{/if}
+        {:else}<span class="text-slate-500">The schematic has no scale</span>{/if}
       </dd>
       <dt class="text-slate-500">Name</dt>
       <dd class="text-slate-200">{bay.space?.label || bay.space?.name || '—'}</dd>
     </dl>
     <p class="text-[11px] text-slate-500">
-      Size, number, name and shape are set in Building Assets → Plan View, where the bay is drawn.
+      Size, number, name and shape are set in Building Assets → Schematics, where the bay is drawn.
       {#if !bay.number}<span class="text-amber-400">This bay has no number yet, so its reference ends in an id fragment.</span>{/if}
     </p>
 

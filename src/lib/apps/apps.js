@@ -55,7 +55,7 @@ export const AVAILABLE_APPS = [
     icon: 'lhlogo',
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Building asset management - type hierarchy, components, floor plans and reports'
+    description: 'Building asset management - type hierarchy, components, floor schematics and reports'
   },
 
   {
@@ -70,12 +70,12 @@ export const AVAILABLE_APPS = [
 
   {
     id: 'mobileplan',
-    name: 'Plans (M)',
+    name: 'Schematics (M)',
     icon: 'grid',
     mobile: true,
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Mobile-first read-only floor plan viewer'
+    description: 'Mobile-first read-only floor schematic viewer'
   },
 
   {

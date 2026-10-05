@@ -58,8 +58,8 @@
     building_assets: { label: '🏢 Building Assets', color: 'bg-blue-600/20 text-blue-400' },
     inspection:     { label: '🚶 Inspection',       color: 'bg-orange-600/20 text-orange-400' },
     maintenance:    { label: '🔧 Maintenance',      color: 'bg-yellow-600/20 text-yellow-400' },
-    mobileplan:     { label: '📱 Mobile Plan',      color: 'bg-teal-600/20 text-teal-400' },
-    plans:          { label: '🗺 Floor Plans',      color: 'bg-amber-600/20 text-amber-400' }
+    mobileplan:     { label: '📱 Schematics (M)',      color: 'bg-teal-600/20 text-teal-400' },
+    plans:          { label: '🗺 Floor Schematics',      color: 'bg-amber-600/20 text-amber-400' }
   };
 
   $: appMeta = log.app_id ? appLabels[log.app_id] : null;

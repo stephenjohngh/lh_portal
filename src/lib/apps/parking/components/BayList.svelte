@@ -47,7 +47,7 @@
             </td>
             <td class="py-2 pr-3 text-slate-400 text-xs">
               {#if bay.measured}{m(bay.measured.width)} × {m(bay.measured.length)}
-              {:else}<span class="text-slate-600">no plan scale</span>{/if}
+              {:else}<span class="text-slate-600">no schematic scale</span>{/if}
             </td>
             <td class="py-2 pr-3">
               <span class="inline-flex items-center gap-1.5 text-xs">

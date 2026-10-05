@@ -124,7 +124,7 @@
             {/each}
           </div>
         {:else}
-          <p class="text-xs text-slate-600 italic">Not within any drawn space on this plan.</p>
+          <p class="text-xs text-slate-600 italic">Not within any drawn space on this schematic.</p>
         {/if}
       </section>
     {/if}

@@ -1,7 +1,7 @@
 <script>
   // src/lib/apps/mobileplan/components/ActionSheet.svelte
   // Long-press context menu for a component marker.
-  // Shows: View details | Copy reference | Centre on plan | Cancel
+  // Shows: View details | Copy reference | Centre on schematic | Cancel
 
   import { createEventDispatcher } from 'svelte';
 
@@ -63,7 +63,7 @@
     {#if component.plan_id != null}
       <button class="action-row" on:click={centreOnPlan}>
         <span class="action-icon">⌖</span>
-        <span class="action-label">Centre on plan</span>
+        <span class="action-label">Centre on schematic</span>
       </button>
     {/if}
 

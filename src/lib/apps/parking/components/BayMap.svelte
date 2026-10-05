@@ -20,10 +20,10 @@
 </script>
 
 {#if !plan}
-  <p class="text-sm text-slate-500 italic">No plan for this level.</p>
+  <p class="text-sm text-slate-500 italic">No schematic for this level.</p>
 {:else}
   <div class="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-900" data-testid="bay-map">
-    <img src={plan.image_url} alt="{plan.name ?? 'Basement'} plan" class="w-full h-auto block select-none" draggable="false" />
+    <img src={plan.image_url} alt="{plan.name ?? 'Basement'} schematic" class="w-full h-auto block select-none" draggable="false" />
 
     <svg class="absolute inset-0 w-full h-full" viewBox="0 0 1 1" preserveAspectRatio="none">
       {#each drawn as bay (bay.space_id)}

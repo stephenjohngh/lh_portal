@@ -54,7 +54,7 @@
   <div class="flex flex-col gap-1 mb-2">
     <p class="text-xs text-slate-400">
       Label <span class="text-red-400">*</span>
-      <span class="text-slate-600 font-normal ml-1">— shown on the plan; Enter for line breaks</span>
+      <span class="text-slate-600 font-normal ml-1">— shown on the schematic; Enter for line breaks</span>
     </p>
     <textarea
       rows="2"
@@ -122,7 +122,7 @@
   <!-- Show label -->
   <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none mb-3">
     <input type="checkbox" bind:checked={showLabel} class="rounded accent-purple-500" />
-    Show label on plan
+    Show label on schematic
   </label>
 
   <!-- Hint -->

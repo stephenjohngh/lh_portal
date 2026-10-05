@@ -23,7 +23,7 @@
     <span>⬡</span>
     <span>
       {#if drawingVertices.length > 0}
-        Click on the plan to add polygon vertices.
+        Click on the schematic to add polygon vertices.
         {#if drawingVertices.length >= 3}
           Click the first vertex <strong>●</strong> to close, or press <strong>Finish</strong>.
         {:else}
@@ -41,7 +41,7 @@
     <span>📏</span>
     <span>
       {#if !scalePoint1}
-        Click the <strong>first point</strong> of a known distance on the plan.
+        Click the <strong>first point</strong> of a known distance on the schematic.
       {:else if !scalePoint2}
         Click the <strong>second point</strong> of the same known distance.
       {:else}
@@ -54,7 +54,7 @@
   <div class="px-3 py-1.5 rounded-lg bg-sky-500/10 border border-sky-500/20
               text-xs text-sky-300/80 flex items-center gap-2">
     <span>🏷</span>
-    <span>Click anywhere on the plan to drop a text note. Drag existing notes to reposition.</span>
+    <span>Click anywhere on the schematic to drop a text note. Drag existing notes to reposition.</span>
   </div>
 {/if}
 

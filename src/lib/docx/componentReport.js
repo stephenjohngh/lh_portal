@@ -535,7 +535,7 @@ export async function buildComponentReport({ building, options = {}, floors = []
         }));
       } else {
         children.push(para(
-          'No plan image available for this floor.',
+          'No schematic image available for this floor.',
           { italics: true, size: 16, color: COLOURS.textMuted, after: 200 }
         ));
       }

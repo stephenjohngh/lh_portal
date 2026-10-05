@@ -172,7 +172,7 @@
       });
       await requestDownload('/api/reports/generate-ten-year-plan', {
         body: payload,
-        filename: `10_Year_Capital_Plan_${today()}.docx`,
+        filename: `10_Year_Expenditure_Plan_${today()}.docx`,
       });
     } catch (/** @type {any} */ err) {
       exportError = 'Export failed: ' + err.message;
@@ -192,7 +192,7 @@
 <!-- ── Header ──────────────────────────────────────────────────────────── -->
 <div class="flex-between mb-4">
   <div>
-    <h3 class="text-lg font-semibold text-white">10-Year Capital Plan</h3>
+    <h3 class="text-lg font-semibold text-white">10-Year Expenditure Plan</h3>
     <p class="text-muted-sm mt-0.5">
       Forecast capital renewal spend across the plan window. Figures derive from each
       group's renewal cycle below — edit any assumption to re-shape the forecast.

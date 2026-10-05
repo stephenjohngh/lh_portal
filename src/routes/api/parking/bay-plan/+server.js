@@ -32,7 +32,7 @@ export async function POST({ request }) {
     });
   } catch (/** @type {any} */ err) {
     logger('❌ bay plan failed:', err);
-    const message = err?.message ?? 'Failed to build the bay plan';
+    const message = err?.message ?? 'Failed to build the bay schematic';
     return json({ error: message }, { status: /No basement plan/.test(message) ? 400 : 500 });
   }
 }

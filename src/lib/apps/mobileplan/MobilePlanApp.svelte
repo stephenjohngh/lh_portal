@@ -164,7 +164,7 @@
   <header class="app-header">
     <div class="header-left">
       <button class="back-btn" on:click={goHome} aria-label="Back to home">←</button>
-      <span class="app-name">{state.building?.name ?? 'Plan View'}</span>
+      <span class="app-name">{state.building?.name ?? 'Schematics'}</span>
     </div>
     <div class="header-right">
       {#if !isOnline}
@@ -196,7 +196,7 @@
     {#if !ready || state.loading}
       <div class="full-center">
         <div class="spinner"></div>
-        <p class="loading-msg">Loading the plans…</p>
+        <p class="loading-msg">Loading the schematics…</p>
       </div>
 
     {:else if state.error && !state.currentFloor}

@@ -97,7 +97,7 @@
         editContainsPii    = plan.contains_pii ?? false;
         importTargetPlanId = '';
       } else if (mode === 'copy' && plan) {
-        editName           = `Copy of ${plan.name ?? plan.building ?? 'Plan'}`;
+        editName           = `Copy of ${plan.name ?? plan.building ?? 'Schematic'}`;
         editBuilding       = plan.building ?? '';
         editFloorId        = plan.floor_id ?? '';
         editDesc           = '';
@@ -126,11 +126,11 @@
     lastShow = show;
   }
 
-  $: title = mode === 'new'          ? 'New Floor Plan'
-           : mode === 'edit'         ? 'Edit Plan Info'
-           : mode === 'import'       ? 'Copy Components to Plan'
-           : mode === 'importSpaces' ? 'Copy Spaces to Plan'
-           :                           'Copy Plan';
+  $: title = mode === 'new'          ? 'New Floor Schematic'
+           : mode === 'edit'         ? 'Edit Schematic Info'
+           : mode === 'import'       ? 'Copy Components to Schematic'
+           : mode === 'importSpaces' ? 'Copy Spaces to Schematic'
+           :                           'Copy Schematic';
 
   // -- Image handling ------------------------------------------------
   function clearImage() {
@@ -164,7 +164,7 @@
   // -- Submit handlers -----------------------------------------------
   async function handleNew() {
     if (!editBuilding.trim()) { errorMsg = 'Building name is required.'; return; }
-    if (!imageFile)           { errorMsg = 'Please select a plan image.'; return; }
+    if (!imageFile)           { errorMsg = 'Please select a schematic image.'; return; }
     saving = true; errorMsg = '';
     try {
       const created = await buildingAssetsStore.createPlan({
@@ -234,7 +234,7 @@
   }
 
   async function handleImport() {
-    if (!importTargetPlanId) { errorMsg = 'Please select a target plan.'; return; }
+    if (!importTargetPlanId) { errorMsg = 'Please select a target schematic.'; return; }
     saving = true; errorMsg = '';
     copyProgress = { done: 0, total: null };
     try {
@@ -254,7 +254,7 @@
   }
 
   async function handleImportSpaces() {
-    if (!importTargetPlanId) { errorMsg = 'Please select a target plan.'; return; }
+    if (!importTargetPlanId) { errorMsg = 'Please select a target schematic.'; return; }
     // Capture the source id before the await (Svelte 5 flushes synchronously).
     const sourceId = plan.id;
     saving = true; errorMsg = '';
@@ -343,7 +343,7 @@
         {#if plan.image_url}
           <img
             src={plan.image_url}
-            alt="Source plan"
+            alt="Source schematic"
             class="mt-2 rounded h-16 object-cover opacity-70"
           />
         {/if}
@@ -353,7 +353,7 @@
     <!-- -- Space count hint (Copy Spaces) ----------------------- -->
     {#if mode === 'importSpaces' && plan}
       <p class="text-xs text-slate-500">
-        {sourcePlanSpaces.length} space{sourcePlanSpaces.length !== 1 ? 's' : ''} on the source plan will be copied
+        {sourcePlanSpaces.length} space{sourcePlanSpaces.length !== 1 ? 's' : ''} on the source schematic will be copied
         onto the target (identical layout assumed; spaces already on the target are skipped).
       </p>
     {/if}
@@ -399,12 +399,12 @@
       {#if editFloorId}
         {#if plansOnEditFloor.length === 0}
           <p class="text-xs text-amber-400 bg-amber-900/20 border border-amber-800/30 rounded px-3 py-2">
-            No existing plans on this floor. Select a different floor, or use Copy Plan to create one.
+            No existing schematics on this floor. Select a different floor, or use Copy Schematic to create one.
           </p>
         {:else}
           <div class="flex flex-col gap-1">
             <label for="pa-target-plan" class="text-xs text-slate-400">
-              Target plan <span class="text-red-400">*</span>
+              Target schematic <span class="text-red-400">*</span>
             </label>
             <select
               id="pa-target-plan"
@@ -413,7 +413,7 @@
                      focus:outline-none focus:border-purple-500"
               disabled={saving}
             >
-              <option value="">— select target plan —</option>
+              <option value="">— select target schematic —</option>
               {#each plansOnEditFloor as p (p.id)}
                 <option value={p.id}>{p.building}{p.name ? ` — ${p.name}` : ''}</option>
               {/each}
@@ -425,7 +425,7 @@
             {#if targetPlan?.image_url}
               <img
                 src={targetPlan.image_url}
-                alt="Target plan"
+                alt="Target schematic"
                 class="rounded h-16 object-cover opacity-60 border border-slate-600"
               />
             {/if}
@@ -454,14 +454,14 @@
     <!-- -- Name (optional) --------------------------------------- -->
     <div class="flex flex-col gap-1">
       <label for="pa-name" class="text-xs text-slate-400">
-        Plan name
+        Schematic name
         <span class="text-slate-600 font-normal ml-1">— optional, e.g. "Ground Floor Main"</span>
       </label>
       <input
         id="pa-name"
         type="text"
         bind:value={editName}
-        placeholder="Optional plan name…"
+        placeholder="Optional schematic name…"
         disabled={saving}
         class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
                focus:outline-none focus:border-purple-500 disabled:opacity-50"
@@ -501,7 +501,7 @@
         {#if editClassification === 'official_sensitive'}
           <p class="text-[11px] text-amber-400/90">
             Only visible to admins and to Building Assets / Inspection / Mobile
-            Plan users — hidden from every other app's users.
+            Schematics users — hidden from every other app's users.
           </p>
         {/if}
       </div>
@@ -525,7 +525,7 @@
         {#if mode === 'edit' && plan?.image_url && !imagePreview}
           <img
             src={plan.image_url}
-            alt="Current plan"
+            alt="Current schematic"
             class="rounded h-20 object-cover opacity-60 border border-slate-600"
           />
         {/if}
@@ -535,7 +535,7 @@
           <div class="relative w-fit">
             <img
               src={imagePreview}
-              alt="Selected plan"
+              alt="Selected schematic"
               class="rounded h-24 object-cover border border-purple-500/50"
             />
             <button

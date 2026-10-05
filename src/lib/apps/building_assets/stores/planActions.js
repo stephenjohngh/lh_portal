@@ -162,7 +162,7 @@ export function createPlanActions(update, supabase) {
       allSpaces      = s.spaces;
       return s;
     });
-    if (!sourcePlan) throw new Error('Source plan not found');
+    if (!sourcePlan) throw new Error('Source schematic not found');
 
     const newFloorId = data.floor_id ?? sourcePlan.floor_id ?? null;
 
@@ -376,7 +376,7 @@ export function createPlanActions(update, supabase) {
       types      = s.types;
       return s;
     });
-    if (!targetPlan) throw new Error('Target plan not found');
+    if (!targetPlan) throw new Error('Target schematic not found');
 
     const newFloorId    = targetPlan.floor_id ?? null;
     // Optional single component-type filter — copy only this type_code when set.
@@ -526,7 +526,7 @@ export function createPlanActions(update, supabase) {
       allSpaces  = s.spaces;
       return s;
     });
-    if (!targetPlan) throw new Error('Target plan not found');
+    if (!targetPlan) throw new Error('Target schematic not found');
 
     const newFloorId = targetPlan.floor_id ?? null;
     const { takenRefs, existingSig } = targetSpaceGuards(allSpaces, targetPlanId, newFloorId);

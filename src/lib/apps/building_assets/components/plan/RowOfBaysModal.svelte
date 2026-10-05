@@ -129,7 +129,7 @@
           <p class="text-xs text-slate-400 mt-1">
             {bays.length} bays, {numbers[0]} to {numbers[numbers.length - 1]}.
             {#if sidesM.length}Each about {fmt1(sidesM[0])} × {fmt1(sidesM[sidesM.length - 1])} m.
-            {:else}The plan has no scale, so their size cannot be shown.{/if}
+            {:else}The schematic has no scale, so their size cannot be shown.{/if}
           </p>
         </div>
       {/if}

@@ -78,6 +78,6 @@ describe('the Word file', () => {
   });
 
   it('refuses rather than printing a plan page with no plans', async () => {
-    await expect(buildBayPlanBuffer({ ...body, levels: [] })).rejects.toThrow(/No basement plan/);
+    await expect(buildBayPlanBuffer({ ...body, levels: [] })).rejects.toThrow(/No basement schematic/);
   });
 });

@@ -318,7 +318,7 @@
       <div class="flex flex-col gap-1">
         <label class="text-xs text-slate-400" for="sp-label">
           Label <span class="text-red-400">*</span>
-          <span class="text-slate-600 font-normal ml-1">— shown on the plan; Enter for line breaks</span>
+          <span class="text-slate-600 font-normal ml-1">— shown on the schematic; Enter for line breaks</span>
         </label>
         <textarea id="sp-label" rows="2" bind:value={editLabel} class="{inp} resize-none" placeholder="Plant&#10;Room 2"></textarea>
       </div>
@@ -528,7 +528,7 @@
       <!-- -- Show label ----------------------------------------------- -->
       <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
         <input type="checkbox" bind:checked={editShowLabel} class="rounded accent-purple-500" />
-        Show label on plan
+        Show label on schematic
       </label>
 
     {/if}

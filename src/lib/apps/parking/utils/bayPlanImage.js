@@ -138,7 +138,7 @@ export async function downloadBayPlan(state) {
     const img = await drawBayPlanImage(plan, bays.filter(b => b.plan_id === plan?.id), state.holders, state.agreements);
     if (img) levels.push({ name: floor.name, imageBase64: img.base64, width: img.width, height: img.height });
   }
-  if (!levels.length) throw new Error('No basement plan could be drawn. Check the plans have images.');
+  if (!levels.length) throw new Error('No basement schematic could be drawn. Check the schematics have images.');
 
   const filename = await requestDownload('/api/parking/bay-plan', {
     filename: `Parking_Bay_Plan_${today()}.docx`,

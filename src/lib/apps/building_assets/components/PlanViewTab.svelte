@@ -537,21 +537,21 @@
       {#if !selectedFloorId}
         <div class="h-64 rounded-xl bg-slate-800 border border-slate-700
                     flex items-center justify-center text-slate-500 text-sm">
-          Select a floor above to view its plan.
+          Select a floor above to view its schematic.
         </div>
 
       {:else if plansForFloor.length === 0}
         <div class="h-64 rounded-xl bg-slate-800 border border-slate-700
                     flex flex-col items-center justify-center gap-2 text-slate-500 text-sm">
           <p class="text-4xl">🗺</p>
-          <p>No plans for <strong class="text-slate-400">{selectedFloor?.name}</strong>.</p>
-          <p class="text-xs text-slate-600">Upload a floor plan in the Plans app to get started.</p>
+          <p>No schematics for <strong class="text-slate-400">{selectedFloor?.name}</strong>.</p>
+          <p class="text-xs text-slate-600">Add one with ⚙ Schematic Admin → New Schematic.</p>
         </div>
 
       {:else if !selectedPlan?.image_url}
         <div class="h-64 rounded-xl bg-slate-800 border border-slate-700
                     flex items-center justify-center text-slate-500 text-sm">
-          No image for this plan. Upload one via Plan Admin.
+          No image for this schematic. Upload one via Schematic Admin.
         </div>
 
       {:else}
@@ -735,7 +735,7 @@
 <ConfirmDialog
   show={confirmClearScale}
   title="Remove scale"
-  message="Remove the scale from this plan? Measurements will no longer be shown."
+  message="Remove the scale from this schematic? Measurements will no longer be shown."
   confirmText="Remove"
   danger={true}
   on:confirm={performClearScale}

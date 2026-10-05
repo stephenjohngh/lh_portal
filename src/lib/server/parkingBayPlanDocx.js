@@ -75,7 +75,7 @@ function caption(level) {
 export function buildBayPlanDocument(body) {
   const { building = '[Building name]', generatedAt = '', levels = [], rows = [], legend = [] } = body ?? {};
   const drawn = levels.filter(l => l.imageBase64 && l.width && l.height);
-  if (drawn.length === 0) throw new Error('No basement plan could be drawn');
+  if (drawn.length === 0) throw new Error('No basement schematic could be drawn');
 
   const { stacked, landscape, sized } = planLayout(drawn);
   const contentW = landscape ? CONTENT_W_L : CONTENT_W;

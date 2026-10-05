@@ -160,21 +160,21 @@
   <!-- -- Plan placement (optional) ------------------------------ -->
   <div class="border border-slate-700 rounded-lg p-3 bg-slate-800/30">
     <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-      Plan Placement
+      Schematic Placement
       <span class="font-normal normal-case text-slate-600 ml-1">— optional, set later if needed</span>
     </p>
 
     <div class="flex flex-col gap-3">
       <div class="flex flex-col gap-1">
-        <p class="text-xs text-slate-500">Floor Plan</p>
+        <p class="text-xs text-slate-500">Floor Schematic</p>
         <select bind:value={planId} class="{inp}" disabled={!selectedFloorId}>
-          <option value="">Not yet placed on a plan</option>
+          <option value="">Not yet placed on a schematic</option>
           {#each plansForFloor as p}
             <option value={p.id}>{p.name ?? p.building}</option>
           {/each}
         </select>
         {#if selectedFloorId && plansForFloor.length === 0}
-          <p class="text-xs text-slate-600 italic">No plans exist for this floor yet.</p>
+          <p class="text-xs text-slate-600 italic">No schematics exist for this floor yet.</p>
         {/if}
       </div>
 

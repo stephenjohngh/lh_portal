@@ -48,7 +48,7 @@
   // docs/design/compliance_app_design.md §1.1.
   $: TABS = [
     { key: 'components', label: 'Components',   icon: '🧩', count: components.length || null },
-    { key: 'plans',      label: 'Plan View',    icon: '🗺' },
+    { key: 'plans',      label: 'Schematics',    icon: '🗺' },
     { key: 'spaces',     label: 'Spaces',       icon: '⬡' },
     { key: 'works',      label: 'Works',        icon: '🛠' },
     { key: 'types',      label: 'Type Browser', icon: '🗂', count: types.length || null },

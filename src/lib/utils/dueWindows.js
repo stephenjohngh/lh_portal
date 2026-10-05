@@ -86,7 +86,7 @@ const WINDOWS = {
   },
   capitalRenewal: {
     days: 365, app: 'Maintenance', label: 'A capital renewal',
-    where: 'The Capital Plan marks a renewal due within this many days as soon.',
+    where: 'The Expenditure Plan marks a renewal due within this many days as soon.',
   },
 };
 

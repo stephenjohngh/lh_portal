@@ -150,7 +150,7 @@
       <p class="section-title">Spaces</p>
       <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
       <div class="toggle-row" on:click={() => localShowSpaces = !localShowSpaces}>
-        <span class="toggle-label">Show spaces on plan</span>
+        <span class="toggle-label">Show spaces on schematic</span>
         <div class="toggle" class:on={localShowSpaces}>
           <div class="toggle-knob"></div>
         </div>

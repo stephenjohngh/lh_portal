@@ -632,7 +632,7 @@ const TESTING = [
     description: 'Genuinely unauthenticated-public.',
     consequence:
       'Needs a private bucket plus signed URLs across five UI consumers, and ⚠ conflicts with ' +
-      'Mobile Plan’s offline caching, which needs stable non-expiring URLs. That conflict IS the ' +
+      'the phone schematic viewer’s (Schematics (M)) offline caching, which needs stable non-expiring URLs. That conflict IS the ' +
       'decision.',
   }),
   action('h3', {

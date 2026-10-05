@@ -166,7 +166,7 @@
 
     <!-- -- System / Type tree --------------------------------------- -->
     {#if systemGroups.length === 0}
-      <p class="text-xs text-slate-600 italic px-1">No components on this plan yet.</p>
+      <p class="text-xs text-slate-600 italic px-1">No components on this schematic yet.</p>
     {:else}
       <div class="flex flex-col gap-2">
         {#each systemGroups as group (group.system?.id ?? '__none__')}
@@ -363,7 +363,7 @@
         </p>
         <p class="text-xs text-slate-500 mb-2">
           {#if drawingMode === 'component'}
-            Click a row to open its detail and assign a plan position.
+            Click a row to open its detail and assign a schematic position.
           {:else}
             Switch to <strong class="text-slate-300">Components</strong> mode to place these.
           {/if}

@@ -36,14 +36,14 @@ export function drawComponentOnPlan(canvas, {
 } = {}) {
   return new Promise((resolve, reject) => {
     if (!canvas) { reject(new Error('No canvas to draw on')); return; }
-    if (!imageUrl) { reject(new Error('No plan image available')); return; }
+    if (!imageUrl) { reject(new Error('No schematic image available')); return; }
 
     const img = new Image();
     // The plan may be served from storage on another origin; without this the
     // canvas is tainted and any later read of it throws.
     img.crossOrigin = 'anonymous';
 
-    img.onerror = () => reject(new Error('Failed to load plan image'));
+    img.onerror = () => reject(new Error('Failed to load schematic image'));
 
     img.onload = () => {
       // Fit inside the container, never enlarge: a small plan blown up is

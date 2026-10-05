@@ -75,7 +75,7 @@
   <!-- Floor plan image -->
   <img
     src={plan.image_url}
-    alt="{plan.name ?? plan.building} floor plan"
+    alt="{plan.name ?? plan.building} floor schematic"
     class="w-full h-auto block select-none"
     draggable="false"
     on:load={handleImgLoad}

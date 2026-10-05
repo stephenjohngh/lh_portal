@@ -56,7 +56,7 @@
       {#if error}
         <div class="msg-box err">⚠ {error}</div>
       {:else if !imageLoaded}
-        <div class="msg-box loading">Loading plan…</div>
+        <div class="msg-box loading">Loading schematic…</div>
       {/if}
 
       <div class="canvas-wrap">
@@ -66,7 +66,7 @@
       {#if component.x_position == null || component.y_position == null}
         <div class="msg-box warn">
           <strong>Position not set</strong><br>
-          Use the Plans app to place this component on the floor plan.
+          Place this component on its floor schematic in Building Assets → Schematics.
         </div>
       {/if}
     </div>
