@@ -314,7 +314,7 @@
       <div class="flex flex-col gap-1.5">
         <p class="text-xs text-slate-400">
           {#if copyProgress.total === null}
-            {mode === 'import' ? 'Preparing…' : 'Creating plan…'}
+            {mode === 'import' ? 'Preparing…' : 'Creating schematic…'}
           {:else if copyProgress.done < copyProgress.total}
             Copying components: {copyProgress.done} / {copyProgress.total}
           {:else}
@@ -516,7 +516,7 @@
     {#if mode === 'new' || mode === 'edit'}
       <div class="flex flex-col gap-1.5">
         <p class="text-xs text-slate-400">
-          {mode === 'edit' ? 'Replace image' : 'Plan image'}
+          {mode === 'edit' ? 'Replace image' : 'Schematic image'}
           {#if mode === 'new'}<span class="text-red-400"> *</span>{/if}
           {#if mode === 'edit'}<span class="text-slate-600 font-normal ml-1">— optional; clears scale if changed</span>{/if}
         </p>
@@ -617,7 +617,7 @@
 
         {#if mode === 'new'}
           <Button variant="primary" on:click={handleNew} disabled={saving || !editBuilding.trim() || !imageFile}>
-            {saving ? 'Creating…' : 'Create Plan'}
+            {saving ? 'Creating…' : 'Create Schematic'}
           </Button>
 
         {:else if mode === 'edit'}
@@ -627,7 +627,7 @@
 
         {:else if mode === 'copy'}
           <Button variant="primary" on:click={handleCopy} disabled={saving || !editBuilding.trim()}>
-            {saving ? 'Copying…' : 'Copy Plan'}
+            {saving ? 'Copying…' : 'Copy Schematic'}
           </Button>
 
         {:else if mode === 'import'}
