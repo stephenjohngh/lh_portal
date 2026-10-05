@@ -183,7 +183,7 @@ export async function drawAnnotatedPlanImage(floor, floorComps, plans, typeOfFn,
       const SIZE_MULT = { sm: 0.667, md: 1.0, lg: 1.333, xl: 1.833 };
 
       for (const c of floorComps) {
-        if (c.x_position == null || c.y_position == null || c.plan_id !== plan.id) continue;
+        if (c.x_position == null || c.y_position == null || c.schematic_id !== plan.id) continue;
 
         const t      = typeOfFn(c);
         const colour = t?.colour ?? '8b5cf6';

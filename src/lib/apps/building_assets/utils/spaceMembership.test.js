@@ -6,10 +6,10 @@ import { describe, it, expect } from 'vitest';
 import { componentsInSpace, spacesForComponent, componentSpaceRefs, componentSpaceIdMap, DEFAULT_TOLERANCE } from './spaceMembership.js';
 
 // Two adjacent spaces on plan p1 sharing the wall at x = 0.5.
-const A = { id: 'A', plan_id: 'p1', polygon: [{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 0.5, y: 1 }, { x: 0, y: 1 }] };
-const B = { id: 'B', plan_id: 'p1', polygon: [{ x: 0.5, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0.5, y: 1 }] };
+const A = { id: 'A', schematic_id: 'p1', polygon: [{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 0.5, y: 1 }, { x: 0, y: 1 }] };
+const B = { id: 'B', schematic_id: 'p1', polygon: [{ x: 0.5, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0.5, y: 1 }] };
 
-const comp = (id, x, y, plan = 'p1') => ({ id, plan_id: plan, x_position: x, y_position: y });
+const comp = (id, x, y, plan = 'p1') => ({ id, schematic_id: plan, x_position: x, y_position: y });
 
 describe('componentsInSpace', () => {
   it('includes a component whose point is inside, and not the neighbour', () => {
@@ -37,7 +37,7 @@ describe('componentsInSpace', () => {
 
   it('honours include / exclude overrides', () => {
     const inA = comp('c1', 0.25, 0.5);
-    const unplaced = { id: 'u', plan_id: null, x_position: null, y_position: null };
+    const unplaced = { id: 'u', schematic_id: null, x_position: null, y_position: null };
     const overrides = [
       { space_id: 'A', component_id: 'c1', mode: 'exclude' },  // drop a geometric member
       { space_id: 'A', component_id: 'u',  mode: 'include' },  // force-add an unplaced one
@@ -96,7 +96,7 @@ describe('componentSpaceRefs', () => {
   });
 
   it('applies include overrides (an unplaced component pinned to a space)', () => {
-    const unplaced = { id: 'u', plan_id: null, x_position: null, y_position: null };
+    const unplaced = { id: 'u', schematic_id: null, x_position: null, y_position: null };
     const overrides = [{ space_id: 'A', component_id: 'u', mode: 'include' }];
     const map = componentSpaceRefs([unplaced], [Ar, Br], overrides, plans, floors);
     expect(map.get('u')).toEqual(['G/SP/12 PlantRoom2']);

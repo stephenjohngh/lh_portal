@@ -18,11 +18,11 @@ const types = [
 
 // Components with a current status.
 const components = [
-  { id: 'c1', type_code: 'LIGHT', status: 'ok',       plan_id: 'p1', x_position: 0.1, y_position: 0.1 },
-  { id: 'c2', type_code: 'LIGHT', status: 'problem',  plan_id: 'p1', x_position: 0.2, y_position: 0.2 },
-  { id: 'c3', type_code: 'POWER', status: 'failed',   plan_id: 'p1', x_position: 0.3, y_position: 0.3 },
-  { id: 'c4', type_code: 'LIFT',  status: 'ok',       plan_id: 'p1', x_position: 0.4, y_position: 0.4 },
-  { id: 'c5', type_code: 'LIFT',  status: 'inactive', plan_id: 'p1', x_position: 0.5, y_position: 0.5 },
+  { id: 'c1', type_code: 'LIGHT', status: 'ok',       schematic_id: 'p1', x_position: 0.1, y_position: 0.1 },
+  { id: 'c2', type_code: 'LIGHT', status: 'problem',  schematic_id: 'p1', x_position: 0.2, y_position: 0.2 },
+  { id: 'c3', type_code: 'POWER', status: 'failed',   schematic_id: 'p1', x_position: 0.3, y_position: 0.3 },
+  { id: 'c4', type_code: 'LIFT',  status: 'ok',       schematic_id: 'p1', x_position: 0.4, y_position: 0.4 },
+  { id: 'c5', type_code: 'LIFT',  status: 'inactive', schematic_id: 'p1', x_position: 0.5, y_position: 0.5 },
 ];
 
 const ctx = { components, types };
@@ -55,7 +55,7 @@ describe('makeGroupMembershipResolver', () => {
   });
 
   it('resolves by space via an include override (no geometry needed)', () => {
-    const spaces = [{ id: 'sp1', plan_id: 'p1', polygon: [] }];
+    const spaces = [{ id: 'sp1', schematic_id: 'p1', polygon: [] }];
     const overrides = [
       { space_id: 'sp1', component_id: 'c4', mode: 'include' },
       { space_id: 'sp1', component_id: 'c5', mode: 'include' },

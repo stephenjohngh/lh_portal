@@ -119,7 +119,7 @@ describe('loadItems', () => {
       const select = h.api.get.mock.calls[0][1].select;
       for (const column of [
         'id', 'asset_id', 'label', 'type_code', 'status',
-        'floor_id', 'plan_id', 'x_position', 'y_position',
+        'floor_id', 'schematic_id', 'x_position', 'y_position',
       ]) {
         expect(select).toContain(column);
       }

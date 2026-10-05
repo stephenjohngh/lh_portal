@@ -26,7 +26,7 @@ vi.mock('#lib/utils/documentApi.js', () => ({ deleteDocumentsFor: h.deleteDocume
 const { parkingStore } = await import('./parkingStore.js');
 
 const floors = [{ id: 'L', short_name: 'L', level_order: 1 }];
-const spaces = [{ id: 's22', kind: 'slot', floor_id: 'L', plan_id: 'p', type: 'Car', assigned_id: '22', polygon: [] }];
+const spaces = [{ id: 's22', kind: 'slot', floor_id: 'L', schematic_id: 'p', type: 'Car', assigned_id: '22', polygon: [] }];
 const holder = { id: 'h1', holder_type: 'leaseholder', display_name: 'Alice Example', email: 'a@example.com' };
 
 let tables;
@@ -182,7 +182,7 @@ describe('devices and the deposit', () => {
 
 describe('moving to another bay', () => {
   it('creates the new bay row if needed, then does the move in ONE database call', async () => {
-    const spaces2 = [...spaces, { id: 's23', kind: 'slot', floor_id: 'L', plan_id: 'p', type: 'Car', assigned_id: '23', polygon: [] }];
+    const spaces2 = [...spaces, { id: 's23', kind: 'slot', floor_id: 'L', schematic_id: 'p', type: 'Car', assigned_id: '23', polygon: [] }];
     h.listParkingBaySpaces.mockResolvedValue(spaces2);
     tables.parking_bays = [{ id: 'b1', space_id: 's22', tenure: 'licensable' }];
     tables.parking_agreements = [activeAg];

@@ -103,7 +103,7 @@
   }
 
   // Placed = has a plan assignment
-  $: placedComponents = components.filter(c => c.plan_id != null);
+  $: placedComponents = components.filter(c => c.schematic_id != null);
 
   // Compute halos outside {#each} so Svelte tracks attrDefs/componentAttrs as
   // explicit reactive dependencies. Inside a keyed {#each}, @const expressions

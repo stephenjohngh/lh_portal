@@ -7,7 +7,7 @@
   import { inp } from '../../ui.js';
   import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
 
-  export let annotation; // plan_annotations row
+  export let annotation; // schematic_annotations row
   export let readOnly = false; // hide save/delete (View mode or read-only users)
 
   const dispatch = createEventDispatcher();

@@ -47,7 +47,7 @@
   // including manual pins. Plans/AR come from the store.
   $: componentSpaces = component
     ? spacesForComponent(component, $buildingAssetsStore.spaces ?? [], $buildingAssetsStore.spaceOverrides ?? [], {
-        AR: ($buildingAssetsStore.plans ?? []).find(p => p.id === component.plan_id)?.image_aspect_ratio ?? 1,
+        AR: ($buildingAssetsStore.plans ?? []).find(p => p.id === component.schematic_id)?.image_aspect_ratio ?? 1,
       })
     : [];
 
@@ -109,7 +109,7 @@
   <div class="flex-1 overflow-y-auto p-5 space-y-6">
 
     <!-- -- Spaces (derived membership) --------------------------------- -->
-    {#if component.plan_id || componentSpaces.length > 0}
+    {#if component.schematic_id || componentSpaces.length > 0}
       <section>
         <p class={sec}>Spaces</p>
         {#if componentSpaces.length > 0}

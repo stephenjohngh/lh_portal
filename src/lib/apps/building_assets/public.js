@@ -211,7 +211,7 @@ export function deleteSpaceType(id) {
  */
 export function listParkingBaySpaces() {
   return api.getAll('spaces', {
-    select: 'id, plan_id, floor_id, kind, type, name, label, assigned_id, polygon, colour',
+    select: 'id, schematic_id, floor_id, kind, type, name, label, assigned_id, polygon, colour',
     filters: { kind: 'slot' },
   });
 }

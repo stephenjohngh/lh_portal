@@ -571,7 +571,7 @@
               <td class="px-2 py-1.5">
                 <button
                   class="text-slate-600 hover:text-purple-300 transition-colors"
-                  title={item.component?.plan_id
+                  title={item.component?.schematic_id
                     ? 'Show where this is on the floor schematic'
                     : 'Not placed on a floor schematic'}
                   on:click|stopPropagation={() => peekAt(item)}

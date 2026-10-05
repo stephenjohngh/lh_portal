@@ -44,7 +44,7 @@ function createBuildingAssetsStore() {
     spaces:            [],   // spaces[] — named polygon areas on floor plans
     spaceOverrides:    [],   // space_component_overrides[] — manual membership include/exclude
     spaceTypes:        [],   // space_types[] — admin-configurable space type list (value, presentation_order)
-    annotations:       [],   // plan_annotations[] — free-form text labels on plans
+    annotations:       [],   // schematic_annotations[] — free-form text labels on plans
     // UI state
     loading:           false,
     loadingComponents: false,
@@ -71,10 +71,10 @@ function createBuildingAssetsStore() {
           api.get('component_types',     { orderBy: 'presentation_order' }),
           api.get('type_attributes',     { orderBy: 'presentation_order' }),
           api.get('type_attribute_options', { orderBy: 'presentation_order' }),
-          api.get('plans',              { orderBy: 'building',           ascending: true }),
+          api.get('schematics',              { orderBy: 'building',           ascending: true }),
           api.getAll('spaces',             { orderBy: 'created_at',         ascending: false }),
           api.getAll('space_component_overrides'),
-          api.getAll('plan_annotations',   { orderBy: 'created_at',         ascending: false })
+          api.getAll('schematic_annotations',   { orderBy: 'created_at',         ascending: false })
         ]);
 
       const { attrDefs, systemAttrDefs, attrOptions } =

@@ -65,7 +65,7 @@ export function buildSpacesRegisterRows(state = {}) {
     return aid.localeCompare(bid, undefined, { numeric: true });
   });
   return ordered.map(space => {
-    const plan = plans.find(p => p.id === space.plan_id);
+    const plan = plans.find(p => p.id === space.schematic_id);
     const AR   = plan?.image_aspect_ratio
       ?? (plan?.image_width && plan?.image_height ? plan.image_width / plan.image_height : 1);
     const mpu  = computeMetresPerUnit(plan?.scale_ref, AR);

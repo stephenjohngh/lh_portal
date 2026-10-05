@@ -35,7 +35,7 @@
   /** The component's current attribute values, by type_attribute_id. */
   export let currentValues = {};
   export let componentRef = '';
-  /** plans[] — the location panel finds this component's by plan_id. */
+  /** plans[] — the location panel finds this component's by schematic_id. */
   export let plans = [];
   /** [{ spec, target_type_code }] used before — the suggestion source. */
   export let specs = [];
@@ -133,8 +133,8 @@
   let planError = '';
   let planPlaced = true;
 
-  $: plan = item?.component?.plan_id
-    ? (plans.find(p => p.id === item.component.plan_id) ?? null)
+  $: plan = item?.component?.schematic_id
+    ? (plans.find(p => p.id === item.component.schematic_id) ?? null)
     : null;
 
   // Redrawn when the panel opens or the line changes; guarded on primitives so
@@ -190,7 +190,7 @@
           <span class="text-xs text-slate-500">· {item?.component?.status ?? '—'}</span>
         </p>
         <div class="flex-1"></div>
-        {#if item?.component?.plan_id}
+        {#if item?.component?.schematic_id}
           <button
             class="text-xs text-slate-400 hover:text-purple-300 transition-colors"
             on:click={() => showPlan = !showPlan}

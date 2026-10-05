@@ -47,7 +47,7 @@ describe('buildRegisterRow / spacesRegisterCsvRows', () => {
 describe('buildSpacesRegisterRows (pure, whole-building)', () => {
   // s1 covers the left half of plan p1; c1 is inside, c2 is outside.
   const s1 = {
-    id: 's1', plan_id: 'p1', kind: 'space', assigned_id: '12', floor_id: 'f1',
+    id: 's1', schematic_id: 'p1', kind: 'space', assigned_id: '12', floor_id: 'f1',
     name: 'Plant Room', type: 'Plant Room',
     polygon: [{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 0.5, y: 1 }, { x: 0, y: 1 }],
   };
@@ -57,8 +57,8 @@ describe('buildSpacesRegisterRows (pure, whole-building)', () => {
     spaces: [s1],
     spaceOverrides: [],
     components: [
-      { id: 'c1', plan_id: 'p1', x_position: 0.25, y_position: 0.5, status: 'ok' },
-      { id: 'c2', plan_id: 'p1', x_position: 0.9,  y_position: 0.5, status: 'failed' },
+      { id: 'c1', schematic_id: 'p1', x_position: 0.25, y_position: 0.5, status: 'ok' },
+      { id: 'c2', schematic_id: 'p1', x_position: 0.9,  y_position: 0.5, status: 'failed' },
     ],
   };
 
@@ -87,7 +87,7 @@ describe('buildSpacesRegisterRows (pure, whole-building)', () => {
       { id: 'fB', short_name: 'B1', level_order: 10 },
       { id: 'fG', short_name: 'G',  level_order: 20 },
     ];
-    const sp = (id, floor_id, assigned_id) => ({ id, plan_id: null, kind: 'space', floor_id, assigned_id, name: id, type: '' });
+    const sp = (id, floor_id, assigned_id) => ({ id, schematic_id: null, kind: 'space', floor_id, assigned_id, name: id, type: '' });
     const rows = buildSpacesRegisterRows({
       floors: flrs, plans: [], components: [], spaceOverrides: [],
       // deliberately unsorted input

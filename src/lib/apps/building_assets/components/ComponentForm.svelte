@@ -69,7 +69,7 @@
 
     const fields = {
       floor_id:             selectedFloorId,
-      plan_id:              planId             || null,
+      schematic_id:              planId             || null,
       type_code:            selectedType.code,
       primary_attribute:    primaryAttribute   || null,
       label:                label              || null,

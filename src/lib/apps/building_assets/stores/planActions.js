@@ -35,7 +35,7 @@ export function createPlanActions(update, supabase) {
   // aspectRatio: number — native image W / H  (or null to clear)
   async function updatePlanScale(planId, scaleRef, aspectRatio) {
     const userId = requireUserId();
-    const updated = await api.update('plans', planId, {
+    const updated = await api.update('schematics', planId, {
       scale_ref:          scaleRef,
       image_aspect_ratio: aspectRatio,
       updated_by:         userId
@@ -58,7 +58,7 @@ export function createPlanActions(update, supabase) {
   async function createPlan(data, file) {
     const userId = requireUserId();
     const imageUrl = await uploadPlanImage(file);
-    const plan = await api.create('plans', {
+    const plan = await api.create('schematics', {
       name:        data.name?.trim()        || null,
       building:    data.building?.trim()    || '',
       floor_id:    data.floor_id            || null,
@@ -85,7 +85,7 @@ export function createPlanActions(update, supabase) {
   // data: { name, building, floor_id, description, security_classification, contains_pii }
   async function updatePlanInfo(planId, data) {
     const userId = requireUserId();
-    const updated = await api.update('plans', planId, {
+    const updated = await api.update('schematics', planId, {
       name:        data.name?.trim()        || null,
       building:    data.building?.trim()    || '',
       floor_id:    data.floor_id            || null,
@@ -110,7 +110,7 @@ export function createPlanActions(update, supabase) {
   async function replacePlanImage(planId, file) {
     const userId = requireUserId();
     const imageUrl = await uploadPlanImage(file);
-    const updated  = await api.update('plans', planId, {
+    const updated  = await api.update('schematics', planId, {
       image_url:          imageUrl,
       image_aspect_ratio: null,
       scale_ref:          null,
@@ -157,8 +157,8 @@ export function createPlanActions(update, supabase) {
       sourcePlan     = s.plans.find(p => p.id === sourcePlanId);
       floors         = s.floors;
       types          = s.types;
-      srcSpaces      = s.spaces.filter(sp => sp.plan_id === sourcePlanId);
-      srcAnnotations = s.annotations.filter(a => a.plan_id === sourcePlanId);
+      srcSpaces      = s.spaces.filter(sp => sp.schematic_id === sourcePlanId);
+      srcAnnotations = s.annotations.filter(a => a.schematic_id === sourcePlanId);
       allSpaces      = s.spaces;
       return s;
     });
@@ -166,7 +166,7 @@ export function createPlanActions(update, supabase) {
 
     const newFloorId = data.floor_id ?? sourcePlan.floor_id ?? null;
 
-    const newPlan = await api.create('plans', {
+    const newPlan = await api.create('schematics', {
       name:               (data.name     ?? sourcePlan.name)?.trim()     || null,
       building:           (data.building ?? sourcePlan.building)?.trim() || '',
       floor_id:           newFloorId,
@@ -186,7 +186,7 @@ export function createPlanActions(update, supabase) {
 
     // Optional single component-type filter — copy only this type_code when set.
     const typeCode = data.typeCode || null;
-    const allSrc = await api.getAll('components', { filters: { plan_id: sourcePlanId } });
+    const allSrc = await api.getAll('components', { filters: { schematic_id: sourcePlanId } });
     const srcComponents = typeCode ? allSrc.filter(c => c.type_code === typeCode) : allSrc;
     const total  = srcComponents.length;
     let copied   = 0;
@@ -221,7 +221,7 @@ export function createPlanActions(update, supabase) {
         if (onProgress) onProgress(copied, total);
 
         const newComp = await api.create('components', {
-          plan_id:               newPlan.id,
+          schematic_id:               newPlan.id,
           floor_id:              newFloorId,   // all copies go to the new floor
           type_code:             c.type_code,
           primary_attribute:     c.primary_attribute,
@@ -320,8 +320,8 @@ export function createPlanActions(update, supabase) {
     // -- Copy annotations --------------------------------------------------
     let newAnnotations = [];
     if (srcAnnotations.length > 0) {
-      newAnnotations = await api.createMany('plan_annotations', srcAnnotations.map(ann => ({
-        plan_id:    newPlan.id,
+      newAnnotations = await api.createMany('schematic_annotations', srcAnnotations.map(ann => ({
+        schematic_id:    newPlan.id,
         floor_id:   newFloorId,
         text:       ann.text,
         x_position: ann.x_position,
@@ -381,7 +381,7 @@ export function createPlanActions(update, supabase) {
     const newFloorId    = targetPlan.floor_id ?? null;
     // Optional single component-type filter — copy only this type_code when set.
     const typeCode      = opts.typeCode || null;
-    const allSrc        = await api.getAll('components', { filters: { plan_id: sourcePlanId } });
+    const allSrc        = await api.getAll('components', { filters: { schematic_id: sourcePlanId } });
     const srcComponents = typeCode ? allSrc.filter(c => c.type_code === typeCode) : allSrc;
     const total         = srcComponents.length;
     let copied          = 0;
@@ -416,7 +416,7 @@ export function createPlanActions(update, supabase) {
         if (onProgress) onProgress(copied, total);
 
         const newComp = await api.create('components', {
-          plan_id:               targetPlanId,
+          schematic_id:               targetPlanId,
           floor_id:              newFloorId,
           type_code:             c.type_code,
           primary_attribute:     c.primary_attribute,
@@ -522,7 +522,7 @@ export function createPlanActions(update, supabase) {
     let allSpaces  = [];
     update(s => {
       targetPlan = s.plans.find(p => p.id === targetPlanId) ?? null;
-      srcSpaces  = s.spaces.filter(sp => sp.plan_id === sourcePlanId);
+      srcSpaces  = s.spaces.filter(sp => sp.schematic_id === sourcePlanId);
       allSpaces  = s.spaces;
       return s;
     });
@@ -562,7 +562,7 @@ export function createPlanActions(update, supabase) {
     let componentIds = [];
     update(s => {
       beforePlan   = s.plans.find(p => p.id === planId) ?? null;
-      componentIds = s.components.filter(c => c.plan_id === planId).map(c => c.id);
+      componentIds = s.components.filter(c => c.schematic_id === planId).map(c => c.id);
       return s;
     });
 
@@ -573,21 +573,21 @@ export function createPlanActions(update, supabase) {
       // the database, not state, so the purge covers exactly what the
       // deleteMany below removes. If a photo cannot be deleted, purge throws
       // and nothing else is deleted.
-      const onPlan = await api.getAll('components', { select: 'id', filters: { plan_id: planId } });
+      const onPlan = await api.getAll('components', { select: 'id', filters: { schematic_id: planId } });
       const inspections = await api.getAllIn('component_inspections', 'component_id',
         (onPlan ?? []).map(c => c.id), { select: 'id' });
       await purgeAttachments('component_inspection', (inspections ?? []).map(r => r.id));
-      await api.deleteMany('components', { plan_id: planId });
+      await api.deleteMany('components', { schematic_id: planId });
     }
 
-    await api.delete('plans', planId);
+    await api.delete('schematics', planId);
 
     update(s => ({
       ...s,
       plans:       s.plans.filter(p => p.id !== planId),
-      spaces:      s.spaces.filter(sp => sp.plan_id !== planId),
-      annotations: s.annotations.filter(a => a.plan_id !== planId),
-      components:  s.components.filter(c => c.plan_id !== planId),
+      spaces:      s.spaces.filter(sp => sp.schematic_id !== planId),
+      annotations: s.annotations.filter(a => a.schematic_id !== planId),
+      components:  s.components.filter(c => c.schematic_id !== planId),
       componentAttrs: Object.fromEntries(
         Object.entries(s.componentAttrs).filter(([k]) => !componentIds.includes(k))
       ),

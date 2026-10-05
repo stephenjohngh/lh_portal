@@ -25,7 +25,7 @@
     selectedSpace = store.spaces.find(s => s.id === row.id) ?? null;
   }
   // Scale/AR for the selected space's plan (drives measurements in the panel).
-  $: selPlan   = selectedSpace ? store.plans.find(p => p.id === selectedSpace.plan_id) : null;
+  $: selPlan   = selectedSpace ? store.plans.find(p => p.id === selectedSpace.schematic_id) : null;
   $: selPlanAR = selPlan?.image_aspect_ratio
     ?? (selPlan?.image_width && selPlan?.image_height ? selPlan.image_width / selPlan.image_height : 1);
   $: selMPU    = computeMetresPerUnit(selPlan?.scale_ref, selPlanAR);

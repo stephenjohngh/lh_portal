@@ -43,7 +43,7 @@ const AUDIT = { appId: 'parking', eventCategory: 'parking' };
  * @typedef {{
  *   bays:         import('../utils/bayModel.js').MergedBay[],
  *   floors:       Row<'floors'>[],
- *   plans:        Row<'plans'>[],
+ *   plans:        Row<'schematics'>[],
  *   holders:      Row<'parking_holders'>[],
  *   agreements:   Row<'parking_agreements'>[],
  *   vehicles:     Row<'parking_vehicles'>[],
@@ -82,7 +82,7 @@ function createParkingStore() {
         listParkingBaySpaces(),
         api.get('parking_bays'),
         api.get('floors', { orderBy: 'level_order', ascending: true }),
-        api.get('plans', { select: 'id, name, floor_id, image_url, image_aspect_ratio, scale_ref' }),
+        api.get('schematics', { select: 'id, name, floor_id, image_url, image_aspect_ratio, scale_ref' }),
         api.getAll('parking_holders', { orderBy: 'display_name' }),
         api.getAll('parking_agreements', { orderBy: 'reference' }),
         api.getAll('parking_vehicles', { orderBy: 'registration' }),

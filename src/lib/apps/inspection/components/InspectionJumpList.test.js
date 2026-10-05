@@ -22,9 +22,9 @@ vi.mock('$app/env', () => ({ browser: true, dev: true, building: false }));
 const JumpList = (await import('./InspectionJumpList.svelte')).default;
 
 const COMPONENTS = [
-  { id: 'c1', type_code: 'door_fire_door', label: 'Door 1', plan_id: null, floor_id: 'f1' },
-  { id: 'c2', type_code: 'door_fire_door', label: 'Door 2', plan_id: null, floor_id: 'f1' },
-  { id: 'c3', type_code: 'door_fire_door', label: 'Door 3', plan_id: null, floor_id: 'f1' },
+  { id: 'c1', type_code: 'door_fire_door', label: 'Door 1', schematic_id: null, floor_id: 'f1' },
+  { id: 'c2', type_code: 'door_fire_door', label: 'Door 2', schematic_id: null, floor_id: 'f1' },
+  { id: 'c3', type_code: 'door_fire_door', label: 'Door 3', schematic_id: null, floor_id: 'f1' },
 ];
 const TYPES  = [{ code: 'door_fire_door', name: 'Fire door', colour: 'ff0000', initial: 'F', id: 't1' }];
 const FLOORS = [{ id: 'f1', name: 'Ground', short_name: 'G' }];

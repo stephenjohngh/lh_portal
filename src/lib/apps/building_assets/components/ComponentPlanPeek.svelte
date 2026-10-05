@@ -17,9 +17,9 @@
   import { drawComponentOnPlan } from '#lib/utils/planMarker.js';
 
   export let show = false;
-  /** The components row — needs plan_id, x_position, y_position. */
+  /** The components row — needs schematic_id, x_position, y_position. */
   export let component = null;
-  /** plans[] from the store; the right one is found by plan_id. */
+  /** plans[] from the store; the right one is found by schematic_id. */
   export let plans = [];
   /** Canonical reference, e.g. "G/L/L-042". */
   export let componentRef = '';
@@ -33,8 +33,8 @@
   let error = '';
   let placed = true;
 
-  $: plan = component?.plan_id
-    ? (plans.find(p => p.id === component.plan_id) ?? null)
+  $: plan = component?.schematic_id
+    ? (plans.find(p => p.id === component.schematic_id) ?? null)
     : null;
 
   // Guard on a PRIMITIVE: `component` is an object prop and safe_not_equal
@@ -75,7 +75,7 @@
       {#if plan?.name}· <span class="text-slate-500">{plan.name}</span>{/if}
     </p>
 
-    {#if !component?.plan_id}
+    {#if !component?.schematic_id}
       <!-- Not an error: plenty of components are legitimately unplaced, and
            saying so plainly is more useful than an empty box. -->
       <p class="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/30

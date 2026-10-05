@@ -17,7 +17,7 @@ const logger = getLogger('mobileplanStore');
 
 // Bump CACHE_VERSION whenever the shape of cached data changes (forces fresh fetch).
 // v6: spaces now cache `label` (the display name) alongside `name`.
-const CACHE_VERSION         = 6;
+const CACHE_VERSION         = 7;   // 7: plan_id → schematic_id (migration 235)
 const CACHE_KEY_HIERARCHY   = `mobileplan_cache_hierarchy_v${CACHE_VERSION}`;
 const CACHE_KEY_FLOOR       = id => `mobileplan_cache_floor_${id}_v${CACHE_VERSION}`;
 const CACHE_KEY_ALLCOMPS    = `mobileplan_cache_all_components_v${CACHE_VERSION}`;
@@ -44,7 +44,7 @@ const FETCH_TIMEOUT_MS    = 8000;
  *   systems: (import('#lib/database.types.ts').Tables<'building_systems'> & Record<string, any>)[],
  *   types: (import('#lib/database.types.ts').Tables<'component_types'> & Record<string, any>)[],
  *   attrDefs: Record<string, Loose[]>,
- *   plans: (import('#lib/database.types.ts').Tables<'plans'> & Record<string, any>)[],
+ *   plans: (import('#lib/database.types.ts').Tables<'schematics'> & Record<string, any>)[],
  *   currentFloor: Loose | null,
  *   currentPlan: Loose | null,
  *   components: (import('#lib/database.types.ts').Tables<'components'> & Record<string, any>)[],
@@ -79,7 +79,7 @@ const INITIAL = {
   currentPlan:    null,
   components:     [],
   spaces:         [],
-  annotations:    [],   // plan_annotations[] for the current plan
+  annotations:    [],   // schematic_annotations[] for the current plan
   inspections:    {},   // { [componentId]: latest inspection row }
 
   // Loaded per-floor alongside components
@@ -184,7 +184,7 @@ async function fetchHierarchy() {
       withTimeout(api.get('building_systems', { orderBy: 'presentation_order' }),                          FETCH_TIMEOUT_MS),
       withTimeout(api.get('component_types',  { orderBy: 'presentation_order' }),                          FETCH_TIMEOUT_MS),
       withTimeout(api.get('type_attributes',  { orderBy: 'presentation_order' }),                          FETCH_TIMEOUT_MS),
-      withTimeout(api.get('plans',            { select: 'id,floor_id,image_url,image_aspect_ratio,scale_ref' }), FETCH_TIMEOUT_MS),
+      withTimeout(api.get('schematics',            { select: 'id,floor_id,image_url,image_aspect_ratio,scale_ref' }), FETCH_TIMEOUT_MS),
     ]);
 
   const { attrDefs } = resolveHierarchy(systemsRes, typesRes, defsRes);
@@ -351,7 +351,7 @@ async function fetchFloorForPlan(planId, floorId) {
   const [components, spaces, annotations] = await Promise.all([
     withTimeout(
       api.get('components', {
-        select: 'id,asset_id,label,notes,status,type_code,plan_id,x_position,y_position,floor_id,linked_component_ref',
+        select: 'id,asset_id,label,notes,status,type_code,schematic_id,x_position,y_position,floor_id,linked_component_ref',
         filters: { floor_id: floorId },
         orderBy: 'asset_id',
       }),
@@ -362,17 +362,17 @@ async function fetchFloorForPlan(planId, floorId) {
           api.get('spaces', {
             // `label` is the human display name (multi-word); `name` is the
             // alphanumerics-stripped report key. Show `label` on the plan.
-            select: 'id,name,label,colour,polygon,show_label,plan_id',
-            filters: { plan_id: planId },
+            select: 'id,name,label,colour,polygon,show_label,schematic_id',
+            filters: { schematic_id: planId },
           }),
           FETCH_TIMEOUT_MS
         ).catch(() => [])
       : Promise.resolve([]),
     planId
       ? withTimeout(
-          api.get('plan_annotations', {
-            select: 'id,text,x_position,y_position,font_size,colour,bold,plan_id',
-            filters: { plan_id: planId },
+          api.get('schematic_annotations', {
+            select: 'id,text,x_position,y_position,font_size,colour,bold,schematic_id',
+            filters: { schematic_id: planId },
           }),
           FETCH_TIMEOUT_MS
         ).catch(() => [])
@@ -480,7 +480,7 @@ async function loadAllComponents(forceRefresh = false) {
   try {
     // getAll paginates past the 1000-row cap; scope to just the table's fields.
     rows = await api.getAll('components', {
-      select: 'id,asset_id,label,notes,status,type_code,plan_id,x_position,y_position,floor_id',
+      select: 'id,asset_id,label,notes,status,type_code,schematic_id,x_position,y_position,floor_id',
     });
     writeCache(CACHE_KEY_ALLCOMPS, rows);
   } catch (/** @type {any} */ err) {

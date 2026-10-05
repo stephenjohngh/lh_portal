@@ -46,10 +46,10 @@ const FIXTURE = {
   building_systems:[{ id: 'sys1', presentation_order: 1 }],
   component_types: [{ id: 'ty1', code: 'fd', presentation_order: 1 }],
   type_attributes: [{ id: 'at1', component_type_id: 'ty1', name: 'Fire rating', display_type: 'text', presentation_order: 1 }],
-  plans:           [{ id: 'p1', floor_id: 'f1', image_url: 'img' }],
+  schematics:      [{ id: 'p1', floor_id: 'f1', image_url: 'img' }],
   components:      [{ id: 'c1', floor_id: 'f1', type_code: 'fd', asset_id: 'A1', status: 'ok' }],
   spaces:          [],
-  plan_annotations:[],
+  schematic_annotations:[],
   component_attributes: [{ id: 'ca1', component_id: 'c1', type_attribute_id: 'at1', value: 'FD30' }],
   __inspections:   [{ component_id: 'c1', inspection_result: 'ok' }],
 };

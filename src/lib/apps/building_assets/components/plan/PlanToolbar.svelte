@@ -36,7 +36,7 @@
   ];
 
   // Spaces, scale and annotations write admin-only tables (spaces / plan_scale /
-  // plan_annotations RLS). Only offer those modes to admins — editors get view +
+  // schematic_annotations RLS). Only offer those modes to admins — editors get view +
   // component placement. Previously all five showed to editors, whose draws then
   // failed silently at RLS.
   const ADMIN_ONLY_MODES = new Set(['space', 'scale', 'annotation']);

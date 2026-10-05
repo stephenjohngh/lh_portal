@@ -12,10 +12,10 @@ const annName = a => (a?.text ? a.text.slice(0, 60) : a?.id || 'annotation');
 // Factory — call once at store creation time.
 export function createAnnotationActions(update) {
 
-  // fields: { plan_id, floor_id, text, x_position, y_position, font_size, colour, bold }
+  // fields: { schematic_id, floor_id, text, x_position, y_position, font_size, colour, bold }
   async function createAnnotation(fields) {
     const userId = requireUserId();
-    const row = await api.create('plan_annotations', { ...fields, created_by: userId });
+    const row = await api.create('schematic_annotations', { ...fields, created_by: userId });
     update(s => ({ ...s, annotations: [...s.annotations, row] }));
     logAudit('create', 'annotation', row.id, annName(row),
       { ...AUDIT_OPTS, afterData: row });
@@ -24,7 +24,7 @@ export function createAnnotationActions(update) {
 
   async function updateAnnotation(id, fields) {
     const userId = requireUserId();
-    const row = await api.update('plan_annotations', id, { ...fields, updated_by: userId });
+    const row = await api.update('schematic_annotations', id, { ...fields, updated_by: userId });
     update(s => ({
       ...s,
       annotations: s.annotations.map(a => a.id === id ? { ...a, ...row } : a)
@@ -36,7 +36,7 @@ export function createAnnotationActions(update) {
 
   async function moveAnnotation(id, x, y) {
     const userId = requireUserId();
-    await api.update('plan_annotations', id, {
+    await api.update('schematic_annotations', id, {
       x_position: x,
       y_position: y,
       updated_by: userId
@@ -52,7 +52,7 @@ export function createAnnotationActions(update) {
   async function deleteAnnotation(id) {
     let before = null;
     update(s => { before = s.annotations.find(a => a.id === id) ?? null; return s; });
-    await api.delete('plan_annotations', id);
+    await api.delete('schematic_annotations', id);
     update(s => ({ ...s, annotations: s.annotations.filter(a => a.id !== id) }));
     logAudit('delete', 'annotation', id, annName(before),
       { ...AUDIT_OPTS, beforeData: before });

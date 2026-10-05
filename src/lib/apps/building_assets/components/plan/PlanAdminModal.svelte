@@ -46,7 +46,7 @@
   // Components on the source plan, and the distinct types among them (with
   // counts) — drives the "component type to copy" dropdown in copy/import modes.
   $: sourcePlanComponents = (mode === 'copy' || mode === 'import') && plan
-    ? $buildingAssetsStore.components.filter(c => c.plan_id === plan.id)
+    ? $buildingAssetsStore.components.filter(c => c.schematic_id === plan.id)
     : [];
   $: sourceTypeOptions = [...new Set(sourcePlanComponents.map(c => c.type_code))]
     .map(code => ({
@@ -58,7 +58,7 @@
 
   // Spaces on the source plan — drives the count hint in "Copy Spaces to Plan".
   $: sourcePlanSpaces = mode === 'importSpaces' && plan
-    ? $buildingAssetsStore.spaces.filter(sp => sp.plan_id === plan.id)
+    ? $buildingAssetsStore.spaces.filter(sp => sp.schematic_id === plan.id)
     : [];
 
   let saving     = false;
@@ -67,7 +67,7 @@
 
   // Count of components that will be removed alongside the plan
   $: planComponentCount = plan
-    ? $buildingAssetsStore.components.filter(c => c.plan_id === plan.id).length
+    ? $buildingAssetsStore.components.filter(c => c.schematic_id === plan.id).length
     : 0;
 
   // Reset form state on every false → true transition of `show`, plus when

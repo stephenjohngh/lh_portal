@@ -33,7 +33,7 @@
 
   // -- Edit state (initialised from props) -----------------------------
   let selectedFloorId    = component.floor_id      ?? '';
-  let planId             = component.plan_id        ?? '';
+  let planId             = component.schematic_id        ?? '';
   let selectedTypeId     = typeByCode(types, component.type_code)?.id ?? '';
   let label              = component.label          ?? '';
   let assetId            = component.asset_id       ?? '';
@@ -59,7 +59,7 @@
   $: if (component.id !== loadedId) {
     loadedId           = component.id;
     selectedFloorId    = component.floor_id             ?? '';
-    planId             = component.plan_id              ?? '';
+    planId             = component.schematic_id              ?? '';
     selectedTypeId     = typeByCode(types, component.type_code)?.id ?? '';
     label              = component.label                ?? '';
     assetId            = component.asset_id             ?? '';
@@ -109,7 +109,7 @@
   // including manual pins. Reflects the SAVED position — edits show after Save.
   $: componentSpaces = component
     ? spacesForComponent(component, $buildingAssetsStore.spaces ?? [], $buildingAssetsStore.spaceOverrides ?? [], {
-        AR: plans.find(p => p.id === component.plan_id)?.image_aspect_ratio ?? 1,
+        AR: plans.find(p => p.id === component.schematic_id)?.image_aspect_ratio ?? 1,
       })
     : [];
 
@@ -151,7 +151,7 @@
     try {
       const fields = {
         floor_id:             selectedFloorId || null,
-        plan_id:              planId          || null,
+        schematic_id:              planId          || null,
         type_code:            selectedType?.code ?? component.type_code,
         primary_attribute:    primaryAttr     || null,
         label:                label.trim()    || null,
@@ -331,7 +331,7 @@
     </section>
 
     <!-- -- Spaces (derived membership) ----------------------------- -->
-    {#if component.plan_id || componentSpaces.length > 0}
+    {#if component.schematic_id || componentSpaces.length > 0}
       <section>
         <p class={sec}>Spaces</p>
         {#if componentSpaces.length > 0}

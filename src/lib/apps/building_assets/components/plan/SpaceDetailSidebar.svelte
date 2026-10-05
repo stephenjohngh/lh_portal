@@ -143,7 +143,7 @@
   // Components eligible to pin: on this plan (or unplaced), not already a member.
   $: pinCandidates = space
     ? $buildingAssetsStore.components
-        .filter(c => (c.plan_id === space.plan_id || c.plan_id == null)
+        .filter(c => (c.schematic_id === space.schematic_id || c.schematic_id == null)
                   && !memberIds.has(c.id) && !excludedIds.includes(c.id))
         .slice(0, 200)
     : [];

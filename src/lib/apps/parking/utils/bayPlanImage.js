@@ -133,9 +133,9 @@ export async function downloadBayPlan(state) {
   for (const floor of state.floors) {
     const bays = state.bays.filter(b => b.floor_id === floor.id);
     if (!bays.length) continue;
-    const planIds = new Set(bays.map(b => b.plan_id));
+    const planIds = new Set(bays.map(b => b.schematic_id));
     const plan = state.plans.find(p => planIds.has(p.id)) ?? state.plans.find(p => p.floor_id === floor.id);
-    const img = await drawBayPlanImage(plan, bays.filter(b => b.plan_id === plan?.id), state.holders, state.agreements);
+    const img = await drawBayPlanImage(plan, bays.filter(b => b.schematic_id === plan?.id), state.holders, state.agreements);
     if (img) levels.push({ name: floor.name, imageBase64: img.base64, width: img.width, height: img.height });
   }
   if (!levels.length) throw new Error('No basement schematic could be drawn. Check the schematics have images.');

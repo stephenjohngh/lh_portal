@@ -1,7 +1,7 @@
 <!-- src/lib/apps/building_assets/components/QuickAddForm.svelte -->
 <!-- Minimal inline form for placing a new component from a plan-click.
      Only captures type, label, asset_id, and the primary attribute.
-     floor_id / plan_id / x_position / y_position are injected by PlanViewTab. -->
+     floor_id / schematic_id / x_position / y_position are injected by PlanViewTab. -->
 <script>
   import { createEventDispatcher }    from 'svelte';
   import { buildingAssetsStore }      from '../stores/buildingAssetsStore.js';

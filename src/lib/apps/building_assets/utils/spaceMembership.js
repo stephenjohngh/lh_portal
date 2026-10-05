@@ -7,7 +7,7 @@
 // the space polygon OR within `tolerance` of an edge. The tolerance is what puts
 // a boundary component (a door drawn on a shared wall) in BOTH adjacent spaces.
 //
-// Membership is plan-scoped (same plan_id) and can be overridden
+// Membership is plan-scoped (same schematic_id) and can be overridden
 // (space_component_overrides): effective = (geometric ∪ include) − exclude.
 // `overrides` defaults to [] so this works before that table exists (P1).
 //
@@ -40,7 +40,7 @@ function isMember(component, space, overrides, AR, tolerance) {
   const mode = overrideMode(overrides, space.id, component.id);
   if (mode === 'exclude') return false;
   if (mode === 'include') return true;
-  return component.plan_id === space.plan_id && markerWithinSpace(component, space, AR, tolerance);
+  return component.schematic_id === space.schematic_id && markerWithinSpace(component, space, AR, tolerance);
 }
 
 /**
@@ -95,7 +95,7 @@ export function componentSpaceRefs(components = [], spaces = [], overrides = [],
   ]));
   const byId = new Map();
   for (const space of spaces) {
-    const AR    = planAR.get(space.plan_id) ?? 1;
+    const AR    = planAR.get(space.schematic_id) ?? 1;
     const ref   = buildSpaceRef(space, floors);
     const entry = space.name ? `${ref} ${space.name}` : ref;   // "Reference + name" for reports
     for (const c of componentsInSpace(space, components, overrides, { AR, tolerance: opts.tolerance })) {
@@ -124,7 +124,7 @@ export function componentSpaceIdMap(components = [], spaces = [], overrides = []
   ]));
   const byId = new Map();
   for (const space of spaces) {
-    const AR = planAR.get(space.plan_id) ?? 1;
+    const AR = planAR.get(space.schematic_id) ?? 1;
     for (const c of componentsInSpace(space, components, overrides, { AR, tolerance: opts.tolerance })) {
       let set = byId.get(c.id);
       if (!set) { set = new Set(); byId.set(c.id, set); }

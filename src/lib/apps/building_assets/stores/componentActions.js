@@ -35,7 +35,7 @@ export function createComponentActions(update) {
       // getAll paginates by the unique PK (id) for stable pages — bulk imports
       // share created_at timestamps, so paging by those would skip/duplicate
       // boundary rows. The desired display order is restored client-side below.
-      const compOpts = planId ? { filters: { plan_id: planId } } : {};
+      const compOpts = planId ? { filters: { schematic_id: planId } } : {};
 
       const [components, allAttrs, allLinks] = await Promise.all([
         api.getAll('components', compOpts),
@@ -86,7 +86,7 @@ export function createComponentActions(update) {
   }
 
   // -- Create a component with its attribute values ----------------------
-  // fields:     { plan_id, type_code, primary_attribute, label, asset_id,
+  // fields:     { schematic_id, type_code, primary_attribute, label, asset_id,
   //               x_position, y_position, linked_component_ref? }
   // attrValues: [{ type_attribute_id, value }]
   async function createComponent(fields, attrValues) {
@@ -153,7 +153,7 @@ export function createComponentActions(update) {
     const rx = Math.round(x * 1000) / 1000;
     const ry = Math.round(y * 1000) / 1000;
     await api.update('components', id, {
-      plan_id:    planId,
+      schematic_id:    planId,
       x_position: rx,
       y_position: ry,
       updated_by: userId
@@ -161,7 +161,7 @@ export function createComponentActions(update) {
     update(s => ({
       ...s,
       components: s.components.map(c =>
-        c.id === id ? { ...c, plan_id: planId, x_position: rx, y_position: ry } : c
+        c.id === id ? { ...c, schematic_id: planId, x_position: rx, y_position: ry } : c
       )
     }));
     logger('Moved component:', id, `→ plan:${planId} (${x.toFixed(3)}, ${y.toFixed(3)})`);

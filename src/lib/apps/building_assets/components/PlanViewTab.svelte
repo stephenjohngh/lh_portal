@@ -130,8 +130,8 @@
   $: plansForFloor  = selectedFloorId ? plans.filter(p => p.floor_id === selectedFloorId) : [];
   $: selectedPlan   = plans.find(p => p.id === selectedPlanId) ?? null;
   $: selectedFloor  = floors.find(f => f.id === selectedFloorId) ?? null;
-  $: planComponents = selectedPlanId ? components.filter(c => c.plan_id === selectedPlanId) : [];
-  $: planSpaces     = selectedPlanId ? spaces.filter(s => s.plan_id === selectedPlanId) : [];
+  $: planComponents = selectedPlanId ? components.filter(c => c.schematic_id === selectedPlanId) : [];
+  $: planSpaces     = selectedPlanId ? spaces.filter(s => s.schematic_id === selectedPlanId) : [];
 
   // Substitute the live editingPolygon while vertex dragging / moving, so
   // PlanCanvas renders it immediately without waiting for a DB round-trip.
@@ -144,14 +144,14 @@
 
   // Apply annotation drag-position overrides reactively.
   $: planAnnotations = selectedPlanId
-    ? annotations.filter(a => a.plan_id === selectedPlanId).map(a => {
+    ? annotations.filter(a => a.schematic_id === selectedPlanId).map(a => {
         const ov = $annotationDragPos[a.id];
         return ov ? { ...a, x_position: ov.x, y_position: ov.y } : a;
       })
     : [];
 
   $: unplacedComponents = selectedFloorId
-    ? components.filter(c => c.floor_id === selectedFloorId && !c.plan_id) : [];
+    ? components.filter(c => c.floor_id === selectedFloorId && !c.schematic_id) : [];
 
   // -- Derived: filters ----------------------------------------------
   $: visibleComponents = planComponents.filter(c => {
@@ -205,10 +205,10 @@
   $: if (!viewRestored && autoSelected && !store.loading && !store.loadingComponents) {
     if (savedView && selectedPlanId) {
       if (savedView.selMode === 'detail' && savedView.selComponentId) {
-        const c = components.find(x => x.id === savedView.selComponentId && x.plan_id === selectedPlanId);
+        const c = components.find(x => x.id === savedView.selComponentId && x.schematic_id === selectedPlanId);
         if (c) { selectedComponent = c; selectedSpace = null; sidebarMode = 'detail'; }
       } else if (savedView.selMode === 'space-detail' && savedView.selSpaceId) {
-        const sp = spaces.find(x => x.id === savedView.selSpaceId && x.plan_id === selectedPlanId);
+        const sp = spaces.find(x => x.id === savedView.selSpaceId && x.schematic_id === selectedPlanId);
         if (sp) { selectedSpace = sp; selectedComponent = null; sidebarMode = 'space-detail'; }
       }
     }
@@ -378,7 +378,7 @@
       await buildingAssetsStore.createComponent({
         ...fields,
         floor_id:   selectedFloorId,
-        plan_id:    selectedPlanId,
+        schematic_id:    selectedPlanId,
         x_position: Math.round((newPos?.x ?? 0.5) * 1000) / 1000,
         y_position: Math.round((newPos?.y ?? 0.5) * 1000) / 1000,
       }, attrValues);
@@ -394,7 +394,7 @@
     saving = true; errorMsg = '';
     try {
       const newSpace = await buildingAssetsStore.createSpace({
-        plan_id:    selectedPlanId,
+        schematic_id:    selectedPlanId,
         floor_id:   selectedFloorId || null,
         label:      drawingSpaceLabel,        // multi-line plan display
         name:       drawingSpaceName,         // store derives from label when blank
@@ -457,7 +457,7 @@
   async function handleCreateAnnotation(x, y) {
     try {
       const ann = await buildingAssetsStore.createAnnotation({
-        plan_id: selectedPlanId, floor_id: selectedFloorId || null,
+        schematic_id: selectedPlanId, floor_id: selectedFloorId || null,
         text: 'New note', x_position: x, y_position: y,
         font_size: 'sm', colour: 'fbbf24', bold: false,
       });

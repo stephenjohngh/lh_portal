@@ -14,7 +14,7 @@ const floors = [
 const plans = [{ id: 'pL', image_aspect_ratio: 1, scale_ref: { x1: 0, y1: 0, x2: 0.1, y2: 0, metres: 2 } }];
 const rect = [{ x: 0, y: 0 }, { x: 0.1, y: 0 }, { x: 0.1, y: 0.2 }, { x: 0, y: 0.2 }];
 const space = (id, over = {}) => ({
-  id, kind: 'slot', floor_id: 'L', plan_id: 'pL', type: 'Car', assigned_id: null, polygon: rect, ...over,
+  id, kind: 'slot', floor_id: 'L', schematic_id: 'pL', type: 'Car', assigned_id: null, polygon: rect, ...over,
 });
 
 describe('mergeBays', () => {

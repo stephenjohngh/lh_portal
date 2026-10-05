@@ -81,9 +81,9 @@ describe('load', () => {
     h.setTables({
       facilities: [{ id: 'fac1' }],
       floors:     [{ id: 'f1', level_order: 1 }],
-      plans:      [{ id: 'p1', building: 'A' }],
+      schematics:      [{ id: 'p1', building: 'A' }],
       spaces:     [{ id: 'sp1' }],
-      plan_annotations: [{ id: 'an1' }],
+      schematic_annotations: [{ id: 'an1' }],
     });
     await store.load();
     const s = get(store);
@@ -95,7 +95,7 @@ describe('load', () => {
   });
 
   // (The old "degrades gracefully when the spaces table is unavailable" test was
-  // removed: spaces/plan_annotations migrations are applied on every environment,
+  // removed: spaces/schematic_annotations migrations are applied on every environment,
   // so those fetches now load in the main Promise.all rather than a try/catch.)
 });
 
@@ -141,7 +141,7 @@ describe('updateComponent / moveComponent / deleteComponent', () => {
     await loadComps([{ id: 'c1' }]);
     await store.moveComponent('c1', 'p9', 0.123456, 0.654321);
     const arg = h.api.update.mock.calls.find(c => c[0] === 'components')[2];
-    expect(arg).toMatchObject({ plan_id: 'p9', x_position: 0.123, y_position: 0.654 });
+    expect(arg).toMatchObject({ schematic_id: 'p9', x_position: 0.123, y_position: 0.654 });
     expect(get(store).components[0].x_position).toBe(0.123);
   });
 
@@ -224,7 +224,7 @@ describe('component links', () => {
 describe('spaceActions', () => {
   it('createSpace rounds the polygon, strips the colour hash, keeps the label whitespace + derives the name', async () => {
     const space = await store.createSpace({
-      plan_id: 'p1', label: '  Indented\nRoom', colour: '#3c9683',
+      schematic_id: 'p1', label: '  Indented\nRoom', colour: '#3c9683',
       polygon: [{ x: 0.111111, y: 0.999999 }, { x: 0.5, y: 0.5 }],
     });
     const arg = h.api.create.mock.calls.find(c => c[0] === 'spaces')[1];
@@ -239,7 +239,7 @@ describe('spaceActions', () => {
   it('createSpaces inserts the whole row in one call, as Parking bays, and adds them all', async () => {
     h.api.createMany.mockClear();
     const made = await store.createSpaces(['1', '2', '3'].map(n => ({
-      plan_id: 'p1', floor_id: 'L', kind: 'slot', type: 'Car', assigned_id: n, label: n,
+      schematic_id: 'p1', floor_id: 'L', kind: 'slot', type: 'Car', assigned_id: n, label: n,
       colour: '#22c55e', polygon: [{ x: 0.1234, y: 0.2 }],
     })));
     const calls = h.api.createMany.mock.calls.filter(c => c[0] === 'spaces');
@@ -251,7 +251,7 @@ describe('spaceActions', () => {
   });
 
   it('deleteSpace removes it from state', async () => {
-    const space = await store.createSpace({ plan_id: 'p1', name: 'R', colour: 'none', polygon: [] });
+    const space = await store.createSpace({ schematic_id: 'p1', name: 'R', colour: 'none', polygon: [] });
     await store.deleteSpace(space.id);
     expect(h.api.delete).toHaveBeenCalledWith('spaces', space.id);
     expect(get(store).spaces.find(s => s.id === space.id)).toBeUndefined();
@@ -261,14 +261,14 @@ describe('spaceActions', () => {
 // ── annotationActions ────────────────────────────────────────────────────────────
 describe('annotationActions', () => {
   it('createAnnotation appends with the creator stamped', async () => {
-    const ann = await store.createAnnotation({ plan_id: 'p1', text: 'Boiler room', x_position: 0.2, y_position: 0.3 });
-    const arg = h.api.create.mock.calls.find(c => c[0] === 'plan_annotations')[1];
+    const ann = await store.createAnnotation({ schematic_id: 'p1', text: 'Boiler room', x_position: 0.2, y_position: 0.3 });
+    const arg = h.api.create.mock.calls.find(c => c[0] === 'schematic_annotations')[1];
     expect(arg).toMatchObject({ text: 'Boiler room', created_by: 'u1' });
     expect(get(store).annotations).toContainEqual(ann);
   });
 
   it('moveAnnotation patches the position in state', async () => {
-    const ann = await store.createAnnotation({ plan_id: 'p1', text: 'X', x_position: 0, y_position: 0 });
+    const ann = await store.createAnnotation({ schematic_id: 'p1', text: 'X', x_position: 0, y_position: 0 });
     await store.moveAnnotation(ann.id, 0.7, 0.8);
     const moved = get(store).annotations.find(a => a.id === ann.id);
     expect(moved).toMatchObject({ x_position: 0.7, y_position: 0.8 });
@@ -334,7 +334,7 @@ describe('planActions', () => {
     const file = { name: 'floor.png' };
     const plan = await store.createPlan({ building: 'Block A' }, file);
     expect(h.supabase.storage.from).toHaveBeenCalledWith('plan-images');
-    const arg = h.api.create.mock.calls.find(c => c[0] === 'plans')[1];
+    const arg = h.api.create.mock.calls.find(c => c[0] === 'schematics')[1];
     expect(arg).toMatchObject({ building: 'Block A', image_url: 'https://cdn/plan.png', created_by: 'u1' });
     expect(get(store).plans).toContainEqual(plan);
   });
@@ -342,33 +342,33 @@ describe('planActions', () => {
   it('createPlan defaults to official, non-PII when no classification is given', async () => {
     const file = { name: 'floor.png' };
     await store.createPlan({ building: 'Block A' }, file);
-    const arg = h.api.create.mock.calls.find(c => c[0] === 'plans')[1];
+    const arg = h.api.create.mock.calls.find(c => c[0] === 'schematics')[1];
     expect(arg).toMatchObject({ security_classification: 'official', contains_pii: false });
   });
 
   it('createPlan passes through an explicit official_sensitive classification', async () => {
     const file = { name: 'floor.png' };
     await store.createPlan({ building: 'Block A', security_classification: 'official_sensitive', contains_pii: true }, file);
-    const arg = h.api.create.mock.calls.find(c => c[0] === 'plans')[1];
+    const arg = h.api.create.mock.calls.find(c => c[0] === 'schematics')[1];
     expect(arg).toMatchObject({ security_classification: 'official_sensitive', contains_pii: true });
   });
 
   it('copyPlan inherits the source plan\'s classification rather than resetting it', async () => {
     h.setTables({
-      plans: [{ id: 'p1', building: 'A', floor_id: 'f1', image_url: 'img', name: 'Src',
+      schematics: [{ id: 'p1', building: 'A', floor_id: 'f1', image_url: 'img', name: 'Src',
                 security_classification: 'official_sensitive', contains_pii: true }],
       floors: [{ id: 'f1', short_name: 'L1' }, { id: 'f2', short_name: 'L2' }],
     });
     await store.load();
     await store.copyPlan('p1', { name: 'Copy', floor_id: 'f2' });
-    const arg = h.api.create.mock.calls.find(c => c[0] === 'plans')[1];
+    const arg = h.api.create.mock.calls.find(c => c[0] === 'schematics')[1];
     expect(arg).toMatchObject({ security_classification: 'official_sensitive', contains_pii: true });
   });
 
   it('updatePlanScale writes the scale ref + aspect ratio', async () => {
     await loadCompsPlan([{ id: 'p1', building: 'A' }]);
     await store.updatePlanScale('p1', { x1: 0, y1: 0, x2: 1, y2: 1, metres: 5 }, 1.5);
-    const arg = h.api.update.mock.calls.find(c => c[0] === 'plans')[2];
+    const arg = h.api.update.mock.calls.find(c => c[0] === 'schematics')[2];
     expect(arg).toMatchObject({ image_aspect_ratio: 1.5, updated_by: 'u1' });
     expect(arg.scale_ref.metres).toBe(5);
   });
@@ -376,17 +376,17 @@ describe('planActions', () => {
   it('replacePlanImage clears the old scale + aspect ratio', async () => {
     await loadCompsPlan([{ id: 'p1', building: 'A' }]);
     await store.replacePlanImage('p1', { name: 'new.png' });
-    const arg = h.api.update.mock.calls.find(c => c[0] === 'plans')[2];
+    const arg = h.api.update.mock.calls.find(c => c[0] === 'schematics')[2];
     expect(arg).toMatchObject({ image_url: 'https://cdn/plan.png', scale_ref: null, image_aspect_ratio: null });
   });
 
   it('deletePlan removes the plan components first, then the plan, and prunes state', async () => {
-    h.setTables({ plans: [{ id: 'p1', building: 'A' }] });
+    h.setTables({ schematics: [{ id: 'p1', building: 'A' }] });
     await store.load();
-    await loadComps([{ id: 'c1', plan_id: 'p1' }, { id: 'c2', plan_id: 'other' }]);
+    await loadComps([{ id: 'c1', schematic_id: 'p1' }, { id: 'c2', schematic_id: 'other' }]);
     await store.deletePlan('p1');
-    expect(h.api.deleteMany).toHaveBeenCalledWith('components', { plan_id: 'p1' });
-    expect(h.api.delete).toHaveBeenCalledWith('plans', 'p1');
+    expect(h.api.deleteMany).toHaveBeenCalledWith('components', { schematic_id: 'p1' });
+    expect(h.api.delete).toHaveBeenCalledWith('schematics', 'p1');
     const s = get(store);
     expect(s.plans).toHaveLength(0);
     expect(s.components.map(c => c.id)).toEqual(['c2']);     // only the non-plan component remains
@@ -395,9 +395,9 @@ describe('planActions', () => {
   // Deleting a plan deletes its components, whose inspections' photos were
   // left in the table and in Drive (2026-09-27).
   it("deletePlan purges its components' inspection photos before deleting them", async () => {
-    h.setTables({ plans: [{ id: 'p1', building: 'A' }] });
+    h.setTables({ schematics: [{ id: 'p1', building: 'A' }] });
     await store.load();
-    await loadComps([{ id: 'c1', plan_id: 'p1' }]);
+    await loadComps([{ id: 'c1', schematic_id: 'p1' }]);
     h.setTables({ components: [{ id: 'c1' }], component_inspections: [{ id: 'i1' }] });
     const order = [];
     h.purgeAttachments.mockImplementationOnce((t, ids) => { order.push(`photos ${t}:${ids.join(',')}`); return Promise.resolve(); });
@@ -408,19 +408,19 @@ describe('planActions', () => {
   });
 
   it('deletePlan keeps the plan and its components when a photo cannot be deleted', async () => {
-    h.setTables({ plans: [{ id: 'p1', building: 'A' }] });
+    h.setTables({ schematics: [{ id: 'p1', building: 'A' }] });
     await store.load();
-    await loadComps([{ id: 'c1', plan_id: 'p1' }]);
+    await loadComps([{ id: 'c1', schematic_id: 'p1' }]);
     h.purgeAttachments.mockRejectedValueOnce(new Error('1 of 1 photo(s) could not be deleted from storage'));
     await expect(store.deletePlan('p1')).rejects.toThrow(/could not be deleted/);
     expect(h.api.deleteMany).not.toHaveBeenCalled();
-    expect(h.api.delete).not.toHaveBeenCalledWith('plans', 'p1');
+    expect(h.api.delete).not.toHaveBeenCalledWith('schematics', 'p1');
     expect(get(store).plans).toHaveLength(1);
   });
 
   it('copyPlan duplicates the source components onto a new plan and reports the count', async () => {
     h.setTables({
-      plans:  [{ id: 'p1', building: 'A', floor_id: 'f1', image_url: 'img', name: 'Src' }],
+      schematics:  [{ id: 'p1', building: 'A', floor_id: 'f1', image_url: 'img', name: 'Src' }],
       floors: [{ id: 'f1', short_name: 'L1' }, { id: 'f2', short_name: 'L2' }],
       components: [{ id: 'sc1', type_code: 'FD', asset_id: 'A1', floor_id: 'f1' }],
     });
@@ -429,14 +429,14 @@ describe('planActions', () => {
     expect(copied).toBe(1);
     // a new component was created on the new plan, assigned to the new floor
     const compCreate = h.api.create.mock.calls.find(c => c[0] === 'components')[1];
-    expect(compCreate).toMatchObject({ plan_id: plan.id, floor_id: 'f2', type_code: 'FD' });
+    expect(compCreate).toMatchObject({ schematic_id: plan.id, floor_id: 'f2', type_code: 'FD' });
   });
 
   // ⛔ A failed read of the links used to be caught and "skipped", so the copy
   // succeeded with every component's links gone (2026-10-03, §6ccc item 2).
   it('copyPlan refuses when the links cannot be read, before creating any component', async () => {
     h.setTables({
-      plans:  [{ id: 'p1', building: 'A', floor_id: 'f1', image_url: 'img', name: 'Src' }],
+      schematics:  [{ id: 'p1', building: 'A', floor_id: 'f1', image_url: 'img', name: 'Src' }],
       floors: [{ id: 'f1', short_name: 'L1' }, { id: 'f2', short_name: 'L2' }],
       components: [{ id: 'sc1', type_code: 'FD', asset_id: 'A1', floor_id: 'f1' }],
     });
@@ -455,7 +455,7 @@ describe('planActions', () => {
 
   it('copyPlan with a typeCode copies only components of that type', async () => {
     h.setTables({
-      plans:  [{ id: 'p1', building: 'A', floor_id: 'f1', image_url: 'img', name: 'Src' }],
+      schematics:  [{ id: 'p1', building: 'A', floor_id: 'f1', image_url: 'img', name: 'Src' }],
       floors: [{ id: 'f1', short_name: 'L1' }, { id: 'f2', short_name: 'L2' }],
       components: [
         { id: 'sc1', type_code: 'FD', asset_id: 'A1', floor_id: 'f1' },
@@ -473,6 +473,6 @@ describe('planActions', () => {
 
 // Helper: seed plans into state via load (used by plan-update tests).
 async function loadCompsPlan(plans) {
-  h.setTables({ plans });
+  h.setTables({ schematics: plans });
   await store.load();
 }

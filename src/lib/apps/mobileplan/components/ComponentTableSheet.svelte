@@ -110,7 +110,7 @@
     matchesSearch([c.asset_id, c.label, c.notes, c.type_code, getType(c.type_code)?.name], query));
 
   function selectComponent(c) {
-    if (c.plan_id != null) dispatch('navigateTo', c);
+    if (c.schematic_id != null) dispatch('navigateTo', c);
     else                   dispatch('openDetail', c);
     dispatch('close');
   }

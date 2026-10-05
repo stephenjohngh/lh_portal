@@ -1,13 +1,13 @@
 <!-- src/lib/apps/inspection/components/InspectionComponentPlanViewer.svelte -->
 <!-- Modal showing current component's location on the floor plan image.
-     Only shown when currentComponent.plan_id is set (component is placed). -->
+     Only shown when currentComponent.schematic_id is set (component is placed). -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { drawComponentOnPlan } from '#lib/utils/planMarker.js';
 
   const dispatch = createEventDispatcher();
 
-  export let component;   // Current component — needs plan_id, x_position, y_position, asset_id
+  export let component;   // Current component — needs schematic_id, x_position, y_position, asset_id
   export let plan;        // Plan object with image_url
   export let componentRef = '';   // canonical ref "7/L/02" (same as the card/inspect)
   export let type         = null; // component_types row — for the type name

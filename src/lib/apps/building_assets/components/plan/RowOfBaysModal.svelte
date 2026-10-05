@@ -73,7 +73,7 @@
     let created = [];
     try {
       created = await buildingAssetsStore.createSpaces(bays.map((polygon, i) => ({
-        plan_id: outline.plan_id, floor_id: outline.floor_id, polygon,
+        schematic_id: outline.schematic_id, floor_id: outline.floor_id, polygon,
         kind: 'slot', type: form.size, assigned_id: numbers[i], label: numbers[i],
         colour: outline.colour, show_label: true,
       })));

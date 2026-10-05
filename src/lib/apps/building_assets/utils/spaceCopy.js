@@ -23,7 +23,7 @@ export function targetSpaceGuards(allSpaces = [], targetPlanId, targetFloorId) {
     if (sp.floor_id === targetFloorId && sp.assigned_id) {
       takenRefs.add(`${sp.kind ?? 'space'}|${sp.assigned_id}`);
     }
-    if (sp.plan_id === targetPlanId) existingSig.add(JSON.stringify(sp.polygon));
+    if (sp.schematic_id === targetPlanId) existingSig.add(JSON.stringify(sp.polygon));
   }
   return { takenRefs, existingSig };
 }
@@ -44,7 +44,7 @@ export function buildSpaceCopyRows(srcSpaces = [], opts) {
       const assignedId = (sp.assigned_id && !takenRefs.has(`${kind}|${sp.assigned_id}`))
         ? sp.assigned_id : null;
       return {
-        plan_id:     planId,
+        schematic_id:     planId,
         floor_id:    floorId,
         name:        sp.name,
         label:       sp.label ?? sp.name ?? null,

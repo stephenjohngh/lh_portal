@@ -121,7 +121,7 @@
   $: shown = filterBays(onLevel, { size, state: bayState, q });
   $: summary = baySummary(onLevel);
   $: plan = (() => {
-    const ids = new Set(onLevel.map(b => b.plan_id));
+    const ids = new Set(onLevel.map(b => b.schematic_id));
     return state.plans.find(p => ids.has(p.id)) ?? state.plans.find(p => p.floor_id === floorId) ?? null;
   })();
   $: selected = state.bays.find(b => b.space_id === selectedSpaceId) ?? null;

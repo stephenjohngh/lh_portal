@@ -926,7 +926,7 @@ export type Database = {
       components: {
         Row: {
           id: string
-          plan_id: string | null
+          schematic_id: string | null
           type_code: string
           primary_attribute: string | null
           label: string | null
@@ -948,7 +948,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          plan_id?: string | null
+          schematic_id?: string | null
           type_code: string
           primary_attribute?: string | null
           label?: string | null
@@ -970,7 +970,7 @@ export type Database = {
         }
         Update: {
           id?: string
-          plan_id?: string | null
+          schematic_id?: string | null
           type_code?: string
           primary_attribute?: string | null
           label?: string | null
@@ -992,10 +992,10 @@ export type Database = {
         }
         Relationships: [
             {
-              foreignKeyName: "components_plan_id_fkey"
-              columns: ["plan_id"]
+              foreignKeyName: "components_schematic_id_fkey"
+              columns: ["schematic_id"]
               isOneToOne: false
-              referencedRelation: "plans"
+              referencedRelation: "schematics"
               referencedColumns: ["id"]
             },
             {
@@ -3961,10 +3961,10 @@ export type Database = {
             }
           ]
       }
-      plan_annotations: {
+      schematic_annotations: {
         Row: {
           id: string
-          plan_id: string
+          schematic_id: string
           floor_id: string | null
           text: string
           x_position: number
@@ -3980,7 +3980,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          plan_id: string
+          schematic_id: string
           floor_id?: string | null
           text: string
           x_position?: number
@@ -3996,7 +3996,7 @@ export type Database = {
         }
         Update: {
           id?: string
-          plan_id?: string
+          schematic_id?: string
           floor_id?: string | null
           text?: string
           x_position?: number
@@ -4012,28 +4012,28 @@ export type Database = {
         }
         Relationships: [
             {
-              foreignKeyName: "plan_annotations_plan_id_fkey"
-              columns: ["plan_id"]
+              foreignKeyName: "schematic_annotations_schematic_id_fkey"
+              columns: ["schematic_id"]
               isOneToOne: false
-              referencedRelation: "plans"
+              referencedRelation: "schematics"
               referencedColumns: ["id"]
             },
             {
-              foreignKeyName: "plan_annotations_floor_id_fkey"
+              foreignKeyName: "schematic_annotations_floor_id_fkey"
               columns: ["floor_id"]
               isOneToOne: false
               referencedRelation: "floors"
               referencedColumns: ["id"]
             },
             {
-              foreignKeyName: "plan_annotations_created_by_fkey"
+              foreignKeyName: "schematic_annotations_created_by_fkey"
               columns: ["created_by"]
               isOneToOne: false
               referencedRelation: "profiles"
               referencedColumns: ["id"]
             },
             {
-              foreignKeyName: "plan_annotations_updated_by_fkey"
+              foreignKeyName: "schematic_annotations_updated_by_fkey"
               columns: ["updated_by"]
               isOneToOne: false
               referencedRelation: "profiles"
@@ -4324,7 +4324,7 @@ export type Database = {
             }
           ]
       }
-      plans: {
+      schematics: {
         Row: {
           id: string
           name: string
@@ -4384,21 +4384,21 @@ export type Database = {
         }
         Relationships: [
             {
-              foreignKeyName: "plans_created_by_fkey"
+              foreignKeyName: "schematics_created_by_fkey"
               columns: ["created_by"]
               isOneToOne: false
               referencedRelation: "profiles"
               referencedColumns: ["id"]
             },
             {
-              foreignKeyName: "plans_updated_by_fkey"
+              foreignKeyName: "schematics_updated_by_fkey"
               columns: ["updated_by"]
               isOneToOne: false
               referencedRelation: "profiles"
               referencedColumns: ["id"]
             },
             {
-              foreignKeyName: "plans_floor_id_fkey"
+              foreignKeyName: "schematics_floor_id_fkey"
               columns: ["floor_id"]
               isOneToOne: false
               referencedRelation: "floors"
@@ -4571,7 +4571,7 @@ export type Database = {
       spaces: {
         Row: {
           id: string
-          plan_id: string
+          schematic_id: string
           floor_id: string | null
           name: string
           type: string | null
@@ -4590,7 +4590,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          plan_id: string
+          schematic_id: string
           floor_id?: string | null
           name: string
           type?: string | null
@@ -4609,7 +4609,7 @@ export type Database = {
         }
         Update: {
           id?: string
-          plan_id?: string
+          schematic_id?: string
           floor_id?: string | null
           name?: string
           type?: string | null
@@ -4628,10 +4628,10 @@ export type Database = {
         }
         Relationships: [
             {
-              foreignKeyName: "spaces_plan_id_fkey"
-              columns: ["plan_id"]
+              foreignKeyName: "spaces_schematic_id_fkey"
+              columns: ["schematic_id"]
               isOneToOne: false
-              referencedRelation: "plans"
+              referencedRelation: "schematics"
               referencedColumns: ["id"]
             },
             {

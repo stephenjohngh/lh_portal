@@ -70,8 +70,8 @@
     ? null
     : (currentInspection ? (statusBefore[currentComponent.id] ?? null) : currentComponent.status);
   // Plan for the floor-plan overlay — only set when the component is placed on a plan
-  $: currentPlan = currentComponent?.plan_id
-    ? (plans.find(p => p.id === currentComponent.plan_id) ?? null)
+  $: currentPlan = currentComponent?.schematic_id
+    ? (plans.find(p => p.id === currentComponent.schematic_id) ?? null)
     : null;
 
   $: isFirst    = inspectionStore.isAtStartOfBuilding()

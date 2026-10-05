@@ -145,7 +145,7 @@ function createWorksSchedulesStore() {
         // simply absent at the far end — which reads as "no position set"
         // rather than as a missing query.
         select: '*, component:components(id, asset_id, label, type_code, status, '
-              + 'floor_id, plan_id, x_position, y_position)',
+              + 'floor_id, schematic_id, x_position, y_position)',
         filters: { schedule_id: scheduleId },
         orderBy: 'position', ascending: true,
       });

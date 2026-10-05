@@ -53,7 +53,7 @@ const logger = getLogger('inspectionStore');
 // Bump CACHE_VERSION when the cached payload shape changes (forces a fresh fetch
 // rather than restoring a stale shape). Keys are versioned so an old cache is
 // simply never read.
-const CACHE_VERSION      = 1;
+const CACHE_VERSION      = 2;   // 2: plan_id → schematic_id (migration 235)
 const CACHE_KEY_LOAD     = `load_v${CACHE_VERSION}`;         // the hierarchy+components build
 const CACHE_KEY_DEFS     = `definitions_v${CACHE_VERSION}`;  // definitions + scheduleSessions
 const CACHE_KEY_SESSIONS = `sessions_v${CACHE_VERSION}`;     // this user's walk_sessions list
@@ -132,7 +132,7 @@ function audit(eventType, targetType, targetId, targetName, data = {}) {
  *   types: (import('#lib/database.types.ts').Tables<'component_types'> & Loose)[],
  *   attrDefs: Record<string, (import('#lib/database.types.ts').Tables<'type_attributes'> & Loose)[]>,
  *   attrOptions: Record<string, (import('#lib/database.types.ts').Tables<'type_attribute_options'> & Loose)[]>,
- *   plans: (import('#lib/database.types.ts').Tables<'plans'> & Loose)[],
+ *   plans: (import('#lib/database.types.ts').Tables<'schematics'> & Loose)[],
  *   allComponents: Record<string, Component[]>,
  *   allComponentAttrs: Record<string, (import('#lib/database.types.ts').Tables<'component_attributes'> & Loose)[]>,
  *   componentLinks: Record<string, (import('#lib/database.types.ts').Tables<'component_links'> & Loose)[]>,
@@ -252,7 +252,7 @@ function createInspectionStore() {
         api.get('component_types',   { orderBy: 'presentation_order' }),
         api.get('type_attributes',   { orderBy: 'presentation_order' }),
         api.get('type_attribute_options', { orderBy: 'priority_override', ascending: true }),
-        api.get('plans',             { orderBy: 'building', ascending: true }),
+        api.get('schematics',             { orderBy: 'building', ascending: true }),
         // components + component_attributes can exceed PostgREST's 1000-row
         // cap in production — paginate via getAll (pages by id for stability).
         api.getAll('components'),

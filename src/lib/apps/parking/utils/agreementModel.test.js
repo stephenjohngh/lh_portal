@@ -117,7 +117,7 @@ describe('currentAgreement and the allocated state', () => {
     expect(covers(ags[0], '2025-12-31')).toBe(false);
   });
   it('makes a licensed bay "allocated", and leaves a recorded demised bay "belongs to a flat"', () => {
-    const spaces = ['s1', 's3'].map(id => ({ id, kind: 'slot', floor_id: 'L', plan_id: 'p', polygon: [] }));
+    const spaces = ['s1', 's3'].map(id => ({ id, kind: 'slot', floor_id: 'L', schematic_id: 'p', polygon: [] }));
     const rows = [{ id: 'b1', space_id: 's1', tenure: 'licensable' }, { id: 'b3', space_id: 's3', tenure: 'demised', unit_ref: 'Flat 3' }];
     const bays = mergeBays(spaces, rows, [], [], ags, '2026-09-26');
     expect(bays.find(b => b.space_id === 's1')?.state).toBe('allocated');

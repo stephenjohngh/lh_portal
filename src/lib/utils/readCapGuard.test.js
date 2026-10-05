@@ -34,7 +34,7 @@ const REFERENCE = new Set([
   'component_types', 'display_items', 'facilities', 'floors', 'gt_accountable_persons',
   'gt_persons', 'gt_schedule1_categories', 'info_sections', 'maintenance_groups',
   'parking_bays', 'parking_retention_runs', 'parking_tariffs', 'planner_categories',
-  'plans', 'portal_settings', 'profiles', 'space_types', 'type_attribute_options',
+  'schematics', 'portal_settings', 'profiles', 'space_types', 'type_attribute_options',
   'type_attributes',
 ]);
 

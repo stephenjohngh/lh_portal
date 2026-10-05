@@ -24,7 +24,7 @@ export function createSpaceActions(update) {
   async function createSpace(data) {
     const userId = requireUserId();
     const space = await api.create('spaces', {
-      plan_id:    data.plan_id,
+      schematic_id:    data.schematic_id,
       floor_id:   data.floor_id   || null,
       // label = multi-line plan-view display (preserve whitespace/newlines);
       // name = single-line report name (derived from the label when blank).
@@ -57,7 +57,7 @@ export function createSpaceActions(update) {
   async function createSpaces(rows) {
     const userId = requireUserId();
     const created = await api.createMany('spaces', rows.map(data => ({
-      plan_id:     data.plan_id,
+      schematic_id:     data.schematic_id,
       floor_id:    data.floor_id || null,
       label:       data.label ?? null,
       name:        data.name?.trim() || deriveSpaceName(data.label ?? ''),

@@ -303,7 +303,7 @@
             "internal",
             "no_action"
         ],
-        "plan_annotations.font_size": [
+        "schematic_annotations.font_size": [
             "lg",
             "md",
             "sm",
@@ -413,7 +413,7 @@
             "outside_scope",
             "standard"
         ],
-        "plans.security_classification": [
+        "schematics.security_classification": [
             "official",
             "official_sensitive"
         ],
