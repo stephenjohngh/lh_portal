@@ -23,17 +23,24 @@ import { SESSION_EXPIRED } from './request.js';
  *
  * @param {string} url
  * @param {{ body?: any, method?: 'GET'|'POST', filename?: string }} [opts]
- *        body — JSON; omit for a bodyless request
+ *        body — JSON, or a FormData (files travel as binary parts, which is
+ *        how a report with plan images avoids sending them as base64 text);
+ *        omit for a bodyless request
  * @returns {Promise<string|null>} the name it was saved as, or null when the
  *          server had nothing to send
  */
 export async function requestDownload(url, { body, method = 'POST', filename = 'download' } = {}) {
   let headers;
   try { headers = await authHeaders(); } catch { throw new Error(SESSION_EXPIRED); }
+  const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
+  if (isForm) {
+    // The browser writes the multipart Content-Type, boundary included.
+    headers = Object.fromEntries(Object.entries(headers).filter(([k]) => k.toLowerCase() !== 'content-type'));
+  }
   const res = await fetch(url, {
     method,
-    headers,                                // already sets Content-Type: application/json
-    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    headers,                                // JSON: already sets Content-Type: application/json
+    ...(body !== undefined ? { body: isForm ? body : JSON.stringify(body) } : {}),
   });
   if (res.status === 401) throw new Error(SESSION_EXPIRED);
   if (!res.ok) {

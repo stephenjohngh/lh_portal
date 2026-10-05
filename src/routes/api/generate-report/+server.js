@@ -1,9 +1,11 @@
 ﻿// src/routes/api/generate-report/+server.js
 // Generate a Word document report for building asset components.
 //
-// Accepts: { options, floors }
-//   options: { reportTypes, building, filterSummary, generatedAt }
-//   floors:  [{ floor, components, imageBase64, imageWidth, imageHeight }]
+// Accepts multipart form data: 'payload' = JSON { options, floors, allComponents },
+// plus one PNG file part per floor plan, named by that floor's imagePart.
+//   options: { reportTypes, filterSummary, generatedAt, show… }
+//   floors:  [{ floor, components, imagePart, imageWidth, imageHeight }]
+// (The older all-JSON body with imageBase64 per floor is still read.)
 //
 // reportTypes: array of one or more:
 //   'plan'                — plan graphic per floor
@@ -415,7 +417,14 @@ export async function POST({ request }) {
   logger('📄 POST /api/generate-report');
 
   try {
-    const body = await request.json();
+    // The plans arrive as binary file parts of a form, with everything else as
+    // JSON in its 'payload' field. ⛔ Not base64 inside one JSON string: reading
+    // that held several copies of every plan at once and ran Northflank's free
+    // tier out of memory on a whole building with plans (2026-10-05). The old
+    // all-JSON shape is still read, for a page loaded before the change.
+    const isForm = (request.headers.get('content-type') ?? '').startsWith('multipart/form-data');
+    const form   = isForm ? await request.formData() : null;
+    const body   = form ? JSON.parse(String(form.get('payload') ?? '{}')) : await request.json();
     // The building as an admin named it (Admin → Building & business), never
     // what the request carried or a name in code. ⚠ This used to be written to
     // body.building while the report read options.building — so it printed the
@@ -485,7 +494,13 @@ export async function POST({ request }) {
     // skip this loop entirely — otherwise each floor emits a heading with nothing below it.
     const wantAnyPerFloor = wantPlan || wantList || wantFloorSummary;
     for (let fi = 0; wantAnyPerFloor && fi < floors.length; fi++) {
-      const { floor, components = [], imageBase64, imageWidth, imageHeight } = floors[fi];
+      const { floor, components = [], imageBase64, imagePart, imageWidth, imageHeight } = floors[fi];
+      const part = form && imagePart ? form.get(imagePart) : null;
+      /** @type {Buffer|null} */
+      const imageData = part && typeof part !== 'string'
+        ? Buffer.from(await part.arrayBuffer())
+        : (imageBase64 ? Buffer.from(imageBase64, 'base64') : null);
+      if (form && imagePart) form.delete(imagePart);   // the Buffer is the one copy kept
 
       // Page break between floors (not before the first floor)
       if (fi > 0) {
@@ -504,7 +519,7 @@ export async function POST({ request }) {
 
       // -- Plan graphic ------------------------------------------------------
       if (wantPlan) {
-        if (imageBase64 && imageWidth && imageHeight) {
+        if (imageData && imageWidth && imageHeight) {
           // Display size in px @96dpi. Plan-only reports fill the A4 landscape
           // content box, leaving headroom for the floor heading so the heading
           // and image stay on the SAME page (an image can't be split, so an
@@ -530,12 +545,13 @@ export async function POST({ request }) {
             spacing:   { before: 80, after: 240 },
             children:  [
               new ImageRun({
-                data:           Buffer.from(imageBase64, 'base64'),
+                data:           imageData,
                 type:           'png',
                 transformation: { width: dW, height: dH },
               }),
             ],
           }));
+          floors[fi].imageBase64 = null;   // old-shape requests: drop the text copy
         } else {
           children.push(para(
             'No plan image available for this floor.',

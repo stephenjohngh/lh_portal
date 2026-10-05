@@ -1,6 +1,6 @@
 // plan/planImageRenderer.js
 // Draws annotated component markers onto a canvas copy of a floor plan image.
-// Returns { base64, width, height } or null if no plan / image is available.
+// Returns { blob, width, height } (a PNG Blob) or null if no plan / image is available.
 //
 // Marker shapes match ComponentMarker.svelte exactly:
 //   circle       - filled circle (default)
@@ -251,11 +251,12 @@ export async function drawAnnotatedPlanImage(floor, floorComps, plans, typeOfFn,
         }
       }
 
-      resolve({
-        base64: canvas.toDataURL('image/png').replace('data:image/png;base64,', ''),
-        width:  canvas.width,
-        height: canvas.height,
-      });
+      // A binary PNG, not a base64 data URL: it is sent as a file part of the
+      // report request. Base64 text inside the request's JSON cost the server
+      // several copies of every plan at once and ran Northflank's free tier
+      // out of memory on a whole building with plans (2026-10-05).
+      const width = canvas.width, height = canvas.height;
+      canvas.toBlob((blob) => resolve(blob ? { blob, width, height } : null), 'image/png');
     };
 
     img.onerror = () => resolve(null);

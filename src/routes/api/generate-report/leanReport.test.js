@@ -70,4 +70,23 @@ describe('the Building Assets report keeps table cells lean', () => {
     expect(xml).toContain('Test House');
     expect(xml).not.toContain('Sent by the browser');
   });
+
+  it('takes each plan as a binary file part of the form, and places it in the document', async () => {
+    // A 1×1 PNG.
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+    const form = new FormData();
+    form.append('image0', new Blob([png], { type: 'image/png' }), 'floor-0.png');
+    form.append('payload', JSON.stringify({
+      options: { reportTypes: ['plan'] },
+      floors: [{ floor: { id: 'g', name: 'Ground', short_name: 'G', level_order: 0 }, components: [component(1)],
+        imagePart: 'image0', imageWidth: 1, imageHeight: 1 }],
+      allComponents: [],
+    }));
+    const res = await POST({ request: new Request('http://x', { method: 'POST', body: form }) });
+    expect(res.status).toBe(200);
+    const zip = await JSZip.loadAsync(Buffer.from(await res.arrayBuffer()));
+    expect(await zip.file('word/document.xml').async('string')).toMatch(/<w:drawing>/);
+    expect(Object.keys(zip.files).some((f) => f.startsWith('word/media/'))).toBe(true);
+  });
 });
+

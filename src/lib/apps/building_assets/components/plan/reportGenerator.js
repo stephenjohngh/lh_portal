@@ -121,7 +121,7 @@ export async function generateReportDocument(params) {
           level_order: floor.level_order,
         },
         components:  resolvedComponents,
-        imageBase64: imageData?.base64  ?? null,
+        image:       imageData?.blob    ?? null,
         imageWidth:  imageData?.width   ?? null,
         imageHeight: imageData?.height  ?? null,
       };
@@ -159,13 +159,21 @@ export async function generateReportDocument(params) {
     : [];
 
   // -- POST to API -------------------------------------------------------
+  // The plans travel as binary file parts beside the JSON, never as base64
+  // inside it: that cost the server several copies of every plan at once.
+  const form = new FormData();
+  const floorsJson = floorsPayload.map(({ image, ...rest }, i) => {
+    if (image) form.append(`image${i}`, image, `floor-${i}.png`);
+    return { ...rest, imagePart: image ? `image${i}` : null };
+  });
+  form.append('payload', JSON.stringify({
+    options:       { reportTypes, building, filterSummary, generatedAt, showNotes, showLinked, showInspectionNotes, showAttributes, showConditions, showSpaces },
+    floors:        floorsJson,
+    allComponents: allComponentsPayload,
+  }));
   const filename = await requestDownload('/api/generate-report', {
     filename: `components-${today()}.docx`,
-    body: {
-      options:       { reportTypes, building, filterSummary, generatedAt, showNotes, showLinked, showInspectionNotes, showAttributes, showConditions, showSpaces },
-      floors:        floorsPayload,
-      allComponents: allComponentsPayload,
-    },
+    body:     form,
   });
 
   return { filename };
