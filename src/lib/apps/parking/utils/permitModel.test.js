@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
   validToFor, displayReg, validatePermit, permitRow, permitNumberLabel, permitStatus, permitDays, permitFilename,
-  reissueFields, recentValues,
+  reissueFields, recentValues, hhmm, fmtPermitWhen,
 } from './permitModel.js';
 
-const ok = { company: 'Acme Scaffolding', registration: 'ab12 cde', valid_from: '2026-10-06', valid_to: '2026-10-06', issued_by: 'J Smith' };
+const ok = { company: 'Acme Scaffolding', registration: 'ab12 cde', valid_from: '2026-10-06', valid_to: '2026-10-06',
+  valid_from_time: '07:00', valid_to_time: '19:00', issued_by: 'J Smith' };
 
 describe('permitModel', () => {
   it('a day permit ends the day it starts; a week permit covers seven days', () => {
@@ -54,6 +55,37 @@ describe('permitModel', () => {
   it('names the file by number and registration, and a sample as a sample', () => {
     expect(permitFilename({ permit_number: 100, registration: 'AB12 CDE' })).toBe('Parking_Permit_100_AB12CDE.pdf');
     expect(permitFilename({ sample: true, permit_number: 100, registration: 'AB12 CDE' })).toBe('Parking_Permit_SAMPLE.pdf');
+  });
+
+  it('reads a time as HH:MM, as Postgres or a time box gives it', () => {
+    expect(hhmm('07:00:00')).toBe('07:00');
+    expect(hhmm('7:05')).toBe('07:05');
+    expect(hhmm('')).toBe('');
+    expect(hhmm(null)).toBe('');
+  });
+
+  it('needs both times, and a one-day permit must end after it starts', () => {
+    expect(validatePermit({ ...ok, valid_from_time: '' })).toMatch(/time the permit starts/);
+    expect(validatePermit({ ...ok, valid_to_time: '' })).toMatch(/time the permit ends/);
+    expect(validatePermit({ ...ok, valid_to_time: '07:00' })).toMatch(/end time must be after/);
+    expect(validatePermit({ ...ok, valid_to: '2026-10-07', valid_to_time: '06:00' })).toBeNull();   // next morning is fine
+  });
+
+  it('saves the times as HH:MM', () => {
+    expect(permitRow({ ...ok, valid_from_time: '07:00:00' })).toMatchObject({ valid_from_time: '07:00', valid_to_time: '19:00' });
+  });
+
+  it('is in force from the start time to the end time, the end minute included', () => {
+    const p = { valid_from: '2026-10-06', valid_from_time: '07:00:00', valid_to: '2026-10-06', valid_to_time: '19:00:00' };
+    expect(permitStatus(p, '2026-10-06', '06:59')).toBe('upcoming');
+    expect(permitStatus(p, '2026-10-06', '07:00')).toBe('current');
+    expect(permitStatus(p, '2026-10-06', '19:00')).toBe('current');
+    expect(permitStatus(p, '2026-10-06', '19:01')).toBe('expired');
+  });
+
+  it('prints a start or end as date and time', () => {
+    expect(fmtPermitWhen('2026-10-06', '07:00:00')).toBe('06 Oct 2026, 07:00');
+    expect(fmtPermitWhen('2026-10-06', null)).toBe('06 Oct 2026');
   });
 
   it('a new permit like an old one keeps the company and vehicle, takes fresh dates, and not the old issuer', () => {

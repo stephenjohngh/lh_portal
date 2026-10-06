@@ -9,8 +9,8 @@
 // all new text is in the first 2/3 of permit") — the layout asserts that every
 // text step ends above the line.
 
-import { fmtDateOnly } from '#lib/utils/dates.js';
-import { permitNumberLabel } from './permitModel.js';
+
+import { permitNumberLabel, fmtPermitWhen } from './permitModel.js';
 
 export const PAGE = Object.freeze({ width: 2480, height: 3508 });
 /** Where the fixed bottom image starts: two-thirds of the way down. */
@@ -29,6 +29,7 @@ const INK   = '#2a1414';
 
 /**
  * @param {{ permit_number: number, company: string, registration: string,
+ *           valid_from_time?: string|null, valid_to_time?: string|null,
  *           valid_from: string, valid_to: string, issued_by: string }} permit
  * @param {{ title?: string|null, location?: string|null, conditions?: string|null }} template
  * @param {{ name: string, address?: string|null }} building
@@ -57,8 +58,8 @@ export function permitLayout(permit, template, building) {
   const rows = [
     { label: 'Company',      value: permit.company,                 size: 95 },
     { label: 'Registration', value: permit.registration,            size: 125 },
-    { label: 'Valid from',   value: fmtDateOnly(permit.valid_from), size: 95 },
-    { label: 'Valid to',     value: fmtDateOnly(permit.valid_to),   size: 95 },
+    { label: 'Valid from',   value: fmtPermitWhen(permit.valid_from, permit.valid_from_time), size: 95 },
+    { label: 'Valid to',     value: fmtPermitWhen(permit.valid_to, permit.valid_to_time),     size: 95 },
     { label: 'Issued by',    value: permit.issued_by,               size: 95 },
   ];
   let y = 1210;

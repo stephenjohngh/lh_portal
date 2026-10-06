@@ -13,13 +13,13 @@
   import { profiles, profilesStore } from '#lib/stores/profiles.js';
   import { auth } from '#lib/stores/auth.js';
   import { buildingName } from '#lib/utils/identity.js';
-  import { today, fmtDateOnly } from '#lib/utils/dates.js';
+  import { today, fmtTime } from '#lib/utils/dates.js';
   import { matchesSearch } from '#lib/utils/textSearch.js';
   import { downloadBlob } from '#lib/utils/download.js';
   import { errMessage } from '#lib/utils/errors.js';
   import {
     PERMIT_DURATIONS, validToFor, validatePermit, permitNumberLabel, permitStatus, permitDays,
-    reissueFields, recentValues,
+    reissueFields, recentValues, hhmm, fmtPermitWhen, DEFAULT_PERMIT_TIMES,
   } from '../utils/permitModel.js';
   import PermitTemplatePanel from './PermitTemplatePanel.svelte';
   import Button        from '#lib/components/common/Button.svelte';
@@ -53,13 +53,20 @@
 
   function blankForm() {
     const from = today();
-    return { company: '', registration: '', valid_from: from, valid_to: validToFor(from, 'day') ?? '', issued_by: '' };
+    return { company: '', registration: '', valid_from: from, valid_to: validToFor(from, 'day') ?? '',
+      valid_from_time: '', valid_to_time: '', issued_by: '' };
   }
   // The issuer defaults to the person signed in, and can be changed.
   /** @param {any[]} list @param {string|undefined} id */
   const nameOf = (list, id) => list.find((p) => p.id === id)?.full_name ?? '';
   $: me = nameOf($profiles.list, $auth.user?.id);
   $: if (me && !form.issued_by) form.issued_by = me;
+
+  // Times start at the template's usual ones (7am and 7pm unless an admin changed them).
+  $: startTime = hhmm($permitStore.template?.default_from_time) || DEFAULT_PERMIT_TIMES.from;
+  $: endTime   = hhmm($permitStore.template?.default_to_time)   || DEFAULT_PERMIT_TIMES.to;
+  $: if (!form.valid_from_time) form.valid_from_time = startTime;
+  $: if (!form.valid_to_time)   form.valid_to_time   = endTime;
 
   function chooseDuration(key) {
     duration = key;
@@ -70,12 +77,12 @@
   }
   function toChanged() { duration = 'custom'; }
 
-  // The same contractor and vehicle come back: a row's ↻ fills the form with
+  // The same contractor and vehicle come back: a row's Use details fills the form with
   // its company and registration, dates from today for one day, and leaves
   // the issuer as whoever is issuing now.
   let issueSection;
   function reissue(p) {
-    form = { ...form, ...reissueFields(p, today()) };
+    form = { ...form, ...reissueFields(p, today()), valid_from_time: startTime, valid_to_time: endTime };
     duration = 'day';
     issueError = '';
     issuedNote = `Filled in from permit ${permitNumberLabel(p.permit_number)} — check the dates, then issue.`;
@@ -119,8 +126,9 @@
   let q = '';
   let show = 'all';
   $: day = today();
+  $: nowTime = fmtTime(new Date().toISOString());
   $: shown = $permitStore.permits
-    .filter((p) => show === 'all' || permitStatus(p, day) === show)
+    .filter((p) => show === 'all' || permitStatus(p, day, nowTime) === show)
     .filter((p) => matchesSearch([permitNumberLabel(p.permit_number), p.company, p.registration, p.issued_by], q));
 
   let downloadingId = null;
@@ -141,7 +149,8 @@
       await download({
         permit_number: Math.max($permitStore.template?.first_number ?? 1, ($permitStore.permits[0]?.permit_number ?? 0) + 1),
         sample: true, company: 'SAMPLE — not a valid permit', registration: 'AB12 CDE',
-        valid_from: from, valid_to: validToFor(from, 'week'), issued_by: me || 'Building manager',
+        valid_from: from, valid_from_time: startTime, valid_to: validToFor(from, 'week'), valid_to_time: endTime,
+        issued_by: me || 'Building manager',
       });
     } catch (/** @type {any} */ err) { listError = errMessage(err, 'The preview could not be made.'); }
   }
@@ -163,7 +172,7 @@
   {#if loadError}<ErrorDisplay message={loadError} />{/if}
   {#if $permitStore.error}<ErrorDisplay message={$permitStore.error} />{/if}
 
-  <div class="grid gap-4 lg:grid-cols-[24rem_1fr]">
+  <div class="grid gap-4 lg:grid-cols-[19rem_1fr]">
     <!-- Issue -->
     <section bind:this={issueSection} class="bg-slate-800/60 border border-slate-700 rounded-xl p-4 space-y-3 self-start">
       <h3 class="text-white font-semibold">Issue a permit</h3>
@@ -186,9 +195,13 @@
             {#if duration === 'custom'}<span class="text-xs text-slate-400 self-center">Dates set by hand</span>{/if}
           </div>
         </div>
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-[1fr_6.5rem] gap-2">
           <FormInput label="Valid from" type="date" bind:value={form.valid_from} on:change={fromChanged} required />
+          <FormInput label="Time" type="time" bind:value={form.valid_from_time} required />
+        </div>
+        <div class="grid grid-cols-[1fr_6.5rem] gap-2">
           <FormInput label="Valid to" type="date" bind:value={form.valid_to} min={form.valid_from} on:change={toChanged} required />
+          <FormInput label="Time" type="time" bind:value={form.valid_to_time} required />
         </div>
         <FormInput label="Issued by" bind:value={form.issued_by} required />
         {#if issueError}<ErrorDisplay message={issueError} />{/if}
@@ -205,7 +218,7 @@
           class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-72" />
         <select bind:value={show} class="px-2 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200">
           <option value="all">All permits</option>
-          <option value="current">In force today</option>
+          <option value="current">In force now</option>
           <option value="upcoming">Not yet started</option>
           <option value="expired">Expired</option>
         </select>
@@ -231,21 +244,22 @@
             </thead>
             <tbody>
               {#each shown as p (p.id)}
-                {@const st = STATUS[permitStatus(p, day)]}
+                {@const st = STATUS[permitStatus(p, day, nowTime)]}
                 <tr class="border-t border-slate-700/70 text-slate-200">
                   <td class="px-3 py-2 font-mono">{permitNumberLabel(p.permit_number)}</td>
                   <td class="px-3 py-2">{p.company}</td>
                   <td class="px-3 py-2 font-mono">{p.registration}</td>
                   <td class="px-3 py-2 whitespace-nowrap">
-                    {fmtDateOnly(p.valid_from)}{#if p.valid_to !== p.valid_from} – {fmtDateOnly(p.valid_to)}{/if}
-                    <span class="text-slate-500">({permitDays(p)} {permitDays(p) === 1 ? 'day' : 'days'})</span>
+                    <div>{fmtPermitWhen(p.valid_from, p.valid_from_time)}</div>
+                    <div class="text-slate-400">to {fmtPermitWhen(p.valid_to, p.valid_to_time)}
+                      <span class="text-slate-500">({permitDays(p)} {permitDays(p) === 1 ? 'day' : 'days'})</span></div>
                   </td>
                   <td class="px-3 py-2">{p.issued_by}</td>
                   <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-xs {st.cls}">{st.label}</span></td>
                   <td class="px-3 py-2 text-right whitespace-nowrap">
                     {#if canEdit}
                       <Button size="small" variant="secondary" title="Fill in the form with this company and vehicle, for new dates"
-                        on:click={() => reissue(p)}>↻ New permit like this</Button>
+                        on:click={() => reissue(p)}>Use details</Button>
                     {/if}
                     <Button size="small" variant="secondary" loading={downloadingId === p.id}
                       disabled={!!downloadingId} on:click={() => redownload(p)}>⬇ PDF</Button>

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { permitLayout, PAGE, TOP_HEIGHT } from './permitLayout.js';
 
 const permit = { permit_number: 100, company: 'Acme Scaffolding Ltd', registration: 'AB12 CDE',
+  valid_from_time: '07:00:00', valid_to_time: '19:00:00',
   valid_from: '2026-10-06', valid_to: '2026-10-12', issued_by: 'J Smith' };
 const template = { title: 'Parking Permit', location: 'Side road', conditions: 'Display on the dashboard.' };
 const building = { name: 'Lancaster House', address: '71 Whitworth St\nManchester' };
@@ -38,7 +39,7 @@ describe('permitLayout', () => {
   it('prints every detail of the permit, and the building from the admin setting', () => {
     const t = allText(permitLayout(permit, template, building));
     for (const s of ['Lancaster House', '71 Whitworth St, Manchester', 'Parking Permit', 'Side road',
-      'Acme Scaffolding Ltd', 'AB12 CDE', '06 Oct 2026', '12 Oct 2026', 'J Smith', 'Permit number: 100',
+      'Acme Scaffolding Ltd', 'AB12 CDE', '06 Oct 2026, 07:00', '12 Oct 2026, 19:00', 'J Smith', 'Permit number: 100',
       'Display on the dashboard.']) {
       expect(t).toContain(s);
     }

@@ -4,7 +4,7 @@
 // CHECKs (company, registration and issuer not blank, valid_to >= valid_from)
 // and gives the NUMBER itself — the browser never chooses one.
 
-import { addDaysISO, daysBetween } from '#lib/utils/dates.js';
+import { addDaysISO, daysBetween, fmtDateOnly } from '#lib/utils/dates.js';
 import { normaliseReg } from './agreementModel.js';
 
 /** The two lengths a permit is usually issued for. `extraDays` is added to the start date. */
@@ -12,6 +12,15 @@ export const PERMIT_DURATIONS = Object.freeze([
   { key: 'day',  label: 'One day',  extraDays: 0 },
   { key: 'week', label: 'One week', extraDays: 6 },
 ]);
+
+/** The times a permit runs from and to when nobody chooses (the template's defaults override these). */
+export const DEFAULT_PERMIT_TIMES = Object.freeze({ from: '07:00', to: '19:00' });
+
+/** A time as HH:MM — Postgres returns '07:00:00'. Empty or unreadable gives ''. */
+export function hhmm(t) {
+  const m = /^(\d{1,2}):(\d{2})/.exec(String(t ?? '').trim());
+  return m ? `${m[1].padStart(2, '0')}:${m[2]}` : '';
+}
 
 /** The last day of a permit of this length starting on `from` (inclusive). */
 export function validToFor(from, durationKey) {
@@ -31,14 +40,20 @@ export function displayReg(s) {
 
 /**
  * The problem with a permit, or null.
- * @param {{ company?: string|null, registration?: string|null, valid_from?: string|null, valid_to?: string|null, issued_by?: string|null }} p
+ * @param {{ company?: string|null, registration?: string|null, valid_from?: string|null, valid_to?: string|null,
+ *           valid_from_time?: string|null, valid_to_time?: string|null, issued_by?: string|null }} p
  */
 export function validatePermit(p) {
   if (!String(p.company ?? '').trim())        return 'Enter the company name.';
   if (!normaliseReg(p.registration))          return 'Enter the vehicle registration.';
   if (!p.valid_from)                          return 'Enter the date the permit is valid from.';
   if (!p.valid_to)                            return 'Enter the date the permit is valid to.';
+  if (!hhmm(p.valid_from_time))               return 'Enter the time the permit starts.';
+  if (!hhmm(p.valid_to_time))                 return 'Enter the time the permit ends.';
   if (p.valid_to < p.valid_from)              return 'The permit cannot end before it starts.';
+  if (p.valid_to === p.valid_from && hhmm(p.valid_to_time) <= hhmm(p.valid_from_time)) {
+    return 'On a one-day permit the end time must be after the start time.';
+  }
   if (!String(p.issued_by ?? '').trim())      return 'Enter who issued the permit.';
   return null;
 }
@@ -49,7 +64,9 @@ export function permitRow(p) {
     company:      String(p.company).trim(),
     registration: displayReg(p.registration),
     valid_from:   p.valid_from,
+    valid_from_time: hhmm(p.valid_from_time),
     valid_to:     p.valid_to,
+    valid_to_time: hhmm(p.valid_to_time),
     issued_by:    String(p.issued_by).trim(),
   };
 }
@@ -59,10 +76,19 @@ export function permitNumberLabel(n) {
   return String(n ?? '').padStart(3, '0');
 }
 
-/** 'upcoming' | 'current' | 'expired' on the given day (a London calendar date). */
-export function permitStatus(permit, todayISO) {
-  if (permit.valid_from > todayISO) return 'upcoming';
-  if (permit.valid_to < todayISO)   return 'expired';
+/**
+ * 'upcoming' | 'current' | 'expired' at a London date and time. A permit runs
+ * from its start date and time to its end date and time, the end minute
+ * included. Without a time, a permit is taken to cover its whole days.
+ * @param {string} todayISO   London calendar date
+ * @param {string} [nowTime]  London time HH:MM; omitted reads as the start of the day
+ */
+export function permitStatus(permit, todayISO, nowTime = '00:00') {
+  const now   = `${todayISO}T${hhmm(nowTime) || '00:00'}`;
+  const start = `${permit.valid_from}T${hhmm(permit.valid_from_time) || '00:00'}`;
+  const end   = `${permit.valid_to}T${hhmm(permit.valid_to_time) || '23:59'}`;
+  if (now < start) return 'upcoming';
+  if (now > end)   return 'expired';
   return 'current';
 }
 
@@ -110,4 +136,10 @@ export function recentValues(permits, field) {
     out.push(v);
   }
   return out;
+}
+
+/** "06 Oct 2026, 07:00" — a permit's start or end, as the list and the printed permit show it. */
+export function fmtPermitWhen(date, time) {
+  const t = hhmm(time);
+  return t ? `${fmtDateOnly(date)}, ${t}` : fmtDateOnly(date);
 }

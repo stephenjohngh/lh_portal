@@ -18,7 +18,7 @@ import { requireUserId } from '#lib/utils/currentUser.js';
 import { logAudit } from '#lib/utils/auditLogger.js';
 import { getLogger } from '#lib/utils/logger.js';
 import { storeLoader } from '#lib/utils/storeLoad.js';
-import { validatePermit, permitRow, permitNumberLabel } from '../utils/permitModel.js';
+import { validatePermit, permitRow, permitNumberLabel, hhmm } from '../utils/permitModel.js';
 
 const logger = getLogger('ParkingPermits');
 const AUDIT = { appId: 'parking', eventCategory: 'parking' };
@@ -85,12 +85,16 @@ function createPermitStore() {
     if (!template) throw new Error('There is no permit template to save.');
     const first = Number(fields.first_number);
     if (!Number.isInteger(first) || first < 1) throw new Error('The first permit number must be a whole number of 1 or more.');
+    const from = hhmm(fields.default_from_time), to = hhmm(fields.default_to_time);
+    if (!from || !to) throw new Error('Enter the usual start and end times.');
     const blank = (v) => (String(v ?? '').trim() || null);
     const saved = await api.update('parking_permit_templates', template.id, {
       title: blank(fields.title) ?? 'Parking Permit',
       location: blank(fields.location),
       conditions: blank(fields.conditions),
       first_number: first,
+      default_from_time: from,
+      default_to_time: to,
       updated_by: await requireUserId(),
       updated_at: new Date().toISOString(),
     });

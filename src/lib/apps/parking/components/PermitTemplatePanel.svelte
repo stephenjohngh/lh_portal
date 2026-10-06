@@ -7,6 +7,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { permitStore, TEMPLATE_IMAGES } from '../stores/permitStore.js';
+  import { hhmm, DEFAULT_PERMIT_TIMES } from '../utils/permitModel.js';
   import { errMessage } from '#lib/utils/errors.js';
   import Button       from '#lib/components/common/Button.svelte';
   import FormInput    from '#lib/components/common/FormInput.svelte';
@@ -26,7 +27,11 @@
   $: if (open && key && key !== loadedFor) {
     loadedFor = key;
     const t = $permitStore.template;
-    if (t) form = { title: t.title ?? '', location: t.location ?? '', conditions: t.conditions ?? '', first_number: t.first_number ?? 100 };
+    if (t) form = {
+      title: t.title ?? '', location: t.location ?? '', conditions: t.conditions ?? '', first_number: t.first_number ?? 100,
+      default_from_time: hhmm(t.default_from_time) || DEFAULT_PERMIT_TIMES.from,
+      default_to_time:   hhmm(t.default_to_time)   || DEFAULT_PERMIT_TIMES.to,
+    };
   }
 
   let saving = false;
@@ -78,6 +83,11 @@
           helpText="Printed small, just above the bottom image; two lines at most." />
         <FormInput label="First permit number" type="number" min="1" step="1" bind:value={form.first_number}
           helpText="Numbering continues from the highest permit issued, and never goes below this." />
+        <div class="grid grid-cols-2 gap-2">
+          <FormInput label="Usual start time" type="time" bind:value={form.default_from_time} />
+          <FormInput label="Usual end time" type="time" bind:value={form.default_to_time} />
+        </div>
+        <p class="text-xs text-slate-500 -mt-2">What a new permit starts with; the person issuing can change them.</p>
         <div class="flex gap-2">
           <Button on:click={save} loading={saving} disabled={saving}>Save template</Button>
           <Button variant="secondary" on:click={() => dispatch('preview')}>⬇ Preview (sample PDF)</Button>
