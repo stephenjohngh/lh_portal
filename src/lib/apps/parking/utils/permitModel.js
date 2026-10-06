@@ -77,3 +77,37 @@ export function permitFilename(permit) {
   const reg = normaliseReg(permit.registration) || 'permit';
   return `Parking_Permit_${permitNumberLabel(permit.permit_number)}_${reg}.pdf`;
 }
+
+/**
+ * A new permit like an earlier one: the same company and vehicle, fresh dates
+ * (one day from today — the person then picks the length). The issuer is not
+ * copied: it is whoever is issuing now.
+ */
+export function reissueFields(permit, todayISO) {
+  return {
+    company: permit.company ?? '',
+    registration: permit.registration ?? '',
+    valid_from: todayISO,
+    valid_to: todayISO,
+  };
+}
+
+/**
+ * The distinct values of one field across permits, newest permit first — the
+ * suggestions offered while typing a company or a registration. Compared
+ * ignoring case and spacing, so "AB12 CDE" and "ab12cde" are offered once.
+ * @param {Array<Record<string, any>>} permits  newest first
+ * @param {'company'|'registration'} field
+ */
+export function recentValues(permits, field) {
+  const seen = new Set();
+  const out = [];
+  for (const p of permits) {
+    const v = String(p[field] ?? '').trim();
+    const key = v.toUpperCase().replace(/\s+/g, '');
+    if (!v || seen.has(key)) continue;
+    seen.add(key);
+    out.push(v);
+  }
+  return out;
+}

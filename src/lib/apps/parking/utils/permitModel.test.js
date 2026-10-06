@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   validToFor, displayReg, validatePermit, permitRow, permitNumberLabel, permitStatus, permitDays, permitFilename,
+  reissueFields, recentValues,
 } from './permitModel.js';
 
 const ok = { company: 'Acme Scaffolding', registration: 'ab12 cde', valid_from: '2026-10-06', valid_to: '2026-10-06', issued_by: 'J Smith' };
@@ -54,4 +55,23 @@ describe('permitModel', () => {
     expect(permitFilename({ permit_number: 100, registration: 'AB12 CDE' })).toBe('Parking_Permit_100_AB12CDE.pdf');
     expect(permitFilename({ sample: true, permit_number: 100, registration: 'AB12 CDE' })).toBe('Parking_Permit_SAMPLE.pdf');
   });
+
+  it('a new permit like an old one keeps the company and vehicle, takes fresh dates, and not the old issuer', () => {
+    const f = reissueFields({ ...ok, permit_number: 100, valid_from: '2026-01-01', valid_to: '2026-01-07' }, '2026-10-06');
+    expect(f).toEqual({ company: 'Acme Scaffolding', registration: 'ab12 cde', valid_from: '2026-10-06', valid_to: '2026-10-06' });
+    expect(f).not.toHaveProperty('issued_by');
+    expect(f).not.toHaveProperty('permit_number');
+  });
+
+  it('suggests each company and registration once, newest first', () => {
+    const permits = [
+      { company: 'Acme', registration: 'AB12 CDE' },
+      { company: 'Bolt Ltd', registration: 'XY99 ZZZ' },
+      { company: 'acme ', registration: 'ab12cde' },
+      { company: '', registration: '' },
+    ];
+    expect(recentValues(permits, 'company')).toEqual(['Acme', 'Bolt Ltd']);
+    expect(recentValues(permits, 'registration')).toEqual(['AB12 CDE', 'XY99 ZZZ']);
+  });
 });
+

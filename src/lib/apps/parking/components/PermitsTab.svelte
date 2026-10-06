@@ -19,6 +19,7 @@
   import { errMessage } from '#lib/utils/errors.js';
   import {
     PERMIT_DURATIONS, validToFor, validatePermit, permitNumberLabel, permitStatus, permitDays,
+    reissueFields, recentValues,
   } from '../utils/permitModel.js';
   import PermitTemplatePanel from './PermitTemplatePanel.svelte';
   import Button        from '#lib/components/common/Button.svelte';
@@ -68,6 +69,21 @@
     if (duration !== 'custom') form.valid_to = validToFor(form.valid_from, duration) ?? '';
   }
   function toChanged() { duration = 'custom'; }
+
+  // The same contractor and vehicle come back: a row's ↻ fills the form with
+  // its company and registration, dates from today for one day, and leaves
+  // the issuer as whoever is issuing now.
+  let issueSection;
+  function reissue(p) {
+    form = { ...form, ...reissueFields(p, today()) };
+    duration = 'day';
+    issueError = '';
+    issuedNote = `Filled in from permit ${permitNumberLabel(p.permit_number)} — check the dates, then issue.`;
+    issueSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  // Suggestions while typing, from the permits already issued (newest first).
+  $: companies = recentValues($permitStore.permits, 'company');
+  $: registrations = recentValues($permitStore.permits, 'registration');
 
   $: building = { name: buildingName($portalSettings.building), address: $portalSettings.building?.address ?? '' };
 
@@ -149,13 +165,15 @@
 
   <div class="grid gap-4 lg:grid-cols-[24rem_1fr]">
     <!-- Issue -->
-    <section class="bg-slate-800/60 border border-slate-700 rounded-xl p-4 space-y-3 self-start">
+    <section bind:this={issueSection} class="bg-slate-800/60 border border-slate-700 rounded-xl p-4 space-y-3 self-start">
       <h3 class="text-white font-semibold">Issue a permit</h3>
       {#if !canEdit}
         <p class="text-sm text-slate-400">You can see the permits issued, but not issue one.</p>
       {:else}
-        <FormInput label="Company" bind:value={form.company} required />
-        <FormInput label="Vehicle registration" bind:value={form.registration} required inputClass="uppercase" />
+        <FormInput label="Company" bind:value={form.company} required list="permit-companies" />
+        <datalist id="permit-companies">{#each companies as c}<option value={c}></option>{/each}</datalist>
+        <FormInput label="Vehicle registration" bind:value={form.registration} required inputClass="uppercase" list="permit-registrations" />
+        <datalist id="permit-registrations">{#each registrations as r}<option value={r}></option>{/each}</datalist>
         <div>
           <p class="text-xs text-slate-400 mb-1">For</p>
           <div class="flex gap-2">
@@ -225,6 +243,10 @@
                   <td class="px-3 py-2">{p.issued_by}</td>
                   <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-xs {st.cls}">{st.label}</span></td>
                   <td class="px-3 py-2 text-right whitespace-nowrap">
+                    {#if canEdit}
+                      <Button size="small" variant="secondary" title="Fill in the form with this company and vehicle, for new dates"
+                        on:click={() => reissue(p)}>↻ New permit like this</Button>
+                    {/if}
                     <Button size="small" variant="secondary" loading={downloadingId === p.id}
                       disabled={!!downloadingId} on:click={() => redownload(p)}>⬇ PDF</Button>
                     {#if $permissions.isAdmin}

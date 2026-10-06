@@ -18,6 +18,7 @@
    * id of a <datalist> to offer as suggestions — a native combobox: the field
    * stays free text, but values already used are one keystroke away. The
    * caller owns the <datalist> element.
+   * @type {string|null}
    */
   export let list = null;
   /**
