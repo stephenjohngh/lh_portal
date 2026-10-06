@@ -33,8 +33,8 @@
   export let query = { text: '', at: 0 };
 
   const STATUS = {
-    current:  { label: 'In force', cls: 'bg-green-700/40 text-green-300' },
-    upcoming: { label: 'Not yet',  cls: 'bg-sky-700/40 text-sky-300' },
+    current:  { label: 'Current',  cls: 'bg-green-700/40 text-green-300' },
+    upcoming: { label: 'Future',   cls: 'bg-sky-700/40 text-sky-300' },
     expired:  { label: 'Expired',  cls: 'bg-slate-700 text-slate-400' },
   };
 
@@ -223,8 +223,8 @@
           class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-72" />
         <select bind:value={show} class="px-2 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200">
           <option value="all">All permits</option>
-          <option value="current">In force now</option>
-          <option value="upcoming">Not yet started</option>
+          <option value="current">Current</option>
+          <option value="upcoming">Future</option>
           <option value="expired">Expired</option>
         </select>
         <span class="text-sm text-slate-400">{shown.length} of {$permitStore.permits.length}</span>

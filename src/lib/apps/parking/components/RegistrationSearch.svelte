@@ -85,9 +85,9 @@
         {#each permitHits as h (h.permit.id)}
           <button class="w-full text-left p-2 rounded hover:bg-slate-700" on:click={() => openPermit(h.permit)}>
             <span class="font-mono text-white">{h.permit.registration}</span>
-            {#if h.status === 'current'}<span class="text-xs text-green-400 ml-1">permit in force until {fmtPermitWhen(h.permit.valid_to, h.permit.valid_to_time)}</span>
-            {:else if h.status === 'upcoming'}<span class="text-xs text-sky-400 ml-1">permit starts {fmtPermitWhen(h.permit.valid_from, h.permit.valid_from_time)}</span>
-            {:else}<span class="text-xs text-amber-400 ml-1">permit expired {fmtPermitWhen(h.permit.valid_to, h.permit.valid_to_time)}</span>{/if}
+            {#if h.status === 'current'}<span class="text-xs text-green-400 ml-1">current permit, until {fmtPermitWhen(h.permit.valid_to, h.permit.valid_to_time)}</span>
+            {:else if h.status === 'upcoming'}<span class="text-xs text-sky-400 ml-1">future permit, starts {fmtPermitWhen(h.permit.valid_from, h.permit.valid_from_time)}</span>
+            {:else}<span class="text-xs text-amber-400 ml-1">expired permit, ended {fmtPermitWhen(h.permit.valid_to, h.permit.valid_to_time)}</span>{/if}
             <span class="block text-xs text-slate-400">Permit {permitNumberLabel(h.permit.permit_number)} · {h.permit.company}</span>
           </button>
         {/each}
