@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema14.csv
+// Source: _scratch/schema_plus.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -3821,6 +3821,121 @@ export type Database = {
             {
               foreignKeyName: "parking_holders_updated_by_fkey"
               columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      parking_permit_templates: {
+        Row: {
+          id: string
+          title: string
+          location: string | null
+          conditions: string | null
+          first_number: number
+          background_document_id: string | null
+          footer_document_id: string | null
+          created_at: string
+          created_by: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          title?: string
+          location?: string | null
+          conditions?: string | null
+          first_number?: number
+          background_document_id?: string | null
+          footer_document_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          title?: string
+          location?: string | null
+          conditions?: string | null
+          first_number?: number
+          background_document_id?: string | null
+          footer_document_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "parking_permit_templates_background_document_id_fkey"
+              columns: ["background_document_id"]
+              isOneToOne: false
+              referencedRelation: "document_library"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_permit_templates_footer_document_id_fkey"
+              columns: ["footer_document_id"]
+              isOneToOne: false
+              referencedRelation: "document_library"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_permit_templates_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_permit_templates_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      parking_permits: {
+        Row: {
+          id: string
+          permit_number: number
+          company: string
+          registration: string
+          valid_from: string
+          valid_to: string
+          issued_by: string
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          permit_number: number
+          company: string
+          registration: string
+          valid_from: string
+          valid_to: string
+          issued_by: string
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          permit_number?: number
+          company?: string
+          registration?: string
+          valid_from?: string
+          valid_to?: string
+          issued_by?: string
+          created_at?: string
+          created_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "parking_permits_created_by_fkey"
+              columns: ["created_by"]
               isOneToOne: false
               referencedRelation: "profiles"
               referencedColumns: ["id"]

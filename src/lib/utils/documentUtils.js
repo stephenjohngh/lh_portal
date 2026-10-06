@@ -197,6 +197,7 @@ export const DOC_FOLDERS = {
   MAINTENANCE:   'Maintenance',
   ISSUES:        'Issues',
   PARKING:       'Parking Licences',
+  PARKING_PERMITS: 'Parking Permits', // the permit template's two images
   LOOSE:         'Documents',      // uploaded in the admin tab, attached to nothing
 };
 

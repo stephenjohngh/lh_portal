@@ -49,6 +49,8 @@ export const ENTITY_PARENT_TABLE = {
   // A signed licence names a person who is not staff; parking_agreements is
   // gated on the `parking` grant, so this follows it (migration 227).
   parking_agreement:    'parking_agreements',
+  // The permit template's two images (migration 236), gated on the same grant.
+  parking_permit_template: 'parking_permit_templates',
 };
 
 /**
