@@ -129,7 +129,7 @@ describe('the audit log never carries personal details', () => {
     const hits = parkingStore.lookupRegistration('ab12');
     expect(hits[0].holder.display_name).toBe('Alice Example');
     expect(h.logAudit).toHaveBeenCalledWith('view', 'parking_vehicle', null, 'registration lookup',
-      expect.objectContaining({ afterData: { query: 'AB12', results: 1 } }));
+      expect.objectContaining({ afterData: { query: 'AB12', results: 1, permitResults: 0 } }));
     expect(JSON.stringify(h.logAudit.mock.calls)).not.toContain('Alice');
   });
 });

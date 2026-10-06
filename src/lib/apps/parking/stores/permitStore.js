@@ -155,7 +155,13 @@ function createPermitStore() {
     }
   }
 
-  return { subscribe, load, issue, remove, saveTemplate, setImage, clearImage };
+  /** Read the permits unless they already have been — the Registration Lookup needs them before the tab is opened. */
+  async function ensureLoaded() {
+    if (state().loaded) return;
+    await load();
+  }
+
+  return { subscribe, load, ensureLoaded, issue, remove, saveTemplate, setImage, clearImage };
 }
 
 export const permitStore = createPermitStore();

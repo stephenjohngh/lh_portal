@@ -551,11 +551,16 @@ function createParkingStore() {
    * open to curiosity, and the log is what makes it answerable afterwards.
    * The search text is logged, the results are not.
    */
-  function lookupRegistration(q) {
+  /**
+   * @param {string} q
+   * @param {number} [permitResults]  how many road permits the same lookup found — logged with it, one line per lookup
+   */
+  function lookupRegistration(q, permitResults = 0) {
     const s = state();
     const hits = findByRegistration(q, s);
     logAudit('view', 'parking_vehicle', null, 'registration lookup', {
-      ...AUDIT, eventAction: 'registration_lookup', afterData: { query: normaliseReg(q), results: hits.length },
+      ...AUDIT, eventAction: 'registration_lookup',
+      afterData: { query: normaliseReg(q), results: hits.length, permitResults },
     });
     return hits;
   }

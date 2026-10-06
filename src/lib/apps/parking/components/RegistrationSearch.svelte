@@ -1,43 +1,67 @@
 <!-- src/lib/apps/parking/components/RegistrationSearch.svelte -->
-<!-- "Whose car is this, and should it be here?" — the question actually asked
-     in a car park. Searches on Enter, not per keystroke, because every search
-     is written to the audit log (parkingStore.lookupRegistration), and a log
-     line per letter typed would bury the lookups that matter. -->
+<!-- Registration Lookup — "whose car is this, and should it be here?", asked in
+     the car park AND on the side road (2026-10-06). One search looks at both:
+     vehicles on parking agreements (the basement bays) and road permits.
+     Searches on Enter, not per keystroke, because every search is written to
+     the audit log (parkingStore.lookupRegistration), and a log line per letter
+     typed would bury the lookups that matter.
+     ⛔ If the road permits cannot be read, the result SAYS so — "no road
+     permit" would otherwise read as a car with no permit. -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { parkingStore } from '../stores/parkingStore.js';
+  import { permitStore } from '../stores/permitStore.js';
   import { normaliseReg, STATUS_LABEL } from '../utils/agreementModel.js';
-  import { fmtDate } from '#lib/utils/dates.js';
+  import { findPermitsByRegistration, fmtPermitWhen, permitNumberLabel } from '../utils/permitModel.js';
+  import { fmtDate, today, fmtTime } from '#lib/utils/dates.js';
+  import { errMessage } from '#lib/utils/errors.js';
 
   const dispatch = createEventDispatcher();
   let q = '';
-  let hits = null;        // null until a search is run
+  let hits = null;        // car park results; null until a search is run
+  let permitHits = [];
+  let permitError = '';
+  let searching = false;
 
-  function search() {
+  async function search() {
     if (normaliseReg(q).length < 2) { hits = null; return; }
-    hits = parkingStore.lookupRegistration(q);
+    searching = true; permitError = '';
+    try {
+      try {
+        await permitStore.ensureLoaded();
+        permitHits = findPermitsByRegistration(q, $permitStore.permits, today(), fmtTime(new Date().toISOString()));
+      } catch (/** @type {any} */ err) {
+        permitHits = [];
+        permitError = errMessage(err, 'The road permits could not be read.');
+      }
+      hits = parkingStore.lookupRegistration(q, permitHits.length);
+    } finally { searching = false; }
   }
-  function open(id) { hits = null; q = ''; dispatch('showAgreement', id); }
+  function close() { hits = null; q = ''; permitHits = []; permitError = ''; }
+  function openAgreement(id) { close(); dispatch('showAgreement', id); }
+  function openPermit(p) { close(); dispatch('showPermit', permitNumberLabel(p.permit_number)); }
 </script>
 
-<div class="relative">
-  <input bind:value={q} placeholder="Registration, then Enter"
+<div class="relative flex items-center gap-2">
+  <label for="registration-lookup" class="text-sm text-slate-300 whitespace-nowrap">Registration Lookup:</label>
+  <input id="registration-lookup" bind:value={q} placeholder="Registration, then Enter"
     on:keydown={(e) => e.key === 'Enter' && search()}
-    class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-56 font-mono uppercase"
-    aria-label="Search by registration" />
+    class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-56 font-mono uppercase" />
+  {#if searching}<span class="text-xs text-slate-400">Looking…</span>{/if}
   {#if hits}
-    <div class="absolute right-0 z-20 mt-1 w-96 bg-slate-800 border border-slate-600 rounded-lg shadow-xl p-2 text-sm"
+    <div class="absolute right-0 top-full z-20 mt-1 w-[26rem] bg-slate-800 border border-slate-600 rounded-lg shadow-xl p-2 text-sm"
       data-testid="registration-results">
+      <!-- Car park -->
+      <p class="px-2 pt-1 text-xs uppercase tracking-wide text-slate-500">Car park</p>
       {#if hits.length === 0}
         <!-- Only what the app knows: holders of bays that belong to flats may
              not be recorded, and visitors never are. -->
-        <p class="text-slate-400 p-2">No vehicle registered as <span class="font-mono">{normaliseReg(q)}</span>
-          on a parking agreement here.
+        <p class="text-slate-400 p-2">Not on a parking agreement here.
           <span class="block text-xs text-slate-500 mt-1">Bays that belong to flats may not have their holders
             recorded, and visitors are not recorded at all.</span></p>
       {:else}
         {#each hits as h (h.vehicle.id)}
-          <button class="w-full text-left p-2 rounded hover:bg-slate-700" on:click={() => h.agreement && open(h.agreement.id)}>
+          <button class="w-full text-left p-2 rounded hover:bg-slate-700" on:click={() => h.agreement && openAgreement(h.agreement.id)}>
             <span class="font-mono text-white">{h.vehicle.registration}</span>
             {#if h.standing === 'authorised'}<span class="text-xs text-green-400 ml-1">authorised today</span>
             {:else if h.standing === 'pending'}<span class="text-xs text-sky-400 ml-1">not yet authorised{h.agreement?.status === 'draft'
@@ -50,7 +74,25 @@
           </button>
         {/each}
       {/if}
-      <button class="w-full text-right text-xs text-slate-500 hover:text-white mt-1" on:click={() => hits = null}>Close</button>
+
+      <!-- Road permits -->
+      <p class="px-2 pt-2 mt-1 border-t border-slate-700 text-xs uppercase tracking-wide text-slate-500">Road permits</p>
+      {#if permitError}
+        <p class="text-amber-400 p-2">Road permits were NOT checked: {permitError}</p>
+      {:else if permitHits.length === 0}
+        <p class="text-slate-400 p-2">No road permit for this registration.</p>
+      {:else}
+        {#each permitHits as h (h.permit.id)}
+          <button class="w-full text-left p-2 rounded hover:bg-slate-700" on:click={() => openPermit(h.permit)}>
+            <span class="font-mono text-white">{h.permit.registration}</span>
+            {#if h.status === 'current'}<span class="text-xs text-green-400 ml-1">permit in force until {fmtPermitWhen(h.permit.valid_to, h.permit.valid_to_time)}</span>
+            {:else if h.status === 'upcoming'}<span class="text-xs text-sky-400 ml-1">permit starts {fmtPermitWhen(h.permit.valid_from, h.permit.valid_from_time)}</span>
+            {:else}<span class="text-xs text-amber-400 ml-1">permit expired {fmtPermitWhen(h.permit.valid_to, h.permit.valid_to_time)}</span>{/if}
+            <span class="block text-xs text-slate-400">Permit {permitNumberLabel(h.permit.permit_number)} · {h.permit.company}</span>
+          </button>
+        {/each}
+      {/if}
+      <button class="w-full text-right text-xs text-slate-500 hover:text-white mt-1" on:click={close}>Close</button>
     </div>
   {/if}
 </div>

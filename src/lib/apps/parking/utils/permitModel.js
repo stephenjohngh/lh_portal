@@ -82,6 +82,7 @@ export function permitNumberLabel(n) {
  * included. Without a time, a permit is taken to cover its whole days.
  * @param {string} todayISO   London calendar date
  * @param {string} [nowTime]  London time HH:MM; omitted reads as the start of the day
+ * @returns {'upcoming'|'current'|'expired'}
  */
 export function permitStatus(permit, todayISO, nowTime = '00:00') {
   const now   = `${todayISO}T${hhmm(nowTime) || '00:00'}`;
@@ -142,4 +143,27 @@ export function recentValues(permits, field) {
 export function fmtPermitWhen(date, time) {
   const t = hhmm(time);
   return t ? `${fmtDateOnly(date)}, ${t}` : fmtDateOnly(date);
+}
+
+const STATUS_RANK = { current: 0, upcoming: 1, expired: 2 };
+
+/**
+ * Road permits for a registration (all or part of it), for the Registration
+ * Lookup: in force first, then not yet started, then expired; within each,
+ * the newest permit first. Spaces and case are ignored, as in the car park
+ * lookup (normaliseReg).
+ * @param {string} q
+ * @param {Array<Record<string, any>>} permits
+ * @param {string} todayISO  London date
+ * @param {string} nowTime   London time HH:MM
+ * @returns {{ permit: Record<string, any>, status: 'current'|'upcoming'|'expired' }[]}
+ */
+export function findPermitsByRegistration(q, permits, todayISO, nowTime) {
+  const needle = normaliseReg(q);
+  if (needle.length < 2) return [];
+  return (permits ?? [])
+    .filter((p) => normaliseReg(p.registration).includes(needle))
+    .map((permit) => ({ permit, status: permitStatus(permit, todayISO, nowTime) }))
+    .sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status]
+      || (b.permit.permit_number ?? 0) - (a.permit.permit_number ?? 0));
 }

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   validToFor, displayReg, validatePermit, permitRow, permitNumberLabel, permitStatus, permitDays, permitFilename,
-  reissueFields, recentValues, hhmm, fmtPermitWhen,
+  reissueFields, recentValues, hhmm, fmtPermitWhen, findPermitsByRegistration,
 } from './permitModel.js';
 
 const ok = { company: 'Acme Scaffolding', registration: 'ab12 cde', valid_from: '2026-10-06', valid_to: '2026-10-06',
@@ -107,3 +107,25 @@ describe('permitModel', () => {
   });
 });
 
+
+describe('findPermitsByRegistration', () => {
+  const permits = [
+    { permit_number: 100, registration: 'AB12 CDE', valid_from: '2026-10-01', valid_to: '2026-10-01' },
+    { permit_number: 101, registration: 'AB12 CDE', valid_from: '2026-10-06', valid_to: '2026-10-12',
+      valid_from_time: '07:00', valid_to_time: '19:00' },
+    { permit_number: 102, registration: 'XY99 ZZZ', valid_from: '2026-10-06', valid_to: '2026-10-06' },
+    { permit_number: 103, registration: 'ab12cde', valid_from: '2026-11-01', valid_to: '2026-11-01' },
+  ];
+
+  it('finds a registration typed any way, in force first, then upcoming, then expired', () => {
+    const hits = findPermitsByRegistration('ab 12c', permits, '2026-10-06', '09:00');
+    expect(hits.map((h) => [h.permit.permit_number, h.status])).toEqual([
+      [101, 'current'], [103, 'upcoming'], [100, 'expired'],
+    ]);
+  });
+
+  it('needs at least two characters, and finds nothing for an unknown car', () => {
+    expect(findPermitsByRegistration('A', permits, '2026-10-06', '09:00')).toEqual([]);
+    expect(findPermitsByRegistration('QQ11', permits, '2026-10-06', '09:00')).toEqual([]);
+  });
+});

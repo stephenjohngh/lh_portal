@@ -29,6 +29,8 @@
   import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
 
   export let canEdit = false;
+  /** A permit to find, from the Registration Lookup: its number goes in the search box. */
+  export let query = { text: '', at: 0 };
 
   const STATUS = {
     current:  { label: 'In force', cls: 'bg-green-700/40 text-green-300' },
@@ -125,6 +127,9 @@
   // ── List ──────────────────────────────────────────────────────────────
   let q = '';
   let show = 'all';
+  // Keyed on the request's time (a primitive), never the object.
+  let appliedAt = 0;
+  $: if (query?.at && query.at !== appliedAt) { appliedAt = query.at; q = query.text; show = 'all'; }
   $: day = today();
   $: nowTime = fmtTime(new Date().toISOString());
   $: shown = $permitStore.permits

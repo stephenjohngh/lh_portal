@@ -51,11 +51,14 @@
     { key: 'agreements', label: 'Agreements' },
     { key: 'holders',    label: 'Holders' },
     { key: 'waiting',    label: 'Waiting list' },
-    { key: 'permits',    label: 'Permits' },
     { key: 'prices',     label: 'Prices' },
     { key: 'reports',    label: 'Reports' },
+    { key: 'permits',    label: 'Road Permits' },
   ];
   let tab = 'bays';
+  // Set by the Registration Lookup: the permit to find on Road Permits. `at` makes the
+  // same permit looked up twice still count as a new request.
+  let permitQuery = { text: '', at: 0 };
   let selectedAgreementId = null;
   let allocateSpaceId = null;      // the bay the new-agreement form is open for
   let presetHolderId = null;       // set when accepting a waiting-list offer
@@ -73,6 +76,7 @@
   }
 
   function showAgreement(e) { selectedAgreementId = e.detail; tab = 'agreements'; }
+  function showPermit(e) { permitQuery = { text: e.detail, at: Date.now() }; tab = 'permits'; }
   function showBay(e) {
     const bay = state.bays.find(b => b.space_id === e.detail);
     if (bay) { floorId = bay.floor_id; selectedSpaceId = bay.space_id; }
@@ -134,12 +138,9 @@
 </script>
 
 <div class="space-y-4">
-  <div class="flex flex-wrap items-start justify-between gap-3">
-    <div>
-      <h2 class="heading-page">Parking</h2>
-      <p class="text-muted">The basement bays, who holds each one, and the vehicles allowed to park.</p>
-    </div>
-    {#if hasAccess && loaded}<RegistrationSearch on:showAgreement={showAgreement} />{/if}
+  <div class="space-y-2">
+    <h2 class="heading-page">Parking</h2>
+    {#if hasAccess && loaded}<RegistrationSearch on:showAgreement={showAgreement} on:showPermit={showPermit} />{/if}
   </div>
 
   <AppGate appId="parking" name="Parking" load={loadParking} requireGrant bind:ready={loaded}>
@@ -155,7 +156,7 @@
     {:else if tab === 'waiting'}
       <WaitingListTab {canEdit} on:accept={acceptOffer} />
     {:else if tab === 'permits'}
-      <PermitsTab {canEdit} />
+      <PermitsTab {canEdit} query={permitQuery} />
     {:else if tab === 'prices'}
       <PricesTab />
     {:else if tab === 'reports'}
