@@ -49,20 +49,21 @@ export function permitLayout(permit, template, building) {
   text({ text: building.name,                   y: 300, size: 210, colour: GREEN });
   const address = oneLine(building.address);
   if (address) text({ text: address,             y: 560, size: 110, colour: GREEN });
-  text({ text: template.title || 'Parking Permit', y: 790, size: 160, colour: GREEN });
+  text({ text: template.title || 'Parking Permit', y: 725, size: 160, colour: GREEN });
   const location = oneLine(template.location);
-  if (location) text({ text: location,           y: 990, size: 85,  colour: INK });
+  if (location) text({ text: location,           y: 915, size: 85,  colour: INK });
 
   // The details: label on the left, value beside it.
-  const labelW = 760;
+  const labelW = 860;
   const rows = [
     { label: 'Company',      value: permit.company,                 size: 95 },
     { label: 'Registration', value: permit.registration,            size: 125 },
     { label: 'Valid from',   value: fmtPermitWhen(permit.valid_from, permit.valid_from_time), size: 95 },
     { label: 'Valid to',     value: fmtPermitWhen(permit.valid_to, permit.valid_to_time),     size: 95 },
     { label: 'Issued by',    value: permit.issued_by,               size: 95 },
+    { label: 'Permit number', value: permitNumberLabel(permit.permit_number), size: 95 },
   ];
-  let y = 1210;
+  let y = 1130;
   for (const { label, value, size } of rows) {
     steps.push({ type: 'text', text: `${label}:`, x: MARGIN, y, size: 95, bold: true,
       colour: INK, align: 'left', maxWidth: labelW - 40 });
@@ -70,9 +71,6 @@ export function permitLayout(permit, template, building) {
       bold: label === 'Registration', colour: INK, align: 'left', maxWidth: full - labelW });
     y += 175;
   }
-
-  text({ text: `Permit number: ${permitNumberLabel(permit.permit_number)}`,
-    y: 2050, size: 125, bold: true, colour: INK });
 
   const conditions = String(template.conditions ?? '').trim();
   if (conditions) text({ text: conditions, y: 2190, size: 52, colour: INK, maxLines: 2 });

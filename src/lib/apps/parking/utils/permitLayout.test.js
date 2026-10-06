@@ -39,7 +39,7 @@ describe('permitLayout', () => {
   it('prints every detail of the permit, and the building from the admin setting', () => {
     const t = allText(permitLayout(permit, template, building));
     for (const s of ['Lancaster House', '71 Whitworth St, Manchester', 'Parking Permit', 'Side road',
-      'Acme Scaffolding Ltd', 'AB12 CDE', '06 Oct 2026, 07:00', '12 Oct 2026, 19:00', 'J Smith', 'Permit number: 100',
+      'Acme Scaffolding Ltd', 'AB12 CDE', '06 Oct 2026, 07:00', '12 Oct 2026, 19:00', 'J Smith', 'Permit number:', '100',
       'Display on the dashboard.']) {
       expect(t).toContain(s);
     }
