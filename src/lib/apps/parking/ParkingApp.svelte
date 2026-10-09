@@ -16,6 +16,7 @@
   import { permissions } from '#lib/stores/permissions.js';
   import { hasAppAccess } from '#lib/utils/appAccess.js';
   import AppGate from '#lib/components/common/AppGate.svelte';
+  import { revealOnNarrow } from './utils/revealOnNarrow.js';
   import TabBar  from '#lib/components/common/TabBar.svelte';
   import { parkingStore } from './stores/parkingStore.js';
   import { filterBays, baySummary, BAY_STATES } from './utils/bayModel.js';
@@ -220,8 +221,10 @@
           <BayList bays={shown} {selectedSpaceId} on:select={select} />
         </div>
         {#if selected}
-          <BayPanel bay={selected} {canEdit} on:close={() => selectedSpaceId = null}
-            on:allocate={(e) => allocateSpaceId = e.detail} on:showAgreement={showAgreement} />
+          <div class="scroll-mt-20" use:revealOnNarrow={selectedSpaceId}>
+            <BayPanel bay={selected} {canEdit} on:close={() => selectedSpaceId = null}
+              on:allocate={(e) => allocateSpaceId = e.detail} on:showAgreement={showAgreement} />
+          </div>
         {/if}
       </div>
     {/if}

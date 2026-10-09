@@ -2,6 +2,7 @@
 <!-- Every agreement, live ones first. Selecting one opens its panel. -->
 <script>
   import { matchesSearch } from '#lib/utils/textSearch.js';
+  import { revealOnNarrow } from '../utils/revealOnNarrow.js';
   import { parkingStore } from '../stores/parkingStore.js';
   import { STATUSES, STATUS_LABEL, BASIS_LABEL, LIVE, unreturnedAfterEnd } from '../utils/agreementModel.js';
   import { fmtDate } from '#lib/utils/dates.js';
@@ -79,7 +80,9 @@
     {/if}
   </div>
   {#if selected}
-    <AgreementPanel agreement={selected} {canEdit} on:close={() => selectedId = null} on:showBay
-      on:moved={(e) => selectedId = e.detail} />
+    <div class="scroll-mt-20" use:revealOnNarrow={selectedId}>
+      <AgreementPanel agreement={selected} {canEdit} on:close={() => selectedId = null} on:showBay
+        on:moved={(e) => selectedId = e.detail} />
+    </div>
   {/if}
 </div>

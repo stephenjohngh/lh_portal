@@ -77,7 +77,7 @@
       the fee it was made at, whatever the list says later. To change a price, add a new one from the date it
       changes. The old one closes the day before.
     </p>
-    <ProtectedButton requireAdmin={true} variant="primary" on:click={() => openForm()}>+ New price</ProtectedButton>
+    <span class="shrink-0 whitespace-nowrap"><ProtectedButton requireAdmin={true} variant="primary" on:click={() => openForm()}>+ New price</ProtectedButton></span>
   </div>
   {#if error}<ErrorDisplay message={error} />{/if}
 
