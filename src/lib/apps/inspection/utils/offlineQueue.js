@@ -1,7 +1,8 @@
 // src/lib/apps/inspection/utils/offlineQueue.js
 //
-// The Inspection app's durable offline outbox, layered on the generic IndexedDB
-// wrapper (`#lib/utils/idb.js`). It holds three kinds of thing:
+// The Inspection app's durable offline outbox. The ops queue and read cache are
+// the shared `#lib/offline/outbox.js`; photos and the walk's op rules are
+// Inspection's own, here. It holds three kinds of thing:
 //
 //   • ops       — a FIFO of server operations still to sync (seq autoincrement).
 //   • photos    — captured photo Blobs waiting to upload (keyed by photoId).
@@ -21,42 +22,38 @@
 //   'inspection_save'  payload: { row, isUpdate, purgeInspectionId, photoIds, statusPatch }
 //   'session_complete' payload: { sessionId, notes, inspectedCount }
 
-import { openDB, isIdbAvailable } from '#lib/utils/idb.js';
+import { isIdbAvailable } from '#lib/utils/idb.js';
 import { DAY_MS } from '#lib/utils/dates.js';
+import {
+  STORE_OPS, STORE_CACHE, OP_PENDING, OP_SYNCING, OP_ERROR, OP_DONE,
+  upgradeOutboxSchema, makeOpener, enqueue, listOps, listUnsyncedOps, setOpStatus, deleteOp, pruneDone,
+  writeCache, readCache, summarizeOps, pickNextOp,
+} from '#lib/offline/outbox.js';
+
+// The generic outbox lives in #lib/offline/outbox.js (shared with Parking (M),
+// 2026-10-10); it is re-exported here so this file stays the one Inspection imports.
+export {
+  STORE_OPS, STORE_CACHE, OP_PENDING, OP_SYNCING, OP_ERROR, OP_DONE,
+  enqueue, listOps, listUnsyncedOps, setOpStatus, deleteOp, pruneDone,
+  writeCache, readCache, summarizeOps, pickNextOp,
+};
 
 export const DB_NAME    = 'lh_inspection_offline';
 export const DB_VERSION = 1;
 
-export const STORE_OPS    = 'ops';
 export const STORE_PHOTOS = 'photos';
-export const STORE_CACHE  = 'readcache';
-
-/** Op statuses. */
-export const OP_PENDING = 'pending';
-export const OP_SYNCING = 'syncing';
-export const OP_ERROR   = 'error';
-export const OP_DONE    = 'done';
 
 /** Create the object stores on first open / version bump. */
 export function upgradeSchema(db) {
-  if (!db.objectStoreNames.contains(STORE_OPS))    db.createObjectStore(STORE_OPS,    { keyPath: 'seq', autoIncrement: true });
+  upgradeOutboxSchema(db);
   if (!db.objectStoreNames.contains(STORE_PHOTOS)) db.createObjectStore(STORE_PHOTOS, { keyPath: 'photoId' });
-  if (!db.objectStoreNames.contains(STORE_CACHE))  db.createObjectStore(STORE_CACHE,  { keyPath: 'key' });
 }
-
-// -- Singleton handle (browser) ------------------------------------------------
-
-let _handlePromise = null;
 
 /**
  * Open the shared offline DB (memoised). Throws under SSR / no-IndexedDB — call
  * isOfflineAvailable() first at the boundary.
- * @returns {Promise<import('#lib/utils/idb.js').IdbHandle>}
  */
-export function openQueue() {
-  if (!_handlePromise) _handlePromise = openDB(DB_NAME, DB_VERSION, upgradeSchema);
-  return _handlePromise;
-}
+export const openQueue = makeOpener(DB_NAME, DB_VERSION, upgradeSchema);
 
 /** Whether the offline queue can be used here (browser with IndexedDB). */
 export function isOfflineAvailable() {
@@ -64,25 +61,6 @@ export function isOfflineAvailable() {
 }
 
 // -- Ops -----------------------------------------------------------------------
-
-/**
- * Append an op to the outbox. Returns the stored record (with its assigned seq).
- * @param {object} handle
- * @param {{ type: string, sessionId?: string|null, payload?: object }} op
- */
-export async function enqueue(handle, op) {
-  const record = {
-    type:      op.type,
-    sessionId: op.sessionId ?? null,
-    payload:   op.payload ?? {},
-    status:    OP_PENDING,
-    attempts:  0,
-    lastError: null,
-    createdAt: Date.now(),
-  };
-  const seq = await handle.add(STORE_OPS, record);
-  return { ...record, seq };
-}
 
 /**
  * Enqueue an `inspection_save`, COALESCING with an existing not-yet-synced op for
@@ -131,17 +109,6 @@ export async function enqueueInspectionSave(handle, payload) {
   });
 }
 
-/** All ops, oldest first (by seq). */
-export async function listOps(handle) {
-  const all = await handle.getAll(STORE_OPS);
-  return all.sort((a, b) => a.seq - b.seq);
-}
-
-/** Ops that still need work (not done), oldest first. */
-export async function listUnsyncedOps(handle) {
-  return (await listOps(handle)).filter(o => o.status !== OP_DONE);
-}
-
 // -- Outbox reads for resume / session listing (P4) ----------------------------
 // These let the store reconstruct a session that was started/walked offline and
 // never synced: its walk_sessions row and its inspections live only in the queue.
@@ -175,28 +142,6 @@ export async function hasQueuedSessionCreate(handle, sessionId) {
   return (await listUnsyncedOps(handle)).some(o => o.type === 'session_create' && o.payload?.row?.id === sessionId);
 }
 
-/**
- * Set an op's status. Bumps `attempts` when moving into 'syncing' (i.e. once per
- * try) and records lastError. Returns the updated op, or null if it's gone.
- */
-export async function setOpStatus(handle, seq, status, lastError = null) {
-  const op = await handle.get(STORE_OPS, seq);
-  if (!op) return null;
-  const updated = {
-    ...op,
-    status,
-    lastError,
-    attempts: status === OP_SYNCING ? (op.attempts ?? 0) + 1 : (op.attempts ?? 0),
-  };
-  await handle.put(STORE_OPS, updated);
-  return updated;
-}
-
-/** Remove one op. */
-export function deleteOp(handle, seq) {
-  return handle.delete(STORE_OPS, seq);
-}
-
 /** Remove all ops (and photos) for a session — used when an empty offline session
  *  is deleted before it ever synced. */
 export async function dropSession(handle, sessionId) {
@@ -208,12 +153,6 @@ export async function dropSession(handle, sessionId) {
       await deleteOp(handle, o.seq);
     }
   }
-}
-
-/** Garbage-collect completed ops (call after a full drain). */
-export async function pruneDone(handle) {
-  const ops = await listOps(handle);
-  for (const o of ops) if (o.status === OP_DONE) await deleteOp(handle, o.seq);
 }
 
 // -- Photos --------------------------------------------------------------------
@@ -283,43 +222,4 @@ export async function markPhotoUploaded(handle, photoId, url, provider = null) {
   const updated = { ...p, uploaded: true, url, provider };
   await handle.put(STORE_PHOTOS, updated);
   return updated;
-}
-
-// -- Read cache ----------------------------------------------------------------
-
-/** Persist a named payload (the load() result). */
-export async function writeCache(handle, key, data) {
-  await handle.put(STORE_CACHE, { key, ts: Date.now(), data });
-}
-
-/** Read a named payload → { ts, data, ageMs } or null. */
-export async function readCache(handle, key) {
-  const row = await handle.get(STORE_CACHE, key);
-  if (!row) return null;
-  return { ts: row.ts, data: row.data, ageMs: Date.now() - row.ts };
-}
-
-// -- Pure summary --------------------------------------------------------------
-
-/**
- * Count ops by status — drives the header "N unsynced" badge and the finish-sheet
- * messaging. Pure; safe to call on any ops array.
- * @param {Array<{status:string}>} ops
- */
-export function summarizeOps(ops) {
-  const s = { pending: 0, syncing: 0, error: 0, done: 0 };
-  for (const o of ops) if (o.status in s) s[o.status]++;
-  return { ...s, unsynced: s.pending + s.syncing + s.error, total: ops.length };
-}
-
-/**
- * Choose the next op to sync: the first PENDING op (FIFO), skipping errored ones
- * (they need a manual retry) and any in flight (syncing). Session dependency order
- * (session_create → its inspections → complete) holds for free because ops are
- * enqueued in that order and the runner stops on a transient failure. Pure.
- * @param {Array<{status:string}>} ops  oldest-first
- */
-export function pickNextOp(ops) {
-  for (const o of ops) if (o.status === OP_PENDING) return o;
-  return null;
 }
