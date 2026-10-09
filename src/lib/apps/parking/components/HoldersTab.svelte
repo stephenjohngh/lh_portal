@@ -28,14 +28,14 @@
 
 <div class="flex flex-wrap items-center gap-2 mb-3">
   <input bind:value={q} placeholder="Search by name…"
-    class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-56" />
+    class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-56 max-w-full" />
   {#if canEdit}<Button size="small" variant="primary" on:click={() => open(null)}>Add a holder</Button>{/if}
 </div>
 
 {#if rows.length === 0}
   <p class="text-sm text-slate-500 italic py-4">{s.holders.length ? 'No holders match.' : 'No holders yet.'}</p>
 {:else}
-  <table class="w-full text-sm" data-testid="holder-list">
+  <div class="overflow-x-auto"><table class="w-full text-sm" data-testid="holder-list">
     <thead>
       <tr class="border-b border-slate-700 text-left text-xs text-slate-400">
         <th class="py-2 pr-3 font-medium">Name</th>
@@ -66,7 +66,7 @@
         </tr>
       {/each}
     </tbody>
-  </table>
+  </table></div>
 {/if}
 
 <HolderModal show={modalOpen} holder={editing} on:close={() => modalOpen = false} on:saved={() => modalOpen = false} />

@@ -51,7 +51,7 @@
       <p class="text-sm text-slate-500 italic py-4">
         {s.agreements.length ? 'No agreements match.' : 'No agreements yet. Allocate a bay from the Bays tab.'}</p>
     {:else}
-      <table class="w-full text-sm" data-testid="agreement-list">
+      <div class="overflow-x-auto"><table class="w-full text-sm" data-testid="agreement-list">
         <thead>
           <tr class="border-b border-slate-700 text-left text-xs text-slate-400">
             <th class="py-2 pr-3 font-medium">Reference</th>
@@ -75,7 +75,7 @@
             </tr>
           {/each}
         </tbody>
-      </table>
+      </table></div>
     {/if}
   </div>
   {#if selected}

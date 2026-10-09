@@ -194,7 +194,7 @@
       <!-- Filters -->
       <div class="flex flex-wrap items-center gap-2">
         <input bind:value={q} placeholder="Search bay, flat, note…"
-          class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-56" />
+          class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-56 max-w-full" />
         <select bind:value={size} class="px-2 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200">
           <option value="">Any size</option>
           {#each PARKING_BAY_TYPES as t}<option value={t}>{t}</option>{/each}

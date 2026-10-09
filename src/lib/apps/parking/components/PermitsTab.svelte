@@ -220,7 +220,7 @@
     <section class="space-y-3 min-w-0">
       <div class="flex flex-wrap items-center gap-2">
         <input bind:value={q} placeholder="Search number, company, registration…"
-          class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-72" />
+          class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-72 max-w-full" />
         <select bind:value={show} class="px-2 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200">
           <option value="all">All permits</option>
           <option value="current">Current</option>

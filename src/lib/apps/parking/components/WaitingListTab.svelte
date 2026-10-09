@@ -181,7 +181,7 @@
 {#if rows.length === 0}
   <p class="text-sm text-slate-500 italic py-4">Nobody is waiting.</p>
 {:else}
-  <table class="w-full text-sm" data-testid="waiting-list">
+  <div class="overflow-x-auto"><table class="w-full text-sm" data-testid="waiting-list">
     <thead>
       <tr class="border-b border-slate-700 text-left text-xs text-slate-400">
         <th class="py-2 pr-3 font-medium">Place</th>
@@ -278,5 +278,5 @@
         {/if}
       {/each}
     </tbody>
-  </table>
+  </table></div>
 {/if}

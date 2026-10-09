@@ -42,14 +42,14 @@
   function openPermit(p) { close(); dispatch('showPermit', permitNumberLabel(p.permit_number)); }
 </script>
 
-<div class="relative flex items-center gap-2">
+<div class="relative flex flex-wrap items-center gap-x-2 gap-y-1">
   <label for="registration-lookup" class="text-sm text-slate-300 whitespace-nowrap">Registration Lookup:</label>
   <input id="registration-lookup" bind:value={q} placeholder="Registration, then Enter"
     on:keydown={(e) => e.key === 'Enter' && search()}
-    class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-56 font-mono uppercase" />
+    class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-56 max-w-full font-mono uppercase" />
   {#if searching}<span class="text-xs text-slate-400">Looking…</span>{/if}
   {#if hits}
-    <div class="absolute right-0 top-full z-20 mt-1 w-[26rem] bg-slate-800 border border-slate-600 rounded-lg shadow-xl p-2 text-sm"
+    <div class="absolute left-0 top-full z-20 mt-1 w-[26rem] max-w-[calc(100vw-2rem)] bg-slate-800 border border-slate-600 rounded-lg shadow-xl p-2 text-sm"
       data-testid="registration-results">
       <!-- Car park -->
       <p class="px-2 pt-1 text-xs uppercase tracking-wide text-slate-500">Car park</p>
