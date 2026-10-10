@@ -18,9 +18,14 @@
 // version from $app/env.
 import { immutable, assets } from '$app/manifest';
 import { version } from '$app/env';
+import { OCR_BASE } from '#lib/utils/textScan/ocrAssets.js';
 
 const SHELL_CACHE  = `lh-shell-v2-${version}`;
 const IMAGES_CACHE = 'lh-plan-images-v1';
+// The text reader's files (number plates, door numbers): kept once fetched,
+// so a scan works with no signal. Their path carries the reader's version, so
+// an upgrade is new URLs; older versions are dropped on activate.
+const OCR_CACHE    = 'lh-ocr-v1';
 
 // Assets to pre-cache (app shell)
 // $app/manifest gives paths RELATIVE to the base path ('' here), with no
@@ -46,7 +51,7 @@ self.addEventListener('activate', event => {
           .filter(k => k.startsWith('lh-shell-') && k !== SHELL_CACHE)
           .map(k => caches.delete(k))
       )
-    )
+    ).then(() => pruneOldReader())
   );
   self.clients.claim();
 });
@@ -78,6 +83,12 @@ self.addEventListener('fetch', event => {
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith('/api/')) return;
 
+  // The text reader's files → cache-first, kept across releases.
+  if (url.pathname.startsWith(OCR_BASE)) {
+    event.respondWith(cacheFirst(request, OCR_CACHE));
+    return;
+  }
+
   // App shell assets → cache-first (pre-cached on install)
   if (ASSETS.includes(url.pathname)) {
     event.respondWith(cacheFirst(request, SHELL_CACHE));
@@ -87,6 +98,14 @@ self.addEventListener('fetch', event => {
   // Everything else → network-first with shell cache fallback
   event.respondWith(networkFirst(request));
 });
+
+/** Drop reader files from an older version (their path no longer matches). */
+async function pruneOldReader() {
+  const cache = await caches.open(OCR_CACHE);
+  for (const req of await cache.keys()) {
+    if (!new URL(req.url).pathname.startsWith(OCR_BASE)) await cache.delete(req);
+  }
+}
 
 // -- Cache strategies ----------------------------------------------------------
 

@@ -10,9 +10,14 @@
      (stores/lookupAudit.js). The result then says it was checked against the
      car park as loaded, and when.
      ⛔ If the road permits cannot be read, the result SAYS so — "no road
-     permit" would otherwise read as a car with no permit. -->
+     permit" would otherwise read as a car with no permit.
+     📷 Scan (2026-10-10): the shared TextScanner reads the plate ON the phone
+     and offers the registrations this page knows — car park and road permits —
+     that it could be. Picking one searches it, exactly as if it were typed. -->
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
+  import TextScanner from '#lib/components/common/TextScanner.svelte';
+  import { warmReader } from '#lib/utils/textScan/ocrReader.js';
   import { parkingStore } from '../stores/parkingStore.js';
   import { permitStore } from '../stores/permitStore.js';
   import { normaliseReg, STATUS_LABEL } from '../utils/agreementModel.js';
@@ -32,6 +37,43 @@
   let permitError = '';
   let searching = false;
   let searchedOffline = false;
+  let scanning = false;
+
+  // Every registration this page knows, for the scanner to match a plate to.
+  $: scanCandidates = scanCandidatesFrom($parkingStore.vehicles, $permitStore.permits);
+  /** @param {any[]} vehicles @param {any[]} permits */
+  function scanCandidatesFrom(vehicles = [], permits = []) {
+    const seen = new Map();
+    for (const v of vehicles) if (v.registration && !seen.has(normaliseReg(v.registration)))
+      seen.set(normaliseReg(v.registration), { value: v.registration, label: 'car park' });
+    for (const p of permits) {
+      const key = normaliseReg(p.registration);
+      if (!key) continue;
+      const prior = seen.get(key);
+      if (prior) prior.label = 'car park · road permit';
+      else seen.set(key, { value: p.registration, label: 'road permit' });
+    }
+    return [...seen.values()];
+  }
+
+  function openScanner() {
+    scanning = true;
+    permitStore.ensureLoaded().catch(() => {});   // its own failure shows on the search
+  }
+  /** @param {CustomEvent<{ value: string }>} e */
+  function scanned(e) {
+    scanning = false;
+    q = e.detail.value;
+    search();
+  }
+
+  // On a phone, fetch the reader's files while there is a signal, so a scan
+  // works in the basement later. Once fetched they stay; this costs nothing then.
+  onMount(() => {
+    if (!$online || !window.matchMedia?.('(pointer: coarse)').matches) return;
+    const t = setTimeout(() => { void warmReader(); }, 4000);
+    return () => clearTimeout(t);
+  });
 
   async function search() {
     if (normaliseReg(q).length < 2) { hits = null; return; }
@@ -57,6 +99,8 @@
   <input id="registration-lookup" bind:value={q} placeholder="Registration, then Enter"
     on:keydown={(e) => e.key === 'Enter' && search()}
     class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-56 max-w-full font-mono uppercase" />
+  <button type="button" on:click={openScanner} title="Read a number plate with the camera"
+    class="px-3 py-1.5 text-sm rounded border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700">📷 Scan</button>
   {#if searching}<span class="text-xs text-slate-400">Looking…</span>{/if}
   {#if !$online}<span class="text-xs rounded-full bg-amber-900/50 px-2 py-0.5 text-amber-300">No signal</span>{/if}
   {#if $syncState.pending + $syncState.error > 0}
@@ -115,3 +159,8 @@
     </div>
   {/if}
 </div>
+
+{#if scanning}
+  <TextScanner profile="registration" title="Scan a number plate" candidates={scanCandidates}
+    on:pick={scanned} on:close={() => (scanning = false)} />
+{/if}

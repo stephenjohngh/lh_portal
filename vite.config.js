@@ -6,6 +6,7 @@ import adapterNode from '@sveltejs/adapter-node';
 import { defineConfig } from 'vite';
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { OCR_BASE, OCR_FILES } from './src/lib/utils/textScan/ocrAssets.js';
 
 // ⭐ SvelteKit 3 reads its configuration from the sveltekit() plugin here;
 // svelte.config.js is no longer used (and is an error if present).
@@ -109,9 +110,43 @@ const buildDate = new Date().toLocaleDateString('en-GB', {
   day: 'numeric', month: 'short', year: 'numeric'
 });
 
+/**
+ * The text reader's files (Tesseract.js), served from the portal itself so a
+ * picture is read on the phone and the reader works with no signal
+ * (2026-10-10; src/lib/utils/textScan/ocrAssets.js lists them). In dev they are
+ * served straight from node_modules; in a build they are copied into the
+ * client output at OCR_BASE. ⚠ Not in static/: SvelteKit pre-caches every
+ * static file on every device, and these are several megabytes that only a
+ * scan needs — the service worker keeps them when they are first fetched.
+ */
+function ocrAssets() {
+	const type = (name) => (name.endsWith('.js') ? 'text/javascript' : 'application/octet-stream');
+	return {
+		name: 'lh-ocr-assets',
+		configureServer(server) {
+			server.middlewares.use((req, res, next) => {
+				const path = (req.url ?? '').split('?')[0];
+				if (!path.startsWith(OCR_BASE)) return next();
+				const src = OCR_FILES[path.slice(OCR_BASE.length)];
+				if (!src) return next();
+				res.setHeader('Content-Type', type(path));
+				res.end(readFileSync(src));
+			});
+		},
+		generateBundle() {
+			// Only the browser's build — not the server's, nor the service worker's.
+			if (this.environment?.name !== 'client') return;
+			for (const [name, src] of Object.entries(OCR_FILES)) {
+				this.emitFile({ type: 'asset', fileName: OCR_BASE.slice(1) + name, source: readFileSync(src) });
+			}
+		},
+	};
+}
+
 export default defineConfig({
 	plugins: [
 		tailwindcss(),
+		ocrAssets(),
 		sveltekit({
 			preprocess: vitePreprocess(),
 

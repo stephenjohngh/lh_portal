@@ -52,6 +52,7 @@
 		"@anthropic-ai/sdk": "^0.131.0",
 		"@sentry/sveltekit": "^11.4.0",
 		"@supabase/supabase-js": "^2.117.2",
+		"@tesseract.js-data/eng": "1.0.0",
 		"@tiptap/core": "3.31.3",
 		"@tiptap/extension-table": "3.31.3",
 		"@tiptap/starter-kit": "3.31.3",
@@ -61,6 +62,7 @@
 		"dompurify": "^3.4.5",
 		"exceljs": "^4.4.0",
 		"googleapis": "^183.0.0",
-		"jszip": "^3.10.2"
+		"jszip": "^3.10.2",
+		"tesseract.js": "7.0.0"
 	}
 }

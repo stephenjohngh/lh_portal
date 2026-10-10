@@ -18,13 +18,20 @@ const h = vi.hoisted(() => {
       get: () => val,
     };
   }
-  return { permits: makeStore({}), lookups: [], online: makeStore(true), sync: makeStore({ pending: 0, error: 0 }) };
+  return { permits: makeStore({}), lookups: [], online: makeStore(true), sync: makeStore({ pending: 0, error: 0 }),
+    parking: makeStore({ vehicles: [{ id: 'v1', registration: 'AB12 CDE' }] }), ocrText: '' };
 });
+
+vi.mock('#lib/utils/textScan/ocrReader.js', () => ({
+  startReader: async () => ({}),
+  readText: async () => ({ text: h.ocrText, confidence: 80 }),
+  warmReader: async () => {},
+}));
 
 vi.mock('#lib/stores/online.js', () => ({ online: { subscribe: h.online.subscribe } }));
 vi.mock('../stores/lookupAudit.js', () => ({ syncState: { subscribe: h.sync.subscribe } }));
 vi.mock('../stores/parkingStore.js', () => ({
-  parkingStore: { lookupRegistration: (q, n, o) => { h.lookups.push([q, n, o]); return []; } },
+  parkingStore: { subscribe: h.parking.subscribe, lookupRegistration: (q, n, o) => { h.lookups.push([q, n, o]); return []; } },
 }));
 vi.mock('../stores/permitStore.js', () => ({
   permitStore: {
@@ -89,6 +96,33 @@ describe('Registration Lookup with no signal', () => {
     expect(results.textContent).toMatch(/recorded when the signal returns/);
     expect(results.textContent).toMatch(/Permit 101 · Acme/);
     expect(h.lookups).toEqual([['ABC 123', 2, { offline: true }]]);
+  });
+});
+
+describe('Scanning a number plate', () => {
+  beforeEach(() => {
+    cleanup(); h.lookups.length = 0; h.online.set(true); h.sync.set({ pending: 0, error: 0 });
+    h.permits.set({ permits: PERMITS, template: null, imageUrls: {}, loaded: true });
+    const ctx = { drawImage: () => {}, putImageData: () => {},
+      getImageData: (_x, _y, w, hh) => ({ data: new Uint8ClampedArray(Math.max(1, w * hh) * 4) }) };
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => /** @type {any} */ (ctx));
+    globalThis.createImageBitmap = /** @type {any} */ (async () => ({ width: 400, height: 300 }));
+  });
+
+  it('offers the registrations this page knows — car park and road permits — and searches the one picked', async () => {
+    h.ocrText = 'ABC I23';                     // a road permit's plate, misread
+    render(RegistrationSearch);
+    await fireEvent.click(screen.getByRole('button', { name: /Scan/ }));
+    expect(await screen.findByTestId('text-scanner')).toBeTruthy();
+    const input = /** @type {HTMLInputElement} */ (screen.getByLabelText(/Take a photo/));
+    Object.defineProperty(input, 'files', { value: [new File(['x'], 'p.jpg', { type: 'image/jpeg' })], configurable: true });
+    await fireEvent.change(input);
+    const match = await screen.findByRole('button', { name: /ABC 123/ });
+    expect(match.textContent).toMatch(/road permit/);
+    await fireEvent.click(match);
+    await tick(); await tick();
+    expect(screen.queryByTestId('text-scanner')).toBeNull();
+    expect(h.lookups).toEqual([['ABC 123', 2, { offline: false }]]);
   });
 });
 
