@@ -34,8 +34,6 @@ const ALLOWED = {
     'the offline walk: the device cache, the outbox and the resume refreshes fall back to what the phone holds, and the sync queue retries'],
   'lib/offline/syncRunner.js': [3,
     'the shared sync queue (Inspection, Parking (M)): a failed drain is retried, and the outbox shows what is waiting'],
-  'lib/apps/parkingmobile/stores/parkingMobileStore.js': [3,
-    'the offline lookup: an unreadable phone copy reads as "no copy yet", a failed refresh is shown as refreshError, and clearing a copy the account may no longer see is best effort'],
   'lib/apps/mobileplan/stores/mobileplanStore.js': [2,
     'the offline plan viewer: a cache write, and attributes shown only in the detail sheet'],
   'lib/server/documentLibrary.js': [1,

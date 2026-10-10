@@ -13,8 +13,6 @@
  * @property {boolean} alwaysVisible - Show to all users regardless of permissions
  * @property {boolean} requiresPermission - Requires explicit permission in app_permissions table
  * @property {string} [description] - Optional description for UI
- * @property {string} [grantId] - Shown to whoever holds THIS app's grant, and not
- *           granted on its own (Parking (M) uses the Parking grant: same data, same RLS)
  */
 
 export const AVAILABLE_APPS = [
@@ -78,17 +76,6 @@ export const AVAILABLE_APPS = [
     alwaysVisible: false,
     requiresPermission: true,
     description: 'Mobile-first read-only floor schematic viewer'
-  },
-
-  {
-    id: 'parkingmobile',
-    name: 'Parking (M)',
-    icon: 'search',
-    mobile: true,
-    alwaysVisible: false,
-    requiresPermission: true,
-    grantId: 'parking',
-    description: 'Registration Lookup on a phone — works in the basement without a signal'
   },
 
   {
@@ -195,7 +182,7 @@ export const AVAILABLE_APPS = [
  * @returns {AppDefinition[]} Apps that need app_permissions entry
  */
 export function getPermissionedApps() {
-  return AVAILABLE_APPS.filter(app => app.requiresPermission && !app.grantId);
+  return AVAILABLE_APPS.filter(app => app.requiresPermission);
 }
 
 /**
@@ -214,7 +201,7 @@ export function getAppsForUser(permittedAppIds = [], isAdmin = false) {
     if (isAdmin) return true;
 
     // Show apps the user has been explicitly granted
-    if (app.requiresPermission && permittedAppIds.includes(app.grantId ?? app.id)) {
+    if (app.requiresPermission && permittedAppIds.includes(app.id)) {
       return true;
     }
 

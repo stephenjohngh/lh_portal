@@ -28,6 +28,7 @@ import {
 import { validateApplication, validateOffer, offerBlocks } from '../utils/waitingListModel.js';
 import { validateTariff, tariffRow, tariffFor, matchesTariff, reopenedBy } from '../utils/tariffModel.js';
 import { storeLoader } from '#lib/utils/storeLoad.js';
+import { queueLookupAudit } from './lookupAudit.js';
 
 const logger = getLogger('Parking');
 const AUDIT = { appId: 'parking', eventCategory: 'parking' };
@@ -547,21 +548,21 @@ function createParkingStore() {
   // ── "Whose car is this?" ────────────────────────────────────────────────
 
   /**
-   * Search by registration. ⚠ Every search is AUDITED: it is the query most
-   * open to curiosity, and the log is what makes it answerable afterwards.
-   * The search text is logged, the results are not.
-   */
-  /**
+   * Search by registration, in what the page has loaded — so it still answers
+   * with no signal (the basement). ⚠ Every search is AUDITED: it is the query
+   * most open to curiosity, and the log is what makes it answerable afterwards.
+   * The search text is logged, the results are not. The line goes through the
+   * offline outbox (lookupAudit.js), so a lookup made with no signal is
+   * recorded when it returns.
    * @param {string} q
    * @param {number} [permitResults]  how many road permits the same lookup found — logged with it, one line per lookup
+   * @param {{ offline?: boolean }} [opts]
    */
-  function lookupRegistration(q, permitResults = 0) {
+  function lookupRegistration(q, permitResults = 0, opts = {}) {
     const s = state();
     const hits = findByRegistration(q, s);
-    logAudit('view', 'parking_vehicle', null, 'registration lookup', {
-      ...AUDIT, eventAction: 'registration_lookup',
-      afterData: { query: normaliseReg(q), results: hits.length, permitResults },
-    });
+    queueLookupAudit({ query: normaliseReg(q), results: hits.length, permitResults }, opts)
+      .catch((/** @type {any} */ err) => logger('⚠ the lookup audit line could not be queued:', err));
     return hits;
   }
 

@@ -61,7 +61,6 @@
     'inspection':       () => import('#lib/apps/inspection/InspectionApp.svelte'),
     'mobileplan':       () => import('#lib/apps/mobileplan/MobilePlanApp.svelte'),
     'managementmobile': () => import('#lib/apps/managementmobile/ManagementMobileApp.svelte'),
-    'parkingmobile':    () => import('#lib/apps/parkingmobile/ParkingMobileApp.svelte'),
     'maintenance':      () => import('#lib/apps/maintenance/MaintenanceApp.svelte'),
     'info':             () => import('#lib/apps/info/InfoApp.svelte'),
     'mor':              () => import('#lib/apps/mor/MorApp.svelte'),

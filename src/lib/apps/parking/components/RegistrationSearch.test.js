@@ -18,11 +18,13 @@ const h = vi.hoisted(() => {
       get: () => val,
     };
   }
-  return { permits: makeStore({}), lookups: [] };
+  return { permits: makeStore({}), lookups: [], online: makeStore(true), sync: makeStore({ pending: 0, error: 0 }) };
 });
 
+vi.mock('#lib/stores/online.js', () => ({ online: { subscribe: h.online.subscribe } }));
+vi.mock('../stores/lookupAudit.js', () => ({ syncState: { subscribe: h.sync.subscribe } }));
 vi.mock('../stores/parkingStore.js', () => ({
-  parkingStore: { lookupRegistration: (q, n) => { h.lookups.push([q, n]); return []; } },
+  parkingStore: { lookupRegistration: (q, n, o) => { h.lookups.push([q, n, o]); return []; } },
 }));
 vi.mock('../stores/permitStore.js', () => ({
   permitStore: {
@@ -48,7 +50,10 @@ import RegistrationSearch from './RegistrationSearch.svelte';
 import PermitTemplatePanel from './PermitTemplatePanel.svelte';
 
 describe('Registration Lookup', () => {
-  beforeEach(() => { cleanup(); h.lookups.length = 0; h.permits.set({ permits: [], template: null, imageUrls: {} }); });
+  beforeEach(() => {
+    cleanup(); h.lookups.length = 0; h.online.set(true); h.sync.set({ pending: 0, error: 0 });
+    h.permits.set({ permits: [], template: null, imageUrls: {} });
+  });
 
   it('finds road permits for a registration typed any way, before the permits tab has been opened', async () => {
     render(RegistrationSearch);
@@ -60,7 +65,30 @@ describe('Registration Lookup', () => {
     expect(results.textContent).toMatch(/Permit 101 · Acme/);
     expect(results.textContent).toMatch(/Permit 100 · Acme/);
     expect(results.textContent).not.toMatch(/No road permit/);
-    expect(h.lookups).toEqual([['abc123', 2]]);
+    expect(h.lookups).toEqual([['abc123', 2, { offline: false }]]);
+  });
+});
+
+describe('Registration Lookup with no signal', () => {
+  beforeEach(() => {
+    cleanup(); h.lookups.length = 0;
+    h.permits.set({ permits: PERMITS, template: null, imageUrls: {}, loaded: true });
+  });
+
+  it('still answers from what the page loaded, says so, and the lookup is recorded later', async () => {
+    h.online.set(false);
+    h.sync.set({ pending: 1, error: 0 });
+    render(RegistrationSearch, { loadedAt: Date.parse('2026-10-10T08:30:00Z') });
+    expect(screen.getByText('No signal')).toBeTruthy();
+    expect(screen.getByText(/1 lookup not yet recorded/)).toBeTruthy();
+    const box = screen.getByLabelText('Registration Lookup:');
+    await fireEvent.input(box, { target: { value: 'ABC 123' } });
+    await fireEvent.keyDown(box, { key: 'Enter' });
+    const results = await screen.findByTestId('registration-results');
+    expect(results.textContent).toMatch(/No signal — checked against the car park as loaded at 09:30/);
+    expect(results.textContent).toMatch(/recorded when the signal returns/);
+    expect(results.textContent).toMatch(/Permit 101 · Acme/);
+    expect(h.lookups).toEqual([['ABC 123', 2, { offline: true }]]);
   });
 });
 

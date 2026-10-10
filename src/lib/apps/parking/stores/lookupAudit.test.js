@@ -1,14 +1,12 @@
-// Parking (M) sends each lookup's audit line from the shared outbox. A line the
+// The Registration Lookup's audit line goes through the shared outbox. A line the
 // server refuses is skipped; anything that might succeed later waits.
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('#lib/apps/parking/stores/parkingStore.js', () => ({ parkingStore: { subscribe: () => () => {}, load: vi.fn() } }));
-vi.mock('#lib/apps/parking/stores/permitStore.js', () => ({ permitStore: { subscribe: () => () => {}, load: vi.fn() } }));
 vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 vi.mock('#lib/supabaseClient.js', () => ({ supabase: {} }));
 vi.mock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', {}));
 
-const { syncAuditOp, DB_NAME } = await import('./parkingMobileStore.js');
+const { syncAuditOp, DB_NAME } = await import('./lookupAudit.js');
 const { SESSION_EXPIRED } = await import('#lib/utils/request.js');
 const { PERSONAL_DATABASES } = await import('#lib/offline/wipe.js');
 
@@ -36,7 +34,7 @@ describe('sending a queued lookup audit line', () => {
     expect((await syncAuditOp({ type: 'other' }, { post: vi.fn() })).permanent).toBe(true);
   });
 
-  it('keeps its copy in a database that logout deletes', () => {
+  it('keeps its queue in a database that logout deletes', () => {
     expect(PERSONAL_DATABASES).toContain(DB_NAME);
   });
 });

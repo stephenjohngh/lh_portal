@@ -15,6 +15,9 @@
 <script>
   import { permissions } from '#lib/stores/permissions.js';
   import { hasAppAccess } from '#lib/utils/appAccess.js';
+  import { permitStore } from './stores/permitStore.js';
+  import { onMount } from 'svelte';
+  import { startSync, stopSync } from './stores/lookupAudit.js';
   import AppGate from '#lib/components/common/AppGate.svelte';
   import { revealOnNarrow } from './utils/revealOnNarrow.js';
   import TabBar  from '#lib/components/common/TabBar.svelte';
@@ -112,7 +115,16 @@
   // access" flash on every open, 0bafc45) and loads only for an account with
   // access. `loaded` is its ready flag, for the search in the header.
   let loaded = false;
-  const loadParking = () => parkingStore.load().catch(() => { /* shown from state.error */ });
+  // The road permits are read on opening too, so the Registration Lookup has
+  // them in the basement with no signal; a failure shows in the lookup.
+  // When the car park was read is shown with a lookup made with no signal.
+  let loadedAt = 0;
+  const loadParking = () => {
+    permitStore.ensureLoaded().catch(() => { /* the lookup says road permits were not checked */ });
+    return parkingStore.load().then(() => { loadedAt = Date.now(); }).catch(() => { /* shown from state.error */ });
+  };
+  // Lookups made with no signal are recorded when it returns.
+  onMount(() => { startSync(); return () => stopSync(); });
 
   let floorId = '';          // the level shown on the map; '' until chosen
   let size = '';
@@ -141,7 +153,7 @@
 <div class="space-y-4">
   <div class="space-y-2">
     <h2 class="heading-page">Parking</h2>
-    {#if hasAccess && loaded}<RegistrationSearch on:showAgreement={showAgreement} on:showPermit={showPermit} />{/if}
+    {#if hasAccess && loaded}<RegistrationSearch {loadedAt} on:showAgreement={showAgreement} on:showPermit={showPermit} />{/if}
   </div>
 
   <AppGate appId="parking" name="Parking" load={loadParking} requireGrant bind:ready={loaded}>

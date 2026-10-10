@@ -10,6 +10,7 @@ const h = vi.hoisted(() => ({
   },
   listParkingBaySpaces: vi.fn(),
   logAudit: vi.fn(),
+  queueLookupAudit: vi.fn(async () => {}),
   postJson: vi.fn(),
   deleteDocumentsFor: vi.fn(() => Promise.resolve(0)),
   auth: { subscribe(fn) { fn({ user: { id: 'u1' } }); return () => {}; } },
@@ -18,6 +19,7 @@ const h = vi.hoisted(() => ({
 vi.mock('#lib/utils/api.js', () => ({ api: h.api }));
 vi.mock('#lib/stores/auth.js', () => ({ auth: h.auth }));
 vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: h.logAudit }));
+vi.mock('./lookupAudit.js', () => ({ queueLookupAudit: h.queueLookupAudit }));
 vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 vi.mock('#lib/apps/building_assets/public.js', () => ({ listParkingBaySpaces: h.listParkingBaySpaces }));
 vi.mock('#lib/utils/request.js', () => ({ postJson: h.postJson }));
@@ -124,13 +126,13 @@ describe('the audit log never carries personal details', () => {
       basis: 'licence', status: 'active', starts_on: '2026-01-01' }];
     tables.parking_vehicles = [{ id: 'v1', agreement_id: 'a1', registration: 'AB12CDE', to_date: null }];
     await parkingStore.load();
-    h.logAudit.mockClear();
+    h.queueLookupAudit.mockClear();
 
-    const hits = parkingStore.lookupRegistration('ab12');
+    // Through the offline outbox, so a lookup made with no signal is still recorded.
+    const hits = parkingStore.lookupRegistration('ab12', 0, { offline: true });
     expect(hits[0].holder.display_name).toBe('Alice Example');
-    expect(h.logAudit).toHaveBeenCalledWith('view', 'parking_vehicle', null, 'registration lookup',
-      expect.objectContaining({ afterData: { query: 'AB12', results: 1, permitResults: 0 } }));
-    expect(JSON.stringify(h.logAudit.mock.calls)).not.toContain('Alice');
+    expect(h.queueLookupAudit).toHaveBeenCalledWith({ query: 'AB12', results: 1, permitResults: 0 }, { offline: true });
+    expect(JSON.stringify(h.queueLookupAudit.mock.calls)).not.toContain('Alice');
   });
 });
 

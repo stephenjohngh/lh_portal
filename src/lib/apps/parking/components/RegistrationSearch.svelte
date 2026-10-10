@@ -5,6 +5,10 @@
      Searches on Enter, not per keystroke, because every search is written to
      the audit log (parkingStore.lookupRegistration), and a log line per letter
      typed would bury the lookups that matter.
+     ⭐ It works with no signal (the basement): it searches what the page has
+     loaded, and the audit line waits on the phone until the signal returns
+     (stores/lookupAudit.js). The result then says it was checked against the
+     car park as loaded, and when.
      ⛔ If the road permits cannot be read, the result SAYS so — "no road
      permit" would otherwise read as a car with no permit. -->
 <script>
@@ -15,6 +19,11 @@
   import { findPermitsByRegistration, fmtPermitWhen, permitNumberLabel } from '../utils/permitModel.js';
   import { fmtDate, today, fmtTime } from '#lib/utils/dates.js';
   import { errMessage } from '#lib/utils/errors.js';
+  import { online } from '#lib/stores/online.js';
+  import { syncState } from '../stores/lookupAudit.js';
+
+  /** When the page read the car park — shown when a lookup is made with no signal. */
+  export let loadedAt = 0;
 
   const dispatch = createEventDispatcher();
   let q = '';
@@ -22,10 +31,11 @@
   let permitHits = [];
   let permitError = '';
   let searching = false;
+  let searchedOffline = false;
 
   async function search() {
     if (normaliseReg(q).length < 2) { hits = null; return; }
-    searching = true; permitError = '';
+    searching = true; permitError = ''; searchedOffline = !$online;
     try {
       try {
         await permitStore.ensureLoaded();
@@ -34,7 +44,7 @@
         permitHits = [];
         permitError = errMessage(err, 'The road permits could not be read.');
       }
-      hits = parkingStore.lookupRegistration(q, permitHits.length);
+      hits = parkingStore.lookupRegistration(q, permitHits.length, { offline: searchedOffline });
     } finally { searching = false; }
   }
   function close() { hits = null; q = ''; permitHits = []; permitError = ''; }
@@ -48,9 +58,18 @@
     on:keydown={(e) => e.key === 'Enter' && search()}
     class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-56 max-w-full font-mono uppercase" />
   {#if searching}<span class="text-xs text-slate-400">Looking…</span>{/if}
+  {#if !$online}<span class="text-xs rounded-full bg-amber-900/50 px-2 py-0.5 text-amber-300">No signal</span>{/if}
+  {#if $syncState.pending + $syncState.error > 0}
+    <span class="text-xs text-amber-300">{$syncState.pending + $syncState.error} lookup{$syncState.pending + $syncState.error === 1 ? '' : 's'} not yet recorded</span>
+  {/if}
   {#if hits}
     <div class="absolute left-0 top-full z-20 mt-1 w-[26rem] max-w-[calc(100vw-2rem)] bg-slate-800 border border-slate-600 rounded-lg shadow-xl p-2 text-sm"
       data-testid="registration-results">
+      {#if searchedOffline}
+        <p class="mx-2 mb-1 rounded bg-amber-900/40 px-2 py-1 text-xs text-amber-300">
+          No signal — checked against the car park as loaded at {fmtTime(new Date(loadedAt).toISOString())}.
+          This lookup will be recorded when the signal returns.</p>
+      {/if}
       <!-- Car park -->
       <p class="px-2 pt-1 text-xs uppercase tracking-wide text-slate-500">Car park</p>
       {#if hits.length === 0}
