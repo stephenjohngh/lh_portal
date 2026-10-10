@@ -136,6 +136,22 @@
     return run(async () => { await parkingStore.addVehicle(a.id, newVehicle);
       newVehicle = { registration: '', make: '', model: '', colour: '', is_ev: false }; }); };
   const endVehicle = (vid) => run(() => parkingStore.endVehicle(vid));
+  $: vehiclesEditable = agreement && ['draft', 'active', 'notice_given'].includes(agreement.status);
+  /** The vehicle being replaced, while "Change vehicle" is open. */
+  let changingFrom = null;
+  function startChange(vid) {
+    changingFrom = vid;
+    newVehicle = { registration: '', make: '', model: '', colour: '', is_ev: false };
+  }
+  function cancelChange() { changingFrom = null; }
+  const saveChange = () => { const a = agreement; const from = changingFrom; const v = newVehicle;
+    return run(async () => {
+      await parkingStore.changeVehicle(a.id, from, v);
+      changingFrom = null;
+      newVehicle = { registration: '', make: '', model: '', colour: '', is_ev: false };
+    }); };
+  const removeWithoutReplacing = () => { const from = changingFrom;
+    return run(async () => { await parkingStore.endVehicle(from); changingFrom = null; }); };
   const saveNotice = () => { const a = id(); const n = notice;
     return run(async () => { await parkingStore.serveNotice(a, n); noticing = false; }); };
   const issueDevice = () => { const a = id(); const d = newDevice;
@@ -338,20 +354,25 @@
       />
     </div>
 
-    <!-- Vehicles -->
-    <div class="border-t border-slate-700 pt-3 space-y-2">
+    <!-- Vehicle -->
+    <div class="border-t border-slate-700 pt-3 space-y-2" data-testid="agreement-vehicle">
       <!-- One vehicle per agreement (user, 2026-10-10: "it is always 1"); the
-           limit stays on the agreement (max_vehicles, default 1), unasked. -->
+           limit stays on the agreement (max_vehicles, default 1), unasked.
+           "Change vehicle" ends the current one today and starts the new one
+           today, in one step (parkingStore.changeVehicle). -->
       <p class="text-sm font-semibold text-slate-200">Vehicle</p>
       {#each currentVehicles as v (v.id)}
-        <div class="flex items-center justify-between text-sm">
+        <div class="flex items-center justify-between gap-2 text-sm">
           <span><span class="font-mono text-white">{formatReg(v.registration)}</span>
             <span class="text-slate-400"> {[v.colour, v.make, v.model].filter(Boolean).join(' ')}</span>
             {#if v.is_ev}<span class="text-xs text-green-400 ml-1">EV</span>{/if}</span>
-          {#if canEdit}<button class="text-xs text-slate-400 hover:text-red-400" disabled={busy} on:click={() => endVehicle(v.id)}>No longer used</button>{/if}
+          {#if canEdit && vehiclesEditable && changingFrom !== v.id}
+            <button class="shrink-0 text-xs text-purple-400 hover:text-purple-300" disabled={busy}
+              on:click={() => startChange(v.id)}>Change vehicle</button>
+          {/if}
         </div>
       {:else}
-        <p class="text-xs text-slate-500 italic">No vehicles.</p>
+        <p class="text-xs text-slate-500 italic">No vehicle.</p>
       {/each}
       {#if pastVehicles.length}
         <details class="text-xs text-slate-500">
@@ -361,14 +382,30 @@
           {/each}
         </details>
       {/if}
-      {#if canEdit && (agreement.status === 'draft' || agreement.status === 'active' || agreement.status === 'notice_given')
-            && currentVehicles.length < agreement.max_vehicles}
-        <div class="grid grid-cols-[7rem_1fr_1fr_auto_auto] gap-2 items-end">
-          <FormInput label="Registration" bind:value={newVehicle.registration} placeholder="AB12 CDE" />
-          <FormInput label="Make" bind:value={newVehicle.make} />
-          <FormInput label="Colour" bind:value={newVehicle.colour} />
-          <div class="pb-2"><Checkbox bind:checked={newVehicle.is_ev} label="EV" /></div>
-          <div class="pb-1"><Button size="small" variant="secondary" disabled={busy} on:click={addVehicle}>Add</Button></div>
+      {#if canEdit && vehiclesEditable && (changingFrom || currentVehicles.length < agreement.max_vehicles)}
+        <div class="rounded-lg bg-slate-900/40 p-2 space-y-2">
+          {#if changingFrom}<p class="text-xs text-slate-400">The new vehicle — the current one stops being authorised today.</p>{/if}
+          <!-- Registration, make and model on one line; colour, EV and the
+               button on the next, so make and model have room. -->
+          <div class="grid grid-cols-3 gap-2">
+            <FormInput label="Registration" bind:value={newVehicle.registration} placeholder="AB12 CDE" inputClass="uppercase" />
+            <FormInput label="Make" bind:value={newVehicle.make} />
+            <FormInput label="Model" bind:value={newVehicle.model} />
+          </div>
+          <div class="flex flex-wrap items-end gap-2">
+            <div class="w-32"><FormInput label="Colour" bind:value={newVehicle.colour} /></div>
+            <div class="pb-2"><Checkbox bind:checked={newVehicle.is_ev} label="EV" /></div>
+            <div class="ml-auto flex items-center gap-2 pb-1">
+              {#if changingFrom}
+                <button class="text-xs text-slate-400 hover:text-red-400" disabled={busy}
+                  on:click={removeWithoutReplacing}>Remove without replacing</button>
+                <Button size="small" variant="secondary" disabled={busy} on:click={cancelChange}>Cancel</Button>
+                <Button size="small" variant="primary" disabled={busy} on:click={saveChange}>Save new vehicle</Button>
+              {:else}
+                <Button size="small" variant="primary" disabled={busy} on:click={addVehicle}>Add</Button>
+              {/if}
+            </div>
+          </div>
         </div>
       {/if}
     </div>
@@ -419,7 +456,10 @@
 
     <!-- Timeline: written by the database, never edited -->
     <div class="border-t border-slate-700 pt-3" data-testid="agreement-timeline">
-      <p class="text-sm font-semibold text-slate-200 mb-2">Timeline</p>
+      <p class="text-sm font-semibold text-slate-200 mb-2">Timeline
+        {#if timeline.length > 5}<span class="text-xs font-normal text-slate-500">({timeline.length} — scroll for more)</span>{/if}</p>
+      <!-- About five lines tall, scrolling for the rest (user, 2026-10-10). -->
+      <div class="max-h-[7.5rem] overflow-y-auto pr-1" data-testid="timeline-scroll">
       {#each timeline as e (e.id)}
         <div class="text-xs py-1 border-b border-slate-800 last:border-0">
           <span class="text-slate-500">{fmtDate(e.created_at)}</span>
@@ -429,6 +469,7 @@
       {:else}
         <p class="text-xs text-slate-500 italic">Nothing recorded yet.</p>
       {/each}
+      </div>
     </div>
   </div>
 

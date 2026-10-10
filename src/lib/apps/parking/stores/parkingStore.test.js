@@ -381,3 +381,37 @@ describe('audit of devices and deposits', () => {
     expect(actions).toEqual(expect.arrayContaining(['device_returned', 'deposit_refunded']));
   });
 });
+
+describe('changeVehicle (one vehicle per agreement)', () => {
+  const agreement = { id: 'ag1', reference: 'PA-0001', status: 'active', max_vehicles: 1, bay_id: 'b1', holder_id: 'h1' };
+  const old = { id: 'v-old', agreement_id: 'ag1', registration: 'XY67MNB', to_date: null };
+
+  it('ends the old vehicle and adds the new one', async () => {
+    tables.parking_agreements = [agreement];
+    tables.parking_vehicles = [old];
+    await parkingStore.load();
+    await parkingStore.changeVehicle('ag1', 'v-old', { registration: 'ab12 cde', make: 'Ford', model: 'Focus' });
+    expect(h.api.update.mock.calls[0]).toEqual(['parking_vehicles', 'v-old', expect.objectContaining({ to_date: expect.any(String) }), true]);
+    expect(h.api.create.mock.calls[0][1]).toMatchObject({ registration: 'AB12CDE', make: 'Ford', model: 'Focus' });
+    const live = get(parkingStore).vehicles.filter((v) => !v.to_date);
+    expect(live.map((v) => v.registration)).toEqual(['AB12CDE']);
+  });
+
+  it('checks the new vehicle before touching the old one', async () => {
+    tables.parking_agreements = [agreement];
+    tables.parking_vehicles = [old];
+    await parkingStore.load();
+    await expect(parkingStore.changeVehicle('ag1', 'v-old', { registration: '' })).rejects.toThrow(/registration/);
+    expect(h.api.update).not.toHaveBeenCalled();
+  });
+
+  it('a failed save puts the old vehicle back, so the agreement is never left with none', async () => {
+    tables.parking_agreements = [agreement];
+    tables.parking_vehicles = [old];
+    await parkingStore.load();
+    h.api.create.mockRejectedValueOnce(new Error('network'));
+    await expect(parkingStore.changeVehicle('ag1', 'v-old', { registration: 'AB12CDE' })).rejects.toThrow(/network/);
+    expect(h.api.update.mock.calls.at(-1)).toEqual(['parking_vehicles', 'v-old', { to_date: null }, true]);
+    expect(get(parkingStore).vehicles.find((v) => v.id === 'v-old').to_date).toBeNull();
+  });
+});

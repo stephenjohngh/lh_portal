@@ -545,6 +545,33 @@ function createParkingStore() {
     return saved;
   }
 
+  /**
+   * Change the vehicle (user, 2026-10-10: one vehicle per agreement, so "no
+   * longer used" became "change vehicle"). The new one is checked FIRST, as if
+   * the old one were already gone; then the old one ends today and the new one
+   * starts today. If saving the new one fails, the old one is put back, so a
+   * failed change never leaves the agreement with no vehicle.
+   */
+  async function changeVehicle(agreementId, oldId, v) {
+    const s = state();
+    const agreement = s.agreements.find(a => a.id === agreementId);
+    if (!agreement) throw new Error('Agreement not found.');
+    const others = s.vehicles.filter(x => x.id !== oldId);
+    const problem = validateVehicle(v, agreement, others);
+    if (problem) throw new Error(problem);
+    const old = s.vehicles.find(x => x.id === oldId) ?? null;
+    if (old && !old.to_date) await endVehicle(oldId);
+    try {
+      return await addVehicle(agreementId, v);
+    } catch (err) {
+      if (old && !old.to_date) {
+        const back = await api.update('parking_vehicles', oldId, { to_date: null }, true);
+        update(st => ({ ...st, vehicles: st.vehicles.map(x => x.id === oldId ? back : x) }));
+      }
+      throw err;
+    }
+  }
+
   // ── "Whose car is this?" ────────────────────────────────────────────────
 
   /**
@@ -647,7 +674,7 @@ function createParkingStore() {
     issueDevice, returnDevice, refundDeposit,
     moveToBay, loadEvents,
     addApplication, makeOffer, returnToQueue, markAllocated, withdrawApplication, loadApplicationEvents,
-    addVehicle, endVehicle,
+    addVehicle, endVehicle, changeVehicle,
     lookupRegistration,
   };
 }
