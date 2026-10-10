@@ -64,6 +64,7 @@
   let sinceAt = Date.now();     // when it started looking for the current answer
   let nowTick = Date.now();     // advances twice a second, so the hints move on even between slow frames
   let hadAnswer = false;
+  let held = false;             // a definite answer is held (scanTally.js) — misreads no longer shown
   /** @type {any} */ let ticker = null;
   $: live = !!stream && readerReady && !cameraError;
   $: answered = matches.length > 0 || !!lastRead;
@@ -166,6 +167,7 @@
     const v = tally.view(now);
     matches = v.matches;
     lastRead = v.reading ?? '';
+    held = v.held;
     seeing = readingsFrom(text, prof)[0] ?? '';
     if (seeing) note = '';        // live reading has moved on from any one-off message
   }
@@ -178,6 +180,7 @@
     const readings = readingsFrom(text, prof);
     if (!readings.length) return false;
     tally.reset();
+    held = false;
     lastRead = readings[0];
     matches = matchScan(text, candidates, prof);
     note = matches.length ? 'Tap the one that matches' : 'Not one this screen knows — use what was read, or try again';
@@ -266,7 +269,7 @@
     {:else if live}
       <p class="ts-status" aria-live="polite" data-testid="scan-status">{liveStatus}</p>
     {/if}
-    {#if live && seeing && !matches.length}
+    {#if live && seeing && !matches.length && !held}
       <p class="ts-seeing" data-testid="scan-seeing">Seeing: <span>{seeing}</span></p>
     {/if}
 
