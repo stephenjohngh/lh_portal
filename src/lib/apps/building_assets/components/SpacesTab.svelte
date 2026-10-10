@@ -1,7 +1,7 @@
 <!-- src/lib/apps/building_assets/components/SpacesTab.svelte -->
 <!-- Building-wide Spaces register: one row per space with reference, kind,
      type, floor, area, component count and a status breakdown. Read-only
-     report view (all authenticated users); filterable + CSV export. The
+     report view (all authenticated users); filterable; CSV export for admins only. The
      space-grain counterpart to the Components tab. Rows are derived at read
      time from the store (membership + area), reusing buildSpacesRegister() +
      spaceReport.js — the same helpers the sidebar used to expose as CSV. -->
@@ -126,6 +126,8 @@
     <span class="text-xs text-slate-500 shrink-0">
       {filteredRows.length} space{filteredRows.length !== 1 ? 's' : ''}
     </span>
+    <!-- Admins only, as the Components report (user, 2026-10-10). -->
+    {#if $permissions.isAdmin}
     <button
       on:click={exportCsv}
       disabled={filteredRows.length === 0}
@@ -133,6 +135,7 @@
              text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed
              transition-colors shrink-0"
     >⬇ CSV</button>
+    {/if}
   </div>
 
   <!-- Filters -->

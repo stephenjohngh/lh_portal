@@ -892,7 +892,13 @@
       {/if}
 
       <!-- -- Report panel -------------------------------------------- -->
-      <div class="border-b border-slate-700/60 bg-slate-800/20">
+      <!-- ⛔ Admins only (user, 2026-10-10): no one-click way for everyone to
+           download the whole register. The data is in the browser anyway, so
+           this is a deterrent, not a lock — the right level for known users
+           who would never think to look for it. The Works schedule button
+           inside was already admin-only. -->
+      {#if $permissions.isAdmin}
+      <div class="border-b border-slate-700/60 bg-slate-800/20" data-testid="report-panel">
 
         <!-- Toggle row — always visible -->
         <div class="px-4 py-2 flex items-center gap-3 flex-wrap">
@@ -950,6 +956,7 @@
         {/if}
 
       </div>
+      {/if}
 
       <!-- Backdrop — closes any open multi-select dropdown on outside click -->
       {#if openDropdown}
