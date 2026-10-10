@@ -118,7 +118,9 @@ describe('Scanning a number plate', () => {
     Object.defineProperty(input, 'files', { value: [new File(['x'], 'p.jpg', { type: 'image/jpeg' })], configurable: true });
     await fireEvent.change(input);
     const match = await screen.findByRole('button', { name: /ABC 123/ });
+    // Two road permits for this plate, no car park vehicle: it says so once.
     expect(match.textContent).toMatch(/road permit/);
+    expect(match.textContent).not.toMatch(/car park/);
     await fireEvent.click(match);
     await tick(); await tick();
     expect(screen.queryByTestId('text-scanner')).toBeNull();

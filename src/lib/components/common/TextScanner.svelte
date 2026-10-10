@@ -120,11 +120,13 @@
   function take(text) {
     const readings = readingsFrom(text, prof);
     if (!readings.length) { status = 'Hold it inside the box'; return; }
+    // A frame where nothing could be read (blur, a hand) keeps the last answer,
+    // so it does not vanish from under a finger. A frame that read something
+    // replaces it — even with no matches, or the camera has moved to another
+    // plate and the old one would still be offered.
     lastRead = readings[0];
     const found = matchScan(text, candidates, prof);
-    // Keep the previous matches if this read found none — a blurred frame
-    // should not wipe a good answer from under a finger.
-    if (found.length) matches = found;
+    matches = found;
     status = found.length ? 'Tap the one that matches' : 'Not one this screen knows — use what was read, or keep trying';
   }
 

@@ -43,17 +43,17 @@
   $: scanCandidates = scanCandidatesFrom($parkingStore.vehicles, $permitStore.permits);
   /** @param {any[]} vehicles @param {any[]} permits */
   function scanCandidatesFrom(vehicles = [], permits = []) {
+    /** @type {Map<string, { value: string, from: Set<string> }>} */
     const seen = new Map();
-    for (const v of vehicles) if (v.registration && !seen.has(normaliseReg(v.registration)))
-      seen.set(normaliseReg(v.registration), { value: v.registration, label: 'car park' });
-    for (const p of permits) {
-      const key = normaliseReg(p.registration);
-      if (!key) continue;
-      const prior = seen.get(key);
-      if (prior) prior.label = 'car park · road permit';
-      else seen.set(key, { value: p.registration, label: 'road permit' });
-    }
-    return [...seen.values()];
+    const add = (/** @type {string} */ reg, /** @type {string} */ from) => {
+      const key = normaliseReg(reg);
+      if (!key) return;
+      if (!seen.has(key)) seen.set(key, { value: reg, from: new Set() });
+      /** @type {any} */ (seen.get(key)).from.add(from);
+    };
+    for (const v of vehicles) add(v.registration, 'car park');
+    for (const p of permits) add(p.registration, 'road permit');
+    return [...seen.values()].map(({ value, from }) => ({ value, label: [...from].join(' · ') }));
   }
 
   function openScanner() {

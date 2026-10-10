@@ -77,6 +77,20 @@ describe('TextScanner', () => {
     expect(picked).toHaveBeenCalledWith({ value: 'KL55MNP', candidate: null });
   });
 
+  it('a new read replaces the old answer; an unreadable one keeps it', async () => {
+    h.text = 'AB12 CDE';
+    render(TextScanner, { props: { profile: 'registration', candidates: CANDIDATES } });
+    await takePhoto();
+    expect(await screen.findByRole('button', { name: /AB12 CDE/ })).toBeTruthy();
+    h.text = '~ ~';                              // nothing readable: keep it
+    await takePhoto();
+    expect(screen.getByRole('button', { name: /AB12 CDE/ })).toBeTruthy();
+    h.text = 'KL55 MNP';                         // another plate, on no list: the old one goes
+    await takePhoto();
+    expect(screen.queryByRole('button', { name: /AB12 CDE/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Use “KL55MNP”' })).toBeTruthy();
+  });
+
   it('Close says so', async () => {
     const closed = vi.fn();
     render(TextScanner, { props: { profile: 'number' }, events: { close: closed } });
