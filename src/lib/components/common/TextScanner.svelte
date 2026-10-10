@@ -26,6 +26,7 @@
   import { guideCrop, readSize, greyAndStretch } from '#lib/utils/textScan/scanImage.js';
   import { errMessage } from '#lib/utils/errors.js';
   import { cameraHelp } from '#lib/utils/textScan/cameraHelp.js';
+  import { createScanTally } from '#lib/utils/textScan/scanTally.js';
 
   /** 'registration' | 'number', or a profile object (scanMatch.js) */
   export let profile = 'registration';
@@ -127,22 +128,42 @@
     const img = ctx.getImageData(0, 0, size.w, size.h);
     greyAndStretch(img.data);
     ctx.putImageData(img, 0, 0);
-    const { text } = await readText(canvas, prof);
-    take(text);
+    const { text, confidence } = await readText(canvas, prof);
+    takeFrame(text, confidence);
   }
 
-  /** @param {string} text */
-  function take(text) {
+  // Live frames vote (scanTally.js): one frame is a poor witness, and showing
+  // each in turn made the answer jump about on a real phone.
+  const tally = createScanTally();
+
+  /** One live frame. @param {string} text @param {number} confidence */
+  function takeFrame(text, confidence) {
+    const now = Date.now();
+    tally.add(now, {
+      matches: matchScan(text, candidates, prof),
+      reading: readingsFrom(text, prof)[0] ?? null,
+      confidence,
+    });
+    const v = tally.view(now);
+    matches = v.matches;
+    lastRead = v.reading ?? '';
+    status = matches.length ? 'Tap the one that matches'
+      : lastRead ? 'Not one this screen knows — use what was read, or keep trying'
+      : 'Hold it steady inside the box';
+  }
+
+  /**
+   * A photo: one deliberate picture, shown as read. One that reads nothing
+   * leaves the last answer alone. @param {string} text @returns {boolean} read anything
+   */
+  function takePhoto(text) {
     const readings = readingsFrom(text, prof);
-    if (!readings.length) { status = 'Hold it inside the box'; return; }
-    // A frame where nothing could be read (blur, a hand) keeps the last answer,
-    // so it does not vanish from under a finger. A frame that read something
-    // replaces it — even with no matches, or the camera has moved to another
-    // plate and the old one would still be offered.
+    if (!readings.length) return false;
+    tally.reset();
     lastRead = readings[0];
-    const found = matchScan(text, candidates, prof);
-    matches = found;
-    status = found.length ? 'Tap the one that matches' : 'Not one this screen knows — use what was read, or keep trying';
+    matches = matchScan(text, candidates, prof);
+    status = matches.length ? 'Tap the one that matches' : 'Not one this screen knows — use what was read, or try again';
+    return true;
   }
 
   /** A photo instead of the live camera: read the whole picture. */
@@ -161,8 +182,7 @@
       greyAndStretch(img.data);
       ctx.putImageData(img, 0, 0);
       const { text } = await readText(canvas, prof, { wholePicture: true });
-      take(text);
-      if (!lastRead) status = 'Nothing could be read in that photo. Try again closer, or type it.';
+      if (!takePhoto(text)) status = 'Nothing could be read in that photo. Try again closer, or type it.';
     } catch (/** @type {any} */ err) {
       status = errMessage(err, 'The photo could not be read.');
     }
