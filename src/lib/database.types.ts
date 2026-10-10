@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema16.csv
+// Source: docs/ops/supabase_lhportal_schema17.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -3358,7 +3358,7 @@ export type Database = {
           id: string
           agreement_id: string
           device_type: string
-          serial: string
+          serial: string | null
           issued_on: string
           returned_on: string | null
           notes: string | null
@@ -3369,7 +3369,7 @@ export type Database = {
           id?: string
           agreement_id: string
           device_type: string
-          serial: string
+          serial?: string | null
           issued_on?: string
           returned_on?: string | null
           notes?: string | null
@@ -3380,7 +3380,7 @@ export type Database = {
           id?: string
           agreement_id?: string
           device_type?: string
-          serial?: string
+          serial?: string | null
           issued_on?: string
           returned_on?: string | null
           notes?: string | null

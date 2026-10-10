@@ -94,6 +94,9 @@ const VALUE_LISTS = {
   'parking_agreements.basis':         () => values(agreementModel.BASES),
   'parking_agreements.fee_period':    () => values(agreementModel.FEE_PERIODS),
   'parking_agreements.vat_treatment': () => values(agreementModel.VAT_TREATMENTS),
+  // Every kind the database accepts (migration 238 added flat_fob); the app
+  // OFFERS only two of them (DEVICE_ISSUE_OPTIONS), and labels all.
+  'parking_access_devices.device_type': () => values(agreementModel.DEVICE_TYPES),
   'parking_tariffs.vat_treatment':    () => values(agreementModel.VAT_TREATMENTS),
   'parking_tariffs.period':           () => values(agreementModel.FEE_PERIODS),
   'parking_holders.holder_type':      () => values(agreementModel.HOLDER_TYPES),

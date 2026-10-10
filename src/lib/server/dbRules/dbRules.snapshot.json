@@ -303,13 +303,6 @@
             "internal",
             "no_action"
         ],
-        "schematic_annotations.font_size": [
-            "lg",
-            "md",
-            "sm",
-            "xl",
-            "xs"
-        ],
         "planner_occurrences.status": [
             "done",
             "due",
@@ -413,10 +406,6 @@
             "outside_scope",
             "standard"
         ],
-        "schematics.security_classification": [
-            "official",
-            "official_sensitive"
-        ],
         "public_upload_attempts.action": [
             "ai_suggest",
             "ai_summary",
@@ -460,6 +449,13 @@
             "status_change",
             "triage"
         ],
+        "schematic_annotations.font_size": [
+            "lg",
+            "md",
+            "sm",
+            "xl",
+            "xs"
+        ],
         "complaint_cases.complainant_type": [
             "other",
             "owner",
@@ -500,9 +496,14 @@
         ],
         "parking_access_devices.device_type": [
             "card",
+            "flat_fob",
             "fob",
             "key",
             "remote"
+        ],
+        "schematics.security_classification": [
+            "official",
+            "official_sensitive"
         ],
         "statutory_obligations.evidenced_by": [
             "either",
