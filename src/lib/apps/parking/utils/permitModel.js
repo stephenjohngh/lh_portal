@@ -5,7 +5,8 @@
 // and gives the NUMBER itself — the browser never chooses one.
 
 import { addDaysISO, daysBetween, fmtDateOnly } from '#lib/utils/dates.js';
-import { normaliseReg } from './agreementModel.js';
+import { normaliseReg, displayReg } from './agreementModel.js';
+export { displayReg };
 
 /** The two lengths a permit is usually issued for. `extraDays` is added to the start date. */
 export const PERMIT_DURATIONS = Object.freeze([
@@ -27,15 +28,6 @@ export function validToFor(from, durationKey) {
   const d = PERMIT_DURATIONS.find((x) => x.key === durationKey);
   if (!from || !d) return null;
   return addDaysISO(from, d.extraDays);
-}
-
-/**
- * A registration as printed: upper case, single spaces, nothing else. Unlike
- * normaliseReg (which strips every space so two spellings compare equal) this
- * keeps the space a person typed — "AB12 CDE" reads better than "AB12CDE".
- */
-export function displayReg(s) {
-  return String(s ?? '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
 }
 
 /**

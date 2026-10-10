@@ -312,7 +312,7 @@ function createParkingStore() {
     if (problem) throw new Error(problem);
     const userId = requireUserId();
     const saved = await api.create('parking_access_devices', {
-      agreement_id: agreementId, device_type: dev.device_type, serial: String(dev.serial).trim(),
+      agreement_id: agreementId, device_type: dev.device_type, serial: String(dev.serial ?? '').trim() || null,
       issued_on: dev.issued_on || todayISO(), notes: String(dev.notes ?? '').trim() || null,
       created_by: userId,
     }, true);

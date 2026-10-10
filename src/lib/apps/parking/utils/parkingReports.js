@@ -15,7 +15,7 @@ import { fmtGenerated, fmtDate, today } from '#lib/utils/dates.js';
 import { BAY_STATE, TENURE_LABEL } from './bayModel.js';
 import {
   STATUS_LABEL, BASIS_LABEL, HOLDER_TYPE_LABEL, VAT_TREATMENTS, LIVE,
-  DEVICE_LABEL, outstandingDevices, unreturnedAfterEnd,
+  DEVICE_LABEL, outstandingDevices, unreturnedAfterEnd, formatReg,
 } from './agreementModel.js';
 import { queue, positionOf, APPLICATION_STATUS_LABEL, ANY_SIZE, OPEN } from './waitingListModel.js';
 
@@ -46,7 +46,7 @@ export function bayRegisterSheet({ bays = [], holders = [], vehicles = [] }) {
       b.in_service === false ? (b.out_of_use_reason ?? '') : '', b.in_service === false ? d(b.out_of_use_until) : '',
       // A reserved bay names the draft or later licence holding it.
       (b.current ?? b.reserved)?.reference ?? '', name(hById.get((b.current ?? b.reserved)?.holder_id)),
-      vehicles.filter(v => v.agreement_id === b.current?.id && !v.to_date).map(v => v.registration).join(', '),
+      vehicles.filter(v => v.agreement_id === b.current?.id && !v.to_date).map(v => formatReg(v.registration)).join(', '),
       b.max_height_m != null ? String(b.max_height_m) : '', b.notes ?? '',
     ]),
   };

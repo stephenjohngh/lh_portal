@@ -102,7 +102,7 @@ describe('ending an agreement', () => {
       { agreement_id: 'a1', registration: 'NEW1', from_date: '2026-10-05', to_date: null },
       { agreement_id: 'a1', registration: 'GONE1', from_date: '2026-11-01', to_date: '2026-11-02' },
     ];
-    expect(endingProblem(ag, '2026-09-30', vehicles)).toMatch(/NEW1 is only authorised from 2026-10-05/);
+    expect(endingProblem(ag, '2026-09-30', vehicles)).toMatch(/NEW 1 is only authorised from 2026-10-05/);
     expect(endingProblem(ag, '2026-10-05', vehicles)).toBeNull();
     expect(endingProblem(ag, '2025-12-31', vehicles)).toMatch(/before the start/);
   });

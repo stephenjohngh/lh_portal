@@ -175,7 +175,6 @@
             <FormSelect label="VAT" bind:value={terms.vat_treatment} options={VAT_TREATMENTS} placeholder=""
               helpText="No VAT is charged at present. Change it only on the accountant's advice." />
           {/if}
-          <FormSelect label="Vehicles allowed" bind:value={terms.max_vehicles} options={['1', '2', '3', '4']} placeholder="" />
           <FormTextarea label="Notes" bind:value={terms.notes} rows={2} />
         </section>
 

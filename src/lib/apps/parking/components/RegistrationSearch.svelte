@@ -20,7 +20,7 @@
   import { warmReader } from '#lib/utils/textScan/ocrReader.js';
   import { parkingStore } from '../stores/parkingStore.js';
   import { permitStore } from '../stores/permitStore.js';
-  import { normaliseReg, STATUS_LABEL } from '../utils/agreementModel.js';
+  import { normaliseReg, formatReg, STATUS_LABEL } from '../utils/agreementModel.js';
   import { findPermitsByRegistration, fmtPermitWhen, permitNumberLabel } from '../utils/permitModel.js';
   import { fmtDate, today, fmtTime } from '#lib/utils/dates.js';
   import { errMessage } from '#lib/utils/errors.js';
@@ -51,7 +51,7 @@
       if (!seen.has(key)) seen.set(key, { value: reg, from: new Set() });
       /** @type {any} */ (seen.get(key)).from.add(from);
     };
-    for (const v of vehicles) add(v.registration, 'car park');
+    for (const v of vehicles) add(formatReg(v.registration), 'car park');
     for (const p of permits) add(p.registration, 'road permit');
     return [...seen.values()].map(({ value, from }) => ({ value, label: [...from].join(' · ') }));
   }
@@ -132,7 +132,7 @@
       {:else}
         {#each hits as h (h.vehicle.id)}
           <button class="w-full text-left p-2 rounded hover:bg-slate-700" on:click={() => h.agreement && openAgreement(h.agreement.id)}>
-            <span class="font-mono text-white">{h.vehicle.registration}</span>
+            <span class="font-mono text-white">{formatReg(h.vehicle.registration)}</span>
             {#if h.standing === 'authorised'}<span class="text-xs text-green-400 ml-1">authorised today</span>
             {:else if h.standing === 'pending'}<span class="text-xs text-sky-400 ml-1">not yet authorised{h.agreement?.status === 'draft'
               ? ' (agreement is a draft)' : ' — from ' + fmtDate([h.agreement?.starts_on, h.vehicle.from_date].filter(Boolean).sort().pop())}</span>

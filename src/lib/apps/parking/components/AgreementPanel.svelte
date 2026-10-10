@@ -9,8 +9,8 @@
   import {
     STATUS_LABEL, BASIS_LABEL, HOLDER_TYPE_LABEL, VAT_TREATMENTS, FEE_PERIODS,
     canTransition, validateVehicle, todayISO,
-    noticeEndDate, DEVICE_TYPES, DEVICE_LABEL, outstandingDevices, depositRefundProblem,
-    EVENT_LABEL, eventSummary, basesForTenure,
+    noticeEndDate, DEVICE_ISSUE_OPTIONS, DEVICE_LABEL, outstandingDevices, depositRefundProblem, isReturnable,
+    EVENT_LABEL, eventSummary, basesForTenure, formatReg,
   } from '../utils/agreementModel.js';
   import { fmtDate } from '#lib/utils/dates.js';
   import { HOLDER_CLASS_LABEL } from '../utils/tariffModel.js';
@@ -310,10 +310,7 @@
             </div>
             <FormSelect label="VAT" bind:value={draft.vat_treatment} options={VAT_TREATMENTS} placeholder="" />
           {/if}
-          <div class="grid grid-cols-2 gap-3">
-            <FormInput label="Notice (days)" bind:value={draft.notice_days} />
-            <FormSelect label="Vehicles allowed" bind:value={draft.max_vehicles} options={['1', '2', '3', '4']} placeholder="" />
-          </div>
+          <FormInput label="Notice (days)" bind:value={draft.notice_days} />
           <FormTextarea label="Notes" bind:value={draft.notes} rows={2} />
           <div class="flex gap-2">
             <Button size="small" variant="primary" disabled={busy} on:click={saveTerms}>Save terms</Button>
@@ -343,11 +340,12 @@
 
     <!-- Vehicles -->
     <div class="border-t border-slate-700 pt-3 space-y-2">
-      <p class="text-sm font-semibold text-slate-200">Vehicles
-        <span class="text-xs font-normal text-slate-500">({currentVehicles.length} of {agreement.max_vehicles} allowed)</span></p>
+      <!-- One vehicle per agreement (user, 2026-10-10: "it is always 1"); the
+           limit stays on the agreement (max_vehicles, default 1), unasked. -->
+      <p class="text-sm font-semibold text-slate-200">Vehicle</p>
       {#each currentVehicles as v (v.id)}
         <div class="flex items-center justify-between text-sm">
-          <span><span class="font-mono text-white">{v.registration}</span>
+          <span><span class="font-mono text-white">{formatReg(v.registration)}</span>
             <span class="text-slate-400"> {[v.colour, v.make, v.model].filter(Boolean).join(' ')}</span>
             {#if v.is_ev}<span class="text-xs text-green-400 ml-1">EV</span>{/if}</span>
           {#if canEdit}<button class="text-xs text-slate-400 hover:text-red-400" disabled={busy} on:click={() => endVehicle(v.id)}>No longer used</button>{/if}
@@ -359,7 +357,7 @@
         <details class="text-xs text-slate-500">
           <summary class="cursor-pointer">{pastVehicles.length} previous</summary>
           {#each pastVehicles as v (v.id)}
-            <p class="mt-1"><span class="font-mono">{v.registration}</span> · until {fmtDate(v.to_date)}</p>
+            <p class="mt-1"><span class="font-mono">{formatReg(v.registration)}</span> · until {fmtDate(v.to_date)}</p>
           {/each}
         </details>
       {/if}
@@ -383,22 +381,33 @@
       {#each devices as d (d.id)}
         <div class="flex items-center justify-between text-sm">
           <span class={d.returned_on ? 'text-slate-500' : 'text-slate-200'}>
-            {DEVICE_LABEL[d.device_type]} <span class="font-mono">{d.serial}</span>
-            <span class="text-xs text-slate-500"> · issued {fmtDate(d.issued_on)}{d.returned_on ? ' · returned ' + fmtDate(d.returned_on) : ''}</span>
+            {DEVICE_LABEL[d.device_type]} {#if d.serial}<span class="font-mono">{d.serial}</span>{/if}
+            <span class="text-xs text-slate-500"> · {isReturnable(d) ? 'issued' : 'recorded'} {fmtDate(d.issued_on)}{d.returned_on
+              ? (isReturnable(d) ? ' · returned ' : ' · no longer used from ') + fmtDate(d.returned_on) : ''}</span>
           </span>
           {#if canEdit && !d.returned_on}
-            <button class="text-xs text-slate-400 hover:text-white" disabled={busy} on:click={() => returnDevice(d.id)}>Returned</button>
+            <!-- A flat's own fob is not handed back to us: it just stops being used. -->
+            <button class="text-xs text-slate-400 hover:text-white" disabled={busy} on:click={() => returnDevice(d.id)}>{isReturnable(d) ? 'Returned' : 'No longer used'}</button>
           {/if}
         </div>
       {:else}
-        <p class="text-xs text-slate-500 italic">None issued.</p>
+        <p class="text-xs text-slate-500 italic">None recorded.</p>
       {/each}
       {#if canEdit && live}
-        <div class="grid grid-cols-[8rem_1fr_auto] gap-2 items-end">
-          <FormSelect label="Issue" bind:value={newDevice.device_type} options={DEVICE_TYPES} placeholder="" />
-          <FormInput label="Serial / number" bind:value={newDevice.serial} />
-          <div class="pb-1"><Button size="small" variant="secondary" disabled={busy} on:click={issueDevice}>Issue</Button></div>
+        <!-- The choice on its own line, then the serial and the button: on a
+             phone the three side by side left the serial box unusably small. -->
+        <FormSelect label="Issue" bind:value={newDevice.device_type} options={DEVICE_ISSUE_OPTIONS} placeholder="" />
+        <div class="grid grid-cols-[1fr_auto] gap-2 items-end">
+          {#if newDevice.device_type === 'flat_fob'}
+            <FormInput label="Serial (if known)" bind:value={newDevice.serial} />
+          {:else}
+            <FormInput label="Serial number" bind:value={newDevice.serial} />
+          {/if}
+          <div class="pb-1"><Button size="small" variant="secondary" disabled={busy} on:click={issueDevice}>{newDevice.device_type === 'flat_fob' ? 'Record' : 'Issue'}</Button></div>
         </div>
+        {#if newDevice.device_type === 'flat_fob'}
+          <p class="text-[11px] text-slate-500">The fob that came with the holder's flat. It is not ours, so it does not hold the deposit and is not asked back when the agreement ends.</p>
+        {/if}
       {/if}
       {#if canEdit && agreement.deposit_amount && !agreement.deposit_refunded_on && !transferredTo}
         <div class="flex items-center gap-3">

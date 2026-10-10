@@ -45,7 +45,7 @@ describe('bayPlanRows', () => {
     const vehicles = [{ agreement_id: 'a1', registration: 'AB12CDE', to_date: null },
                       { agreement_id: 'a1', registration: 'OLD123', to_date: '2026-01-01' }];
     const rows = bayPlanRows(bays, holders, [], vehicles);
-    expect(rows[0]).toEqual(['L/PK/22', 'Car', 'Allocated', 'Alice Example', 'AB12CDE']);
+    expect(rows[0]).toEqual(['L/PK/22', 'Car', 'Allocated', 'Alice Example', 'AB12 CDE']);   // shown with its space
     expect(rows[1]).toEqual(['L/PK/25', 'Large car', 'Free', 'Free', '']);
   });
 });

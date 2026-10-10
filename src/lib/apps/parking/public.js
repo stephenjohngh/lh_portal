@@ -30,7 +30,7 @@ export async function listParkingDueDates(to = null) {
   const [agreements, applications, devices, bays, spaces, floors] = await Promise.all([
     api.getAll('parking_agreements', { select: 'id, reference, bay_id, status, starts_on, ends_on' }),
     api.getAll('parking_applications', { select: 'id, status, offered_bay_id, offer_expires_on' }),
-    api.getAll('parking_access_devices', { select: 'id, agreement_id, returned_on' }),
+    api.getAll('parking_access_devices', { select: 'id, agreement_id, device_type, returned_on' }),
     api.getAll('parking_bays', { select: 'id, space_id, in_service, out_of_use_until, out_of_use_reason' }),
     listParkingBaySpaces(),
     api.get('floors', { select: 'id, short_name' }),

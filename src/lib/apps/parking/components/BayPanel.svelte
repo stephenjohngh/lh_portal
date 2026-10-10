@@ -19,7 +19,7 @@
   import Checkbox     from '#lib/components/common/Checkbox.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import { fmtDate } from '#lib/utils/dates.js';
-  import { basesForTenure, LIVE, STATUS_LABEL, BASIS_LABEL } from '../utils/agreementModel.js';
+  import { basesForTenure, LIVE, STATUS_LABEL, BASIS_LABEL, formatReg } from '../utils/agreementModel.js';
   import { nextFor } from '../utils/waitingListModel.js';
 
   /** @type {import('../utils/bayModel.js').MergedBay | null} */
@@ -73,6 +73,9 @@
   $: agreements = bay?.bay_id ? $parkingStore.agreements.filter(a => a.bay_id === bay.bay_id) : [];
   $: live = agreements.filter(a => LIVE.has(a.status)).sort((a, b) => b.starts_on.localeCompare(a.starts_on));
   $: pastCount = agreements.length - live.length;
+  // Name, then the registration (user, 2026-10-10), as the caretaker reads it.
+  $: regsFor = (id) => $parkingStore.vehicles.filter(v => v.agreement_id === id && !v.to_date)
+    .map(v => formatReg(v.registration)).join(', ');
   $: holderName = (id) => {
     const h = $parkingStore.holders.find(x => x.id === id);
     return h ? (h.company_name ? `${h.company_name} — ${h.display_name}` : h.display_name) : '—';
@@ -89,19 +92,18 @@
 {#if bay}
   <div class="bg-slate-800 rounded-xl border border-slate-700 p-4 space-y-4" data-testid="bay-panel">
     <div class="flex items-start justify-between">
-      <div>
-        <p class="font-mono text-lg text-white">{bay.ref}</p>
-        <p class="text-xs mt-0.5 inline-flex items-center gap-1.5">
+      <p class="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span class="font-mono text-lg text-white">{bay.ref}</span>
+        <span class="text-xs inline-flex items-center gap-1.5" data-testid="bay-state-marker">
           <span class="w-2.5 h-2.5 rounded-full" style="background:{BAY_STATE[bay.state]?.colour}"></span>
           <span class="text-slate-300">{BAY_STATE[bay.state]?.label}</span>
-        </p>
-      </div>
+        </span>
+      </p>
       <button class="text-slate-500 hover:text-white" title="Close" on:click={() => dispatch('close')}>✕</button>
     </div>
 
     <!-- 1. The space -->
     <section class="space-y-2" data-testid="bay-space">
-      <p class="text-sm font-semibold text-slate-200">The space</p>
       <dl class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
         <dt class="text-slate-500">Size</dt>
         <dd class="text-slate-200">{bay.size ?? 'Not set'}</dd>
@@ -120,7 +122,7 @@
         {/if}
       </dl>
       <p class="text-[11px] text-slate-500">
-        Size, number, name and shape are set in Building Assets → Schematics, where the bay is drawn.
+        Name and shape are set in Building Assets.
         {#if !bay.number}<span class="text-amber-400">This bay has no number yet, so its reference ends in an id fragment.</span>{/if}
       </p>
       {#if canEdit}
@@ -163,7 +165,7 @@
       {#each live as a (a.id)}
         <button class="block w-full text-left rounded-lg bg-slate-900/50 hover:bg-slate-900 p-2 text-sm"
           on:click={() => dispatch('showAgreement', a.id)}>
-          <span class="text-slate-200">{holderName(a.holder_id)}</span>
+          <span class="text-slate-200">{holderName(a.holder_id)}</span>{#if regsFor(a.id)}<span class="text-slate-500 mx-1.5">·</span><span class="font-mono text-slate-300">{regsFor(a.id)}</span>{/if}
           <span class="block text-xs text-slate-400">
             <span class="font-mono">{a.reference}</span> · {BASIS_LABEL[a.basis]} · {STATUS_LABEL[a.status]}
             · {fmtDate(a.starts_on)} → {a.ends_on ? fmtDate(a.ends_on) : 'rolling'}

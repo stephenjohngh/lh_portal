@@ -10,6 +10,7 @@
 import { requestDownload } from '#lib/utils/download.js';
 import { fmtGenerated, today } from '#lib/utils/dates.js';
 import { BAY_STATES, BAY_STATE } from './bayModel.js';
+import { formatReg } from './agreementModel.js';
 
 const short = (s, n = 18) => (s && s.length > n ? `${s.slice(0, n - 1)}…` : s ?? '');
 
@@ -57,7 +58,7 @@ export function bayPlanRows(bays = [], holders = [], agreements = [], vehicles =
       BAY_STATE[b.state]?.label ?? b.state,
       h ? `${h.company_name ? h.company_name + ' — ' : ''}${h.display_name}${b.unit_ref ? ' (' + b.unit_ref + ')' : ''}`
         : (label.who === 'FREE' ? 'Free' : label.who),
-      vehicles.filter(v => v.agreement_id === holding?.id && !v.to_date).map(v => v.registration).join(', '),
+      vehicles.filter(v => v.agreement_id === holding?.id && !v.to_date).map(v => formatReg(v.registration)).join(', '),
     ];
   });
 }

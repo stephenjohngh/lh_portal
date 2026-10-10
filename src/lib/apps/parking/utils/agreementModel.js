@@ -225,13 +225,48 @@ export function normaliseReg(s) {
   return String(s ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
+/**
+ * A registration as shown (2026-10-10, user: "the registration display keeps
+ * losing any spaces"). A vehicle's registration is STORED without spaces —
+ * the database allows only A–Z and 0–9 (parking_vehicles_registration_check) —
+ * so it is shown in the standard UK layout instead: AB12 CDE (current),
+ * A123 BCD (prefix), ABC 123D (suffix), ABC 123 / 123 ABC (dateless). Anything
+ * else is shown as stored. A registration that already has a space (a road
+ * permit keeps what was typed) is shown as it is, tidied.
+ */
+export function formatReg(s) {
+  const raw = String(s ?? '');
+  if (/\s/.test(raw.trim())) return displayReg(raw);
+  const r = normaliseReg(raw);
+  for (const re of [
+    /^([A-Z]{2}[0-9]{2})([A-Z]{3})$/,     // AB12 CDE
+    /^([A-Z][0-9]{1,3})([A-Z]{3})$/,      // A123 BCD
+    /^([A-Z]{3})([0-9]{1,3}[A-Z])$/,      // ABC 123D
+    /^([A-Z]{1,3})([0-9]{1,4})$/,         // ABC 123
+    /^([0-9]{1,4})([A-Z]{1,3})$/,         // 123 ABC
+  ]) {
+    const m = r.match(re);
+    if (m) return `${m[1]} ${m[2]}`;
+  }
+  return r;
+}
+
+/**
+ * A registration as typed and printed: upper case, single spaces, nothing
+ * else. Unlike normaliseReg (which strips every space so two spellings compare
+ * equal) this keeps the space a person typed. Road permits store this.
+ */
+export function displayReg(s) {
+  return String(s ?? '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+}
+
 /** The problem with a vehicle, or null. */
 export function validateVehicle(v, agreement, currentVehicles = []) {
   const reg = normaliseReg(v.registration);
   if (!reg) return 'Enter the registration.';
   if (reg.length > 10) return 'That is too long for a registration.';
   const live = currentVehicles.filter(x => x.agreement_id === agreement.id && !x.to_date);
-  if (live.some(x => x.registration === reg)) return `${reg} is already on this agreement.`;
+  if (live.some(x => normaliseReg(x.registration) === reg)) return `${formatReg(reg)} is already on this agreement.`;
   if (live.length >= (agreement.max_vehicles ?? 1)) {
     return `This agreement allows ${agreement.max_vehicles ?? 1} vehicle${(agreement.max_vehicles ?? 1) === 1 ? '' : 's'}. End one first.`;
   }
@@ -270,7 +305,7 @@ export function findByRegistration(q, { vehicles, agreements, holders, bays }, t
   const hById = new Map((holders ?? []).map(h => [h.id, h]));
   const bayById = new Map((bays ?? []).filter(b => b.bay_id).map(b => [b.bay_id, b]));
   return (vehicles ?? [])
-    .filter(v => v.registration.includes(needle))
+    .filter(v => normaliseReg(v.registration).includes(needle))
     .map(v => {
       const agreement = agById.get(v.agreement_id) ?? null;
       return {
@@ -298,7 +333,7 @@ export function endingProblem(agreement, endDate, vehicles = []) {
   const later = vehicles.filter(v => v.agreement_id === agreement.id && !v.to_date
     && v.from_date && v.from_date > endDate);
   if (later.length) {
-    return `${later.map(v => v.registration).join(', ')} ${later.length === 1 ? 'is' : 'are'} only authorised from `
+    return `${later.map(v => formatReg(v.registration)).join(', ')} ${later.length === 1 ? 'is' : 'are'} only authorised from `
       + `${later.map(v => v.from_date).sort()[0]}, after that end date. Remove ${later.length === 1 ? 'it' : 'them'} `
       + 'from the agreement first, or choose a later end date.';
   }
@@ -336,13 +371,36 @@ export function validateNotice(agreement, { served_on, served_by, ends_on }) {
 
 // ── Access devices (P2) ────────────────────────────────────────────────────
 
+/** Every kind the database accepts (its CHECK, migration 238), for labels. */
 export const DEVICE_TYPES = [
-  { value: 'fob',    label: 'Fob' },
-  { value: 'remote', label: 'Gate remote' },
-  { value: 'card',   label: 'Card' },
-  { value: 'key',    label: 'Key' },
+  { value: 'fob',      label: 'Fob' },
+  { value: 'flat_fob', label: 'Flat fob' },
+  { value: 'remote',   label: 'Gate remote' },
+  { value: 'card',     label: 'Card' },
+  { value: 'key',      label: 'Key' },
 ];
 export const DEVICE_LABEL = Object.fromEntries(DEVICE_TYPES.map(d => [d.value, d.label]));
+
+/**
+ * What can be recorded (user, 2026-10-10): a fob WE issue, with its serial,
+ * or the fob that came with the holder's flat. Remote, card and key are still
+ * valid in the database but not offered.
+ */
+export const DEVICE_ISSUE_OPTIONS = [
+  { value: 'fob',      label: 'New fob' },
+  { value: 'flat_fob', label: 'Existing flat fob' },
+];
+
+/**
+ * Whether a device is OURS to have back. ⛔ A flat's own fob is not: it is not
+ * returned to us when the agreement ends, so it never holds the deposit, never
+ * reads as "not returned", and never keeps an agreement from retention. The
+ * database says the same (migration 238).
+ * @param {{ device_type?: string }} d
+ */
+export function isReturnable(d) {
+  return d?.device_type !== 'flat_fob';
+}
 
 const serialKey = (type, serial) => `${type}|${String(serial ?? '').trim().toUpperCase()}`;
 
@@ -353,6 +411,8 @@ const serialKey = (type, serial) => `${type}|${String(serial ?? '').trim().toUpp
  */
 export function validateDevice(dev, devices = [], agreements = []) {
   if (!DEVICE_TYPES.some(t => t.value === dev.device_type)) return 'Choose the kind of device.';
+  // A flat's own fob may have no serial we know; one we issue must have it.
+  if (!isReturnable(dev)) return null;
   if (!String(dev.serial ?? '').trim()) return 'Enter its serial or number.';
   const key = serialKey(dev.device_type, dev.serial);
   const out = devices.find(d => !d.returned_on && serialKey(d.device_type, d.serial) === key);
@@ -365,7 +425,7 @@ export function validateDevice(dev, devices = [], agreements = []) {
 
 /** Devices on an agreement that have not come back. */
 export function outstandingDevices(agreementId, devices = []) {
-  return devices.filter(d => d.agreement_id === agreementId && !d.returned_on);
+  return devices.filter(d => d.agreement_id === agreementId && !d.returned_on && isReturnable(d));
 }
 
 /**
@@ -457,8 +517,8 @@ export function eventSummary(e) {
     case 'notice_served':    return `by the ${d.notice_served_by ?? '?'} on ${d.notice_served_on ?? '?'}, ending ${d.ends_on ?? '?'}`;
     case 'ended':
     case 'terminated':       return [d.ends_on && `on ${d.ends_on}`, d.ended_reason].filter(Boolean).join(' — ');
-    case 'vehicle_added':    return d.registration ?? '';
-    case 'vehicle_removed':  return `${d.registration ?? ''} from ${d.on ?? '?'}`;
+    case 'vehicle_added':    return formatReg(d.registration);
+    case 'vehicle_removed':  return `${formatReg(d.registration)} from ${d.on ?? '?'}`;
     case 'device_issued':
     case 'device_returned':  return `${DEVICE_LABEL[d.type] ?? d.type} ${d.serial ?? ''}`;
     case 'deposit_refunded': return d.amount != null ? `£${Number(d.amount).toFixed(2)}` : '';
