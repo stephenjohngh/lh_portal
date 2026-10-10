@@ -96,11 +96,18 @@
 
 <div class="relative flex flex-wrap items-center gap-x-2 gap-y-1">
   <label for="registration-lookup" class="text-sm text-slate-300 whitespace-nowrap">Registration Lookup:</label>
-  <input id="registration-lookup" bind:value={q} placeholder="Registration, then Enter"
-    on:keydown={(e) => e.key === 'Enter' && search()}
-    class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-56 max-w-full font-mono uppercase" />
-  <button type="button" on:click={openScanner} title="Read a number plate with the camera"
-    class="px-3 py-1.5 text-sm rounded border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700">📷 Scan</button>
+  <!-- The box and Scan stay together on one line, even on a phone. The box is
+       sized for a registration (about 60% of what it was); the phone's keyboard
+       shows a Search key, which replaces the "then Enter" the old placeholder said. -->
+  <span class="inline-flex items-center gap-2 whitespace-nowrap">
+    <input id="registration-lookup" bind:value={q} placeholder="Registration"
+      enterkeyhint="search" autocapitalize="characters" autocomplete="off" spellcheck="false"
+      title="Type a registration, then press Enter"
+      on:keydown={(e) => e.key === 'Enter' && search()}
+      class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-[8.5rem] font-mono uppercase" />
+    <button type="button" on:click={openScanner} title="Read a number plate with the camera"
+      class="shrink-0 px-3 py-1.5 text-sm rounded border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700">📷 Scan</button>
+  </span>
   {#if searching}<span class="text-xs text-slate-400">Looking…</span>{/if}
   {#if !$online}<span class="text-xs rounded-full bg-amber-900/50 px-2 py-0.5 text-amber-300">No signal</span>{/if}
   {#if $syncState.pending + $syncState.error > 0}
