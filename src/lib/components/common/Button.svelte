@@ -14,14 +14,22 @@
   export let className = ''; // Additional custom classes
   export let title = '';
 
-  // Color variant styles
+  // Color variant styles. `purple-*` IS the portal accent (teal, via
+  // tailwind.config.js and theme.js). Every variant carries a border so an
+  // outlined button and a solid one are the same size side by side.
+  //
+  // ⭐ `secondary` follows the colour scheme (user, 2026-10-10: "a lot of the
+  // buttons don't seem to be using our colour scheme"): a teal OUTLINE — teal
+  // border and text on the dark background — where it used to be solid grey.
+  // Main actions stay solid teal (`primary`), so the two still read apart.
   const variantStyles = {
-    primary: 'bg-purple-500 hover:bg-purple-600 disabled:bg-purple-700',
-    amber: 'bg-amber-600 hover:bg-amber-500 disabled:bg-amber-700', // Actions accent — matches amber-400/500 border colours
-    blue: 'bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800',
-    green: 'bg-green-600 hover:bg-green-700 disabled:bg-green-800',
-    secondary: 'bg-slate-600 hover:bg-slate-700 disabled:bg-slate-800',
-    danger: 'text-red-400 hover:bg-red-600/20 disabled:opacity-50'
+    primary: 'border-transparent bg-purple-500 hover:bg-purple-600 disabled:bg-purple-700',
+    amber: 'border-transparent bg-amber-600 hover:bg-amber-500 disabled:bg-amber-700', // Actions accent — matches amber-400/500 border colours
+    blue: 'border-transparent bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800',
+    green: 'border-transparent bg-green-600 hover:bg-green-700 disabled:bg-green-800',
+    secondary: 'border-purple-500/70 bg-transparent text-purple-300 hover:bg-purple-500/15 hover:text-purple-200 '
+      + 'disabled:border-slate-600 disabled:text-slate-500 disabled:hover:bg-transparent',
+    danger: 'border-transparent text-red-400 hover:bg-red-600/20 disabled:opacity-50'
   };
 
   // Size styles
@@ -40,7 +48,7 @@
 
   // Computed classes
   $: buttonClasses = [
-    'inline-flex items-center justify-center',
+    'inline-flex items-center justify-center border',
     'font-medium rounded-lg',
     'transition-colors duration-200',
     'focus:outline-none',

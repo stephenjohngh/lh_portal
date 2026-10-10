@@ -106,7 +106,7 @@
       on:keydown={(e) => e.key === 'Enter' && search()}
       class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-[8.5rem] font-mono uppercase" />
     <button type="button" on:click={openScanner} title="Read a number plate with the camera"
-      class="shrink-0 px-3 py-1.5 text-sm rounded border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700">📷 Scan</button>
+      class="shrink-0 px-3 py-1.5 text-sm rounded-lg border border-purple-500/70 text-purple-300 hover:bg-purple-500/15 hover:text-purple-200">📷 Scan</button>
   </span>
   {#if searching}<span class="text-xs text-slate-400">Looking…</span>{/if}
   {#if !$online}<span class="text-xs rounded-full bg-amber-900/50 px-2 py-0.5 text-amber-300">No signal</span>{/if}
