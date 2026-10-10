@@ -118,6 +118,27 @@ describe('TextScanner', () => {
     }
   });
 
+  it('on a live camera it shows it is working: a sweep, what it can see, and a status', async () => {
+    const { waitFor } = await import('@testing-library/svelte');
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    vi.spyOn(HTMLVideoElement.prototype, 'videoWidth', 'get').mockReturnValue(1280);
+    vi.spyOn(HTMLVideoElement.prototype, 'videoHeight', 'get').mockReturnValue(720);
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(/** @type {any} */ ({ width: 375, height: 600 }));
+    const fakeStream = { getVideoTracks: () => [{ getCapabilities: () => ({}) }], getTracks: () => [{ stop: () => {} }] };
+    Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => fakeStream } });
+    h.text = 'AB12 C';                       // part of a plate — on no list yet
+    try {
+      render(TextScanner, { props: { profile: 'registration', candidates: CANDIDATES } });
+      expect(await screen.findByTestId('scan-sweep')).toBeTruthy();
+      await waitFor(() => expect(screen.getByTestId('scan-seeing').textContent).toMatch(/AB12C/), { timeout: 3000 });
+      expect(screen.getByTestId('scan-status').textContent).toMatch(/Reading|keep it steady/);
+      expect(screen.getByTestId('text-scanner').querySelector('[data-state]')?.getAttribute('data-state')).toBe('seeing');
+    } finally {
+      delete (/** @type {any} */ (navigator)).mediaDevices;
+      vi.restoreAllMocks();
+    }
+  });
+
   it('Close says so', async () => {
     const closed = vi.fn();
     render(TextScanner, { props: { profile: 'number' }, events: { close: closed } });

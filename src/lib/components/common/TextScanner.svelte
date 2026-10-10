@@ -27,6 +27,7 @@
   import { errMessage } from '#lib/utils/errors.js';
   import { cameraHelp } from '#lib/utils/textScan/cameraHelp.js';
   import { createScanTally } from '#lib/utils/textScan/scanTally.js';
+  import { scanStatus, boxState } from '#lib/utils/textScan/scanFeedback.js';
 
   /** 'registration' | 'number', or a profile object (scanMatch.js) */
   export let profile = 'registration';
@@ -57,6 +58,21 @@
   let reading = false;
   /** @type {any} */ let timer = null;
 
+  // Feedback while it works (scanFeedback.js): it must never look hung.
+  let seeing = '';              // what the latest live frame read, '' for nothing
+  let note = '';                // a one-off message (a photo's result, an error) over the live line
+  let sinceAt = Date.now();     // when it started looking for the current answer
+  let nowTick = Date.now();     // advances twice a second, so the hints move on even between slow frames
+  let hadAnswer = false;
+  /** @type {any} */ let ticker = null;
+  $: live = !!stream && readerReady && !cameraError;
+  $: answered = matches.length > 0 || !!lastRead;
+  $: if (answered) hadAnswer = true;
+  $: if (!answered && hadAnswer) { hadAnswer = false; sinceAt = Date.now(); }
+  $: liveStatus = scanStatus({ elapsedMs: nowTick - sinceAt, seeing, matched: matches.length > 0,
+    reading: lastRead, torchAvailable, torchOn });
+  $: frame = boxState({ seeing, matched: matches.length > 0, reading: lastRead });
+
   onMount(() => {
     startReader().then(() => { readerReady = true; loop(); })
       .catch((err) => { readerError = errMessage(err, 'The text reader could not start.'); });
@@ -86,7 +102,10 @@
       await video.play().catch(() => {});
       const track = stream.getVideoTracks()[0];
       torchAvailable = !!(/** @type {any} */ (track?.getCapabilities?.() ?? {})).torch;
-      status = readerReady ? 'Hold it inside the box' : 'Getting the reader ready…';
+      status = '';
+      sinceAt = Date.now();
+      clearInterval(ticker);
+      ticker = setInterval(() => { nowTick = Date.now(); }, 500);
       loop();
     } catch (/** @type {any} */ err) {
       cameraError = cameraHelp(err?.name, navigator.userAgent, navigator.maxTouchPoints ?? 0);
@@ -94,7 +113,7 @@
     }
   }
 
-  onDestroy(() => { stopped = true; clearTimeout(timer); stopStream(); });
+  onDestroy(() => { stopped = true; clearTimeout(timer); clearInterval(ticker); stopStream(); });
 
   function stopStream() {
     stream?.getTracks().forEach((t) => t.stop());
@@ -109,7 +128,7 @@
       if (stopped || reading || document.hidden || !video?.videoWidth) { loop(); return; }
       reading = true;
       try { await readFrame(); }
-      catch (/** @type {any} */ err) { status = errMessage(err, 'Could not read that.'); }
+      catch (/** @type {any} */ err) { note = errMessage(err, 'Could not read that.'); }
       finally { reading = false; loop(); }
     }, 450);
   }
@@ -147,9 +166,8 @@
     const v = tally.view(now);
     matches = v.matches;
     lastRead = v.reading ?? '';
-    status = matches.length ? 'Tap the one that matches'
-      : lastRead ? 'Not one this screen knows — use what was read, or keep trying'
-      : 'Hold it steady inside the box';
+    seeing = readingsFrom(text, prof)[0] ?? '';
+    if (seeing) note = '';        // live reading has moved on from any one-off message
   }
 
   /**
@@ -162,7 +180,7 @@
     tally.reset();
     lastRead = readings[0];
     matches = matchScan(text, candidates, prof);
-    status = matches.length ? 'Tap the one that matches' : 'Not one this screen knows — use what was read, or try again';
+    note = matches.length ? 'Tap the one that matches' : 'Not one this screen knows — use what was read, or try again';
     return true;
   }
 
@@ -170,7 +188,7 @@
   async function readPhoto(/** @type {Event} */ e) {
     const file = /** @type {HTMLInputElement} */ (e.target).files?.[0];
     if (!file) return;
-    status = 'Reading the photo…';
+    note = 'Reading the photo…';
     try {
       const bmp = await createImageBitmap(file);
       const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
@@ -182,9 +200,9 @@
       greyAndStretch(img.data);
       ctx.putImageData(img, 0, 0);
       const { text } = await readText(canvas, prof, { wholePicture: true });
-      if (!takePhoto(text)) status = 'Nothing could be read in that photo. Try again closer, or type it.';
+      if (!takePhoto(text)) note = 'Nothing could be read in that photo. Try again closer, or type it.';
     } catch (/** @type {any} */ err) {
-      status = errMessage(err, 'The photo could not be read.');
+      note = errMessage(err, 'The photo could not be read.');
     }
   }
 
@@ -196,16 +214,16 @@
       torchOn = !torchOn;
     } catch (/** @type {any} */ err) {
       torchAvailable = false;
-      status = errMessage(err, 'The light could not be switched on.');
+      note = errMessage(err, 'The light could not be switched on.');
     }
   }
 
   /** @param {string} value @param {any} candidate */
   function pick(value, candidate = null) {
-    stopped = true; clearTimeout(timer); stopStream();
+    stopped = true; clearTimeout(timer); clearInterval(ticker); stopStream();
     dispatch('pick', { value, candidate });
   }
-  function close() { stopped = true; clearTimeout(timer); stopStream(); dispatch('close'); }
+  function close() { stopped = true; clearTimeout(timer); clearInterval(ticker); stopStream(); dispatch('close'); }
 </script>
 
 <svelte:window on:keydown={(e) => e.key === 'Escape' && close()} />
@@ -221,7 +239,10 @@
     <!-- svelte-ignore a11y_media_has_caption -->
     <video bind:this={video} playsinline muted autoplay></video>
     {#if !cameraError}
-      <div class="ts-box" style="width: {BOX_FRACTION * 100}%; aspect-ratio: {boxAspect}"></div>
+      <div class="ts-box ts-box-{frame}" data-state={frame} style="width: {BOX_FRACTION * 100}%; aspect-ratio: {boxAspect}">
+        <!-- A line sweeping through the box while it reads: it is working. -->
+        {#if live && frame !== 'found'}<div class="ts-sweep" data-testid="scan-sweep"></div>{/if}
+      </div>
     {/if}
     {#if cameraError}
       <div class="ts-msg" role="alert">
@@ -240,8 +261,13 @@
       <p class="ts-warn">{readerError}</p>
     {:else if !readerReady}
       <p class="ts-status">Getting the reader ready… (the first time can take a little while)</p>
-    {:else if status}
-      <p class="ts-status" aria-live="polite">{status}</p>
+    {:else if note || status}
+      <p class="ts-status" aria-live="polite">{note || status}</p>
+    {:else if live}
+      <p class="ts-status" aria-live="polite" data-testid="scan-status">{liveStatus}</p>
+    {/if}
+    {#if live && seeing && !matches.length}
+      <p class="ts-seeing" data-testid="scan-seeing">Seeing: <span>{seeing}</span></p>
     {/if}
 
     {#if matches.length}
@@ -283,6 +309,22 @@
   .ts-title { font-weight: 600; }
   .ts-view { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; background: #000; }
   .ts-view video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ts-box-looking { border-color: var(--ts-accent); }
+  .ts-box-seeing  { border-color: #fbbf24 !important; }
+  .ts-box-found   { border-color: #4ade80 !important; }
+  .ts-sweep {
+    position: absolute; left: 4%; right: 4%; height: 2px; top: 0;
+    background: currentColor; color: #fbbf24; opacity: 0.8;
+    box-shadow: 0 0 8px 1px rgb(251 191 36 / 0.6);
+    animation: ts-sweep 1.6s ease-in-out infinite alternate;
+  }
+  .ts-box-looking .ts-sweep { color: #e2e8f0; box-shadow: 0 0 8px 1px rgb(226 232 240 / 0.5); }
+  @keyframes ts-sweep { from { top: 6%; } to { top: 92%; } }
+  @media (prefers-reduced-motion: reduce) {
+    .ts-sweep { animation: none; top: 50%; opacity: 0.5; }
+  }
+  .ts-seeing { margin: 0; font-size: 0.8rem; color: #94a3b8; }
+  .ts-seeing span { font-family: ui-monospace, monospace; letter-spacing: 0.05em; color: #cbd5e1; }
   .ts-box {
     position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
     max-height: 90%;
