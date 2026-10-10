@@ -45,5 +45,9 @@ describe('what to do when the camera is refused', () => {
     expect(cameraHelp('NotFoundError', UA.desktop)).toMatchObject({ title: expect.stringMatching(/No camera/), retry: false });
     expect(cameraHelp('InsecureContext', UA.desktop)).toMatchObject({ title: expect.stringMatching(/https/), retry: false });
     expect(cameraHelp(undefined, UA.desktop).retry).toBe(true);
+    // blocked by the site's own header: no phone setting helps, so none is suggested
+    const blocked = cameraHelp('PolicyBlocked', UA.androidChrome);
+    expect(blocked).toMatchObject({ retry: false, title: expect.stringMatching(/portal/) });
+    expect(blocked.steps.join(' ')).not.toMatch(/Permissions|Site settings/);
   });
 });

@@ -66,6 +66,12 @@
     cameraError = null;
     status = 'Starting the camera…';
     try {
+      // The site's own Permissions-Policy can switch the camera off; no phone
+      // setting overrides it, so say so rather than send them to their settings.
+      const pp = /** @type {any} */ (document).permissionsPolicy ?? /** @type {any} */ (document).featurePolicy;
+      if (pp?.allowsFeature && !pp.allowsFeature('camera')) {
+        throw Object.assign(new Error('blocked by the site'), { name: 'PolicyBlocked' });
+      }
       if (!navigator.mediaDevices?.getUserMedia) {
         // Only a secure (https) page may use the camera; elsewhere the API is absent.
         throw Object.assign(new Error('no camera API'), { name: window.isSecureContext ? 'NotFoundError' : 'InsecureContext' });

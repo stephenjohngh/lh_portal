@@ -59,6 +59,9 @@ export function cameraHelp(errorName, ua, touchPoints = 0) {
   if (errorName === 'NotAllowedError' || errorName === 'SecurityError') {
     return { title: 'The camera is not allowed for this site.', steps: ALLOW_STEPS[cameraPlatform(ua, touchPoints)], retry: true };
   }
+  if (errorName === 'PolicyBlocked') {
+    return { title: 'The portal has the live camera switched off.', steps: ['This is a setting of the portal, not of your phone — changing the phone’s settings will not help. Please tell whoever looks after the portal.'], retry: false };
+  }
   if (errorName === 'InsecureContext') {
     return { title: 'The camera only works on the portal’s secure (https) address.', steps: ['Open the portal at its usual https:// address, not a local or http:// one.'], retry: false };
   }

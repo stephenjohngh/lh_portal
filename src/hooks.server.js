@@ -50,9 +50,14 @@ async function securityHeaders({ event, resolve }) {
   // Don't leak portal URLs (which include case ids etc.) to external sites.
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
-  // The portal uses none of these — the inspection apps take photos via
-  // <input type="file" capture>, which is not gated by Permissions-Policy.
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  // The camera is allowed for the portal itself and nothing else: the 📷 scan
+  // (TextScanner, 2026-10-10) reads plates and numbers from the live camera.
+  // ⛔ It was `camera=()` until then, which blocks the camera for this site
+  // too — Chrome then refuses getUserMedia as "not allowed" whatever the phone's
+  // settings say. Photo capture (<input type="file" capture>) is not gated by
+  // this header, which is why taking a photo kept working. permissionsPolicy.test.js
+  // holds it. Microphone and location stay off; nothing here uses them.
+  response.headers.set('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
 
   // The site is HTTPS-only on both deploy targets (Netlify and Northflank);
   // pin that for a year.
