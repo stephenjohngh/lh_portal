@@ -19,13 +19,15 @@ describe('what the scanner says while it works', () => {
 
   it('an answer replaces the hints', () => {
     expect(scanStatus({ ...base, elapsedMs: 20000, matched: true })).toBe('Tap the one that matches');
-    expect(scanStatus({ ...base, elapsedMs: 20000, reading: 'KL55MNP' })).toMatch(/use what was read/);
+    expect(scanStatus({ ...base, elapsedMs: 2000, reading: 'KL55MNP' })).toMatch(/keep it in the box, or use what was read/);
+    expect(scanStatus({ ...base, elapsedMs: 20000, reading: 'KL55MNP' })).toMatch(/use what was read, or type it/);
   });
 
   it('the box frame says looking, seeing or found', () => {
     expect(boxState(base)).toBe('looking');
     expect(boxState({ ...base, seeing: 'AB' })).toBe('seeing');
     expect(boxState({ ...base, seeing: 'AB', matched: true })).toBe('found');
-    expect(boxState({ ...base, reading: 'KL55MNP' })).toBe('found');
+    // a reading on no list may be half a plate: still working, not found
+    expect(boxState({ ...base, reading: 'KL55MNP' })).toBe('seeing');
   });
 });

@@ -18,7 +18,10 @@
  */
 export function scanStatus({ elapsedMs, seeing, matched, reading, torchAvailable, torchOn }) {
   if (matched) return 'Tap the one that matches';
-  if (reading) return 'Not one this screen knows — use what was read, or keep trying';
+  if (reading) {
+    return elapsedMs < 9000 ? 'Not one this screen knows yet — keep it in the box, or use what was read'
+      : 'Still not one this screen knows — use what was read, or type it';
+  }
   if (elapsedMs < 4000) return seeing ? 'Reading… hold it steady' : 'Looking… hold it inside the box';
   if (elapsedMs < 9000) {
     return seeing ? 'Still reading… keep it steady, and fill the box with it'
@@ -30,10 +33,13 @@ export function scanStatus({ elapsedMs, seeing, matched, reading, torchAvailable
 
 /**
  * The state of the guide box frame: 'looking' (nothing read), 'seeing'
- * (characters read, no answer yet) or 'found' (an answer is on offer).
+ * (characters read) or 'found' (a KNOWN value is on offer). Only a match is
+ * found: a steady reading on no list may be half a plate, so the box keeps
+ * sweeping and the hints keep coming (seen in the browser — a half plate went
+ * green and still, and read as finished).
  * @param {{ seeing: string, matched: boolean, reading: string }} s
  */
 export function boxState({ seeing, matched, reading }) {
-  if (matched || reading) return 'found';
-  return seeing ? 'seeing' : 'looking';
+  if (matched) return 'found';
+  return seeing || reading ? 'seeing' : 'looking';
 }
