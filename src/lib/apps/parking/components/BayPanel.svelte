@@ -1,12 +1,17 @@
 <!-- src/lib/apps/parking/components/BayPanel.svelte -->
-<!-- One bay: what the drawing says (read-only, owned by Building Assets) and
-     the parking facts (editable here). The split on screen is the split in
-     ownership, so nobody edits a bay's size here and wonders why the plan
-     did not change. -->
+<!-- One bay, in three parts (order set by the user, 2026-10-10):
+       1. The space — what the drawing says (read-only, owned by Building
+          Assets: size, measurements, name), then the parking facts that rarely
+          change (held as, which flat's lease, headroom, notes).
+       2. Its state now — out of use, why, until when. Then Save, for 1 and 2.
+       3. Who it is allocated to, and Allocate.
+     The drawing's facts are shown, not edited, so nobody changes a size here
+     and wonders why the plan did not change. Accessible, tandem and residents
+     only were removed from here the same day (not used). -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { parkingStore } from '../stores/parkingStore.js';
-  import { TENURES, UNIT_TENURES, BAY_STATE, validateBayFacts } from '../utils/bayModel.js';
+  import { TENURES, UNIT_TENURES, BAY_STATE, validateBayFacts, tenureOptions } from '../utils/bayModel.js';
   import Button       from '#lib/components/common/Button.svelte';
   import FormSelect   from '#lib/components/common/FormSelect.svelte';
   import FormInput    from '#lib/components/common/FormInput.svelte';
@@ -36,8 +41,6 @@
     loadedFor = bay.space_id;
     form = {
       tenure: bay.tenure, unit_ref: bay.unit_ref ?? '',
-      is_accessible: bay.is_accessible, is_tandem: bay.is_tandem,
-      planning_restricted: bay.planning_restricted,
       in_service: bay.in_service, out_of_use_reason: bay.out_of_use_reason ?? '',
       out_of_use_until: bay.out_of_use_until ?? '',
       max_height_m: bay.max_height_m ?? '', notes: bay.notes ?? '',
@@ -96,25 +99,66 @@
       <button class="text-slate-500 hover:text-white" title="Close" on:click={() => dispatch('close')}>✕</button>
     </div>
 
-    <!-- The drawing: Building Assets' facts, shown not edited -->
-    <dl class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
-      <dt class="text-slate-500">Size</dt>
-      <dd class="text-slate-200">{bay.size ?? 'Not set'}</dd>
-      <dt class="text-slate-500">Measured</dt>
-      <dd class="text-slate-200">
-        {#if bay.measured}{m(bay.measured.width)} × {m(bay.measured.length)} m · {m(bay.measured.area)} m²
-        {:else}<span class="text-slate-500">The schematic has no scale</span>{/if}
-      </dd>
-      <dt class="text-slate-500">Name</dt>
-      <dd class="text-slate-200">{bay.space?.label || bay.space?.name || '—'}</dd>
-    </dl>
-    <p class="text-[11px] text-slate-500">
-      Size, number, name and shape are set in Building Assets → Schematics, where the bay is drawn.
-      {#if !bay.number}<span class="text-amber-400">This bay has no number yet, so its reference ends in an id fragment.</span>{/if}
-    </p>
+    <!-- 1. The space -->
+    <section class="space-y-2" data-testid="bay-space">
+      <p class="text-sm font-semibold text-slate-200">The space</p>
+      <dl class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+        <dt class="text-slate-500">Size</dt>
+        <dd class="text-slate-200">{bay.size ?? 'Not set'}</dd>
+        <dt class="text-slate-500">Measured</dt>
+        <dd class="text-slate-200">
+          {#if bay.measured}{m(bay.measured.width)} × {m(bay.measured.length)} m · {m(bay.measured.area)} m²
+          {:else}<span class="text-slate-500">The schematic has no scale</span>{/if}
+        </dd>
+        <dt class="text-slate-500">Name</dt>
+        <dd class="text-slate-200">{bay.space?.label || bay.space?.name || '—'}</dd>
+        {#if !canEdit}
+          <dt class="text-slate-500">Held as</dt>
+          <dd class="text-slate-200">{TENURES.find(t => t.value === bay.tenure)?.label}{#if bay.unit_ref} · {bay.unit_ref}{/if}</dd>
+          {#if bay.max_height_m != null}<dt class="text-slate-500">Headroom</dt><dd class="text-slate-200">{bay.max_height_m} m</dd>{/if}
+          {#if bay.notes}<dt class="text-slate-500">Notes</dt><dd class="text-slate-300">{bay.notes}</dd>{/if}
+        {/if}
+      </dl>
+      <p class="text-[11px] text-slate-500">
+        Size, number, name and shape are set in Building Assets → Schematics, where the bay is drawn.
+        {#if !bay.number}<span class="text-amber-400">This bay has no number yet, so its reference ends in an id fragment.</span>{/if}
+      </p>
+      {#if canEdit}
+        <FormSelect label="Held as" bind:value={form.tenure}
+          options={tenureOptions(bay.tenure).map(t => ({ value: t.value, label: t.label }))} placeholder=""
+          helpText={TENURES.find(t => t.value === form.tenure)?.hint ?? ''} />
+        {#if needsUnit}
+          <FormInput label="Which flat's lease" bind:value={form.unit_ref} placeholder="e.g. Flat 12"
+            helpText="A unit, not a person: the bay belongs to the lease, whoever holds it." />
+        {/if}
+        <FormInput label="Headroom (m)" bind:value={form.max_height_m} placeholder="e.g. 2.1" />
+        <FormTextarea label="Notes" bind:value={form.notes} rows={2} />
+      {/if}
+    </section>
 
-    <!-- Who holds it -->
-    <div class="border-t border-slate-700 pt-3 space-y-2" data-testid="bay-holders">
+    <!-- 2. Its state now -->
+    <section class="border-t border-slate-700 pt-3 space-y-2" data-testid="bay-state">
+      {#if canEdit}
+        <Checkbox checked={outOfUse} label="Out of use"
+          on:change={(e) => form.in_service = !e.target.checked} />
+        {#if outOfUse}
+          <FormInput label="Why" bind:value={form.out_of_use_reason} placeholder="e.g. Water ingress under repair" />
+          <FormInput label="Back in use (expected)" type="date" bind:value={form.out_of_use_until} />
+        {/if}
+        {#if error}<ErrorDisplay message={error} />{/if}
+        <div class="flex items-center gap-3 pt-1">
+          <Button variant="primary" size="small" loading={saving} disabled={saving} on:click={save}>Save</Button>
+          {#if saved}<span class="text-xs text-green-400">Saved</span>{/if}
+        </div>
+      {:else if !bay.in_service}
+        <p class="text-sm text-red-300">Out of use: {bay.out_of_use_reason}{#if bay.out_of_use_until} · until {fmtDate(bay.out_of_use_until)}{/if}</p>
+      {:else}
+        <p class="text-sm text-slate-400">In use.</p>
+      {/if}
+    </section>
+
+    <!-- 3. Who it is allocated to -->
+    <section class="border-t border-slate-700 pt-3 space-y-2" data-testid="bay-holders">
       <p class="text-sm font-semibold text-slate-200">Held by</p>
       {#each live as a (a.id)}
         <button class="block w-full text-left rounded-lg bg-slate-900/50 hover:bg-slate-900 p-2 text-sm"
@@ -145,51 +189,6 @@
       {:else if !allocatable}
         <p class="text-[11px] text-slate-500">Not for allocation.</p>
       {/if}
-    </div>
-
-    <!-- The parking facts: editable here -->
-    {#if canEdit}
-      <div class="border-t border-slate-700 pt-4 space-y-3">
-        <FormSelect label="Held as" bind:value={form.tenure}
-          options={TENURES.map(t => ({ value: t.value, label: t.label }))} placeholder=""
-          helpText={TENURES.find(t => t.value === form.tenure)?.hint ?? ''} />
-        {#if needsUnit}
-          <FormInput label="Which flat's lease" bind:value={form.unit_ref} placeholder="e.g. Flat 12"
-            helpText="A unit, not a person: the bay belongs to the lease, whoever holds it." />
-        {/if}
-
-        <div class="space-y-1.5">
-          <Checkbox bind:checked={form.is_accessible} label="Accessible bay (wider, for a disabled driver)" />
-          <Checkbox bind:checked={form.is_tandem} label="Tandem (one bay behind another)" />
-          <Checkbox bind:checked={form.planning_restricted} label="Residents only" />
-        </div>
-
-        <Checkbox checked={outOfUse} label="Out of use"
-          on:change={(e) => form.in_service = !e.target.checked} />
-        {#if outOfUse}
-          <FormInput label="Why" bind:value={form.out_of_use_reason} placeholder="e.g. Water ingress under repair" />
-          <FormInput label="Back in use (expected)" type="date" bind:value={form.out_of_use_until} />
-        {/if}
-
-        <FormInput label="Headroom (m)" bind:value={form.max_height_m} placeholder="e.g. 2.1" />
-        <FormTextarea label="Notes" bind:value={form.notes} rows={2} />
-
-        {#if error}<ErrorDisplay message={error} />{/if}
-        <div class="flex items-center gap-3">
-          <Button variant="primary" size="small" loading={saving} disabled={saving} on:click={save}>Save</Button>
-          {#if saved}<span class="text-xs text-green-400">Saved</span>{/if}
-        </div>
-      </div>
-    {:else}
-      <dl class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm border-t border-slate-700 pt-3">
-        <dt class="text-slate-500">Held as</dt>
-        <dd class="text-slate-200">{TENURES.find(t => t.value === bay.tenure)?.label}{#if bay.unit_ref} · {bay.unit_ref}{/if}</dd>
-        {#if !bay.in_service}
-          <dt class="text-slate-500">Out of use</dt>
-          <dd class="text-red-300">{bay.out_of_use_reason}{#if bay.out_of_use_until} · until {fmtDate(bay.out_of_use_until)}{/if}</dd>
-        {/if}
-        {#if bay.notes}<dt class="text-slate-500">Notes</dt><dd class="text-slate-300">{bay.notes}</dd>{/if}
-      </dl>
-    {/if}
+    </section>
   </div>
 {/if}

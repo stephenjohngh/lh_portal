@@ -138,9 +138,6 @@
           {:else}
             <HolderFields bind:holder={newHolder} />
           {/if}
-          {#if bay.planning_restricted}
-            <p class="text-xs text-amber-300">This bay is residents only: an external holder will be refused.</p>
-          {/if}
         </section>
 
         <!-- Terms -->

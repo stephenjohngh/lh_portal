@@ -37,13 +37,12 @@ export function bayRegisterSheet({ bays = [], holders = [], vehicles = [] }) {
   const hById = new Map(holders.map(h => [h.id, h]));
   return {
     headers: ['Bay', 'Name', 'Size', 'Width (m)', 'Length (m)', 'State', 'Held as', 'Lease of',
-      'Accessible', 'Tandem', 'Residents only', 'Out of use because', 'Back in use',
+      'Out of use because', 'Back in use',
       'Agreement', 'Holder', 'Vehicles', 'Headroom (m)', 'Notes'],
     rows: bays.map(b => [
       b.ref, b.space?.label || b.space?.name || '', b.size ?? 'Not set',
       b.measured ? b.measured.width.toFixed(2) : '', b.measured ? b.measured.length.toFixed(2) : '',
       BAY_STATE[b.state]?.label ?? b.state, TENURE_LABEL[b.tenure] ?? b.tenure, b.unit_ref ?? '',
-      b.is_accessible ? 'Yes' : '', b.is_tandem ? 'Yes' : '', b.planning_restricted ? 'Yes' : '',
       b.in_service === false ? (b.out_of_use_reason ?? '') : '', b.in_service === false ? d(b.out_of_use_until) : '',
       // A reserved bay names the draft or later licence holding it.
       (b.current ?? b.reserved)?.reference ?? '', name(hById.get((b.current ?? b.reserved)?.holder_id)),

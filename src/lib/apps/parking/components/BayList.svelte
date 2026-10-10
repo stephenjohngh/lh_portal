@@ -59,9 +59,6 @@
               {TENURE_LABEL[bay.tenure] ?? bay.tenure}{#if bay.unit_ref} · {bay.unit_ref}{/if}
             </td>
             <td class="py-2 text-xs text-slate-400">
-              {#if bay.is_accessible}<span class="mr-1.5">♿ Accessible</span>{/if}
-              {#if bay.is_tandem}<span class="mr-1.5">Tandem</span>{/if}
-              {#if bay.planning_restricted}<span class="mr-1.5">Residents only</span>{/if}
               {#if !bay.in_service}<span class="text-red-400">{bay.out_of_use_reason}</span>{/if}
             </td>
           </tr>

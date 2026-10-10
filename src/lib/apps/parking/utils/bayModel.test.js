@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   mergeBays, bayState, baySize, measureBay, baySummary, filterBays,
-  validateBayFacts, bayFactsRow, BAY_DEFAULTS, BAY_STATES,
+  validateBayFacts, bayFactsRow, BAY_DEFAULTS, BAY_STATES, tenureOptions,
 } from './bayModel.js';
 
 const floors = [
@@ -147,5 +147,17 @@ describe('reserved', () => {
     // Out of use still wins, and so does a licence covering today.
     expect(bayState({ in_service: false, tenure: 'licensable', reserved: { id: 'x' } })).toBe('out_of_use');
     expect(bayState({ in_service: true, tenure: 'licensable', current: { basis: 'licence' }, reserved: { id: 'x' } })).toBe('allocated');
+  });
+});
+
+describe('the choices offered (tidied 2026-10-10)', () => {
+  it('"Demised to a flat" is not offered — a lease right to park covers it — unless the bay already has it', () => {
+    expect(tenureOptions('licensable').map((t) => t.value)).toEqual(['licensable', 'lease_right', 'not_for_allocation']);
+    expect(tenureOptions('demised').map((t) => t.value)).toContain('demised');   // never lost from a bay that has it
+  });
+
+  it('accessible, tandem and residents only are no longer written, so a value already held is left alone', () => {
+    const row = bayFactsRow({ tenure: 'licensable', in_service: true, is_accessible: true, is_tandem: true, planning_restricted: true });
+    for (const k of ['is_accessible', 'is_tandem', 'planning_restricted']) expect(row).not.toHaveProperty(k);
   });
 });

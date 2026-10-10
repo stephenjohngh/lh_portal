@@ -131,7 +131,6 @@
         helpText="The current price for this size ends the day before." />
     </div>
     <FormTextarea label="Notes" bind:value={form.notes} rows={2} />
-    <p class="text-xs text-slate-500">An accessible bay costs what its size costs: there is no separate price for one.</p>
     {#if formError}<ErrorDisplay message={formError} />{/if}
   </div>
   <div slot="footer" class="flex justify-end gap-2">

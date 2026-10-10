@@ -21,10 +21,21 @@ import { matchesSearch } from '#lib/utils/textSearch.js';
 export const TENURES = [
   { value: 'licensable',         label: 'Licensable',          hint: 'Ours to allocate under a licence' },
   { value: 'demised',            label: 'Demised to a flat',   hint: "Part of a flat's lease — recorded, never allocated" },
-  { value: 'lease_right',        label: 'Lease right to park', hint: "A right in a flat's lease — recorded, never allocated" },
+  { value: 'lease_right',        label: 'Lease right to park', hint: "Belongs with a flat's lease, as a right to park or as part of the flat — recorded, never allocated" },
   { value: 'not_for_allocation', label: 'Not for allocation',  hint: 'Kept free: loading, contractors, a turning space' },
 ];
 export const TENURE_LABEL = Object.fromEntries(TENURES.map(t => [t.value, t.label]));
+
+/**
+ * The choices offered for "Held as" (2026-10-10, user: "remove 'Demised to a
+ * flat' — covered by the Lease right to park"). `demised` stays valid in the
+ * database and in TENURES — the CHECK, the parity test and any old row need it
+ * — but is offered only to a bay that already has it, so it is never lost.
+ * @param {string} [current] the bay's tenure now
+ */
+export function tenureOptions(current) {
+  return TENURES.filter(t => t.value !== 'demised' || t.value === current);
+}
 
 /** Tenures whose bay belongs to a flat's lease, and so must name the unit. */
 export const UNIT_TENURES = new Set(['demised', 'lease_right']);
@@ -244,9 +255,8 @@ export function bayFactsRow(f) {
   return {
     tenure:              f.tenure ?? 'licensable',
     unit_ref:            unitTenure ? String(f.unit_ref ?? '').trim() || null : null,
-    is_accessible:       !!f.is_accessible,
-    is_tandem:           !!f.is_tandem,
-    planning_restricted: !!f.planning_restricted,
+    // Accessible, tandem and residents-only are no longer offered (user,
+    // 2026-10-10) and are not written: a value already held is left as it is.
     in_service:          inService,
     out_of_use_reason:   inService ? null : String(f.out_of_use_reason ?? '').trim() || null,
     out_of_use_until:    inService ? null : f.out_of_use_until || null,
