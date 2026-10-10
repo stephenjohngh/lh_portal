@@ -140,7 +140,7 @@ describe('rate limits', () => {
 // — always visible, never granted, a harmless leftover in the CHECK.
 describe('app grants', () => {
   it('every grantable app is accepted, and the only extra is settings', () => {
-    const grantable = AVAILABLE_APPS.filter((a) => !a.alwaysVisible).map((a) => a.id);
+    const grantable = AVAILABLE_APPS.filter((a) => !a.alwaysVisible && !a.grantId).map((a) => a.id);
     const accepted  = SNAP.checks['app_permissions.app_id'];
     expect(grantable.filter((id) => !accepted.includes(id))).toEqual([]);
     expect(accepted.filter((id) => !grantable.includes(id))).toEqual(['settings']);

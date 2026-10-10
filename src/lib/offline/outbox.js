@@ -36,15 +36,22 @@ export function upgradeOutboxSchema(db) {
  * @param {string} name
  * @param {number} version
  * @param {(db: IDBDatabase, oldVersion: number) => void} [upgrade]  defaults to the shared stores only
- * @returns {() => Promise<import('#lib/utils/idb.js').IdbHandle>}
+ * @returns {(() => Promise<import('#lib/utils/idb.js').IdbHandle>) & { close: () => Promise<void> }}
  */
 export function makeOpener(name, version, upgrade = upgradeOutboxSchema) {
   /** @type {Promise<import('#lib/utils/idb.js').IdbHandle>|null} */
   let handle = null;
-  return () => {
+  const open = () => {
     if (!handle) handle = openDB(name, version, upgrade).catch((err) => { handle = null; throw err; });
     return handle;
   };
+  /** Close the connection (before the database is deleted); the next open reopens it. */
+  open.close = async () => {
+    const h = handle;
+    handle = null;
+    if (h) { try { (await h).close(); } catch { /* never opened */ } }
+  };
+  return open;
 }
 
 // -- Ops -----------------------------------------------------------------------

@@ -29,6 +29,8 @@ const OWN_LOAD = {
     'falls back to the offline cache when the network fails, so a walk can start with no signal',
   'src/lib/apps/mobileplan/stores/mobileplanStore.js':
     'falls back to the offline cache, and restores the saved filter before reading',
+  'src/lib/apps/parkingmobile/stores/parkingMobileStore.js':
+    'shows the phone copy first and refreshes it when there is a signal, so the lookup works in the basement without one',
   'src/lib/stores/statutoryRegister.js':
     'levels the table with the shipped seed and falls back to the seed — never an empty register',
   'src/lib/apps/admin/stores/auditLogsStore.js':

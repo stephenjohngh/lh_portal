@@ -1,6 +1,7 @@
 // src/lib/stores/auth.js
 
 import { writable } from 'svelte/store';
+import { wipeOfflinePersonalData } from '#lib/offline/wipe.js';
 import { supabase } from '#lib/supabaseClient.js';
 import { getLogger } from '#lib/utils/logger.js';
 import { openMediaSession, closeMediaSession } from '#lib/utils/mediaSession.js';
@@ -125,6 +126,11 @@ function createAuthStore() {
             })
           }).catch(err => logger('Failed to log logout:', err.message));
         }
+
+        // Offline copies holding personal data go with the session (Parking (M)'s
+        // lookup copy). Queued lookup audit lines are sent first, while the token
+        // is still good.
+        await wipeOfflinePersonalData();
 
         // The media cookie goes with the session.
         await closeMediaSession();
