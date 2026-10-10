@@ -66,6 +66,11 @@ describe('matching a reading to the values the screen knows', () => {
     expect(matchScan('12', [{ value: '2' }, { value: '12' }], 'number').map((m) => m.value)).toEqual(['12']);
   });
 
+  it('two different things with the same value are both offered, when they carry ids', () => {
+    const m = matchScan('12', [{ value: '12', id: 'a' }, { value: '12', id: 'b' }], 'number');
+    expect(m.map((x) => x.id)).toEqual(['a', 'b']);
+  });
+
   it('lists a value once, however many times it is known', () => {
     const m = matchScan('AB12CDE', [{ value: 'AB12 CDE' }, { value: 'ab12cde' }], 'registration');
     expect(m).toHaveLength(1);
@@ -82,6 +87,17 @@ describe('the distance', () => {
   it('allows more for a longer value', () => {
     expect(allowedDistance(2)).toBeLessThan(1);
     expect(allowedDistance(7)).toBeGreaterThan(allowedDistance(4));
+  });
+});
+
+describe('readings and codes', () => {
+  it('a reading keeps only digits, the point and a sign', () => {
+    expect(readingsFrom('2.5 bar', 'reading')).toContain('2.5');
+    expect(readingsFrom('-4.0', 'reading')).toContain('-4.0');
+    expect(normaliseScan('BAR', 'reading')).toBe('');
+  });
+  it('a code keeps the separators labels use, and runs longer than a plate', () => {
+    expect(readingsFrom('SN 12345-ABC/678', 'code')).toContain('SN12345-ABC/678');
   });
 });
 

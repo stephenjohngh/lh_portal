@@ -26,6 +26,10 @@ export const SCAN_PROFILES = {
   // A number painted or fixed on something — a door, a riser, a meter. Digits
   // and letters, plus the separators such numbers use (G.04, 3/12, B-2).
   number:       { label: 'Number', charset: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789./-', minLength: 1, maxLength: 10, aspect: 2 },
+  // A reading off a gauge, meter or display: digits, a decimal point, a sign.
+  reading:      { label: 'Reading', charset: '0123456789.-', minLength: 1, maxLength: 12, aspect: 2.5 },
+  // A code on a label — an asset tag, a serial or model number.
+  code:         { label: 'Code', charset: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789./-_', minLength: 1, maxLength: 24, aspect: 3.5 },
 };
 
 /** @param {string|ScanProfile} p */
@@ -155,10 +159,14 @@ export function matchScan(text, candidates, profile, { limit = 5 } = {}) {
     // door "2" must not match a door read as "12". Each extra character costs.
     for (const r of texts) d = Math.min(d, scanDistance(r, key) + EXTRA_CHAR_COST * Math.max(0, r.length - key.length));
     if (d > allowedDistance(key.length)) continue;
-    const prior = best.get(key);
-    if (!prior || d < prior.distance) best.set(key, { ...c, distance: d, exact: readings.includes(key) });
+    // One offer per value — but two THINGS with the same value (door 12 on
+    // two floors) are both offered, when the candidates carry an `id`.
+    const slot = /** @type {any} */ (c).id != null ? `${key}#${/** @type {any} */ (c).id}` : key;
+    const prior = best.get(slot);
+    if (!prior || d < prior.distance) best.set(slot, { ...c, distance: d, exact: readings.includes(key) });
   }
   return [...best.values()]
-    .sort((a, b) => a.distance - b.distance || a.value.localeCompare(b.value))
+    .sort((a, b) => a.distance - b.distance || a.value.localeCompare(b.value)
+      || String(/** @type {any} */ (a).label ?? '').localeCompare(String(/** @type {any} */ (b).label ?? '')))
     .slice(0, limit);
 }

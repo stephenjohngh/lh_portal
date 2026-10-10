@@ -19,6 +19,14 @@ import { render, screen, cleanup } from '@testing-library/svelte';
 
 vi.mock('$app/env', () => ({ browser: true, dev: true, building: false }));
 
+// The camera reader: what it "reads" is set by the test.
+const readerText = vi.hoisted(() => ({ value: '' }));
+vi.mock('#lib/utils/textScan/ocrReader.js', () => ({
+  startReader: async () => ({}),
+  readText: async () => ({ text: readerText.value, confidence: 80 }),
+  warmReader: async () => {},
+}));
+
 const JumpList = (await import('./InspectionJumpList.svelte')).default;
 
 const COMPONENTS = [
@@ -99,5 +107,35 @@ describe('InspectionJumpList — the counters follow the walk', () => {
     await rerender({ ...base, inspections, syncByInsp: { i1: 'pending' } });
 
     expect(screen.getByTitle(/not yet synced/i)).toBeInTheDocument();
+  });
+});
+
+describe('InspectionJumpList — scan a door number to jump to it', () => {
+  it('a scanned number on this walk jumps to that component; one on no component says so', async () => {
+    const { fireEvent, waitFor } = await import('@testing-library/svelte');
+    const ctx = { drawImage: () => {}, putImageData: () => {},
+      getImageData: (_x, _y, w, hh) => ({ data: new Uint8ClampedArray(Math.max(1, w * hh) * 4) }) };
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => /** @type {any} */ (ctx));
+    globalThis.createImageBitmap = /** @type {any} */ (async () => ({ width: 400, height: 300 }));
+    readerText.value = 'DOOR 2';
+    const jumps = [];
+    render(JumpList, { props: { ...base, inspections: {} }, events: { jump: (e) => jumps.push(e.detail) } });
+
+    const photo = async () => {
+      const input = /** @type {HTMLInputElement} */ (screen.getByLabelText(/Take a photo/));
+      Object.defineProperty(input, 'files', { value: [new File(['x'], 'd.jpg', { type: 'image/jpeg' })], configurable: true });
+      await fireEvent.change(input);
+    };
+    await fireEvent.click(screen.getByRole('button', { name: 'Scan a door or tag number' }));
+    await photo();
+    await fireEvent.click(await screen.findByRole('button', { name: /^Door 2/ }));
+    expect(jumps).toEqual([{ index: 1 }]);
+
+    readerText.value = 'DOOR 9';
+    await fireEvent.click(screen.getByRole('button', { name: 'Scan a door or tag number' }));
+    await photo();
+    await fireEvent.click(await screen.findByRole('button', { name: 'Use “DOOR9”' }));
+    await waitFor(() => expect(screen.getByRole('status').textContent).toMatch(/Nothing on this walk is numbered “DOOR9”/));
+    expect(jumps).toHaveLength(1);
   });
 });

@@ -8,6 +8,8 @@
   import WalkButton   from '#lib/apps/inspection/components/common/WalkButton.svelte';
   import WalkError    from '#lib/apps/inspection/components/common/WalkError.svelte';
   import WalkTextarea from '#lib/apps/inspection/components/common/WalkTextarea.svelte';
+  import ScanButton   from '#lib/components/common/ScanButton.svelte';
+  import { INSPECTION_ACCENT, scanProfileFor } from '../utils/scanFields.js';
 
   const logger   = getLogger('InspectionComponentEditor');
   const dispatch = createEventDispatcher();
@@ -106,13 +108,21 @@
     <!-- Asset ID -->
     <div class="sec">
       <label class="sec-lbl" for="ed-asset">ASSET ID</label>
-      <input id="ed-asset" class="fi" type="text" bind:value={form.asset_id} placeholder="e.g. FD-042" />
+      <div class="scan-row">
+        <input id="ed-asset" class="fi" type="text" bind:value={form.asset_id} placeholder="e.g. FD-042" />
+        <ScanButton label="" profile="code" accent={INSPECTION_ACCENT} title="Scan the asset ID"
+          on:scanned={(e) => (form = { ...form, asset_id: e.detail.value })} />
+      </div>
     </div>
 
     <!-- Label -->
     <div class="sec">
       <label class="sec-lbl" for="ed-label">LABEL / DESCRIPTION</label>
-      <input id="ed-label" class="fi" type="text" bind:value={form.label} placeholder="Optional label" />
+      <div class="scan-row">
+        <input id="ed-label" class="fi" type="text" bind:value={form.label} placeholder="Optional label" />
+        <ScanButton label="" profile="code" accent={INSPECTION_ACCENT} title="Scan the label"
+          on:scanned={(e) => (form = { ...form, label: e.detail.value })} />
+      </div>
     </div>
 
     <!-- Component type -->
@@ -204,14 +214,18 @@
                   {def.name}
                   {#if def._scope === 'system'}<span class="inherited-badge">system</span>{/if}
                 </label>
-                <input
-                  id="attr-{def.id}"
-                  type="number"
-                  class="fi"
-                  value={attrValues[def.id] ?? ''}
-                  on:input={e => attrValues = { ...attrValues, [def.id]: e.target.value }}
-                  placeholder={def.required ? 'Required' : 'Optional'}
-                />
+                <div class="scan-row">
+                  <input
+                    id="attr-{def.id}"
+                    type="number"
+                    class="fi"
+                    value={attrValues[def.id] ?? ''}
+                    on:input={e => attrValues = { ...attrValues, [def.id]: e.target.value }}
+                    placeholder={def.required ? 'Required' : 'Optional'}
+                  />
+                  <ScanButton label="" profile={scanProfileFor('number')} accent={INSPECTION_ACCENT} title="Scan: {def.name}"
+                    on:scanned={(e) => (attrValues = { ...attrValues, [def.id]: e.detail.value })} />
+                </div>
               {:else if def.display_type === 'textarea'}
                 <label class="attr-lbl" for="attr-{def.id}">
                   {def.name}
@@ -231,14 +245,18 @@
                   {def.name}
                   {#if def._scope === 'system'}<span class="inherited-badge">system</span>{/if}
                 </label>
-                <input
-                  id="attr-{def.id}"
-                  type="text"
-                  class="fi"
-                  value={attrValues[def.id] ?? ''}
-                  on:input={e => attrValues = { ...attrValues, [def.id]: e.target.value }}
-                  placeholder={def.required ? 'Required' : 'Optional'}
-                />
+                <div class="scan-row">
+                  <input
+                    id="attr-{def.id}"
+                    type="text"
+                    class="fi"
+                    value={attrValues[def.id] ?? ''}
+                    on:input={e => attrValues = { ...attrValues, [def.id]: e.target.value }}
+                    placeholder={def.required ? 'Required' : 'Optional'}
+                  />
+                  <ScanButton label="" profile={scanProfileFor('text')} accent={INSPECTION_ACCENT} title="Scan: {def.name}"
+                    on:scanned={(e) => (attrValues = { ...attrValues, [def.id]: e.detail.value })} />
+                </div>
               {/if}
             </div>
           {/each}
@@ -275,6 +293,8 @@
 
   .fi { width:100%; padding:0.75rem 1rem; background:#111122; border:1px solid #2e2e42; border-radius:8px; color:#f0f0f0; font-family:inherit; font-size:0.875rem; }
   .fi:focus { outline:none; border-color:#fb923c; }
+  .scan-row { display:flex; gap:0.5rem; align-items:center; }
+  .scan-row .fi { flex:1; min-width:0; }
   .fs { width:100%; padding:0.75rem 1rem; background:#111122; border:1px solid #2e2e42; border-radius:8px; color:#f0f0f0; font-family:inherit; font-size:0.875rem; }
   .fs:focus { outline:none; border-color:#fb923c; }
 

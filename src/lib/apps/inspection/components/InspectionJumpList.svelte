@@ -3,12 +3,17 @@
      Two groupings of the SAME list — walk order (the default), or by type
      ("which fire doors are left"). This replaced the separate ⊞ STATUS screen
      (InspectionPlanViewer), which was this list grouped by type as its own
-     view + button. -->
+     view + button.
+     📷 SCAN (2026-10-10): read the number on a door or tag with the camera and
+     jump to that component. It is matched against this walk's asset ids and
+     labels, so a door 12 on two floors offers both, with their refs. -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { resultLabel, syncGlyph } from '../utils/inspectionHelpers.js';
   import { buildComponentRef } from '#lib/utils/componentRef.js';
   import WalkButton from '#lib/apps/inspection/components/common/WalkButton.svelte';
+  import ScanButton from '#lib/components/common/ScanButton.svelte';
+  import { INSPECTION_ACCENT, jumpCandidates, jumpIndexFor } from '../utils/scanFields.js';
 
   const dispatch = createEventDispatcher();
 
@@ -30,6 +35,16 @@
   $: inspectedCount = components.filter(c => getInsp(c) !== null).length;
 
   let grouping = 'walk';   // 'walk' | 'type'
+
+  $: scanCandidates = jumpCandidates(components, floors, types);
+  let scanMiss = '';
+  /** @param {CustomEvent<{ value: string, candidate: any }>} e */
+  function scanned(e) {
+    const index = e.detail.candidate?.index ?? jumpIndexFor(e.detail.value, scanCandidates);
+    if (index == null) { scanMiss = `Nothing on this walk is numbered “${e.detail.value}”.`; return; }
+    scanMiss = '';
+    dispatch('jump', { index });
+  }
 
   // Rows carry their ORIGINAL walk index — a jump must land on the component's
   // position in walk order, whatever grouping the list is displayed in.
@@ -53,6 +68,8 @@
       <button class="tgl" class:tgl-on={grouping === 'walk'} on:click={() => grouping = 'walk'}>WALK ORDER</button>
       <button class="tgl" class:tgl-on={grouping === 'type'} on:click={() => grouping = 'type'}>BY TYPE</button>
     </div>
+    <ScanButton profile="code" candidates={scanCandidates} accent={INSPECTION_ACCENT}
+      title="Scan a door or tag number" on:scanned={scanned} />
     <div class="jl-stats">
       <span class="stat-pass">✓ {passCount}</span>
       <span class="stat-fail">✗ {failCount}</span>
@@ -60,6 +77,8 @@
       <span class="stat-tot">{inspectedCount}/{components.length}</span>
     </div>
   </div>
+
+  {#if scanMiss}<p class="jl-miss" role="status">{scanMiss}</p>{/if}
 
   <div class="jl-list">
     {#each sections as sec (sec.label ?? '__walk__')}
@@ -115,6 +134,7 @@
   .stat-prob { color:#fb923c; }
   .stat-tot  { color:#ccc; }
   .jl-list { overflow-y:auto; flex:1; }
+  .jl-miss { margin:0; padding:0.6rem 1.25rem; font-size:0.75rem; color:#fbbf24; background:#1a1400; border-bottom:1px solid #2e2e42; }
   .jl-row { width:100%; display:flex; align-items:center; gap:0.75rem; padding:0.75rem 1rem; background:none; border:none; border-bottom:1px solid #1a1a2e; font-family:inherit; cursor:pointer; text-align:left; transition:background 0.1s; }
   .jl-row:hover { background:#111122; }
   .jl-current { background:#1a0e00 !important; }

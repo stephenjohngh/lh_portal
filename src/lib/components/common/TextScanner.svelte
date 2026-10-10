@@ -202,7 +202,7 @@
 
     {#if matches.length}
       <div class="ts-matches">
-        {#each matches as m (m.value)}
+        {#each matches as m (m.value + "#" + (m.id ?? ""))}
           <button class="ts-match" on:click={() => pick(m.value, m)}>
             <span class="ts-value">{m.value}</span>
             {#if m.label}<span class="ts-label">{m.label}</span>{/if}

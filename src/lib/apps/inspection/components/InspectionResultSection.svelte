@@ -12,6 +12,8 @@
   import WalkError    from '#lib/apps/inspection/components/common/WalkError.svelte';
   import WalkButton   from '#lib/apps/inspection/components/common/WalkButton.svelte';
   import PhotoPanel   from './PhotoPanel.svelte';
+  import ScanButton   from '#lib/components/common/ScanButton.svelte';
+  import { INSPECTION_ACCENT, scanProfileFor } from '../utils/scanFields.js';
 
   const dispatch = createEventDispatcher();
 
@@ -239,6 +241,10 @@
               placeholder={def.display_type === 'number' ? '0' : '—'}
               bind:value={inputValues[def.id]}
             />
+            <!-- Read it off the gauge, display or label with the camera. -->
+            <ScanButton label="" accent={INSPECTION_ACCENT} title="Scan: {def.name}"
+              profile={scanProfileFor(def.display_type)}
+              on:scanned={(e) => (inputValues = { ...inputValues, [def.id]: e.detail.value })} />
           </div>
           {#if def.help_notes && activeHelpId === def.id}
             <div class="cl-help-popup">{def.help_notes}</div>

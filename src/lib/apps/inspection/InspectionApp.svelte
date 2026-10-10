@@ -11,6 +11,7 @@
   import { startSync, stopSync } from './utils/syncRunner.js';
   import { online } from '#lib/stores/online.js';
   import { getPref, setPref } from '#lib/utils/prefs.js';
+  import { warmReader } from '#lib/utils/textScan/ocrReader.js';
   import InspectionHome           from './components/InspectionHome.svelte';
   import InspectionSessionStart   from './components/InspectionSessionStart.svelte';
   import InspectionRepairStart    from './components/InspectionRepairStart.svelte';
@@ -43,6 +44,9 @@
     // and drains any inspections queued in a previous (offline) session as soon
     // as we're connected — independent of whether load() below succeeds.
     startSync();
+    // Fetch the camera reader's files while there is a signal, so the 📷 scan
+    // buttons work later on a walk with none. Kept once fetched.
+    if (get(online) && window.matchMedia?.('(pointer: coarse)').matches) setTimeout(() => { void warmReader(); }, 4000);
     cachedCanEdit = getPref('inspection_can_edit') === '1';
     try {
       if ($auth.user) {
