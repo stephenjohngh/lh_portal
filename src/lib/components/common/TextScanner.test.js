@@ -50,7 +50,7 @@ describe('TextScanner', () => {
   it('with no camera, says so and offers a photo; says nothing leaves the phone', async () => {
     render(TextScanner, { profile: 'registration', candidates: CANDIDATES });
     await tick(); await tick();
-    expect(screen.getByText(/You can take a photo instead/)).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toMatch(/Take a photo below/);
     expect(screen.getByLabelText(/Take a photo/)).toBeTruthy();
     expect(screen.getByText(/the picture is not sent or kept/)).toBeTruthy();
   });
@@ -89,6 +89,33 @@ describe('TextScanner', () => {
     await takePhoto();
     expect(screen.queryByRole('button', { name: /AB12 CDE/ })).toBeNull();
     expect(screen.getByRole('button', { name: 'Use “KL55MNP”' })).toBeTruthy();
+  });
+
+  it('camera refused on an iPhone: says which settings, and Try again opens it once allowed', async () => {
+    const ua = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1');
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    let allowed = false;
+    const fakeStream = { getVideoTracks: () => [{ getCapabilities: () => ({}) }], getTracks: () => [{ stop: () => {} }] };
+    Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: {
+      getUserMedia: async () => {
+        if (!allowed) throw Object.assign(new Error('denied'), { name: 'NotAllowedError' });
+        return fakeStream;
+      },
+    } });
+    try {
+      render(TextScanner, { props: { profile: 'registration' } });
+      const alert = await screen.findByRole('alert');
+      expect(alert.textContent).toMatch(/not allowed for this site/);
+      expect(alert.textContent).toMatch(/Website Settings/);
+      allowed = true;
+      await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+      for (let i = 0; i < 4; i++) await tick();
+      expect(screen.queryByRole('alert')).toBeNull();
+    } finally {
+      ua.mockRestore();
+      delete (/** @type {any} */ (navigator)).mediaDevices;
+    }
   });
 
   it('Close says so', async () => {

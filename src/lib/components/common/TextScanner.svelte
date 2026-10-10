@@ -25,6 +25,7 @@
   import { matchScan, readingsFrom, scanProfile } from '#lib/utils/textScan/scanMatch.js';
   import { guideCrop, readSize, greyAndStretch } from '#lib/utils/textScan/scanImage.js';
   import { errMessage } from '#lib/utils/errors.js';
+  import { cameraHelp } from '#lib/utils/textScan/cameraHelp.js';
 
   /** 'registration' | 'number', or a profile object (scanMatch.js) */
   export let profile = 'registration';
@@ -43,7 +44,8 @@
   /** @type {HTMLVideoElement} */ let video;
   /** @type {MediaStream|null} */ let stream = null;
   let status = 'Starting the camera…';
-  let cameraError = '';
+  /** @type {import('#lib/utils/textScan/cameraHelp.js').CameraHelp|null} */
+  let cameraError = null;
   let readerReady = false;
   let readerError = '';
   let lastRead = '';                 // the best reading of the latest read that found any
@@ -54,11 +56,20 @@
   let reading = false;
   /** @type {any} */ let timer = null;
 
-  onMount(async () => {
+  onMount(() => {
     startReader().then(() => { readerReady = true; loop(); })
       .catch((err) => { readerError = errMessage(err, 'The text reader could not start.'); });
+    startCamera();
+  });
+
+  async function startCamera() {
+    cameraError = null;
+    status = 'Starting the camera…';
     try {
-      if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser cannot use the camera here.');
+      if (!navigator.mediaDevices?.getUserMedia) {
+        // Only a secure (https) page may use the camera; elsewhere the API is absent.
+        throw Object.assign(new Error('no camera API'), { name: window.isSecureContext ? 'NotFoundError' : 'InsecureContext' });
+      }
       stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
@@ -71,12 +82,10 @@
       status = readerReady ? 'Hold it inside the box' : 'Getting the reader ready…';
       loop();
     } catch (/** @type {any} */ err) {
-      cameraError = err?.name === 'NotAllowedError'
-        ? 'The camera is not allowed for this site. Allow it in the browser settings, or take a photo instead.'
-        : errMessage(err, 'The camera could not be opened.') + ' You can take a photo instead.';
+      cameraError = cameraHelp(err?.name, navigator.userAgent, navigator.maxTouchPoints ?? 0);
       status = '';
     }
-  });
+  }
 
   onDestroy(() => { stopped = true; clearTimeout(timer); stopStream(); });
 
@@ -188,7 +197,16 @@
     {#if !cameraError}
       <div class="ts-box" style="width: {BOX_FRACTION * 100}%; aspect-ratio: {boxAspect}"></div>
     {/if}
-    {#if cameraError}<p class="ts-msg ts-warn">{cameraError}</p>{/if}
+    {#if cameraError}
+      <div class="ts-msg" role="alert">
+        <p class="ts-warn ts-help-title">{cameraError.title}</p>
+        {#if cameraError.steps.length}
+          <ol class="ts-steps">{#each cameraError.steps as step}<li>{step}</li>{/each}</ol>
+        {/if}
+        <p class="ts-help-alt">Or use <b>Take a photo</b> below — that does not need this permission.</p>
+        {#if cameraError.retry}<button class="ts-btn ts-primary-plain" on:click={startCamera}>Try again</button>{/if}
+      </div>
+    {/if}
   </div>
 
   <div class="ts-panel">
@@ -246,7 +264,16 @@
     box-shadow: 0 0 0 9999px rgb(0 0 0 / 0.45);
     pointer-events: none;
   }
-  .ts-msg { position: absolute; inset: auto 1rem 1rem 1rem; padding: 0.75rem; border-radius: 6px; background: rgb(0 0 0 / 0.7); }
+  .ts-msg {
+    position: absolute; inset: 0.75rem; overflow-y: auto;
+    display: flex; flex-direction: column; justify-content: center; gap: 0.5rem;
+    padding: 1rem; border-radius: 8px; background: rgb(13 13 20 / 0.92);
+  }
+  .ts-help-title { font-weight: 600; font-size: 1rem; }
+  .ts-steps { margin: 0; padding-left: 1.4rem; list-style: decimal; font-size: 0.9rem; color: #e2e8f0; }
+  .ts-steps li + li { margin-top: 0.4rem; }
+  .ts-help-alt { margin: 0; font-size: 0.85rem; color: #94a3b8; }
+  .ts-btn.ts-primary-plain { align-self: flex-start; background: var(--ts-accent); border-color: var(--ts-accent); color: #fff; }
   .ts-panel { padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; max-height: 50vh; overflow-y: auto; }
   .ts-status { margin: 0; font-size: 0.9rem; color: #cbd5e1; }
   .ts-warn { margin: 0; font-size: 0.9rem; color: #fbbf24; }
