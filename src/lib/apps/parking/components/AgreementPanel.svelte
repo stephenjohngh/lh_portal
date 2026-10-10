@@ -232,28 +232,40 @@
 
     <!-- Lifecycle -->
     {#if canEdit}
-      <div class="flex flex-wrap gap-2 border-t border-slate-700 pt-3">
-        {#if canTransition(agreement.status, 'active')}
-          <Button size="small" variant="primary" disabled={busy} on:click={() => to('active')}>
-            {agreement.status === 'notice_given' ? 'Withdraw notice' : 'Activate'}</Button>
-        {/if}
-        {#if canTransition(agreement.status, 'ended')}
-          <Button size="small" variant="secondary" disabled={busy} on:click={() => askEnd('ended')}>End</Button>
-        {/if}
-        {#if canTransition(agreement.status, 'terminated')}
-          <Button size="small" variant="danger" disabled={busy} on:click={() => askEnd('terminated')}>Terminate</Button>
-        {/if}
-        {#if agreement.status === 'active'}
-          <Button size="small" variant="secondary" disabled={busy} on:click={askNotice}>Serve notice</Button>
-          {#if agreement.basis === 'licence' || agreement.basis === 'adjustment'}
-            <Button size="small" variant="secondary" disabled={busy} on:click={askMove}>Move to another bay</Button>
+      <!-- Order set by the user (2026-10-10): Edit · Move Bay · Serve Notice ·
+           End on one line, and the final, early end — Terminate — on its own
+           line below, where it is not pressed by mistake. Activate / Withdraw
+           notice lead the first line when they apply. -->
+      <div class="border-t border-slate-700 pt-3 space-y-2">
+        <!-- Narrower padding on these four so they share one line on a phone
+             (they need ~280px; a 375px phone gives the row ~309). -->
+        <div class="flex flex-wrap gap-1.5">
+          {#if canTransition(agreement.status, 'active')}
+            <Button size="small" variant="primary" disabled={busy} on:click={() => to('active')}>
+              {agreement.status === 'notice_given' ? 'Withdraw notice' : 'Activate'}</Button>
           {/if}
-        {/if}
-        {#if agreement.status !== 'ended' && agreement.status !== 'terminated' && !editing}
-          <Button size="small" variant="secondary" disabled={busy} on:click={startEdit}>Edit terms</Button>
-        {/if}
-        {#if agreement.status === 'draft' && $permissions.isAdmin}
-          <Button size="small" variant="danger" disabled={busy} on:click={() => confirmDelete = true}>Delete draft</Button>
+          {#if agreement.status !== 'ended' && agreement.status !== 'terminated' && !editing}
+            <Button size="small" variant="secondary" disabled={busy} className="px-2!" on:click={startEdit}>Edit</Button>
+          {/if}
+          {#if agreement.status === 'active' && (agreement.basis === 'licence' || agreement.basis === 'adjustment')}
+            <Button size="small" variant="secondary" disabled={busy} className="px-2!" on:click={askMove}>Move Bay</Button>
+          {/if}
+          {#if agreement.status === 'active'}
+            <Button size="small" variant="secondary" disabled={busy} className="px-2!" on:click={askNotice}>Serve Notice</Button>
+          {/if}
+          {#if canTransition(agreement.status, 'ended')}
+            <Button size="small" variant="secondary" disabled={busy} className="px-2!" on:click={() => askEnd('ended')}>End</Button>
+          {/if}
+        </div>
+        {#if canTransition(agreement.status, 'terminated') || (agreement.status === 'draft' && $permissions.isAdmin)}
+          <div class="flex flex-wrap gap-2">
+            {#if canTransition(agreement.status, 'terminated')}
+              <Button size="small" variant="danger" disabled={busy} on:click={() => askEnd('terminated')}>Terminate</Button>
+            {/if}
+            {#if agreement.status === 'draft' && $permissions.isAdmin}
+              <Button size="small" variant="danger" disabled={busy} on:click={() => confirmDelete = true}>Delete draft</Button>
+            {/if}
+          </div>
         {/if}
       </div>
       {#if agreement.status === 'notice_given' && agreement.ends_on && agreement.ends_on <= todayISO()}
@@ -387,7 +399,7 @@
           {#if changingFrom}<p class="text-xs text-slate-400">The new vehicle — the current one stops being authorised today.</p>{/if}
           <!-- Registration, make and model on one line; colour, EV and the
                button on the next, so make and model have room. -->
-          <div class="grid grid-cols-3 gap-2">
+          <div class="grid grid-cols-[1.3fr_1fr_1fr] gap-2">
             <FormInput label="Registration" bind:value={newVehicle.registration} placeholder="AB12 CDE" inputClass="uppercase" />
             <FormInput label="Make" bind:value={newVehicle.make} />
             <FormInput label="Model" bind:value={newVehicle.model} />

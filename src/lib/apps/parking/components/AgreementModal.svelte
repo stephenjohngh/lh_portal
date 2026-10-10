@@ -30,7 +30,7 @@
   let holderId = '';
   let newHolder = {};
   let terms = {};
-  let vehicles = [];
+  let vehicles = [{ registration: '', make: '', model: '', colour: '', is_ev: false }];   // one, never empty: the form binds vehicles[0]
   let openedFor = null;
   let saving = false;
   let error = '';
@@ -79,8 +79,6 @@
 
   // Keep the vehicle lines no longer than the agreement allows.
   $: maxV = Math.max(1, Number(terms.max_vehicles) || 1);
-  function addLine() { if (vehicles.length < maxV) vehicles = [...vehicles, { registration: '', is_ev: false }]; }
-  function removeLine(i) { vehicles = vehicles.filter((_, j) => j !== i); }
 
   $: holderOptions = $parkingStore.holders.map(h => ({
     value: h.id, label: `${h.company_name ? h.company_name + ' — ' : ''}${h.display_name} (${HOLDER_TYPE_LABEL[h.holder_type]})`,
@@ -178,22 +176,20 @@
           <FormTextarea label="Notes" bind:value={terms.notes} rows={2} />
         </section>
 
-        <!-- Vehicles -->
+        <!-- Vehicle: one per agreement (user, 2026-10-10). Laid out as on the
+             agreement — registration, make, model, then colour and EV. Leave
+             the registration blank to add the vehicle later. -->
         <section class="space-y-2 border-t border-slate-700 pt-4">
-          <h3 class="text-sm font-semibold text-slate-200">Vehicles</h3>
-          {#each vehicles as v, i}
-            <div class="grid grid-cols-[8rem_1fr_1fr_1fr_auto_auto] gap-2 items-end">
-              <FormInput label={i === 0 ? 'Registration' : ''} bind:value={v.registration} placeholder="AB12 CDE" />
-              <FormInput label={i === 0 ? 'Make' : ''} bind:value={v.make} />
-              <FormInput label={i === 0 ? 'Model' : ''} bind:value={v.model} />
-              <FormInput label={i === 0 ? 'Colour' : ''} bind:value={v.colour} />
-              <div class="pb-2"><Checkbox bind:checked={v.is_ev} label="EV" /></div>
-              <button class="pb-2 text-slate-500 hover:text-red-400" title="Remove" on:click={() => removeLine(i)}>✕</button>
-            </div>
-          {/each}
-          {#if vehicles.length < maxV}
-            <button class="text-xs text-purple-400 hover:text-purple-300" on:click={addLine}>+ Add a vehicle</button>
-          {/if}
+          <h3 class="text-sm font-semibold text-slate-200">Vehicle</h3>
+          <div class="grid grid-cols-[1.3fr_1fr_1fr] gap-2">
+            <FormInput label="Registration" bind:value={vehicles[0].registration} placeholder="AB12 CDE" inputClass="uppercase" />
+            <FormInput label="Make" bind:value={vehicles[0].make} />
+            <FormInput label="Model" bind:value={vehicles[0].model} />
+          </div>
+          <div class="flex flex-wrap items-end gap-3">
+            <div class="w-40"><FormInput label="Colour" bind:value={vehicles[0].colour} /></div>
+            <div class="pb-2"><Checkbox bind:checked={vehicles[0].is_ev} label="EV" /></div>
+          </div>
         </section>
 
         {#if error}<ErrorDisplay message={error} />{/if}
