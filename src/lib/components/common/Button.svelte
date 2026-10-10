@@ -22,6 +22,7 @@
   // buttons don't seem to be using our colour scheme"): a teal OUTLINE — teal
   // border and text on the dark background — where it used to be solid grey.
   // Main actions stay solid teal (`primary`), so the two still read apart.
+  // `danger` is the same shape in red.
   const variantStyles = {
     primary: 'border-transparent bg-purple-500 hover:bg-purple-600 disabled:bg-purple-700',
     amber: 'border-transparent bg-amber-600 hover:bg-amber-500 disabled:bg-amber-700', // Actions accent — matches amber-400/500 border colours
@@ -29,7 +30,9 @@
     green: 'border-transparent bg-green-600 hover:bg-green-700 disabled:bg-green-800',
     secondary: 'border-purple-500/70 bg-transparent text-purple-300 hover:bg-purple-500/15 hover:text-purple-200 '
       + 'disabled:border-slate-600 disabled:text-slate-500 disabled:hover:bg-transparent',
-    danger: 'border-transparent text-red-400 hover:bg-red-600/20 disabled:opacity-50'
+    // Red outline, matching secondary's teal outline (user, 2026-10-10:
+    // "can the terminate button also have an outline in red").
+    danger: 'border-red-500/70 bg-transparent text-red-400 hover:bg-red-600/20 hover:text-red-300 disabled:opacity-50'
   };
 
   // Size styles
