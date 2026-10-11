@@ -80,7 +80,8 @@
         "spaces.label_size": [
             "normal",
             "small",
-            "smaller"
+            "smaller",
+            "smallest"
         ],
         "audit_logs.severity": [
             "critical",

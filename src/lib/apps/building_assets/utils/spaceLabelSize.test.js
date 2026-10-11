@@ -6,6 +6,7 @@ describe('space label sizes', () => {
     expect(spaceLabelPx('normal', 12)).toBe(12);
     expect(spaceLabelPx('small', 12)).toBe(11);
     expect(spaceLabelPx('smaller', 12)).toBe(10);
+    expect(spaceLabelPx('smallest', 12)).toBe(9);
     expect(spaceLabelPx('small', 11)).toBe(10);   // the phone viewer's own base
   });
   it('a missing or unknown size reads as normal, never smaller', () => {
@@ -13,7 +14,7 @@ describe('space label sizes', () => {
     expect(spaceLabelPx('huge', 12)).toBe(12);
     expect(spaceLabelSizeName(null)).toBe('Normal');
   });
-  it('offers exactly the values the database accepts (migration 242)', () => {
-    expect(SPACE_LABEL_SIZES.map(s => s.value)).toEqual(['normal', 'small', 'smaller']);
+  it('offers exactly the values the database accepts (migrations 242–243)', () => {
+    expect(SPACE_LABEL_SIZES.map(s => s.value)).toEqual(['normal', 'small', 'smaller', 'smallest']);
   });
 });

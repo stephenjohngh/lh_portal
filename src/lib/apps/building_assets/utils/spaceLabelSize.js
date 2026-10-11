@@ -1,6 +1,6 @@
 // src/lib/apps/building_assets/utils/spaceLabelSize.js
-// How big a space's label is drawn on a schematic (migration 242, user
-// 2026-10-11): the size it has always been, one point smaller, or two.
+// How big a space's label is drawn on a schematic (migrations 242–243, user
+// 2026-10-11): the size it has always been, or one, two or three points smaller.
 // A step is 1px on screen, which is what the label sizes are measured in.
 //
 // Pure: imports nothing, so the desktop schematic and the phone viewer (which
@@ -11,6 +11,7 @@ export const SPACE_LABEL_SIZES = Object.freeze([
   { value: 'normal',  label: 'Normal',          step: 0 },
   { value: 'small',   label: '1 pt smaller',    step: 1 },
   { value: 'smaller', label: '2 pt smaller',    step: 2 },
+  { value: 'smallest', label: '3 pt smaller',   step: 3 },   // migration 243
 ]);
 
 /** The label's font size in px, from the place's own base size. Unknown → normal. */
