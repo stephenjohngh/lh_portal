@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema17.csv
+// Source: docs/ops/supabase_lhportal_schema18.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -3917,6 +3917,8 @@ export type Database = {
           created_by: string | null
           valid_from_time: string
           valid_to_time: string
+          ended_early_at: string | null
+          ended_early_by: string | null
         }
         Insert: {
           id?: string
@@ -3930,6 +3932,8 @@ export type Database = {
           created_by?: string | null
           valid_from_time?: string
           valid_to_time?: string
+          ended_early_at?: string | null
+          ended_early_by?: string | null
         }
         Update: {
           id?: string
@@ -3943,11 +3947,20 @@ export type Database = {
           created_by?: string | null
           valid_from_time?: string
           valid_to_time?: string
+          ended_early_at?: string | null
+          ended_early_by?: string | null
         }
         Relationships: [
             {
               foreignKeyName: "parking_permits_created_by_fkey"
               columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_permits_ended_early_by_fkey"
+              columns: ["ended_early_by"]
               isOneToOne: false
               referencedRelation: "profiles"
               referencedColumns: ["id"]
