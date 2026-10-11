@@ -217,14 +217,15 @@
         <!-- Kept inside the shape sideways (2026-10-11): centred across the shape at
              its middle height, up to the shape's edges and no further, so a long
              label wraps instead of spilling out. The extra 1px stops a label that
-             exactly fits from wrapping on rounding. -->
+             exactly fits from wrapping on rounding. No side padding inside the
+             box (user, 2026-10-11), so the text itself can reach the edges. -->
         <div
           class="absolute pointer-events-none select-none w-max"
           style="left:{(slot?.x ?? c.x) * 100}%; top:{c.y * 100}%; transform:translate(-50%,-50%); z-index:8;
                  {slot ? `max-width:calc(${slot.width * 100}% + 1px);` : ''}"
         >
           <div
-            class="px-1.5 py-0.5 rounded font-medium whitespace-pre-wrap text-center shadow-sm"
+            class="py-0.5 rounded font-medium whitespace-pre-wrap text-center shadow-sm"
             style:overflow-wrap="anywhere"
             style="font-size:{spaceLabelPx(space.label_size, 12)}px; line-height:1.35;
                    background-color:{isNone ? '#1e293b' : `#${space.colour}33`};
