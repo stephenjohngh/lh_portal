@@ -326,6 +326,18 @@
           <span class="text-slate-600 font-normal ml-1">— shown on the schematic; Enter for line breaks</span>
         </label>
         <textarea id="sp-label" rows="2" bind:value={editLabel} class="{inp} resize-none" placeholder="Plant&#10;Room 2"></textarea>
+        <!-- Label size sits with the label it sizes (user, 2026-10-11). Hidden while
+             the label is switched off below — nothing is drawn to size. -->
+        {#if editShowLabel}
+          <div class="flex items-center gap-2 mt-1">
+            <label for="space-label-size" class="text-xs text-slate-400 shrink-0">Label size</label>
+            <select id="space-label-size" bind:value={editLabelSize} class="{inp} cursor-pointer">
+              {#each SPACE_LABEL_SIZES as s (s.value)}
+                <option value={s.value}>{s.label}</option>
+              {/each}
+            </select>
+          </div>
+        {/if}
       </div>
     {/if}
 
@@ -541,16 +553,6 @@
         <input type="checkbox" bind:checked={editShowLabel} class="rounded accent-purple-500" />
         Show label on schematic
       </label>
-      {#if editShowLabel}
-        <div class="flex items-center gap-2">
-          <label for="space-label-size" class="text-xs text-slate-400 shrink-0">Label size</label>
-          <select id="space-label-size" bind:value={editLabelSize} class="{inp} cursor-pointer">
-            {#each SPACE_LABEL_SIZES as s (s.value)}
-              <option value={s.value}>{s.label}</option>
-            {/each}
-          </select>
-        </div>
-      {/if}
 
     {/if}
 

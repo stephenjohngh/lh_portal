@@ -77,6 +77,11 @@
             "phone",
             "staff_logged"
         ],
+        "spaces.label_size": [
+            "normal",
+            "small",
+            "smaller"
+        ],
         "audit_logs.severity": [
             "critical",
             "error",

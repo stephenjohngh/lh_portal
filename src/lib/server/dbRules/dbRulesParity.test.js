@@ -56,6 +56,7 @@ import * as obligationEvidence from '#lib/utils/obligationEvidence.js';
 import * as worksSchedule      from '#lib/apps/building_assets/utils/worksSchedule.js';
 import * as datasetTemplates   from '#lib/apps/dossier/utils/datasetTemplates.js';
 import * as spaceTypeOptions   from '#lib/apps/building_assets/utils/spaceTypeOptions.js';
+import * as spaceLabelSize     from '#lib/apps/building_assets/utils/spaceLabelSize.js';
 import { ISSUE_STATUS }        from '#lib/utils/constants.js';
 import { AVAILABLE_APPS }      from '#lib/apps/apps.js';
 import { RATE_LIMIT_WINDOWS }  from '#lib/utils/policies.js';
@@ -97,6 +98,7 @@ const VALUE_LISTS = {
   // Every kind the database accepts (migration 238 added flat_fob); the app
   // OFFERS only two of them (DEVICE_ISSUE_OPTIONS), and labels all.
   'parking_access_devices.device_type': () => values(agreementModel.DEVICE_TYPES),
+  'spaces.label_size':               () => values(spaceLabelSize.SPACE_LABEL_SIZES),   // migration 242
   'parking_tariffs.vat_treatment':    () => values(agreementModel.VAT_TREATMENTS),
   'parking_tariffs.period':           () => values(agreementModel.FEE_PERIODS),
   'parking_holders.holder_type':      () => values(agreementModel.HOLDER_TYPES),
