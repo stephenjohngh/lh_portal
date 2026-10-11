@@ -16,7 +16,7 @@ const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 export function retentionRules(periods) {
   if (!periods) return [];
   const p = periods;
-  return [
+  const rules = [
     `An ended agreement, with its vehicles, access devices, timeline and signed licence documents, becomes due for removal ${plural(p.agreement_years, 'year')} after it ended.`,
     `A vehicle becomes due ${plural(p.vehicle_months, 'month')} after it came off the agreement, or after the agreement ended. Removing it blanks its registration in the timeline.`,
     `A returned access device becomes due ${plural(p.device_months, 'month')} after it was returned, or after the agreement ended.`,
@@ -24,6 +24,11 @@ export function retentionRules(periods) {
     `A withdrawn or allocated waiting-list application becomes due ${plural(p.application_grace_days, 'day')} after it closed.`,
     `A holder left with no agreement and no application becomes due ${plural(p.holder_months, 'month')} after their record was last changed.`,
   ];
+  // Road permits joined the job in migration 239; a database without it says nothing about them.
+  if (p.permit_months != null) {
+    rules.push(`A road permit becomes due ${plural(p.permit_months, 'month')} after it ended. Its number is not used again.`);
+  }
+  return rules;
 }
 
 /** What a result removes (or would), as short phrases; empty when nothing. */
@@ -35,6 +40,7 @@ export function retentionParts(counts) {
   if (counts.devices)      parts.push(plural(counts.devices, 'returned device'));
   if (counts.applications) parts.push(plural(counts.applications, 'closed application'));
   if (counts.holders)      parts.push(plural(counts.holders, 'holder'));
+  if (counts.permits)      parts.push(plural(counts.permits, 'road permit'));
   if (counts.documents_removed) parts.push(plural(counts.documents_removed, 'licence document'));
   return parts;
 }

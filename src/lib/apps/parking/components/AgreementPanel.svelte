@@ -209,7 +209,7 @@
         {#if agreement.notice_days != null}<span class="text-slate-500"> · {agreement.notice_days} days' notice</span>{/if}</dd>
       {#if !isRecord}
         <dt class="text-slate-500">Fee</dt>
-        <dd class="text-slate-200">{money(agreement.fee_amount)}{agreement.fee_period ? ' per ' + agreement.fee_period : ''}
+        <dd class="text-slate-200">{agreement.fee_amount == null ? 'Not set' : money(agreement.fee_amount) + (agreement.fee_period ? ' per ' + agreement.fee_period : '')}
           <span class="text-slate-500"> · VAT: {vatLabel}</span>
           <span class="block text-xs text-slate-500" data-testid="fee-source">{pricedAt
             ? `The ${pricedAt.bay_size.toLowerCase()} list price from ${fmtDate(pricedAt.effective_from)} (${HOLDER_CLASS_LABEL[pricedAt.holder_class].toLowerCase()}), copied when the agreement was made. A later price does not change it.`
@@ -314,7 +314,7 @@
           <FormInput label="On" type="date" bind:value={endDate} />
           <FormInput label="Reason" bind:value={endReason}
             placeholder={ending === 'ended' ? 'e.g. Holder moved out' : 'e.g. Breach of the licence terms'} />
-          <p class="text-[11px] text-slate-500">Its vehicles stop being authorised on the same date.</p>
+          <p class="text-[11px] text-slate-500">Its vehicle stops being authorised on the same date.</p>
           <div class="flex gap-2">
             <Button size="small" variant={ending === 'ended' ? 'primary' : 'danger'} disabled={busy} on:click={saveEnd}>Confirm</Button>
             <Button size="small" variant="secondary" on:click={() => ending = null}>Cancel</Button>

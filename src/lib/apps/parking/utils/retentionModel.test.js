@@ -52,3 +52,14 @@ describe('licence documents', () => {
     expect(retentionSummary({ documents_failed: 1, held_back_documents: 1 })).toMatch(/could not be deleted, so its agreement stays/);
   });
 });
+
+describe('road permits in retention (migration 239)', () => {
+  const base = { agreement_years: 6, vehicle_months: 12, device_months: 12, application_grace_days: 30, holder_months: 12 };
+  it('states the permit period only when the database returns one', () => {
+    expect(retentionRules(base).some(r => /road permit/.test(r))).toBe(false);
+    expect(retentionRules({ ...base, permit_months: 12 }).some(r => /road permit becomes due 12 months/.test(r))).toBe(true);
+  });
+  it('counts road permits due', () => {
+    expect(retentionParts({ permits: 2 })).toContain('2 road permits');
+  });
+});

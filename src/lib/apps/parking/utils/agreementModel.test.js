@@ -1,5 +1,6 @@
 // src/lib/apps/parking/utils/agreementModel.test.js
 import { describe, it, expect } from 'vitest';
+import { eventSummary } from './agreementModel.js';
 import {
   HOLDER_FIELDS, validateHolder, holderRow, isExternal,
   basesForTenure, validateAgreement, agreementRow, canTransition, TRANSITIONS, LIVE,
@@ -239,5 +240,20 @@ describe('a deposit that moved with the holder', () => {
   it('cannot be refunded from the old agreement', () => {
     const old = { id: 'a1', deposit_amount: 50, deposit_transferred_to: 'a2' };
     expect(drp(old, [], [old, { id: 'a2', reference: 'PA-0009' }])).toMatch(/moved to PA-0009/);
+  });
+});
+
+describe('timeline summaries print dates, not ISO text', () => {
+  it('every dated event', () => {
+    for (const e of [
+      { event_type: 'notice_served', detail: { notice_served_by: 'holder', notice_served_on: '2026-10-01', ends_on: '2026-11-01' } },
+      { event_type: 'ended', detail: { ends_on: '2026-11-01' } },
+      { event_type: 'vehicle_removed', detail: { registration: 'AB12CDE', on: '2026-10-01' } },
+      { event_type: 'offer_made', detail: { expires_on: '2026-10-15' } },
+      { event_type: 'bay_out_of_use', detail: { reason: 'works', until: '2026-12-01' } },
+    ]) expect(eventSummary(e)).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+  });
+  it('a flat fob with no serial prints no trailing space', () => {
+    expect(eventSummary({ event_type: 'device_issued', detail: { type: 'flat_fob', serial: null } })).not.toMatch(/\s$/);
   });
 });

@@ -160,6 +160,16 @@
     } catch (/** @type {any} */ err) { listError = errMessage(err, 'The preview could not be made.'); }
   }
 
+  let pendingEnd = null;
+  let ending = false;
+  async function confirmEnd() {
+    const target = pendingEnd;
+    ending = true; listError = '';
+    try { await permitStore.endEarly(target); }
+    catch (/** @type {any} */ err) { listError = errMessage(err, 'The permit could not be ended.'); }
+    finally { ending = false; pendingEnd = null; }
+  }
+
   let pendingDelete = null;
   let deleting = false;
   async function confirmDelete() {
@@ -260,7 +270,7 @@
                       <span class="text-slate-500">({permitDays(p)} {permitDays(p) === 1 ? 'day' : 'days'})</span></div>
                   </td>
                   <td class="px-3 py-2">{p.issued_by}</td>
-                  <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-xs {st.cls}">{st.label}</span></td>
+                  <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-xs {st.cls}">{p.ended_early_at ? 'Ended early' : st.label}</span></td>
                   <td class="px-3 py-2 text-right whitespace-nowrap">
                     {#if canEdit}
                       <Button size="small" variant="secondary" title="Fill in the form with this company and vehicle, for new dates"
@@ -268,6 +278,10 @@
                     {/if}
                     <Button size="small" variant="secondary" loading={downloadingId === p.id}
                       disabled={!!downloadingId} on:click={() => redownload(p)}>⬇ PDF</Button>
+                    {#if canEdit && permitStatus(p, day, nowTime) === 'current'}
+                      <Button size="small" variant="danger" title="The permit stops now — for a vehicle that has left, or a permit withdrawn"
+                        on:click={() => pendingEnd = p}>End now</Button>
+                    {/if}
                     {#if $permissions.isAdmin}
                       <Button size="small" variant="danger" on:click={() => pendingDelete = p}>Delete</Button>
                     {/if}
@@ -291,3 +305,9 @@
   message="Only for a permit issued in error. Its number is not used again, and a printed copy still exists — collect it if you can."
   confirmText="Delete permit"
   on:confirm={confirmDelete} on:cancel={() => pendingDelete = null} />
+
+<ConfirmDialog show={!!pendingEnd} danger processing={ending}
+  title="End permit {pendingEnd ? permitNumberLabel(pendingEnd.permit_number) : ''} now?"
+  message="The permit stops being valid from this minute, and the lookup will say it ended early. A printed copy still shows the old end — collect it if you can. This cannot be undone; issue a new permit if it is needed again."
+  confirmText="End permit now"
+  on:confirm={confirmEnd} on:cancel={() => pendingEnd = null} />

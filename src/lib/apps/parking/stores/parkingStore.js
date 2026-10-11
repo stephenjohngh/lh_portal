@@ -542,6 +542,9 @@ function createParkingStore() {
   async function endVehicle(id, onDate = todayISO()) {
     const saved = await api.update('parking_vehicles', id, { to_date: onDate }, true);
     update(st => ({ ...st, vehicles: st.vehicles.map(v => v.id === id ? saved : v) }));
+    // ⛔ Named by the agreement, never the registration: nothing personal in the audit log.
+    const ref = state().agreements.find(a => a.id === saved.agreement_id)?.reference ?? 'agreement';
+    logAudit('update', 'parking_agreement', saved.agreement_id, `${ref}: vehicle came off`, AUDIT);
     return saved;
   }
 

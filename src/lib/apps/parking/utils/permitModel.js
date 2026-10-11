@@ -159,3 +159,24 @@ export function findPermitsByRegistration(q, permits, todayISO, nowTime) {
     .sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status]
       || (b.permit.permit_number ?? 0) - (a.permit.permit_number ?? 0));
 }
+
+/**
+ * Ending a current permit now (migration 239): the new end is this minute,
+ * London time. Returns the fields to save, or `{ error }` when the permit
+ * cannot end now — it has not started (delete it instead if it was issued in
+ * error), it has already ended, or it started this very minute (the database
+ * holds that a permit ends after it starts).
+ * @param {any} permit
+ * @param {string} todayISO   London calendar date
+ * @param {string} nowTime    London time HH:MM
+ */
+export function endNowFields(permit, todayISO, nowTime) {
+  const status = permitStatus(permit, todayISO, nowTime);
+  if (status === 'upcoming') return { error: 'This permit has not started yet. Delete it instead if it was issued in error.' };
+  if (status === 'expired')  return { error: 'This permit has already ended.' };
+  const t = hhmm(nowTime);
+  if (permit.valid_from === todayISO && t <= hhmm(permit.valid_from_time)) {
+    return { error: 'This permit started this minute — try again in a minute, or delete it if it was issued in error.' };
+  }
+  return { valid_to: todayISO, valid_to_time: t };
+}

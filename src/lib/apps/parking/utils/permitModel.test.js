@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { endNowFields } from './permitModel.js';
 import {
   validToFor, displayReg, validatePermit, permitRow, permitNumberLabel, permitStatus, permitDays, permitFilename,
   reissueFields, recentValues, hhmm, fmtPermitWhen, findPermitsByRegistration,
@@ -127,5 +128,20 @@ describe('findPermitsByRegistration', () => {
   it('needs at least two characters, and finds nothing for an unknown car', () => {
     expect(findPermitsByRegistration('A', permits, '2026-10-06', '09:00')).toEqual([]);
     expect(findPermitsByRegistration('QQ11', permits, '2026-10-06', '09:00')).toEqual([]);
+  });
+});
+
+describe('endNowFields — ending a permit early (migration 239)', () => {
+  const p = { valid_from: '2026-10-10', valid_from_time: '07:00', valid_to: '2026-10-17', valid_to_time: '19:00' };
+  it('a current permit ends this minute, London time', () => {
+    expect(endNowFields(p, '2026-10-11', '14:32')).toEqual({ valid_to: '2026-10-11', valid_to_time: '14:32' });
+  });
+  it('refuses a permit that has not started, or has ended', () => {
+    expect(endNowFields(p, '2026-10-09', '12:00')).toHaveProperty('error');
+    expect(endNowFields(p, '2026-10-18', '12:00')).toHaveProperty('error');
+  });
+  it('refuses the minute it started — the end must be after the start', () => {
+    expect(endNowFields(p, '2026-10-10', '07:00')).toHaveProperty('error');
+    expect(endNowFields(p, '2026-10-10', '07:01')).toEqual({ valid_to: '2026-10-10', valid_to_time: '07:01' });
   });
 });

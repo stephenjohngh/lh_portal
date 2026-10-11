@@ -344,7 +344,7 @@ export function endingProblem(agreement, endDate, vehicles = []) {
 
 // Add days to a YYYY-MM-DD date: one owner (dates.js, 2026-10-02), re-exported
 // so this module's callers keep their import.
-import { addDaysISO } from '#lib/utils/dates.js';
+import { addDaysISO, fmtDate } from '#lib/utils/dates.js';
 export { addDaysISO };
 
 /**
@@ -465,7 +465,7 @@ export function unreturnedAfterEnd(agreements = [], devices = []) {
 export function validateMove(agreement, newBay, onDate, holder, agreements = [], applications = []) {
   if (agreement?.status !== 'active') return 'Only an active agreement can be moved to another bay.';
   if (agreement.basis !== 'licence' && agreement.basis !== 'adjustment') {
-    return 'Only a licence can be moved; a demised bay belongs to its flat.';
+    return 'Only a licence can be moved; a bay held with a flat’s lease stays with the flat.';
   }
   if (!newBay) return 'Choose the bay to move to.';
   if (newBay.bay_id && newBay.bay_id === agreement.bay_id) return 'That is the same bay.';
@@ -510,23 +510,24 @@ export const EVENT_LABEL = {
   application_withdrawn: 'Application withdrawn',
 };
 
-/** One line of detail for a timeline entry. */
+/** One line of detail for a timeline entry. Dates read as dates, never ISO text. */
 export function eventSummary(e) {
   const d = e.detail ?? {};
+  const day = (/** @type {any} */ v) => (v ? fmtDate(v) : '?');
   switch (e.event_type) {
-    case 'notice_served':    return `by the ${d.notice_served_by ?? '?'} on ${d.notice_served_on ?? '?'}, ending ${d.ends_on ?? '?'}`;
+    case 'notice_served':    return `by the ${d.notice_served_by ?? '?'} on ${day(d.notice_served_on)}, ending ${day(d.ends_on)}`;
     case 'ended':
-    case 'terminated':       return [d.ends_on && `on ${d.ends_on}`, d.ended_reason].filter(Boolean).join(' — ');
+    case 'terminated':       return [d.ends_on && `on ${day(d.ends_on)}`, d.ended_reason].filter(Boolean).join(' — ');
     case 'vehicle_added':    return formatReg(d.registration);
-    case 'vehicle_removed':  return `${formatReg(d.registration)} from ${d.on ?? '?'}`;
+    case 'vehicle_removed':  return `${formatReg(d.registration)} from ${day(d.on)}`;
     case 'device_issued':
-    case 'device_returned':  return `${DEVICE_LABEL[d.type] ?? d.type} ${d.serial ?? ''}`;
+    case 'device_returned':  return [DEVICE_LABEL[d.type] ?? d.type, d.serial].filter(Boolean).join(' ');
     case 'deposit_refunded': return d.amount != null ? `£${Number(d.amount).toFixed(2)}` : '';
     case 'deposit_transferred': return [d.amount != null && `£${Number(d.amount).toFixed(2)}`, d.to && `to ${d.to}`].filter(Boolean).join(' ');
     case 'offer_made':
-    case 'offer_reopened':   return d.expires_on ? `open until ${d.expires_on}` : '';
+    case 'offer_reopened':   return d.expires_on ? `open until ${day(d.expires_on)}` : '';
     case 'terms_changed':    return Object.entries(d).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v?.from ?? '—'} → ${v?.to ?? '—'}`).join(' · ');
-    case 'bay_out_of_use':   return [d.reason, d.until && `until ${d.until}`].filter(Boolean).join(' — ');
+    case 'bay_out_of_use':   return [d.reason, d.until && `until ${day(d.until)}`].filter(Boolean).join(' — ');
     default:                 return '';
   }
 }

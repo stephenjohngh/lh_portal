@@ -18,7 +18,8 @@ import { requireUserId } from '#lib/utils/currentUser.js';
 import { logAudit } from '#lib/utils/auditLogger.js';
 import { getLogger } from '#lib/utils/logger.js';
 import { storeLoader } from '#lib/utils/storeLoad.js';
-import { validatePermit, permitRow, permitNumberLabel, hhmm } from '../utils/permitModel.js';
+import { validatePermit, permitRow, permitNumberLabel, hhmm, endNowFields } from '../utils/permitModel.js';
+import { today, fmtTime } from '#lib/utils/dates.js';
 
 const logger = getLogger('ParkingPermits');
 const AUDIT = { appId: 'parking', eventCategory: 'parking' };
@@ -68,6 +69,24 @@ function createPermitStore() {
     const saved = await api.create('parking_permits', { ...permitRow(fields), created_by: await requireUserId() });
     update((s) => ({ ...s, permits: [saved, ...s.permits] }));
     logAudit('create', 'parking_permit', saved.id, `Permit ${permitNumberLabel(saved.permit_number)}`, AUDIT);
+    return saved;
+  }
+
+  /**
+   * End a current permit now — the van left early, or the permit is withdrawn.
+   * Only the end moves, and only earlier; the database refuses anything else and
+   * refuses a second early end (migration 239). The printed copy still shows the
+   * old end, which is why the list and the lookup say "ended early".
+   */
+  async function endEarly(permit) {
+    const { id, permit_number } = permit;
+    const fields = endNowFields(permit, today(), fmtTime(new Date().toISOString()));
+    if ('error' in fields) throw new Error(fields.error);
+    const saved = await api.update('parking_permits', id, {
+      ...fields, ended_early_at: new Date().toISOString(), ended_early_by: await requireUserId(),
+    }, true);
+    update((s) => ({ ...s, permits: s.permits.map((p) => (p.id === id ? { ...p, ...saved } : p)) }));
+    logAudit('update', 'parking_permit', id, `Permit ${permitNumberLabel(permit_number)} ended early`, AUDIT);
     return saved;
   }
 
@@ -161,7 +180,7 @@ function createPermitStore() {
     await load();
   }
 
-  return { subscribe, load, ensureLoaded, issue, remove, saveTemplate, setImage, clearImage };
+  return { subscribe, load, ensureLoaded, issue, endEarly, remove, saveTemplate, setImage, clearImage };
 }
 
 export const permitStore = createPermitStore();
