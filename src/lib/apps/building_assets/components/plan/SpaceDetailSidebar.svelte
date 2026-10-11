@@ -4,6 +4,7 @@
      Measurements (perimeter, area, volume) shown when plan is scaled.
      Save / Cancel / Delete footer. -->
 <script>
+  import { SPACE_LABEL_SIZES, spaceLabelSizeName } from '../../utils/spaceLabelSize.js';
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore }          from '../../stores/buildingAssetsStore.js';
   import { inp } from '../../ui.js';
@@ -41,6 +42,7 @@
   let editHeightM   = '';   // string for input; converted to float on save
   let editNotes     = '';
   let editShowLabel = true;
+  let editLabelSize = 'normal';
   let editKind       = 'space';   // 'space' | 'slot' (§4.1)
   let editAssignedId = '';        // stored segment of the composed reference
 
@@ -63,6 +65,7 @@
     editHeightM   = space?.height_m != null ? String(space.height_m) : '';
     editNotes     = space?.notes      ?? '';
     editShowLabel = space?.show_label ?? true;
+    editLabelSize = space?.label_size ?? 'normal';
     editKind       = space?.kind        ?? 'space';
     editAssignedId = space?.assigned_id ?? '';
     saving        = false;
@@ -98,6 +101,7 @@
     editColourHex !== (space.colour === 'none' ? 'none' : `#${space.colour}`) ||
     editNotes     !== (space.notes       ?? '')  ||
     editShowLabel !== (space.show_label  ?? true) ||
+    editLabelSize !== (space.label_size  ?? 'normal') ||
     parsedHeight  !== (space.height_m    ?? null) ||
     editKind       !== (space.kind        ?? 'space') ||
     editAssignedId !== (space.assigned_id ?? '')
@@ -183,6 +187,7 @@
         height_m:    parsedHeight,
         notes:       editNotes,
         show_label:  editShowLabel,
+        label_size:  editLabelSize,
         kind:        editKind,
         assigned_id: editAssignedId,
       });
@@ -472,6 +477,12 @@
             {space.show_label ? '✓ Yes' : '✗ No'}
           </dd>
         </div>
+        {#if space.show_label}
+          <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
+            <dt class="text-xs text-slate-500 shrink-0 w-24">Label size</dt>
+            <dd class="text-sm text-slate-200">{spaceLabelSizeName(space.label_size)}</dd>
+          </div>
+        {/if}
       </dl>
 
     {:else}
@@ -530,6 +541,16 @@
         <input type="checkbox" bind:checked={editShowLabel} class="rounded accent-purple-500" />
         Show label on schematic
       </label>
+      {#if editShowLabel}
+        <div class="flex items-center gap-2">
+          <label for="space-label-size" class="text-xs text-slate-400 shrink-0">Label size</label>
+          <select id="space-label-size" bind:value={editLabelSize} class="{inp} cursor-pointer">
+            {#each SPACE_LABEL_SIZES as s (s.value)}
+              <option value={s.value}>{s.label}</option>
+            {/each}
+          </select>
+        </div>
+      {/if}
 
     {/if}
 

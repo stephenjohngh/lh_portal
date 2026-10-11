@@ -362,7 +362,7 @@ async function fetchFloorForPlan(planId, floorId) {
           api.get('spaces', {
             // `label` is the human display name (multi-word); `name` is the
             // alphanumerics-stripped report key. Show `label` on the plan.
-            select: 'id,name,label,colour,polygon,show_label,schematic_id',
+            select: 'id,name,label,colour,polygon,show_label,label_size,schematic_id',
             filters: { schematic_id: planId },
           }),
           FETCH_TIMEOUT_MS

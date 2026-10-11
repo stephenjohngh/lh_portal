@@ -53,6 +53,7 @@ export function buildSpaceCopyRows(srcSpaces = [], opts) {
         colour:      sp.colour,
         height_m:    sp.height_m   ?? null,
         show_label:  sp.show_label ?? true,
+        label_size:  sp.label_size ?? 'normal',
         notes:       sp.notes      ?? null,
         kind,
         assigned_id: assignedId,

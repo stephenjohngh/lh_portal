@@ -35,6 +35,7 @@ export function createSpaceActions(update) {
       colour:     normaliseColour(data.colour),
       height_m:   data.height_m          ?? null,
       show_label: data.show_label        ?? true,
+      label_size: data.label_size        || 'normal',
       notes:      data.notes?.trim()     || null,
       kind:        data.kind === 'slot' ? 'slot' : 'space',
       assigned_id: data.assigned_id?.trim() || null,
@@ -65,6 +66,7 @@ export function createSpaceActions(update) {
       polygon:     roundPoly(data.polygon),
       colour:      normaliseColour(data.colour),
       show_label:  data.show_label ?? true,
+      label_size:  data.label_size || 'normal',
       notes:       data.notes?.trim() || null,
       kind:        data.kind === 'slot' ? 'slot' : 'space',
       assigned_id: data.assigned_id?.trim() || null,
@@ -98,6 +100,7 @@ export function createSpaceActions(update) {
     if (data.name        !== undefined) patch.name        = data.name?.trim() || deriveSpaceName(data.label ?? '');
     if (data.kind        !== undefined) patch.kind        = data.kind === 'slot' ? 'slot' : 'space';
     if (data.assigned_id !== undefined) patch.assigned_id = data.assigned_id?.trim() || null;
+    if (data.label_size  !== undefined) patch.label_size  = data.label_size || 'normal';
     const updated = await api.update('spaces', id, patch);
     update(s => ({
       ...s,

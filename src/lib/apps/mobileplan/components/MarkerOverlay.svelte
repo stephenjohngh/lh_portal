@@ -1,4 +1,5 @@
 <script>
+  import { spaceLabelPx } from '#lib/apps/building_assets/utils/spaceLabelSize.js';
   // src/lib/apps/mobileplan/components/MarkerOverlay.svelte
   // Absolutely-positioned markers + read-only SVG space overlays.
   // All positioned within the transformed plan container (inherits pan/zoom).
@@ -157,7 +158,7 @@
       {@const col = space.colour && space.colour !== 'none' ? `#${space.colour.replace('#','')}` : '#64748b'}
       <div
         class="space-label"
-        style="left:{ctr.x * 100}%; top:{ctr.y * 100}%; color:{col};"
+        style="left:{ctr.x * 100}%; top:{ctr.y * 100}%; color:{col}; font-size:{spaceLabelPx(space.label_size, 11)}px;"
         aria-hidden="true"
       >{space.label ?? space.name}</div>
     {/if}

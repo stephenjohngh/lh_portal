@@ -4724,6 +4724,7 @@ export type Database = {
           updated_by: string | null
           height_m: number | null
           show_label: boolean
+          label_size: string
           kind: string
           assigned_id: string | null
           label: string | null
@@ -4743,6 +4744,7 @@ export type Database = {
           updated_by?: string | null
           height_m?: number | null
           show_label?: boolean
+          label_size?: string
           kind?: string
           assigned_id?: string | null
           label?: string | null
@@ -4762,6 +4764,7 @@ export type Database = {
           updated_by?: string | null
           height_m?: number | null
           show_label?: boolean
+          label_size?: string
           kind?: string
           assigned_id?: string | null
           label?: string | null
