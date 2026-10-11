@@ -467,7 +467,42 @@
   }
 
   // -- Plan admin ----------------------------------------------------
-  function onPlanAdmin({ detail: { mode } }) { planAdminMode = mode; planAdminOpen = true; }
+  function onPlanAdmin({ detail: { mode } }) {
+    if (mode === 'deleteSpaces') { deleteSpacesFor = selectedPlan; return; }
+    planAdminMode = mode; planAdminOpen = true;
+  }
+
+  // -- Delete every ordinary space on the schematic (Schematic Admin) ------
+  // Before copying spaces from another floor. Parking bays stay: they hold
+  // Parking's records, and the database refuses one with history.
+  /** @type {any} */
+  let deleteSpacesFor = null;
+  let deletingSpaces  = false;
+  $: deleteSpacesCount = deleteSpacesFor
+    ? $buildingAssetsStore.spaces.filter(sp => sp.schematic_id === deleteSpacesFor.id && sp.kind !== 'slot').length : 0;
+  $: deleteSpacesBays = deleteSpacesFor
+    ? $buildingAssetsStore.spaces.filter(sp => sp.schematic_id === deleteSpacesFor.id && sp.kind === 'slot').length : 0;
+  $: deleteSpacesMessage = !deleteSpacesFor ? ''
+    : deleteSpacesCount === 0
+      ? `There are no spaces on ${deleteSpacesFor.name || 'this schematic'} to delete.`
+        + (deleteSpacesBays ? ` Its ${deleteSpacesBays} parking bay${deleteSpacesBays === 1 ? ' is' : 's are'} kept.` : '')
+      : `Delete all ${deleteSpacesCount} space${deleteSpacesCount === 1 ? '' : 's'} on ${deleteSpacesFor.name || 'this schematic'}? `
+        + 'Their shapes, names, types and any component membership changes go with them, and it cannot be undone. '
+        + 'Components are not affected.'
+        + (deleteSpacesBays ? ` The ${deleteSpacesBays} parking bay${deleteSpacesBays === 1 ? '' : 's'} on it ${deleteSpacesBays === 1 ? 'is' : 'are'} kept — delete ${deleteSpacesBays === 1 ? 'it' : 'them'} one at a time if needed.` : '');
+
+  async function performDeleteSpaces() {
+    const target = deleteSpacesFor;
+    if (!target || deleteSpacesCount === 0) { deleteSpacesFor = null; return; }
+    deletingSpaces = true; errorMsg = '';
+    try {
+      await buildingAssetsStore.deleteSpacesOnSchematic(target.id);
+      if (selectedSpace && selectedSpace.schematic_id === target.id && selectedSpace.kind !== 'slot') {
+        selectedSpace = null; sidebarMode = 'none';
+      }
+    } catch (/** @type {any} */ err) { errorMsg = err.message; }
+    finally { deletingSpaces = false; deleteSpacesFor = null; }
+  }
 
   function handlePlanAdminDone({ detail: { plan, action } }) {
     planAdminOpen = false;
@@ -731,6 +766,17 @@
   {/if}
 
 </div>
+
+<ConfirmDialog
+  show={!!deleteSpacesFor}
+  title={deleteSpacesCount ? 'Delete spaces on this schematic' : 'No spaces to delete'}
+  message={deleteSpacesMessage}
+  confirmText={deleteSpacesCount ? `Delete ${deleteSpacesCount} space${deleteSpacesCount === 1 ? '' : 's'}` : 'OK'}
+  danger={deleteSpacesCount > 0}
+  processing={deletingSpaces}
+  on:confirm={performDeleteSpaces}
+  on:cancel={() => deleteSpacesFor = null}
+/>
 
 <ConfirmDialog
   show={confirmClearScale}

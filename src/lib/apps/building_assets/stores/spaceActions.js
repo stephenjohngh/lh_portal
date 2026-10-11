@@ -129,6 +129,36 @@ export function createSpaceActions(update) {
       { ...AUDIT_OPTS, beforeData: before });
   }
 
+  /**
+   * Delete every ordinary space on one schematic, in one statement — the
+   * clear-out before copying spaces onto it from another floor (user,
+   * 2026-10-11). Their membership overrides go by the database's cascade.
+   * ⛔ Parking bays (kind 'slot') are left alone: they belong to Parking's
+   * records, and the database refuses deleting one with parking history
+   * (parking_guard_space, migration 229). Returns how many were deleted.
+   * @param {string} schematicId
+   */
+  async function deleteSpacesOnSchematic(schematicId) {
+    requireUserId();
+    /** @type {any[]} */
+    let doomed = [];
+    update(s => { doomed = s.spaces.filter(sp => sp.schematic_id === schematicId && sp.kind !== 'slot'); return s; });
+    if (doomed.length === 0) return 0;
+    await api.deleteMany('spaces', { schematic_id: schematicId, kind: 'space' });
+    const gone = new Set(doomed.map(sp => sp.id));
+    update(s => ({
+      ...s,
+      spaces:         s.spaces.filter(sp => !gone.has(sp.id)),
+      spaceOverrides: (s.spaceOverrides ?? []).filter(o => !gone.has(o.space_id)),
+    }));
+    logger('Deleted', doomed.length, 'spaces on schematic', schematicId);
+    for (const sp of doomed) {
+      logAudit('delete', 'space', sp.id, sp.name || sp.id,
+        { ...AUDIT_OPTS, eventAction: 'delete_spaces_on_schematic', beforeData: sp });
+    }
+    return doomed.length;
+  }
+
   // -- Membership overrides (space_component_overrides) --------------------
   // Manual include/exclude that layer over derived geometric membership (§4.3).
   // Upsert on the (space_id, component_id) unique key so toggling mode replaces.
@@ -174,7 +204,7 @@ export function createSpaceActions(update) {
   }
 
   return {
-    createSpace, createSpaces, updateSpace, updateSpacePolygon, deleteSpace,
+    createSpace, createSpaces, updateSpace, updateSpacePolygon, deleteSpace, deleteSpacesOnSchematic,
     setMemberOverride, removeMemberOverride,
     buildSpacesRegister,
   };

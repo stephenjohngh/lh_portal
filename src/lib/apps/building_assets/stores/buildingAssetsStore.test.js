@@ -476,3 +476,41 @@ async function loadCompsPlan(plans) {
   h.setTables({ schematics: plans });
   await store.load();
 }
+
+describe('deleteSpacesOnSchematic', () => {
+  async function loadSpaces() {
+    h.setTables({
+      spaces: [
+        { id: 'a', schematic_id: 'p1', kind: 'space', name: 'Office' },
+        { id: 'b', schematic_id: 'p1', kind: 'space', name: 'Store' },
+        { id: 'bay', schematic_id: 'p1', kind: 'slot', name: 'Bay 1' },
+        { id: 'other', schematic_id: 'p2', kind: 'space', name: 'Lobby' },
+      ],
+      space_component_overrides: [
+        { id: 'o1', space_id: 'a', component_id: 'c1' },
+        { id: 'o2', space_id: 'other', component_id: 'c2' },
+      ],
+    });
+    await store.load();
+  }
+
+  it('deletes the ordinary spaces on that schematic only, keeping parking bays', async () => {
+    await loadSpaces();
+    const n = await store.deleteSpacesOnSchematic('p1');
+    expect(n).toBe(2);
+    // One statement, scoped to the schematic AND to ordinary spaces — a bay is never in it.
+    expect(h.api.deleteMany).toHaveBeenCalledWith('spaces', { schematic_id: 'p1', kind: 'space' });
+    const s = get(store);
+    expect(s.spaces.map(sp => sp.id).sort()).toEqual(['bay', 'other']);
+    expect(s.spaceOverrides.map(o => o.id)).toEqual(['o2']);
+    // Every deleted space is audit-logged with what it was.
+    const deleted = h.logAudit.mock.calls.filter(c => c[0] === 'delete' && c[1] === 'space').map(c => c[2]).sort();
+    expect(deleted).toEqual(['a', 'b']);
+  });
+
+  it('does nothing when there are no ordinary spaces', async () => {
+    await loadSpaces();
+    expect(await store.deleteSpacesOnSchematic('p3')).toBe(0);
+    expect(h.api.deleteMany).not.toHaveBeenCalledWith('spaces', expect.anything());
+  });
+});

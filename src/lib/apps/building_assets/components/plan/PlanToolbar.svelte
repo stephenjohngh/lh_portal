@@ -173,6 +173,14 @@
             >
               <span class="w-4 text-center">⬡</span> Copy Spaces to Schematic
             </button>
+            <!-- Clears the way for a fresh copy; parking bays are kept (PlanViewTab). -->
+            <button
+              on:click={() => adminAction('deleteSpaces')}
+              class="flex items-center gap-2 px-3 py-2 text-left text-red-400
+                     hover:bg-slate-700 transition-colors"
+            >
+              <span class="w-4 text-center">✕</span> Delete Spaces on Schematic
+            </button>
           {/if}
         </div>
       {/if}
