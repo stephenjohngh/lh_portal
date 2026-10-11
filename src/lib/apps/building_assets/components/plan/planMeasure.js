@@ -35,8 +35,10 @@ export const SPACE_COLOURS = [
  * @param {Array<{x:number, y:number}>} polygon
  * @returns {{x:number, y:number}}
  */
-/** Space left clear between a label and its shape's sides, as a share of the span. */
-export const LABEL_SIDE_MARGIN = 0.08;
+/** Space left clear between a label and its shape's sides, as a share of the span.
+ *  0 — the label may reach the edges (user, 2026-10-11: "i want text up to edge of
+ *  shape, not a bigger margin"; 8% was tried and read worse). */
+export const LABEL_SIDE_MARGIN = 0;
 
 /**
  * Where a space's label goes across, and how wide it may be, so it stays inside
@@ -46,7 +48,7 @@ export const LABEL_SIDE_MARGIN = 0.08;
  * The label keeps the height of point `p` (the shape's centre) and is centred
  * on the shape's horizontal span through that height, rather than on `p`
  * itself — so an off-centre point does not halve the room on one side. Its
- * width is that span less a margin each side. Fractions of the schematic.
+ * width is that span (less LABEL_SIDE_MARGIN each side, which is 0). Fractions of the schematic.
  * Null when `p` is not inside the shape (an odd concave outline): no cap is
  * better than a wrong one.
  * @param {{x:number,y:number}[]} polygon  fractional vertices

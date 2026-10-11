@@ -53,11 +53,11 @@ describe('labelSlotAt — where a label goes across its shape, and how wide', ()
   const rect = [{ x: 0.2, y: 0.2 }, { x: 0.6, y: 0.2 }, { x: 0.6, y: 0.4 }, { x: 0.2, y: 0.4 }];
   const inner = (span) => span * (1 - 2 * LABEL_SIDE_MARGIN);
 
-  it('a rectangle: centred across it, its width less a margin each side', () => {
+  it('a rectangle: centred across it, and as wide as it', () => {
     const s = labelSlotAt(rect, centroid(rect));
     expect(s.x).toBeCloseTo(0.4, 6);
     expect(s.width).toBeCloseTo(inner(0.4), 6);
-    expect(s.width).toBeLessThan(0.4);
+    expect(s.width).toBeLessThanOrEqual(0.4);
   });
 
   it('an off-centre point still gets the whole span — the label moves across, not shrinks', () => {
