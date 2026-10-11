@@ -196,12 +196,12 @@
       {/if}
     </p>
     {#if canEdit && !showUpload}
-      <button
-        class="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors"
+      <Button
+        variant="tertiary" size="xs" className="flex items-center gap-1"
         on:click={() => showUpload = true}
       >
         <Icon name="upload" size={3} /> Upload
-      </button>
+      </Button>
     {/if}
   </div>
 

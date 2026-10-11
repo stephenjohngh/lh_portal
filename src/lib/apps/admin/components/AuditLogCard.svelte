@@ -133,13 +133,13 @@
           {/if}
         </div>
         {#if log.changes}
-          <button
-            class="text-sm text-purple-400 hover:text-purple-300 mt-2 flex items-center space-x-1"
+          <Button
+            variant="tertiary" size="xs" className="mt-2 flex items-center space-x-1"
             on:click={() => expanded = !expanded}
           >
             <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={4} />
             <span>{expanded ? 'Hide' : 'View'} Changes</span>
-          </button>
+          </Button>
         {/if}
       </div>
       <div class="flex items-start space-x-1">

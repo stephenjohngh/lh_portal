@@ -379,8 +379,8 @@
             <span class="text-slate-400"> {[v.colour, v.make, v.model].filter(Boolean).join(' ')}</span>
             {#if v.is_ev}<span class="text-xs text-green-400 ml-1">EV</span>{/if}</span>
           {#if canEdit && vehiclesEditable && changingFrom !== v.id}
-            <button class="shrink-0 text-xs text-purple-400 hover:text-purple-300" disabled={busy}
-              on:click={() => startChange(v.id)}>Change vehicle</button>
+            <Button variant="tertiary" size="xs" className="shrink-0" disabled={busy}
+              on:click={() => startChange(v.id)}>Change vehicle</Button>
           {/if}
         </div>
       {:else}

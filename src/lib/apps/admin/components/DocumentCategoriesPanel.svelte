@@ -119,10 +119,10 @@
               {#if !r.shipped}
                 Added here
               {:else if r.label.trim() !== SHIPPED_LABEL[r.value]}
-                <button type="button" class="text-purple-400 hover:text-purple-300 underline"
+                <Button variant="tertiary" size="xs"
                         on:click={() => { r.label = SHIPPED_LABEL[r.value]; rows = rows; }}>
                   Use “{SHIPPED_LABEL[r.value]}”
-                </button>
+                </Button>
               {/if}
             </td>
             <td class="py-2">

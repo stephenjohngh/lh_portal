@@ -4,6 +4,7 @@
      documents that live in document_library (library_doc_id set). Shared by the
      per-job list (DocumentUpload) and the global Documents tab. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { onMount } from 'svelte';
   import { auth }        from '#lib/stores/auth.js';
   import { permissions } from '#lib/stores/permissions.js';
@@ -70,12 +71,12 @@
     ✓ {registered.reference}
   </span>
 {:else if !checking && !checkFailed && canEdit && doc.library_doc_id}
-  <button
-    type="button"
+  <Button
+   
     on:click={register}
     disabled={registering}
-    class="text-xs text-purple-300 hover:text-purple-200 disabled:opacity-50 whitespace-nowrap"
+    variant="tertiary" size="xs" className="whitespace-nowrap"
     title="Register this certificate in the Golden Thread"
-  >{registering ? 'Registering…' : '↗ Register to GT'}</button>
+  >{registering ? 'Registering…' : '↗ Register to GT'}</Button>
 {/if}
 {#if error}<span class="text-xs text-red-400">{error}</span>{/if}

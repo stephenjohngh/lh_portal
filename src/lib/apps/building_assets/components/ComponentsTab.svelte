@@ -5,6 +5,7 @@
      Floor presets: All · Residential (G–7) · Basement (X,L,G) · Single floor. -->
 
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { buildingName } from '#lib/utils/identity.js';
   import { errMessage } from '#lib/utils/errors.js';
   import { onMount }             from 'svelte';
@@ -809,10 +810,10 @@
 
         <!-- Clear filters -->
         {#if hasFilters}
-          <button
+          <Button
             on:click={clearFilters}
-            class="text-xs text-purple-400 hover:text-purple-300 transition-colors self-end pb-1.5"
-          >Clear</button>
+            variant="tertiary" size="xs" className="self-end"
+          >Clear</Button>
         {/if}
 
         <!-- Active filter summary -->

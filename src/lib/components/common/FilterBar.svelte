@@ -14,6 +14,7 @@
   Props in, `values`/`query` bound out. Everything derived is computed here.
 -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import MultiSelectDropdown from './MultiSelectDropdown.svelte';
   import { filterPills } from './filterSummary.js';
 
@@ -99,10 +100,10 @@
   {/each}
 
   {#if activeCount > 0}
-    <button
+    <Button
       on:click={clearAll}
-      class="text-xs text-purple-400 hover:text-purple-300 transition-colors self-end pb-1.5"
-    >Clear</button>
+      variant="tertiary" size="xs" className="self-end"
+    >Clear</Button>
   {/if}
 
   {#if resultLabel}

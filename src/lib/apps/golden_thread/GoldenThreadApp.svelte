@@ -321,9 +321,9 @@
           class="mt-1 block bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-slate-200" />
       </label>
       {#if timeTravelDate}
-        <button type="button" class="text-xs text-purple-400 hover:text-purple-300 pb-1.5" on:click={clearTimeTravel}>
+        <Button variant="tertiary" size="xs" on:click={clearTimeTravel}>
           Clear — show all
-        </button>
+        </Button>
         <span class="text-xs text-slate-500 pb-1.5">Showing documents current on {fmtDate(timeTravelDate)}</span>
       {/if}
     </div>

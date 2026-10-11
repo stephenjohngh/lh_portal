@@ -10,6 +10,7 @@
      All state is owned by PlanViewTab; this component dispatches replacement
      values so PlanViewTab can assign them and trigger Svelte reactivity.       -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { typeByCode, systemById } from '../../lookups.js';
   import { STATUSES } from '../../ui.js';
@@ -141,10 +142,10 @@
   <!-- Header -->
   <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700">
     <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Filters</p>
-    <button
+    <Button
       on:click={toggleAll}
-      class="text-xs text-purple-400 hover:text-purple-300 transition-colors"
-    >{allTypesVisible ? 'Clear all' : 'Set all'}</button>
+      variant="tertiary" size="xs"
+    >{allTypesVisible ? 'Clear all' : 'Set all'}</Button>
   </div>
 
   <div class="p-3 flex flex-col gap-4 max-h-[75vh] overflow-y-auto">

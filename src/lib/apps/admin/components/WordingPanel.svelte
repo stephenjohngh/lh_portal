@@ -124,8 +124,8 @@
               </p>
             </div>
             {#if offDefault}
-              <button type="button" class="shrink-0 text-xs text-purple-400 hover:text-purple-300 underline"
-                      on:click={() => useDefault(e.key, e.default)}>Use default</button>
+              <Button variant="tertiary" size="xs" className="shrink-0"
+                      on:click={() => useDefault(e.key, e.default)}>Use default</Button>
             {/if}
           </div>
           <textarea

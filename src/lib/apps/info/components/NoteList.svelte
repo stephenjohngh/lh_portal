@@ -123,16 +123,16 @@
       {#if search}
         <Icon name="search" size={8} />
         <p class="text-sm">No notes match "{search}"</p>
-        <button class="text-xs text-purple-400 hover:text-purple-300"
-                on:click={() => search = ''}>Clear search</button>
+        <Button variant="tertiary" size="xs"
+                on:click={() => search = ''}>Clear search</Button>
       {:else if showArchived}
         <Icon name="archive" size={8} />
         <p class="text-sm">No archived notes in this section</p>
       {:else if visFilter !== 'all'}
         <Icon name="book" size={8} />
         <p class="text-sm">No {visFilter} notes</p>
-        <button class="text-xs text-purple-400 hover:text-purple-300"
-                on:click={() => visFilter = 'all'}>Show all</button>
+        <Button variant="tertiary" size="xs"
+                on:click={() => visFilter = 'all'}>Show all</Button>
       {:else}
         <Icon name="book" size={8} />
         <p class="text-sm">No notes yet</p>

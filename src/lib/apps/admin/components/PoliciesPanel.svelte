@@ -122,8 +122,8 @@
                 <td class="py-3 pr-3 w-40 text-slate-400 whitespace-nowrap">
                   Default {p.default}
                   {#if offDefault}
-                    <button type="button" class="ml-2 text-xs text-purple-400 hover:text-purple-300 underline"
-                            on:click={() => useDefault(p.key, p.default)}>Use default</button>
+                    <Button variant="tertiary" size="xs" className="ml-2"
+                            on:click={() => useDefault(p.key, p.default)}>Use default</Button>
                   {/if}
                 </td>
               </tr>

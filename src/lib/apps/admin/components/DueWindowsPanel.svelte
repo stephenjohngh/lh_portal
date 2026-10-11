@@ -149,11 +149,11 @@
               <td class="py-3 pr-3 text-slate-400">
                 {w.defaultDays}
                 {#if offDefault}
-                  <button
-                    type="button"
-                    class="ml-2 text-xs text-purple-400 hover:text-purple-300 underline"
+                  <Button
+                   
+                    variant="tertiary" size="xs" className="ml-2"
                     on:click={() => useDefault(w.key, w.defaultDays)}
-                  >Use default</button>
+                  >Use default</Button>
                 {/if}
               </td>
             </tr>

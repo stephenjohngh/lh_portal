@@ -1,6 +1,7 @@
 <!-- src/lib/apps/maintenance/components/DocumentsTab.svelte -->
 <!-- All maintenance documents across all jobs, with expiry alerts and filters. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { matchesSearch } from '#lib/utils/textSearch.js';
   import { dueSoonDays } from '#lib/utils/dueWindows.js';
   import { maintenanceStore } from '../stores/maintenanceStore.js';
@@ -90,12 +91,12 @@
           {#if expiringDocs.length > 0}
             <span class="text-amber-300 font-semibold">{expiringDocs.length} expiring within {dueSoonDays('certificateExpiry')} days</span>
           {/if}
-          <button
-            class="ml-2 text-xs text-purple-400 underline"
+          <Button
+            variant="tertiary" size="xs" className="ml-2"
             on:click={() => { typeFilter = 'certificate'; expiryFilter = expiryFilter === 'all' ? 'expired' : 'all'; }}
           >
             Filter
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -136,10 +137,10 @@
         <p class="text-xs mt-1">Upload documents when recording job completions.</p>
       {:else}
         <p class="text-sm">No documents match the current filters.</p>
-        <button class="text-xs text-purple-400 mt-1 underline"
+        <Button variant="tertiary" size="xs" className="mt-1"
           on:click={() => { search = ''; typeFilter = 'all'; expiryFilter = 'all'; }}>
           Clear filters
-        </button>
+        </Button>
       {/if}
     </div>
   {:else}

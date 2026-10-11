@@ -156,8 +156,8 @@
               <p class="text-xs {fromList ? 'text-slate-400' : 'text-amber-300'}" data-testid="price-note">
                 {fromList ? 'From the price list' : 'Differs from the price list'}: {priceLabel(tariff)} for a
                 {bay.size.toLowerCase()} bay ({HOLDER_CLASS_LABEL[tariff.holder_class].toLowerCase()}).
-                {#if !fromList}<button class="text-purple-400 hover:text-purple-300 ml-1"
-                  on:click={() => terms = { ...terms, ...termsFromTariff(tariff) }}>Use the list price</button>{/if}
+                {#if !fromList}<Button variant="tertiary" size="xs" className="ml-1"
+                  on:click={() => terms = { ...terms, ...termsFromTariff(tariff) }}>Use the list price</Button>{/if}
               </p>
             {:else}
               <p class="text-xs text-slate-500" data-testid="price-note">

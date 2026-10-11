@@ -61,7 +61,7 @@
             {:else}<span class="text-slate-600">None</span>{/each}
           </td>
           <td class="py-2 text-right">
-            {#if canEdit}<button class="text-xs text-purple-400 hover:text-purple-300" on:click={() => open(h)}>Edit</button>{/if}
+            {#if canEdit}<Button variant="tertiary" size="xs" on:click={() => open(h)}>Edit</Button>{/if}
           </td>
         </tr>
       {/each}

@@ -626,8 +626,8 @@
             <!-- Adding from the day panel, where somebody looking at a date
                  already is. The form opens with this date filled in. -->
             {#if canEdit}
-              <button class="text-xs text-purple-300 hover:text-purple-200"
-                      on:click={newEvent}>+ Add event</button>
+              <Button variant="tertiary" size="xs"
+                      on:click={newEvent}>+ Add event</Button>
             {/if}
             <button class="text-xs text-slate-500 hover:text-slate-300"
                     on:click={() => selectedDay = null}>Close</button>
@@ -709,8 +709,8 @@
             <!-- Adding from the day panel, where somebody looking at a date
                  already is. The form opens with this date filled in. -->
             {#if canEdit}
-              <button class="text-xs text-purple-300 hover:text-purple-200"
-                      on:click={newEvent}>+ Add event</button>
+              <Button variant="tertiary" size="xs"
+                      on:click={newEvent}>+ Add event</Button>
             {/if}
             <button class="text-xs text-slate-500 hover:text-slate-300"
                     on:click={() => selectedDay = null}>Close</button>

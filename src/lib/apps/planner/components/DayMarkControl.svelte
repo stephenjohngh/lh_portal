@@ -9,6 +9,7 @@
      and it cannot be overdue. It is a property of the day, so it colours the
      square rather than appearing in the list. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { PALETTE, markStyle } from '../utils/categories.js';
 
@@ -87,8 +88,8 @@
           {/each}
         </div>
 
-        <button type="button" class="text-[11px] text-purple-300 hover:text-purple-200"
-                on:click={save}>Save</button>
+        <Button variant="tertiary" size="xs"
+                on:click={save}>Save</Button>
         <button type="button" class="text-[11px] text-slate-500 hover:text-slate-300"
                 on:click={() => open = false}>Cancel</button>
       </div>

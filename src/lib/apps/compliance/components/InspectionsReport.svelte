@@ -282,12 +282,12 @@
             ({selectedIds.size} of {sessions.length} selected)
           </span>
         </h4>
-        <button
-          class="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+        <Button
+          variant="tertiary" size="xs"
           on:click={toggleAll}
         >
           {allSelected ? 'Deselect all' : 'Select all'}
-        </button>
+        </Button>
       </div>
 
       <div class="session-list">

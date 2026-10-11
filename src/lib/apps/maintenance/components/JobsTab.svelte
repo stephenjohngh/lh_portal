@@ -1,6 +1,7 @@
 <!-- src/lib/apps/maintenance/components/JobsTab.svelte -->
 <!-- Full filterable list of all maintenance jobs. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { matchesSearch } from '#lib/utils/textSearch.js';
   import { permissions }   from '#lib/stores/permissions.js';
   import {
@@ -110,9 +111,9 @@
         {/if}
       {:else}
         <p class="text-sm">No jobs match the current filters.</p>
-        <button class="text-xs text-purple-400 mt-1 underline" on:click={() => { search = ''; statusFilter = 'all'; scopeFilter = 'all'; }}>
+        <Button variant="tertiary" size="xs" className="mt-1" on:click={() => { search = ''; statusFilter = 'all'; scopeFilter = 'all'; }}>
           Clear filters
-        </button>
+        </Button>
       {/if}
     </div>
   {:else}

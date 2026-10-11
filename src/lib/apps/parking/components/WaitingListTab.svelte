@@ -210,7 +210,7 @@
           </td>
           <td class="py-2 text-right whitespace-nowrap space-x-2">
             {#if canEdit && app.status === 'waiting'}
-              <button class="text-xs text-purple-400 hover:text-purple-300" on:click={() => startOffer(app)}>Offer a bay</button>
+              <Button variant="tertiary" size="xs" on:click={() => startOffer(app)}>Offer a bay</Button>
             {/if}
             {#if canEdit && app.status === 'offered' && agreementForOffer(app, s.agreements)}
               {@const made = agreementForOffer(app, s.agreements)}

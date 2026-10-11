@@ -3,8 +3,8 @@
   import Icon from '#lib/components/icons/Icon.svelte';
 
   // Props
-  export let variant = 'primary'; // 'primary', 'amber', 'blue', 'green', 'secondary', 'danger'
-  export let size = 'medium'; // 'small', 'medium', 'large'
+  export let variant = 'primary'; // 'primary', 'amber', 'blue', 'green', 'secondary', 'tertiary', 'danger'
+  export let size = 'medium'; // 'xs', 'small', 'medium', 'large'
   export let icon = ''; // Icon name from Icon.svelte
   export let iconPosition = 'left'; // 'left', 'right', 'only'
   export let disabled = false;
@@ -30,6 +30,13 @@
     green: 'border-transparent bg-green-600 hover:bg-green-700 disabled:bg-green-800',
     secondary: 'border-purple-500/70 bg-transparent text-purple-300 hover:bg-purple-500/15 hover:text-purple-200 '
       + 'disabled:border-slate-600 disabled:text-slate-500 disabled:hover:bg-transparent',
+    // ⭐ `tertiary` — the small in-line actions ("Clear", "Set all", "Use default",
+    // "+ Add event"), which used to be teal text written by hand in each screen
+    // and so never followed a change of look (user, 2026-10-11). A fainter teal
+    // outline than secondary, so the two still read apart. Change it HERE and
+    // every one follows. Usually with size="xs".
+    tertiary: 'border-purple-500/40 bg-transparent text-purple-300 hover:border-purple-500/70 hover:bg-purple-500/10 '
+      + 'hover:text-purple-200 disabled:border-slate-700 disabled:text-slate-500 disabled:hover:bg-transparent',
     // Red outline, matching secondary's teal outline (user, 2026-10-10:
     // "can the terminate button also have an outline in red").
     danger: 'border-red-500/70 bg-transparent text-red-400 hover:bg-red-600/20 hover:text-red-300 disabled:opacity-50'
@@ -37,6 +44,7 @@
 
   // Size styles
   const sizeStyles = {
+    xs: 'px-2 py-0.5 text-xs',
     small: 'px-3 py-1 text-sm',
     medium: 'px-3 py-1.5 text-sm',
     large: 'px-4 py-2 text-base'
@@ -44,6 +52,7 @@
 
   // Icon sizes
   const iconSizes = {
+    xs: 3,
     small: 4,
     medium: 4,
     large: 5

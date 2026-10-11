@@ -200,11 +200,11 @@
         Show only untagged items
       </label>
       <div class="flex gap-3 ml-auto text-xs">
-        <button type="button"
-          class="text-purple-300 hover:text-purple-100 underline"
+        <Button
+          variant="tertiary" size="xs"
           on:click={selectAll}>
           Select all visible
-        </button>
+        </Button>
         <button type="button"
           class="text-slate-400 hover:text-slate-200 underline"
           on:click={clearAll}>
