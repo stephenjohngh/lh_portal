@@ -4,7 +4,7 @@
 <script>
   import { spaceLabelPx } from '../../utils/spaceLabelSize.js';
   import { createEventDispatcher } from 'svelte';
-  import { centroid, labelWidthAt } from './planMeasure.js';
+  import { centroid, labelSlotAt } from './planMeasure.js';
   import ComponentMarker from '../ComponentMarker.svelte';
   import { ACCENT, ACCENT_LIGHT } from '#lib/theme.js';
 
@@ -213,13 +213,14 @@
       {#if space.polygon?.length >= 3 && space.show_label !== false}
         {@const c = centroid(space.polygon)}
         {@const isNone = space.colour === 'none'}
-        {@const fit = labelWidthAt(space.polygon, c)}
-        <!-- Kept inside the shape sideways: no wider than the shape is through its
-             centre, so a long label wraps instead of spilling out (2026-10-11). -->
+        {@const slot = labelSlotAt(space.polygon, c)}
+        <!-- Kept inside the shape sideways (2026-10-11): centred across the shape at
+             its middle height, no wider than the shape there less a margin, so a
+             long label wraps instead of spilling out. -->
         <div
           class="absolute pointer-events-none select-none w-max"
-          style="left:{c.x * 100}%; top:{c.y * 100}%; transform:translate(-50%,-50%); z-index:8;
-                 {fit != null ? `max-width:${fit * 100}%;` : ''}"
+          style="left:{(slot?.x ?? c.x) * 100}%; top:{c.y * 100}%; transform:translate(-50%,-50%); z-index:8;
+                 {slot ? `max-width:${slot.width * 100}%;` : ''}"
         >
           <div
             class="px-1.5 py-0.5 rounded font-medium whitespace-pre-wrap text-center shadow-sm"
