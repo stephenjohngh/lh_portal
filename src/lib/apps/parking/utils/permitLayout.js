@@ -32,7 +32,7 @@ const INK   = '#2a1414';
  *           valid_from_time?: string|null, valid_to_time?: string|null,
  *           valid_from: string, valid_to: string, issued_by: string }} permit
  * @param {{ title?: string|null, location?: string|null, conditions?: string|null }} template
- * @param {{ name: string, address?: string|null }} building
+ * @param {{ name: string, address?: string|null }} building  only the name is printed
  * @returns {Step[]}
  */
 export function permitLayout(permit, template, building) {
@@ -47,8 +47,9 @@ export function permitLayout(permit, template, building) {
   const text = (t) => steps.push({ type: 'text', align: 'center', x: centre, maxWidth: full, ...t });
 
   text({ text: building.name,                   y: 300, size: 210, colour: GREEN });
-  const address = oneLine(building.address);
-  if (address) text({ text: address,             y: 560, size: 110, colour: GREEN });
+  // The line under the name is left BLANK on purpose (user, 2026-10-11): the
+  // address is not printed on a permit. The space is kept so the title sits
+  // where it always has.
   text({ text: template.title || 'Parking Permit', y: 725, size: 160, colour: GREEN });
   const location = oneLine(template.location);
   if (location) text({ text: location,           y: 915, size: 85,  colour: INK });

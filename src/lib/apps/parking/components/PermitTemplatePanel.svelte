@@ -73,8 +73,8 @@
     <div class="px-4 pb-4 grid gap-4 lg:grid-cols-2">
       <div class="space-y-3">
         <p class="text-sm text-slate-400">
-          The permit heads with <strong class="text-slate-200">{building.name}</strong>{#if building.address}, {building.address}{/if}
-          — change those in Admin → Other Config → Building &amp; business.
+          The permit heads with <strong class="text-slate-200">{building.name}</strong>
+          — change it in Admin → Other Config → Building &amp; business. The address is not printed.
         </p>
         <FormInput label="Title" bind:value={form.title} placeholder="Parking Permit" />
         <FormInput label="Where it is valid (optional)" bind:value={form.location}

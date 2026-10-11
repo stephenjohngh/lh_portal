@@ -38,14 +38,20 @@ describe('permitLayout', () => {
 
   it('prints every detail of the permit, and the building from the admin setting', () => {
     const t = allText(permitLayout(permit, template, building));
-    for (const s of ['Lancaster House', '71 Whitworth St, Manchester', 'Parking Permit', 'Side road',
+    for (const s of ['Lancaster House', 'Parking Permit', 'Side road',
       'Acme Scaffolding Ltd', 'AB12 CDE', '06 Oct 2026, 07:00', '12 Oct 2026, 19:00', 'J Smith', 'Permit number:', '100',
       'Display on the dashboard.']) {
       expect(t).toContain(s);
     }
   });
 
-  it('leaves out an empty location, address and small print rather than printing a blank line', () => {
+  it('prints the building name but never its address — that line is left blank (user, 2026-10-11)', () => {
+    const t = allText(permitLayout(permit, template, building));
+    expect(t).toContain('Lancaster House');
+    expect(t).not.toContain('Whitworth');
+  });
+
+  it('leaves out an empty location and small print rather than printing a blank line', () => {
     const steps = permitLayout(permit, { title: '' }, { name: 'X' });
     expect(texts(steps).every((s) => s.text.trim() !== '')).toBe(true);
     expect(allText(steps)).toContain('Parking Permit');   // the default title
