@@ -9,6 +9,12 @@
 
   const dispatch = createEventDispatcher();
 
+  /** The empty choice: no value of its own, so the type's default applies. */
+  function blankOptionLabel(d) {
+    const dflt = d?.default_value == null ? '' : String(d.default_value).trim();
+    return dflt ? `Default — ${dflt}` : '— none —';
+  }
+
   function emit(val) {
     dispatch('change', { attrDefId: def.id, value: String(val) });
   }
@@ -66,7 +72,9 @@
              focus:outline-none focus:border-purple-500"
     >
       {#if !def.required}
-        <option value="">— none —</option>
+        <!-- An empty choice saves no value, so the type's default applies (2026-10-11,
+             user). Say which default, rather than "none", which read as no rating. -->
+        <option value="">{blankOptionLabel(def)}</option>
       {:else}
         <option value="" disabled>Select…</option>
       {/if}

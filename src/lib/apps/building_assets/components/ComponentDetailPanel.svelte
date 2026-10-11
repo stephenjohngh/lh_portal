@@ -386,7 +386,9 @@
           {/if}
         </div>
 
-        <!-- Fixed attributes — always shown -->
+        <!-- Fixed attributes — always shown. An optional dropdown with no value of
+             its own shows "Default — X" selected (AttrField), not X itself, so a
+             component that is only following the type's default reads as such. -->
         <div class="flex flex-col gap-4">
           {#each fixedDefs as def (def.id)}
             <div class="flex items-start gap-2">
@@ -394,7 +396,7 @@
                 <AttrField
                   {def}
                   options={attrOptions[def.id] ?? []}
-                  value={attrValues[def.id] ?? def.default_value ?? ''}
+                  value={attrValues[def.id] ?? (def.display_type === 'dropdown' && !def.required ? '' : def.default_value) ?? ''}
                   on:change={onAttrChange}
                 />
               </div>
