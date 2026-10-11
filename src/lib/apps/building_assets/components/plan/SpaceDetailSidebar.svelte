@@ -17,8 +17,10 @@
   import { spaceRollup } from '../../utils/spaceReport.js';
   import { typesForKind } from '../../utils/spaceTypeOptions.js';
   import RowOfBaysModal from './RowOfBaysModal.svelte';
+  import { canSplitIntoBays } from '../../utils/bayRow.js';
 
-  // "Split into a row of parking bays": offered for a four-cornered outline.
+  // "Split into a row of parking bays": offered only for a four-cornered outline
+  // meant for parking — a Parking bay, or a Car Park space (canSplitIntoBays).
   let splitOpen = false;
   let splitDone = '';
   import { statusDotCls, statusCfg } from '#lib/utils/resultConstants.js';
@@ -573,7 +575,7 @@
       {#if floor}
         <p class="text-xs text-slate-600">Floor: {floor.name}</p>
       {/if}
-      {#if canManage && allowShapeEdit && poly.length === 4 && !vertexEditingActive}
+      {#if canManage && allowShapeEdit && canSplitIntoBays({ ...space, polygon: poly }) && !vertexEditingActive}
         <button
           on:click={() => { splitDone = ''; splitOpen = true; }}
           class="mt-1 text-xs px-2 py-1 rounded bg-slate-700 text-slate-200 hover:bg-slate-600 text-left"

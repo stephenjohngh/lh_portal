@@ -1,6 +1,6 @@
 // src/lib/apps/building_assets/utils/bayRow.test.js
 import { describe, it, expect } from 'vitest';
-import { splitQuad, longSide, bayNumbers, numberClashes, validateRow } from './bayRow.js';
+import { splitQuad, longSide, bayNumbers, numberClashes, validateRow, canSplitIntoBays } from './bayRow.js';
 import { measureArea } from '../components/plan/planMeasure.js';
 
 // A 0.4 × 0.1 row on a square plan: long along x.
@@ -75,5 +75,21 @@ describe('validateRow', () => {
     expect(validateRow(row, { count: '101', start: '1', step: '1' })).toMatch(/100/);
     expect(validateRow(row, { count: '3', start: '1', step: '0' })).toMatch(/steps/);
     expect(validateRow(row.slice(0, 3), { count: '3', start: '1', step: '1' })).toMatch(/four corners/);
+  });
+});
+
+describe('canSplitIntoBays — only an outline meant for parking', () => {
+  const quad = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }];
+  it('offered for a parking-bay outline or a Car Park space with four corners', () => {
+    expect(canSplitIntoBays({ kind: 'slot', type: 'Car', polygon: quad })).toBe(true);
+    expect(canSplitIntoBays({ kind: 'space', type: 'Car Park', polygon: quad })).toBe(true);
+  });
+  it('not for any other space, however it is drawn', () => {
+    expect(canSplitIntoBays({ kind: 'space', type: 'Office', polygon: quad })).toBe(false);
+    expect(canSplitIntoBays({ kind: 'space', type: null, polygon: quad })).toBe(false);
+  });
+  it('not without four corners', () => {
+    expect(canSplitIntoBays({ kind: 'slot', polygon: quad.slice(0, 3) })).toBe(false);
+    expect(canSplitIntoBays(null)).toBe(false);
   });
 });

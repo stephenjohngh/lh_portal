@@ -79,3 +79,16 @@ export function validateRow(poly, { count, start, step }) {
   if (!Number.isInteger(Number(step)) || Number(step) < 1) return 'Number the bays in steps of 1 or more.';
   return null;
 }
+
+/**
+ * Whether "Split into a row of parking bays" is offered for a space (user,
+ * 2026-10-11: it appeared on any four-cornered space — an office, a lobby —
+ * which looked random and should not). Only an outline meant for parking: one
+ * marked as a Parking bay, or typed Car Park. And it must have four corners,
+ * which the split needs.
+ * @param {{ kind?: string, type?: string|null, polygon?: any[] } | null} space
+ */
+export function canSplitIntoBays(space) {
+  if (!space || (space.polygon?.length ?? 0) !== 4) return false;
+  return space.kind === 'slot' || (space.type ?? '').trim().toLowerCase() === 'car park';
+}
