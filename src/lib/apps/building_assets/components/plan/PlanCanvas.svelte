@@ -4,7 +4,7 @@
 <script>
   import { spaceLabelPx } from '../../utils/spaceLabelSize.js';
   import { createEventDispatcher } from 'svelte';
-  import { centroid } from './planMeasure.js';
+  import { centroid, labelWidthAt } from './planMeasure.js';
   import ComponentMarker from '../ComponentMarker.svelte';
   import { ACCENT, ACCENT_LIGHT } from '#lib/theme.js';
 
@@ -213,12 +213,17 @@
       {#if space.polygon?.length >= 3 && space.show_label !== false}
         {@const c = centroid(space.polygon)}
         {@const isNone = space.colour === 'none'}
+        {@const fit = labelWidthAt(space.polygon, c)}
+        <!-- Kept inside the shape sideways: no wider than the shape is through its
+             centre, so a long label wraps instead of spilling out (2026-10-11). -->
         <div
           class="absolute pointer-events-none select-none w-max"
-          style="left:{c.x * 100}%; top:{c.y * 100}%; transform:translate(-50%,-50%); z-index:8"
+          style="left:{c.x * 100}%; top:{c.y * 100}%; transform:translate(-50%,-50%); z-index:8;
+                 {fit != null ? `max-width:${fit * 100}%;` : ''}"
         >
           <div
             class="px-1.5 py-0.5 rounded font-medium whitespace-pre-wrap text-center shadow-sm"
+            style:overflow-wrap="anywhere"
             style="font-size:{spaceLabelPx(space.label_size, 12)}px; line-height:1.35;
                    background-color:{isNone ? '#1e293b' : `#${space.colour}33`};
                    color:{isNone ? '#94a3b8' : `#${space.colour}`};

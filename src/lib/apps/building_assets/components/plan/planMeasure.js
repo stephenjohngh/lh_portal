@@ -35,6 +35,35 @@ export const SPACE_COLOURS = [
  * @param {Array<{x:number, y:number}>} polygon
  * @returns {{x:number, y:number}}
  */
+/**
+ * How wide a label centred on point `p` may be and still sit inside the
+ * polygon, as a fraction of the schematic's width (user, 2026-10-11: a space's
+ * label spilled sideways out of its shape). It is the horizontal span of the
+ * shape through `p`, made symmetric about `p` — the label is centred there, so
+ * it can only grow as far as the nearer edge allows on each side.
+ * Null when `p` is not inside the shape (an odd concave outline): no cap is
+ * better than a wrong one.
+ * @param {{x:number,y:number}[]} polygon  fractional vertices
+ * @param {{x:number,y:number}} p
+ * @returns {number|null}
+ */
+export function labelWidthAt(polygon, p) {
+  if (!polygon || polygon.length < 3 || !p) return null;
+  const xs = [];
+  for (let i = 0; i < polygon.length; i++) {
+    const a = polygon[i], b = polygon[(i + 1) % polygon.length];
+    // Half-open on y so a vertex exactly on the line counts once.
+    if ((a.y <= p.y && b.y > p.y) || (b.y <= p.y && a.y > p.y)) {
+      xs.push(a.x + ((p.y - a.y) / (b.y - a.y)) * (b.x - a.x));
+    }
+  }
+  xs.sort((m, n) => m - n);
+  for (let i = 0; i + 1 < xs.length; i += 2) {
+    if (p.x >= xs[i] && p.x <= xs[i + 1]) return 2 * Math.min(p.x - xs[i], xs[i + 1] - p.x);
+  }
+  return null;
+}
+
 export function centroid(polygon) {
   if (!polygon?.length) return { x: 0.5, y: 0.5 };
   const n = polygon.length;
