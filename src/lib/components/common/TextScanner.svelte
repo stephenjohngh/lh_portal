@@ -23,7 +23,7 @@
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { startReader, readText } from '#lib/utils/textScan/ocrReader.js';
   import { matchScan, readingsFrom, scanProfile } from '#lib/utils/textScan/scanMatch.js';
-  import { guideCrop, readSize, greyAndStretch } from '#lib/utils/textScan/scanImage.js';
+  import { guideCrop, readSize, greyAndStretch, blackAndWhite, withMargin } from '#lib/utils/textScan/scanImage.js';
   import { errMessage } from '#lib/utils/errors.js';
   import { cameraHelp } from '#lib/utils/textScan/cameraHelp.js';
   import { createScanTally } from '#lib/utils/textScan/scanTally.js';
@@ -41,7 +41,7 @@
   const dispatch = createEventDispatcher();
   const prof = scanProfile(profile);
   const boxAspect = aspect || prof.aspect;
-  const BOX_FRACTION = 0.82;
+  const BOX_FRACTION = prof.boxFraction ?? 0.82;
 
   /** @type {HTMLVideoElement} */ let video;
   /** @type {MediaStream|null} */ let stream = null;
@@ -71,6 +71,18 @@
   // went straight back to scanning). Its result stays until "Scan live again".
   let photoMode = false;
   let photoUrl = '';            // the photo, shown where the live picture was
+
+  // -- Diagnostics (2026-10-12): "What the reader sees" shows the picture the
+  // reader was last given -- the camera crop as taken and as prepared -- with
+  // what it read and how sure it was, and can save both. For finding out why a
+  // plate will not read; nothing is kept or sent unless Save is pressed, and
+  // then only to this phone.
+  let diagOn = false;
+  /** @type {null | { raw: string, prepared: string, text: string, confidence: number, info: string }} */
+  let diag = null;
+  /** @type {{ raw: HTMLCanvasElement, out: HTMLCanvasElement } | null} */
+  let diagCanvases = null;
+  let focusInfo = '';
   $: live = !!stream && readerReady && !cameraError && !photoMode;
   $: answered = matches.length > 0 || !!lastRead;
   $: if (answered) hadAnswer = true;
@@ -107,7 +119,19 @@
       video.srcObject = stream;
       await video.play().catch(() => {});
       const track = stream.getVideoTracks()[0];
-      torchAvailable = !!(/** @type {any} */ (track?.getCapabilities?.() ?? {})).torch;
+      const caps = /** @type {any} */ (track?.getCapabilities?.() ?? {});
+      torchAvailable = !!caps.torch;
+      // Keep refocusing (2026-10-12): a frame from the live feed is often softer
+      // than a photo. Only where the camera says it can.
+      focusInfo = 'focus: not adjustable';
+      if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
+        try {
+          await track.applyConstraints(/** @type {any} */ ({ advanced: [{ focusMode: 'continuous' }] }));
+          focusInfo = 'focus: continuous';
+        } catch (/** @type {any} */ err) { focusInfo = `focus: could not set (${errMessage(err, 'refused')})`; }
+      } else if (Array.isArray(caps.focusMode)) {
+        focusInfo = `focus: ${caps.focusMode.join('/') || 'fixed'}`;
+      }
       status = '';
       sinceAt = Date.now();
       clearInterval(ticker);
@@ -160,6 +184,62 @@
     }, 450);
   }
 
+  /**
+   * Draw the picture, then make it what the reader reads best (2026-10-12):
+   * grey with the contrast stretched, black and white, and a white margin so
+   * the letters do not touch the edge. Returns the canvas for the reader, and
+   * the drawn one for the diagnostics.
+   * @param {(ctx: CanvasRenderingContext2D) => void} draw
+   * @param {number} w @param {number} h
+   */
+  function prepare(draw, w, h) {
+    const raw = document.createElement('canvas');
+    raw.width = w; raw.height = h;
+    const rctx = /** @type {CanvasRenderingContext2D} */ (raw.getContext('2d', { willReadFrequently: true }));
+    draw(rctx);
+    const img = rctx.getImageData(0, 0, w, h);
+    const work = new Uint8ClampedArray(img.data);
+    greyAndStretch(work);
+    const bw = blackAndWhite(work);
+    const padded = withMargin(work, w, h, Math.max(4, Math.round(h * 0.15)));
+    const out = document.createElement('canvas');
+    out.width = padded.w; out.height = padded.h;
+    const octx = /** @type {CanvasRenderingContext2D} */ (out.getContext('2d'));
+    const outImg = octx.createImageData(padded.w, padded.h);
+    outImg.data.set(padded.data);
+    octx.putImageData(outImg, 0, 0);
+    return { raw, out, bw };
+  }
+
+  /**
+   * Keep the latest picture and reading for the diagnostics, when they are on.
+   * @param {HTMLCanvasElement} raw @param {HTMLCanvasElement} out
+   * @param {string} text @param {number} confidence @param {string} info
+   */
+  function noteDiag(raw, out, text, confidence, info) {
+    if (!diagOn) return;
+    diagCanvases = { raw, out };
+    try {
+      diag = { raw: raw.toDataURL('image/png'), prepared: out.toDataURL('image/png'), text, confidence, info };
+    } catch (/** @type {any} */ err) {
+      diag = { raw: '', prepared: '', text, confidence, info: `${info} · picture could not be shown: ${errMessage(err, 'error')}` };
+    }
+  }
+
+  async function saveDiag() {
+    if (!diagCanvases) return;
+    // Loaded only when Save is pressed: download.js brings the sign-in client
+    // with it, which a camera screen otherwise has no need of.
+    const { downloadBlob } = await import('#lib/utils/download.js');
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
+    /** @type {[string, HTMLCanvasElement][]} */
+    const pics = [['camera', diagCanvases.raw], ['prepared', diagCanvases.out]];
+    for (const [name, c] of pics) {
+      const blob = await new Promise((res) => c.toBlob(res, 'image/png'));
+      if (blob) downloadBlob(/** @type {Blob} */ (blob), `scan_${stamp}_${name}.png`);
+    }
+  }
+
   async function readFrame() {
     const rect = video.getBoundingClientRect();
     const crop = guideCrop({
@@ -167,14 +247,12 @@
       viewW: rect.width, viewH: rect.height, boxFraction: BOX_FRACTION, aspect: boxAspect,
     });
     const size = readSize(crop.w, crop.h);
-    const canvas = document.createElement('canvas');
-    canvas.width = size.w; canvas.height = size.h;
-    const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d', { willReadFrequently: true }));
-    ctx.drawImage(video, crop.x, crop.y, crop.w, crop.h, 0, 0, size.w, size.h);
-    const img = ctx.getImageData(0, 0, size.w, size.h);
-    greyAndStretch(img.data);
-    ctx.putImageData(img, 0, 0);
-    const { text, confidence } = await readText(canvas, prof);
+    const { raw, out, bw } = prepare(
+      (ctx) => ctx.drawImage(video, crop.x, crop.y, crop.w, crop.h, 0, 0, size.w, size.h), size.w, size.h);
+    const { text, confidence } = await readText(out, prof);
+    noteDiag(raw, out, text, confidence,
+      `camera ${video.videoWidth}×${video.videoHeight} · box ${crop.w}×${crop.h} px · read at ${size.w}×${size.h} · `
+      + `threshold ${bw.threshold}${bw.inverted ? ', inverted' : ''} · ${focusInfo}`);
     if (photoMode) return;            // a photo was taken while this frame was read
     takeFrame(text, confidence);
   }
@@ -228,19 +306,21 @@
     try {
       const bmp = await createImageBitmap(file);
       const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round(bmp.width * scale); canvas.height = Math.round(bmp.height * scale);
-      const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
-      ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
-      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      greyAndStretch(img.data);
-      ctx.putImageData(img, 0, 0);
-      const { text } = await readText(canvas, prof, { wholePicture: true });
+      const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+      const { raw, out, bw } = prepare((ctx) => ctx.drawImage(bmp, 0, 0, w, h), w, h);
+      const { text, confidence } = await readText(out, prof, { wholePicture: true });
+      noteDiag(raw, out, text, confidence,
+        `photo ${bmp.width}×${bmp.height} · read at ${w}×${h} · threshold ${bw.threshold}${bw.inverted ? ', inverted' : ''}`);
       if (!takePhoto(text)) note = 'Nothing could be read in that photo. Try again closer, or type it.';
       /** @type {HTMLInputElement} */ (e.target).value = '';
     } catch (/** @type {any} */ err) {
       note = errMessage(err, 'The photo could not be read.');
     }
+  }
+
+  function toggleDiag() {
+    diagOn = !diagOn;
+    if (!diagOn) { diag = null; diagCanvases = null; }
   }
 
   async function toggleTorch() {
@@ -337,7 +417,23 @@
         <button class="ts-btn" on:click={scanLiveAgain}>Scan live again</button>
       {/if}
     </div>
-    <p class="ts-note">Read on this device — the picture is not sent or kept.</p>
+    <p class="ts-note">Read on this device — the picture is not sent or kept.
+      <button class="ts-link" on:click={toggleDiag} aria-pressed={diagOn}>{diagOn ? 'Hide what the reader sees' : 'What the reader sees'}</button></p>
+    {#if diagOn}
+      <div class="ts-diag" data-testid="scan-diagnostics">
+        {#if diag}
+          <p class="ts-diag-label">Camera crop</p>
+          {#if diag.raw}<img src={diag.raw} alt="" />{/if}
+          <p class="ts-diag-label">Given to the reader</p>
+          {#if diag.prepared}<img src={diag.prepared} alt="" />{/if}
+          <p class="ts-diag-text">Read: <span>{diag.text.trim() || '(nothing)'}</span> · {Math.round(diag.confidence)}% sure</p>
+          <p class="ts-diag-info">{diag.info}</p>
+          <button class="ts-btn" on:click={saveDiag}>Save these two pictures</button>
+        {:else}
+          <p class="ts-diag-info">Waiting for the next read…</p>
+        {/if}
+      </div>
+    {/if}
   </div>
 </div>
 
@@ -352,6 +448,13 @@
   .ts-title { font-weight: 600; }
   .ts-view { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; background: #000; }
   .ts-view video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ts-link { background: none; border: 0; padding: 0; margin-left: 0.4rem; color: var(--ts-accent); text-decoration: underline; cursor: pointer; font: inherit; }
+  .ts-diag { border: 1px solid #334155; border-radius: 8px; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.25rem; }
+  .ts-diag img { max-width: 100%; image-rendering: pixelated; background: #fff; border: 1px solid #475569; }
+  .ts-diag-label { font-size: 0.75rem; color: #94a3b8; margin: 0.25rem 0 0; }
+  .ts-diag-text { font-size: 0.85rem; margin: 0.25rem 0 0; }
+  .ts-diag-text span { font-family: 'DM Mono', monospace; color: #fff; }
+  .ts-diag-info { font-size: 0.7rem; color: #94a3b8; margin: 0; word-break: break-word; }
   .ts-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
   .ts-box-looking { border-color: var(--ts-accent); }
   .ts-box-seeing  { border-color: #fbbf24 !important; }

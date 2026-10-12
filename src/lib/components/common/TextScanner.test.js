@@ -29,9 +29,11 @@ function fakeCanvas() {
     drawImage: () => {},
     getImageData: (_x, _y, w, hgt) => ({ data: new Uint8ClampedArray(Math.max(1, w * hgt) * 4) }),
     putImageData: () => {},
+    createImageData: (w, hgt) => ({ data: new Uint8ClampedArray(Math.max(1, w * hgt) * 4) }),
   };
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => /** @type {any} */ (ctx));
   globalThis.createImageBitmap = /** @type {any} */ (async () => ({ width: 400, height: 300 }));
+  vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/png;base64,AA==');
 }
 
 async function takePhoto() {
@@ -170,6 +172,23 @@ describe('TextScanner', () => {
       delete (/** @type {any} */ (navigator)).mediaDevices;
       vi.restoreAllMocks();
     }
+  });
+
+  it('"What the reader sees" shows the picture it was given and what it read (2026-10-12)', async () => {
+    h.text = 'AB12 CDE';
+    render(TextScanner, { props: { profile: 'registration', candidates: CANDIDATES } });
+    await fireEvent.click(screen.getByRole('button', { name: 'What the reader sees' }));
+    expect(screen.getByTestId('scan-diagnostics').textContent).toMatch(/Waiting for the next read/);
+    await takePhoto();
+    const d = screen.getByTestId('scan-diagnostics');
+    expect(d.textContent).toMatch(/Camera crop/);
+    expect(d.textContent).toMatch(/Given to the reader/);
+    expect(d.textContent).toMatch(/Read: AB12 CDE · 80% sure/);
+    expect(d.textContent).toMatch(/photo 400×300/);
+    expect(d.querySelectorAll('img')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: 'Save these two pictures' })).toBeTruthy();
+    await fireEvent.click(screen.getByRole('button', { name: 'Hide what the reader sees' }));
+    expect(screen.queryByTestId('scan-diagnostics')).toBeNull();
   });
 
   it('Close says so', async () => {

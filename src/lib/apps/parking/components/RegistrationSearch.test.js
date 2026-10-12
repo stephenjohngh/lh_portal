@@ -104,7 +104,8 @@ describe('Scanning a number plate', () => {
     cleanup(); h.lookups.length = 0; h.online.set(true); h.sync.set({ pending: 0, error: 0 });
     h.permits.set({ permits: PERMITS, template: null, imageUrls: {}, loaded: true });
     const ctx = { drawImage: () => {}, putImageData: () => {},
-      getImageData: (_x, _y, w, hh) => ({ data: new Uint8ClampedArray(Math.max(1, w * hh) * 4) }) };
+      getImageData: (_x, _y, w, hh) => ({ data: new Uint8ClampedArray(Math.max(1, w * hh) * 4) }),
+      createImageData: (w, hh) => ({ data: new Uint8ClampedArray(Math.max(1, w * hh) * 4) }) };
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => /** @type {any} */ (ctx));
     globalThis.createImageBitmap = /** @type {any} */ (async () => ({ width: 400, height: 300 }));
   });

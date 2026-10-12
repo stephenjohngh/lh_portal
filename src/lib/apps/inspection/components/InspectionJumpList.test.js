@@ -114,7 +114,8 @@ describe('InspectionJumpList — scan a door number to jump to it', () => {
   it('a scanned number on this walk jumps to that component; one on no component says so', async () => {
     const { fireEvent, waitFor } = await import('@testing-library/svelte');
     const ctx = { drawImage: () => {}, putImageData: () => {},
-      getImageData: (_x, _y, w, hh) => ({ data: new Uint8ClampedArray(Math.max(1, w * hh) * 4) }) };
+      getImageData: (_x, _y, w, hh) => ({ data: new Uint8ClampedArray(Math.max(1, w * hh) * 4) }),
+      createImageData: (w, hh) => ({ data: new Uint8ClampedArray(Math.max(1, w * hh) * 4) }) };
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => /** @type {any} */ (ctx));
     globalThis.createImageBitmap = /** @type {any} */ (async () => ({ width: 400, height: 300 }));
     readerText.value = 'DOOR 2';

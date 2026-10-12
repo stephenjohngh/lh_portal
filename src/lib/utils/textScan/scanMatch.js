@@ -14,7 +14,7 @@
 /**
  * What can be read. A profile limits the characters the reader may return
  * (fewer choices, fewer mistakes) and the length of a sensible answer.
- * @typedef {{ label: string, charset: string, minLength: number, maxLength: number, aspect: number, edgeMarks?: string[] }} ScanProfile
+ * @typedef {{ label: string, charset: string, minLength: number, maxLength: number, aspect: number, boxFraction?: number, edgeMarks?: string[] }} ScanProfile
  * `aspect` is the camera guide box's shape, wide to 1 high. `edgeMarks` are
  * letters printed beside the value that are not part of it (a plate's GB band).
  */
@@ -22,7 +22,11 @@
 /** @type {Record<string, ScanProfile>} */
 export const SCAN_PROFILES = {
   // A UK registration: letters and digits, up to 7, spaces ignored.
-  registration: { label: 'Number plate', charset: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', minLength: 2, maxLength: 8, aspect: 4.2, edgeMarks: ['GB', 'UK', 'NI', 'CYM', 'ENG', 'SCO'] },
+  // The guide box is a plate's own shape (520 × 111 mm ≈ 4.7 : 1) and 60% of the
+  // screen wide (2026-10-12; it was 82%, which meant holding the phone about half
+  // a metre away to fill it — from a normal distance the plate was a strip lost
+  // in bodywork).
+  registration: { label: 'Number plate', charset: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', minLength: 2, maxLength: 8, aspect: 4.7, boxFraction: 0.6, edgeMarks: ['GB', 'UK', 'NI', 'CYM', 'ENG', 'SCO'] },
   // A number painted or fixed on something — a door, a riser, a meter. Digits
   // and letters, plus the separators such numbers use (G.04, 3/12, B-2).
   number:       { label: 'Number', charset: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789./-', minLength: 1, maxLength: 10, aspect: 2 },
