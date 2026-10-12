@@ -235,6 +235,20 @@
     {/each}
   {/if}
 
+  <!-- -- Corner numbers while editing a shape (match the space panel's list) -->
+  {#if vertexEditingActive && selectedSpace}
+    {@const editSp = planSpaces.find(s => s.id === selectedSpace.id)}
+    {#if editSp}
+      {#each editSp.polygon as v, i (i)}
+        <div
+          class="absolute pointer-events-none select-none text-[10px] font-mono font-bold text-white"
+          style="left:{v.x * 100}%; top:{v.y * 100}%; transform:translate(6px,-18px); z-index:9;
+                 text-shadow:0 0 2px #000, 0 0 2px #000"
+        >{i + 1}</div>
+      {/each}
+    {/if}
+  {/if}
+
   <!-- -- Component markers --------------------------------------- -->
   {#each positionedComponents as c (c.id)}
     <ComponentMarker

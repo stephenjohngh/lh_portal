@@ -130,6 +130,37 @@ export function createSpaceEditController(ctx) {
     }
   }
 
+  // -- Typed corner position (SpaceDetailSidebar's corner list) ---------
+  // The same coordinates a drag gives — a fraction of the schematic's width (x)
+  // and height (y), 0 to 1 — the units a component's X / Y position uses.
+  // Clamped and rounded to 3 places, then saved at once, as a drag is on release.
+  async function setVertex(index, x, y) {
+    const sel = ctx.getSelectedSpace();
+    if (!sel || !get(vertexEditingActive)) return;
+    let ep = get(editingPolygon);
+    if (!ep || ep.spaceId !== sel.id) {
+      const sp = ctx.getPlanSpaces().find(s => s.id === sel.id);
+      if (!sp) return;
+      ep = { spaceId: sel.id, vertices: sp.polygon.map(v => ({ ...v })) };
+    }
+    if (index < 0 || index >= ep.vertices.length) return;
+    const fit = (n, old) => {
+      // An emptied box is "not changed", not 0 — Number('') would be 0.
+      if (n === '' || n == null || String(n).trim() === '') return old;
+      const v = Number(n);
+      return Number.isFinite(v) ? Math.round(Math.max(0, Math.min(1, v)) * 1000) / 1000 : old;
+    };
+    const vertices = ep.vertices.map((v, i) => i === index ? { x: fit(x, v.x), y: fit(y, v.y) } : v);
+    editingPolygon.set({ spaceId: ep.spaceId, vertices });
+    try {
+      await buildingAssetsStore.updateSpacePolygon(ep.spaceId, vertices);
+      const updated = get(buildingAssetsStore).spaces.find(s => s.id === ep.spaceId);
+      if (updated && ctx.getSelectedSpace()?.id === updated.id) ctx.setSelectedSpace(updated);
+    } catch (/** @type {any} */ err) {
+      ctx.setError(err.message);
+    }
+  }
+
   // -- Mouse up: persist the finished vertex drag or polygon move -------
 
   async function onMouseup() {
@@ -184,6 +215,7 @@ export function createSpaceEditController(ctx) {
     onEditShape,
     onDoneEditShape,
     onVertexDragstart,
+    setVertex,
     onSpaceMoveDragstart,
     onMousemove,
     onMouseup,

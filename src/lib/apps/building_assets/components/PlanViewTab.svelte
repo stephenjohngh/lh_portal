@@ -692,12 +692,14 @@
         <SpaceDetailSidebar
           space={selectedSpace} {floors} {metresPerUnit} {planAR}
           vertexEditingActive={$vertexEditingActive}
+          editingVertices={$editingPolygon && $editingPolygon.spaceId === selectedSpace?.id ? $editingPolygon.vertices : null}
           readOnly={readOnly || drawingMode === 'off'}
           on:saved={({ detail }) => { selectedSpace = detail.space; }}
           on:close={() => { selectedSpace = null; sidebarMode = 'none'; resetSelection(); }}
           on:deleted={() => { resetSelection(); }}
           on:editshape={spaceCtrl.onEditShape}
           on:doneeditshape={spaceCtrl.onDoneEditShape}
+          on:setvertex={({ detail }) => spaceCtrl.setVertex(detail.index, detail.x, detail.y)}
         />
 
       {:else if sidebarMode === 'scale-input'}

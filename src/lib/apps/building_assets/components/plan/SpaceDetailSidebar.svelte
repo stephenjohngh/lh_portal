@@ -31,6 +31,7 @@
   export let metresPerUnit        = null;   // null if no scale set
   export let planAR               = null;   // image aspect ratio
   export let vertexEditingActive  = false;  // true while editing polygon corners
+  export let editingVertices      = null;   // the live corners while editing (after a drag), else null
   export let readOnly             = false;  // hide mutating actions (View mode)
   export let allowShapeEdit       = true;   // false when there's no plan canvas (e.g. Spaces tab)
 
@@ -572,6 +573,29 @@
           >{vertexEditingActive ? 'Done editing' : 'Edit shape ✦'}</button>
         {/if}
       </div>
+      <!-- Corners typed exactly (user, 2026-10-12): numbered as on the drawing, in
+           the units a component's X / Y position uses — a fraction of the
+           schematic's width and height, 0 to 1. Saved when a box is left or Enter
+           is pressed, as a dragged corner is on release. -->
+      {#if vertexEditingActive && !readOnly && allowShapeEdit}
+        {@const corners = editingVertices ?? poly}
+        <div class="mt-1 rounded-lg border border-slate-700/60 bg-slate-800/60 p-2" data-testid="corner-list">
+          <p class="text-xs text-slate-400 mb-1">Corners — X across, Y down, 0 to 1</p>
+          <div class="grid grid-cols-[auto_1fr_1fr] gap-x-2 gap-y-1 items-center">
+            {#each corners as v, i (i)}
+              <span class="text-xs text-slate-500 font-mono w-4 text-right">{i + 1}</span>
+              <input type="number" min="0" max="1" step="0.001" aria-label="Corner {i + 1} X"
+                value={v.x.toFixed(3)}
+                on:change={e => dispatch('setvertex', { index: i, x: e.currentTarget.value, y: v.y })}
+                class="{inp} font-mono" />
+              <input type="number" min="0" max="1" step="0.001" aria-label="Corner {i + 1} Y"
+                value={v.y.toFixed(3)}
+                on:change={e => dispatch('setvertex', { index: i, x: v.x, y: e.currentTarget.value })}
+                class="{inp} font-mono" />
+            {/each}
+          </div>
+        </div>
+      {/if}
       {#if floor}
         <p class="text-xs text-slate-600">Floor: {floor.name}</p>
       {/if}
