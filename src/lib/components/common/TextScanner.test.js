@@ -35,7 +35,7 @@ function fakeCanvas() {
 }
 
 async function takePhoto() {
-  const input = /** @type {HTMLInputElement} */ (screen.getByLabelText(/Take a photo/));
+  const input = /** @type {HTMLInputElement} */ (screen.getByLabelText(/Take (a|another) photo/));
   const file = new File(['x'], 'plate.jpg', { type: 'image/jpeg' });
   Object.defineProperty(input, 'files', { value: [file], configurable: true });
   await fireEvent.change(input);
@@ -133,6 +133,39 @@ describe('TextScanner', () => {
       await waitFor(() => expect(screen.getByTestId('scan-seeing').textContent).toMatch(/AB12C/), { timeout: 3000 });
       expect(screen.getByTestId('scan-status').textContent).toMatch(/Reading|keep it steady/);
       expect(screen.getByTestId('text-scanner').querySelector('[data-state]')?.getAttribute('data-state')).toBe('seeing');
+    } finally {
+      delete (/** @type {any} */ (navigator)).mediaDevices;
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('a photo taken while the camera is live keeps its result — live frames do not replace it (2026-10-12)', async () => {
+    const { waitFor } = await import('@testing-library/svelte');
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    vi.spyOn(HTMLVideoElement.prototype, 'videoWidth', 'get').mockReturnValue(1280);
+    vi.spyOn(HTMLVideoElement.prototype, 'videoHeight', 'get').mockReturnValue(720);
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(/** @type {any} */ ({ width: 375, height: 600 }));
+    let streams = 0;
+    const fakeStream = () => ({ getVideoTracks: () => [{ getCapabilities: () => ({}) }], getTracks: () => [{ stop: () => {} }] });
+    Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => { streams++; return fakeStream(); } } });
+    h.text = 'ZZ99 ZZZ';                    // what the live camera keeps seeing
+    try {
+      render(TextScanner, { props: { profile: 'registration', candidates: CANDIDATES } });
+      await waitFor(() => expect(screen.getByTestId('scan-seeing').textContent).toMatch(/ZZ99ZZZ/), { timeout: 3000 });
+      h.text = 'AB12 CDE';                  // the photo
+      await takePhoto();
+      expect(await screen.findByRole('button', { name: /AB12 CDE/ })).toBeTruthy();
+      h.text = 'ZZ99 ZZZ';                  // live frames would read this again…
+      const readsAfterPhoto = h.reads.length;
+      await new Promise((r) => setTimeout(r, 1200));
+      await tick();
+      expect(h.reads.length).toBe(readsAfterPhoto);                       // …but none are taken
+      expect(screen.getByRole('button', { name: /AB12 CDE/ })).toBeTruthy();
+      expect(screen.queryByTestId('scan-sweep')).toBeNull();
+      await fireEvent.click(screen.getByRole('button', { name: 'Scan live again' }));
+      for (let i = 0; i < 4; i++) await tick();
+      expect(streams).toBe(2);                                             // the camera restarted
+      expect(screen.queryByRole('button', { name: /AB12 CDE/ })).toBeNull();
     } finally {
       delete (/** @type {any} */ (navigator)).mediaDevices;
       vi.restoreAllMocks();

@@ -66,7 +66,12 @@
   let hadAnswer = false;
   let held = false;             // a definite answer is held (scanTally.js) — misreads no longer shown
   /** @type {any} */ let ticker = null;
-  $: live = !!stream && readerReady && !cameraError;
+  // A photo pauses live scanning (2026-10-12: a photo's result was replaced
+  // half a second later by the next live frame, so it looked as if the photo
+  // went straight back to scanning). Its result stays until "Scan live again".
+  let photoMode = false;
+  let photoUrl = '';            // the photo, shown where the live picture was
+  $: live = !!stream && readerReady && !cameraError && !photoMode;
   $: answered = matches.length > 0 || !!lastRead;
   $: if (answered) hadAnswer = true;
   $: if (!answered && hadAnswer) { hadAnswer = false; sinceAt = Date.now(); }
@@ -114,7 +119,27 @@
     }
   }
 
-  onDestroy(() => { stopped = true; clearTimeout(timer); clearInterval(ticker); stopStream(); });
+  onDestroy(() => { stopped = true; clearTimeout(timer); clearInterval(ticker); stopStream(); dropPhoto(); });
+
+  function dropPhoto() { if (photoUrl) URL.revokeObjectURL?.(photoUrl); photoUrl = ''; }
+
+  /** Stop live scanning for a photo — and free the camera for the phone's camera app. */
+  function pauseForPhoto() {
+    photoMode = true;
+    clearTimeout(timer);
+    stopStream();
+    seeing = '';
+  }
+
+  /** Back to the live camera, starting afresh. */
+  function scanLiveAgain() {
+    photoMode = false;
+    dropPhoto();
+    tally.reset();
+    matches = []; lastRead = ''; held = false; note = ''; seeing = '';
+    sinceAt = Date.now();
+    startCamera();
+  }
 
   function stopStream() {
     stream?.getTracks().forEach((t) => t.stop());
@@ -124,13 +149,14 @@
   // Read the guide box about twice a second while the camera runs.
   function loop() {
     clearTimeout(timer);
-    if (stopped || !readerReady || !stream) return;
+    if (stopped || photoMode || !readerReady || !stream) return;
     timer = setTimeout(async () => {
+      if (photoMode) return;
       if (stopped || reading || document.hidden || !video?.videoWidth) { loop(); return; }
       reading = true;
       try { await readFrame(); }
       catch (/** @type {any} */ err) { note = errMessage(err, 'Could not read that.'); }
-      finally { reading = false; loop(); }
+      finally { reading = false; if (!photoMode) loop(); }
     }, 450);
   }
 
@@ -149,6 +175,7 @@
     greyAndStretch(img.data);
     ctx.putImageData(img, 0, 0);
     const { text, confidence } = await readText(canvas, prof);
+    if (photoMode) return;            // a photo was taken while this frame was read
     takeFrame(text, confidence);
   }
 
@@ -190,7 +217,13 @@
   /** A photo instead of the live camera: read the whole picture. */
   async function readPhoto(/** @type {Event} */ e) {
     const file = /** @type {HTMLInputElement} */ (e.target).files?.[0];
-    if (!file) return;
+    if (!file) {                      // the camera app was cancelled
+      if (photoMode && !photoUrl) scanLiveAgain();
+      return;
+    }
+    pauseForPhoto();
+    dropPhoto();
+    photoUrl = typeof URL.createObjectURL === 'function' ? URL.createObjectURL(file) : '';
     note = 'Reading the photo…';
     try {
       const bmp = await createImageBitmap(file);
@@ -204,6 +237,7 @@
       ctx.putImageData(img, 0, 0);
       const { text } = await readText(canvas, prof, { wholePicture: true });
       if (!takePhoto(text)) note = 'Nothing could be read in that photo. Try again closer, or type it.';
+      /** @type {HTMLInputElement} */ (e.target).value = '';
     } catch (/** @type {any} */ err) {
       note = errMessage(err, 'The photo could not be read.');
     }
@@ -241,7 +275,10 @@
   <div class="ts-view">
     <!-- svelte-ignore a11y_media_has_caption -->
     <video bind:this={video} playsinline muted autoplay></video>
-    {#if !cameraError}
+    {#if photoUrl}
+      <img class="ts-photo" src={photoUrl} alt="" data-testid="scan-photo" />
+    {/if}
+    {#if !cameraError && !photoMode}
       <div class="ts-box ts-box-{frame}" data-state={frame} style="width: {BOX_FRACTION * 100}%; aspect-ratio: {boxAspect}">
         <!-- A line sweeping through the box while it reads: it is working. -->
         {#if live && frame !== 'found'}<div class="ts-sweep" data-testid="scan-sweep"></div>{/if}
@@ -293,9 +330,12 @@
         <button class="ts-btn" on:click={toggleTorch} aria-pressed={torchOn}>{torchOn ? 'Light off' : 'Light on'}</button>
       {/if}
       <label class="ts-btn">
-        Take a photo
-        <input type="file" accept="image/*" capture="environment" on:change={readPhoto} />
+        {photoMode ? 'Take another photo' : 'Take a photo'}
+        <input type="file" accept="image/*" capture="environment" on:click={pauseForPhoto} on:change={readPhoto} />
       </label>
+      {#if photoMode && !cameraError}
+        <button class="ts-btn" on:click={scanLiveAgain}>Scan live again</button>
+      {/if}
     </div>
     <p class="ts-note">Read on this device — the picture is not sent or kept.</p>
   </div>
@@ -312,6 +352,7 @@
   .ts-title { font-weight: 600; }
   .ts-view { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; background: #000; }
   .ts-view video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ts-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
   .ts-box-looking { border-color: var(--ts-accent); }
   .ts-box-seeing  { border-color: #fbbf24 !important; }
   .ts-box-found   { border-color: #4ade80 !important; }
