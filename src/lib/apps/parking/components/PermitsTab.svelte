@@ -85,7 +85,7 @@
   }
   function toChanged() { duration = 'custom'; }
 
-  // The same contractor and vehicle come back: a row's Use details fills the form with
+  // The same contractor and vehicle come back: a row's Use button fills the form with
   // its company and registration, dates from today for one day, and leaves
   // the issuer as whoever is issuing now.
   let issueSection;
@@ -348,13 +348,13 @@
                       <Button size="small" variant="secondary" title="Correct a mistake on this permit — it keeps its number"
                         disabled={issuing} on:click={() => startEdit(p)}>Edit</Button>
                       <Button size="small" variant="secondary" title="Fill in the form with this company and vehicle, for new dates"
-                        on:click={() => reissue(p)}>Use details</Button>
+                        on:click={() => reissue(p)}>Use</Button>
                     {/if}
                     <Button size="small" variant="secondary" loading={downloadingId === p.id}
                       disabled={!!downloadingId} on:click={() => redownload(p)}>⬇ PDF</Button>
                     {#if canEdit && permitStatus(p, day, nowTime) === 'current'}
                       <Button size="small" variant="danger" title="The permit stops now — for a vehicle that has left, or a permit withdrawn"
-                        on:click={() => pendingEnd = p}>End now</Button>
+                        on:click={() => pendingEnd = p}>End</Button>
                     {/if}
                     {#if $permissions.isAdmin}
                       <Button size="small" variant="danger" on:click={() => pendingDelete = p}>Delete</Button>
