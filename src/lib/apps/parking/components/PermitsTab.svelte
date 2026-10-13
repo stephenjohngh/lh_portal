@@ -13,7 +13,6 @@
   import { permissions } from '#lib/stores/permissions.js';
   import { portalSettings } from '#lib/stores/portalSettings.js';
   import { profiles, profilesStore } from '#lib/stores/profiles.js';
-  import { auth } from '#lib/stores/auth.js';
   import { buildingName } from '#lib/utils/identity.js';
   import { today, fmtTime } from '#lib/utils/dates.js';
   import { matchesSearch } from '#lib/utils/textSearch.js';
@@ -60,11 +59,16 @@
     return { company: '', registration: '', valid_from: from, valid_to: validToFor(from, 'day') ?? '',
       valid_from_time: '', valid_to_time: '', issued_by: '' };
   }
-  // The issuer defaults to the person signed in, and can be changed.
-  /** @param {any[]} list @param {string|undefined} id */
+  // A permit is issued by the BUSINESS, always (user, 2026-10-13): the Business
+  // name from Admin → Other Config → Building & business, never the person
+  // signed in. Who pressed the button is still recorded (created_by) and shown
+  // in the list.
+  /** @param {any[]} list @param {string|undefined|null} id */
   const nameOf = (list, id) => list.find((p) => p.id === id)?.full_name ?? '';
-  $: me = nameOf($profiles.list, $auth.user?.id);
-  $: if (me && !form.issued_by) form.issued_by = me;
+  $: businessName = $portalSettings.organisation?.name ?? '';
+  $: if (!editing) form.issued_by = businessName;
+  /** The permit as printed: the issuer is the business name in force today, on a reprint too. */
+  const asPrinted = (p) => ({ ...p, issued_by: businessName || p.issued_by });
 
   // Times start at the template's usual ones (7am and 7pm unless an admin changed them).
   $: startTime = hhmm($permitStore.template?.default_from_time) || DEFAULT_PERMIT_TIMES.from;
@@ -112,9 +116,8 @@
     issueSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   function cancelEdit() {
-    const keep = form.issued_by;
     editing = null;
-    form = { ...blankForm(), issued_by: keep };
+    form = { ...blankForm(), issued_by: businessName };
     duration = 'day';
     issueError = '';
   }
@@ -149,12 +152,16 @@
   async function download(permit) {
     // Loaded only when a permit is asked for: the canvas and PDF code are not needed before.
     const { renderPermitPdf } = await import('../utils/permitRender.js');
-    const { bytes, filename } = await renderPermitPdf(permit, $permitStore.template ?? {}, building, $permitStore.imageUrls);
+    const { bytes, filename } = await renderPermitPdf(asPrinted(permit), $permitStore.template ?? {}, building, $permitStore.imageUrls);
     downloadBlob(new Blob([/** @type {BlobPart} */ (bytes)], { type: 'application/pdf' }), filename);
   }
 
   async function issue() {
     issueError = ''; issuedNote = '';
+    if (!businessName) {
+      issueError = 'Set the Business name first (Admin → Other Config → Building & business): permits are issued in its name.';
+      return;
+    }
     const problem = validatePermit(form);
     if (problem) { issueError = problem; return; }
     issuing = true;
@@ -163,8 +170,7 @@
       saved = await permitStore.issue(form);
       await download(saved);
       issuedNote = `Permit ${permitNumberLabel(saved.permit_number)} issued and downloaded.`;
-      const keep = form.issued_by;
-      form = { ...blankForm(), issued_by: keep };
+      form = { ...blankForm(), issued_by: businessName };
       duration = 'day';
     } catch (/** @type {any} */ err) {
       // A permit that saved but did not download is still issued — say so, and how to get it.
@@ -184,7 +190,9 @@
   $: nowTime = fmtTime(new Date().toISOString());
   $: shown = $permitStore.permits
     .filter((p) => show === 'all' || permitStatus(p, day, nowTime) === show)
-    .filter((p) => matchesSearch([permitNumberLabel(p.permit_number), p.company, p.registration, p.issued_by], q));
+    .filter((p) => matchesSearch([permitNumberLabel(p.permit_number), p.company, p.registration, issuerOf(p)], q));
+  // The list's "Issued by" is the PERSON who issued it; the printed permit names the business.
+  $: issuerOf = (p) => nameOf($profiles.list, p.created_by) || p.issued_by;
 
   let downloadingId = null;
   let listError = '';
@@ -205,7 +213,7 @@
         permit_number: Math.max($permitStore.template?.first_number ?? 1, ($permitStore.permits[0]?.permit_number ?? 0) + 1),
         sample: true, company: 'SAMPLE — not a valid permit', registration: 'AB12 CDE',
         valid_from: from, valid_from_time: startTime, valid_to: validToFor(from, 'week'), valid_to_time: endTime,
-        issued_by: me || 'Building manager',
+        issued_by: businessName || 'Building manager',
       });
     } catch (/** @type {any} */ err) { listError = errMessage(err, 'The preview could not be made.'); }
   }
@@ -276,7 +284,7 @@
           <FormInput label="Time" type="time" bind:value={form.valid_to_time} required disabled={datesLocked} />
         </div>
         {#if datesLocked}<p class="text-xs text-slate-400">This permit was ended early, so its dates stay as they are.</p>{/if}
-        <FormInput label="Issued by" bind:value={form.issued_by} required />
+        <p class="text-xs text-slate-400">Issued by <span class="text-slate-200">{businessName || '— set the Business name in Admin → Other Config → Building & business'}</span></p>
         {#if issueError}<ErrorDisplay message={issueError} />{/if}
         {#if issuedNote}<p class="text-sm text-green-400" data-testid="issued-note">{issuedNote}</p>{/if}
         {#if editing}
@@ -332,7 +340,7 @@
                     <div class="text-slate-400">to {fmtPermitWhen(p.valid_to, p.valid_to_time)}
                       <span class="text-slate-500">({permitDays(p)} {permitDays(p) === 1 ? 'day' : 'days'})</span></div>
                   </td>
-                  <td class="px-3 py-2">{p.issued_by}</td>
+                  <td class="px-3 py-2">{issuerOf(p)}</td>
                   <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-xs {st.cls}">{p.ended_early_at ? 'Ended early' : st.label}</span>
                     {#if p.corrected_at}<div class="text-xs text-slate-500 mt-1">Corrected</div>{/if}</td>
                   <td class="px-3 py-2 text-right whitespace-nowrap">
