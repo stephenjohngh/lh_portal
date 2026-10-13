@@ -23,7 +23,8 @@ const INK   = '#2a1414';
 /**
  * @typedef {{ type: 'image', which: 'background'|'footer', x: number, y: number, w: number, h: number, fit: 'cover'|'contain' }} ImageStep
  * @typedef {{ type: 'text', text: string, x: number, y: number, size: number, bold?: boolean,
- *             colour: string, align: 'left'|'center', maxWidth: number, maxLines?: number }} TextStep
+ *             colour: string, align: 'left'|'center', maxWidth: number, maxLines?: number,
+ *             font?: 'plate' }} TextStep
  * @typedef {ImageStep | TextStep} Step
  */
 
@@ -58,7 +59,8 @@ export function permitLayout(permit, template, building) {
   const labelW = 860;
   const rows = [
     { label: 'Company',      value: permit.company,                 size: 95 },
-    { label: 'Registration', value: permit.registration,            size: 125 },
+    // Larger than the rest, in the number-plate font (permitRender.js).
+    { label: 'Registration', value: permit.registration,            size: 150 },
     { label: 'Valid from',   value: fmtPermitWhen(permit.valid_from, permit.valid_from_time), size: 95 },
     { label: 'Valid to',     value: fmtPermitWhen(permit.valid_to, permit.valid_to_time),     size: 95 },
     { label: 'Issued by',    value: permit.issued_by,               size: 95 },
@@ -69,7 +71,8 @@ export function permitLayout(permit, template, building) {
     steps.push({ type: 'text', text: `${label}:`, x: MARGIN, y, size: 95, bold: true,
       colour: INK, align: 'left', maxWidth: labelW - 40 });
     steps.push({ type: 'text', text: String(value ?? ''), x: MARGIN + labelW, y: y - (size - 95) / 2, size,
-      bold: label === 'Registration', colour: INK, align: 'left', maxWidth: full - labelW });
+      bold: label === 'Registration', colour: INK, align: 'left', maxWidth: full - labelW,
+      ...(label === 'Registration' ? { font: 'plate' } : {}) });
     y += 175;
   }
 

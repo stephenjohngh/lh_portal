@@ -57,3 +57,12 @@ describe('permitLayout', () => {
     expect(allText(steps)).toContain('Parking Permit');   // the default title
   });
 });
+
+describe('the registration is drawn like a number plate (2026-10-13)', () => {
+  it('only the registration uses the plate font', () => {
+    const steps = permitLayout({ permit_number: 104, company: 'Acme', registration: 'AB12 CDE', valid_from: '2026-10-06',
+      valid_to: '2026-10-06', issued_by: 'Lancaster House RTM Co Ltd' }, {}, { name: 'Building' });
+    const plate = steps.filter((s) => s.type === 'text' && s.font === 'plate');
+    expect(plate.map((s) => s.text)).toEqual(['AB12 CDE']);
+  });
+});

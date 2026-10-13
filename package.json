@@ -50,6 +50,7 @@
 	},
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.131.0",
+		"@fontsource/barlow-condensed": "5.2.6",
 		"@sentry/sveltekit": "^11.4.0",
 		"@supabase/supabase-js": "^2.117.2",
 		"@tesseract.js-data/eng": "1.0.0",

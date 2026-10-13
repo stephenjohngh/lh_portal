@@ -9,8 +9,29 @@
 import { permitLayout, PAGE } from './permitLayout.js';
 import { permitFilename } from './permitModel.js';
 import { jpegToPdf } from '#lib/utils/jpegPdf.js';
+// The registration is drawn in Barlow Condensed (SIL Open Font Licence), which
+// was designed after number plates and road signs — close to the licensed UK
+// plate font, which cannot be shipped (user, 2026-10-13). Served by the portal
+// itself, so every phone prints the same.
+import plateFontUrl from '@fontsource/barlow-condensed/files/barlow-condensed-latin-600-normal.woff2?url';
 
 const FONT = 'Georgia, "Times New Roman", serif';
+const PLATE_FAMILY = 'LH Plate';
+const FONTS = { plate: `"${PLATE_FAMILY}", "Arial Narrow", Arial, sans-serif` };
+
+/** @type {Promise<void>|null} */
+let plateFontLoaded = null;
+/** Load the plate font once. If it cannot load, the registration falls back to Arial rather than failing the permit. */
+function loadPlateFont() {
+  plateFontLoaded ??= (async () => {
+    try {
+      const face = new FontFace(PLATE_FAMILY, `url(${plateFontUrl})`, { weight: '600' });
+      await face.load();
+      document.fonts.add(face);
+    } catch { /* fallback font: the permit still prints */ }
+  })();
+  return plateFontLoaded;
+}
 const MIN_SCALE = 0.4;   // a value is shrunk to fit, but never below 40% of its size
 
 /**
@@ -24,6 +45,7 @@ export async function renderPermitPdf(permit, template, building, imageUrls) {
   const [background, footer] = await Promise.all([
     loadImage(imageUrls.background, 'background'),
     loadImage(imageUrls.footer, 'bottom'),
+    loadPlateFont(),
   ]);
   const images = { background, footer };
 
@@ -83,7 +105,9 @@ function drawText(ctx, step) {
   let size = step.size;
   let lines = [step.text];
   for (; size >= step.size * MIN_SCALE; size -= Math.max(1, Math.round(step.size * 0.04))) {
-    ctx.font = `${step.bold ? 'bold ' : ''}${size}px ${FONT}`;
+    ctx.font = step.font === 'plate'
+      ? `600 ${size}px ${FONTS.plate}`
+      : `${step.bold ? 'bold ' : ''}${size}px ${FONT}`;
     lines = maxLines > 1 ? wrap(ctx, step.text, step.maxWidth) : [step.text];
     if (lines.length <= maxLines && lines.every((l) => ctx.measureText(l).width <= step.maxWidth)) break;
   }
