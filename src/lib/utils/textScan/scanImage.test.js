@@ -44,30 +44,34 @@ describe('grey and stretched', () => {
   });
 });
 
-describe('blackAndWhite', () => {
-  /** @param {number[]} greys */
-  const img = (greys) => {
-    const px = new Uint8ClampedArray(greys.length * 4);
-    greys.forEach((g, i) => { px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = g; px[i * 4 + 3] = 255; });
-    return px;
+describe('blackAndWhite — each spot against its neighbourhood (2026-10-13)', () => {
+  /** A grey picture from rows of numbers (0–255). */
+  const grey = (rows) => {
+    const h = rows.length, w = rows[0].length;
+    const px = new Uint8ClampedArray(w * h * 4);
+    rows.forEach((row, y) => row.forEach((g, x) => { const i = (y * w + x) * 4; px[i] = px[i + 1] = px[i + 2] = g; px[i + 3] = 255; }));
+    return { px, w, h };
   };
-  const values = (px) => Array.from({ length: px.length / 4 }, (_, i) => px[i * 4]);
+  const marks = ({ px, w, h }) => Array.from({ length: h }, (_, y) =>
+    Array.from({ length: w }, (_, x) => (px[(y * w + x) * 4] === 0 ? '#' : '.')).join(''));
 
-  it('splits a picture into black and white at the gap between its two groups of grey', () => {
-    // mostly light ground (200-ish) with some dark letters (40-ish)
-    const px = img([200, 210, 205, 40, 45, 198, 202, 50, 207, 199]);
-    const r = blackAndWhite(px);
-    expect(r.threshold).toBeGreaterThanOrEqual(50);
-    expect(r.threshold).toBeLessThan(198);
-    expect(values(px)).toEqual([255, 255, 255, 0, 0, 255, 255, 0, 255, 255]);
-    expect(r.inverted).toBe(false);
+  it('keeps pale letters on a bright plate, even beside a dark car (the plate under a light)', () => {
+    // dark car (20) | bright plate (250) with pale letters (200) | dark car
+    const row = (letter) => [20, 20, 20, 250, 250, 250, letter, 250, 250, letter, 250, 250, 250, 20, 20, 20];
+    const p = grey([row(250), row(200), row(200), row(200), row(250)]);
+    blackAndWhite(p.px, p.w, p.h);    // the shipped neighbourhood
+    const m = marks(p);
+    expect(m[2][6]).toBe('#');        // the pale letter is dark
+    expect(m[2][9]).toBe('#');
+    expect(m[2][7]).toBe('.');        // the plate between is light
   });
 
-  it('turns light text on a dark ground round, so the reader gets dark on light', () => {
-    const px = img([30, 35, 220, 40, 30, 215, 32, 38, 36, 34]);
-    const r = blackAndWhite(px);
+  it('turns light letters on a dark ground round, judged from the middle', () => {
+    const row = (letter) => [30, 30, 30, letter, 30, 30, letter, 30, 30, 30];
+    const p = grey([row(30), row(220), row(220), row(220), row(30)]);
+    const r = blackAndWhite(p.px, p.w, p.h, { win: 1, t: 0.1 });
     expect(r.inverted).toBe(true);
-    expect(values(px)).toEqual([255, 255, 0, 255, 255, 0, 255, 255, 255, 255]);
+    expect(marks(p)[2][3]).toBe('#');  // the light letter is now the dark one
   });
 });
 

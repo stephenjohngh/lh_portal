@@ -202,8 +202,9 @@
     const img = rctx.getImageData(0, 0, w, h);
     const work = new Uint8ClampedArray(img.data);
     greyAndStretch(work);
-    // Which way round is judged from the middle: the dark bodywork round a
-    // plate fooled a whole-picture judgement on some frames and not others.
+    // Black and white by comparing each spot with its neighbourhood, so a plate
+    // under a light keeps its pale letters; which way round is judged from the
+    // middle, where the dark bodywork round a plate cannot fool it.
     const bw = blackAndWhite(work, w, h);
     // The bodywork, bumper and plate border touch the crop's edge and were
     // read as letters; a nick in a letter's stroke read a D as "II".
@@ -260,7 +261,7 @@
     const { text, confidence } = await readText(out, prof);
     noteDiag(raw, out, text, confidence,
       `camera ${video.videoWidth}×${video.videoHeight} · box ${crop.w}×${crop.h} px · read at ${size.w}×${size.h} · `
-      + `threshold ${bw.threshold}${bw.inverted ? ', inverted' : ''} · ${focusInfo}`);
+      + `${bw.inverted ? 'light on dark, turned round · ' : ''}${focusInfo}`);
     if (photoMode) return;            // a photo was taken while this frame was read
     takeFrame(text, confidence);
   }
@@ -318,7 +319,7 @@
       const { raw, out, bw } = prepare((ctx) => ctx.drawImage(bmp, 0, 0, w, h), w, h);
       const { text, confidence } = await readText(out, prof, { wholePicture: true });
       noteDiag(raw, out, text, confidence,
-        `photo ${bmp.width}×${bmp.height} · read at ${w}×${h} · threshold ${bw.threshold}${bw.inverted ? ', inverted' : ''}`);
+        `photo ${bmp.width}×${bmp.height} · read at ${w}×${h}${bw.inverted ? ' · light on dark, turned round' : ''}`);
       if (!takePhoto(text)) note = 'Nothing could be read in that photo. Try again closer, or type it.';
       /** @type {HTMLInputElement} */ (e.target).value = '';
     } catch (/** @type {any} */ err) {

@@ -67,50 +67,49 @@ export function greyAndStretch(px) {
 }
 
 /**
- * Black and white (2026-10-12): the threshold that best splits the picture's
- * greys into two groups (Otsu's method), so glare, shadow and a yellow rear
- * plate become plain dark-on-light. Then made dark text on a light ground —
- * the way round the reader expects — by inverting when the MIDDLE is mostly
- * dark (pass `w` and `h`; see darkInMiddle), or the whole picture without them.
- * Run after greyAndStretch (it reads the red channel as the grey). In place.
+ * Black and white, comparing each spot with its own neighbourhood (2026-10-13).
+ * A spot is dark when it is darker than the average round it by more than
+ * `t` (Bradley's method). One cut-off for the whole crop (Otsu, 2026-10-12)
+ * failed on the user's picture of a plate under a light: the dark car round it
+ * pulled the cut-off down, the washed-out letters fell on the light side and
+ * vanished. Compared locally, a pale letter is still darker than the bright
+ * plate beside it. The neighbourhood is `win` × the crop's height across —
+ * 0.4 read all three of the user's car-park pictures; 1 lost the letters
+ * under the glare. Then made dark-on-light (darkInMiddle). Run after
+ * greyAndStretch (it reads the red channel as the grey). In place.
  * @param {Uint8ClampedArray} px  RGBA, already grey
- * @param {number} [w] @param {number} [h]  the picture's size, to judge from its middle
- * @returns {{ threshold: number, inverted: boolean }}
+ * @param {number} w @param {number} h
+ * @param {{ win?: number, t?: number }} [opts]
+ * @returns {{ inverted: boolean }}
  */
-export function blackAndWhite(px, w = 0, h = 0) {
-  const n = px.length / 4;
-  const hist = new Uint32Array(256);
-  for (let i = 0; i < n; i++) hist[px[i * 4]]++;
-  let sum = 0;
-  for (let t = 0; t < 256; t++) sum += t * hist[t];
-  let sumB = 0, wB = 0, best = 0, threshold = 127;
-  for (let t = 0; t < 256; t++) {
-    wB += hist[t];
-    if (!wB) continue;
-    const wF = n - wB;
-    if (!wF) break;
-    sumB += t * hist[t];
-    const mB = sumB / wB, mF = (sum - sumB) / wF;
-    const between = wB * wF * (mB - mF) * (mB - mF);
-    if (between > best) { best = between; threshold = t; }
+export function blackAndWhite(px, w, h, { win = 0.4, t = 0.1 } = {}) {
+  const W = w + 1;
+  const sums = new Float64Array(W * (h + 1));            // summed-area table of the grey
+  for (let y = 0; y < h; y++) {
+    let row = 0;
+    for (let x = 0; x < w; x++) {
+      row += px[(y * w + x) * 4];
+      sums[(y + 1) * W + x + 1] = sums[y * W + x + 1] + row;
+    }
   }
-  for (let i = 0; i < n; i++) {
-    const v = px[i * 4] <= threshold ? 0 : 255;
-    px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = v;
+  const r = Math.max(1, Math.round((win * h) / 2));
+  const out = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const y0 = Math.max(0, y - r), y1 = Math.min(h - 1, y + r);
+    for (let x = 0; x < w; x++) {
+      const x0 = Math.max(0, x - r), x1 = Math.min(w - 1, x + r);
+      const count = (x1 - x0 + 1) * (y1 - y0 + 1);
+      const sum = sums[(y1 + 1) * W + x1 + 1] - sums[y0 * W + x1 + 1] - sums[(y1 + 1) * W + x0] + sums[y0 * W + x0];
+      out[y * w + x] = px[(y * w + x) * 4] * count < sum * (1 - t) ? 0 : 255;
+    }
+  }
+  for (let i = 0; i < w * h; i++) {
+    px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = out[i];
     px[i * 4 + 3] = 255;
   }
-  // Which way round: from the middle when the size is known (darkInMiddle —
-  // the whole crop is fooled by the dark bodywork round a plate), else the
-  // whole picture.
-  let inverted;
-  if (w && h) inverted = darkInMiddle(px, w, h);
-  else {
-    let dark = 0;
-    for (let i = 0; i < n; i++) if (px[i * 4] === 0) dark++;
-    inverted = dark > n / 2;
-  }
+  const inverted = darkInMiddle(px, w, h);
   if (inverted) invert(px);
-  return { threshold, inverted };
+  return { inverted };
 }
 
 /**
