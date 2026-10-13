@@ -532,3 +532,18 @@ npx tailwindcss -i src/app.css -o dist/app.css --watch --watch-stats
     padding: 0 !important;
   }
 }
+
+/* iPhone zoom. Safari on iOS zooms the whole page when a text box under 16px is
+   tapped, and does not zoom back, so every entry on a walk meant pinching out.
+   On touch screens only, every typing box is at least 16px. !important because
+   the phone apps' scoped styles (e.g. WalkInput's 0.875rem) are more specific
+   than an element selector. Desktop is untouched. Do not "fix" this with
+   maximum-scale=1 in the viewport: that also stops people zooming on purpose. */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='color']),
+  select,
+  textarea,
+  [contenteditable='true'] {
+    font-size: max(16px, 1em) !important;
+  }
+}
