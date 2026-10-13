@@ -349,7 +349,12 @@
   style="--ts-accent: {accent}" data-testid="text-scanner">
   <div class="ts-head">
     <span class="ts-title">{title || `Scan a ${prof.label.toLowerCase()}`}</span>
-    <button class="ts-btn" on:click={close}>Close</button>
+    <span class="ts-head-actions">
+      <!-- In the header so it is always on screen (2026-10-13: at the foot of the
+           panel it could be scrolled out of sight on a phone). -->
+      <button class="ts-btn" on:click={toggleDiag} aria-pressed={diagOn}>{diagOn ? 'Hide what the reader sees' : 'What the reader sees'}</button>
+      <button class="ts-btn" on:click={close}>Close</button>
+    </span>
   </div>
 
   <div class="ts-view">
@@ -386,8 +391,11 @@
     {:else if live}
       <p class="ts-status" aria-live="polite" data-testid="scan-status">{liveStatus}</p>
     {/if}
-    {#if live && seeing && !matches.length && !held}
-      <p class="ts-seeing" data-testid="scan-seeing">Seeing: <span>{seeing}</span></p>
+    <!-- Always shown while the camera is live (2026-10-13): when it came and went
+         the panel changed height, and the camera view and guide box above it
+         jumped about. Empty is a dash, not a missing line. -->
+    {#if live}
+      <p class="ts-seeing" data-testid="scan-seeing">Seeing: <span>{seeing && !matches.length && !held ? seeing : '—'}</span></p>
     {/if}
 
     {#if matches.length}
@@ -417,8 +425,7 @@
         <button class="ts-btn" on:click={scanLiveAgain}>Scan live again</button>
       {/if}
     </div>
-    <p class="ts-note">Read on this device — the picture is not sent or kept.
-      <button class="ts-link" on:click={toggleDiag} aria-pressed={diagOn}>{diagOn ? 'Hide what the reader sees' : 'What the reader sees'}</button></p>
+    <p class="ts-note">Read on this device — the picture is not sent or kept.</p>
     {#if diagOn}
       <div class="ts-diag" data-testid="scan-diagnostics">
         {#if diag}
@@ -448,6 +455,7 @@
   .ts-title { font-weight: 600; }
   .ts-view { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; background: #000; }
   .ts-view video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ts-head-actions { display: inline-flex; gap: 0.4rem; flex-wrap: wrap; justify-content: flex-end; }
   .ts-link { background: none; border: 0; padding: 0; margin-left: 0.4rem; color: var(--ts-accent); text-decoration: underline; cursor: pointer; font: inherit; }
   .ts-diag { border: 1px solid #334155; border-radius: 8px; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.25rem; }
   .ts-diag img { max-width: 100%; image-rendering: pixelated; background: #fff; border: 1px solid #475569; }
