@@ -23,7 +23,7 @@
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { startReader, readText } from '#lib/utils/textScan/ocrReader.js';
   import { matchScan, readingsFrom, scanProfile } from '#lib/utils/textScan/scanMatch.js';
-  import { guideCrop, readSize, greyAndStretch, blackAndWhite, withMargin } from '#lib/utils/textScan/scanImage.js';
+  import { guideCrop, readSize, greyAndStretch, blackAndWhite, clearEdgesAndSpecks, closeGaps, withMargin } from '#lib/utils/textScan/scanImage.js';
   import { errMessage } from '#lib/utils/errors.js';
   import { cameraHelp } from '#lib/utils/textScan/cameraHelp.js';
   import { createScanTally } from '#lib/utils/textScan/scanTally.js';
@@ -185,9 +185,11 @@
   }
 
   /**
-   * Draw the picture, then make it what the reader reads best (2026-10-12):
-   * grey with the contrast stretched, black and white, and a white margin so
-   * the letters do not touch the edge. Returns the canvas for the reader, and
+   * Draw the picture, then make it what the reader reads best (2026-10-12/13,
+   * tuned on the user's car-park pictures): grey with the contrast stretched,
+   * black and white (which way round judged from the middle), dark areas
+   * touching the edge and specks cleared, small gaps in letters closed, and a
+   * white margin so the letters do not touch the edge. Returns the canvas for the reader, and
    * the drawn one for the diagnostics.
    * @param {(ctx: CanvasRenderingContext2D) => void} draw
    * @param {number} w @param {number} h
@@ -200,7 +202,13 @@
     const img = rctx.getImageData(0, 0, w, h);
     const work = new Uint8ClampedArray(img.data);
     greyAndStretch(work);
-    const bw = blackAndWhite(work);
+    // Which way round is judged from the middle: the dark bodywork round a
+    // plate fooled a whole-picture judgement on some frames and not others.
+    const bw = blackAndWhite(work, w, h);
+    // The bodywork, bumper and plate border touch the crop's edge and were
+    // read as letters; a nick in a letter's stroke read a D as "II".
+    clearEdgesAndSpecks(work, w, h);
+    closeGaps(work, w, h, 1);
     const padded = withMargin(work, w, h, Math.max(4, Math.round(h * 0.15)));
     const out = document.createElement('canvas');
     out.width = padded.w; out.height = padded.h;
