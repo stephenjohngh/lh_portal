@@ -110,3 +110,17 @@ describe('profiles', () => {
     }
   });
 });
+
+describe('number plates are put right by the UK formats (ukPlate.js, 2026-10-13)', () => {
+  it('a plate read with I for 1 is offered as the right plate, and matches exactly', async () => {
+    const { readingsFrom: rf, matchScan: ms } = await import('./scanMatch.js');
+    expect(rf('OE2I XXD', 'registration')[0]).toBe('OE21XXD');
+    const m = ms('0E2I XXD', [{ value: 'OE21 XXD' }, { value: 'OE21 XYZ' }], 'registration');
+    expect(m.map((x) => x.value)).toEqual(['OE21 XXD']);
+    expect(m[0].exact).toBe(true);
+  });
+  it('a door number is not touched by plate formats', async () => {
+    const { readingsFrom: rf } = await import('./scanMatch.js');
+    expect(rf('I2', 'number')).toContain('I2');
+  });
+});

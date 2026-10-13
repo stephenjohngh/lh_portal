@@ -128,11 +128,11 @@ describe('TextScanner', () => {
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(/** @type {any} */ ({ width: 375, height: 600 }));
     const fakeStream = { getVideoTracks: () => [{ getCapabilities: () => ({}) }], getTracks: () => [{ stop: () => {} }] };
     Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => fakeStream } });
-    h.text = 'AB12 C';                       // part of a plate — on no list yet
+    h.text = 'XY7';                          // part of a plate — on no list, and no plate format changes it
     try {
       render(TextScanner, { props: { profile: 'registration', candidates: CANDIDATES } });
       expect(await screen.findByTestId('scan-sweep')).toBeTruthy();
-      await waitFor(() => expect(screen.getByTestId('scan-seeing').textContent).toMatch(/AB12C/), { timeout: 3000 });
+      await waitFor(() => expect(screen.getByTestId('scan-seeing').textContent).toMatch(/XY7/), { timeout: 3000 });
       expect(screen.getByTestId('scan-status').textContent).toMatch(/Reading|keep it steady/);
       expect(screen.getByTestId('text-scanner').querySelector('[data-state]')?.getAttribute('data-state')).toBe('seeing');
     } finally {

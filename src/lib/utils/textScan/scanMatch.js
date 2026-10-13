@@ -11,10 +11,12 @@
 // reliable than reading cold. What was read is always offered too, so a value
 // that is on no list can still be used, or corrected by hand.
 
+import { fixUkPlate } from './ukPlate.js';
+
 /**
  * What can be read. A profile limits the characters the reader may return
  * (fewer choices, fewer mistakes) and the length of a sensible answer.
- * @typedef {{ label: string, charset: string, minLength: number, maxLength: number, aspect: number, boxFraction?: number, edgeMarks?: string[] }} ScanProfile
+ * @typedef {{ label: string, charset: string, minLength: number, maxLength: number, aspect: number, boxFraction?: number, edgeMarks?: string[], fix?: (v: string) => ({ value: string } | null) }} ScanProfile
  * `aspect` is the camera guide box's shape, wide to 1 high. `edgeMarks` are
  * letters printed beside the value that are not part of it (a plate's GB band).
  */
@@ -26,7 +28,9 @@ export const SCAN_PROFILES = {
   // screen wide (2026-10-12; it was 82%, which meant holding the phone about half
   // a metre away to fill it — from a normal distance the plate was a strip lost
   // in bodywork).
-  registration: { label: 'Number plate', charset: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', minLength: 2, maxLength: 8, aspect: 4.7, boxFraction: 0.6, edgeMarks: ['GB', 'UK', 'NI', 'CYM', 'ENG', 'SCO'] },
+  registration: { label: 'Number plate', charset: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', minLength: 2, maxLength: 8, aspect: 4.7, boxFraction: 0.6, edgeMarks: ['GB', 'UK', 'NI', 'CYM', 'ENG', 'SCO'],
+    // I/1 and O/0 put right by position in the UK formats (ukPlate.js, 2026-10-13).
+    fix: fixUkPlate },
   // A number painted or fixed on something — a door, a riser, a meter. Digits
   // and letters, plus the separators such numbers use (G.04, 3/12, B-2).
   number:       { label: 'Number', charset: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789./-', minLength: 1, maxLength: 10, aspect: 2 },
@@ -67,8 +71,12 @@ export function readingsFrom(text, profile) {
   const prof = scanProfile(profile);
   const found = new Set();
   const add = (/** @type {string} */ raw) => {
-    const v = normaliseScan(raw, prof);
-    if (v.length >= prof.minLength && v.length <= prof.maxLength) found.add(v);
+    let v = normaliseScan(raw, prof);
+    if (v.length < prof.minLength || v.length > prof.maxLength) return;
+    // A reading that fits the profile's format is put right by it (a plate's
+    // I in a digit slot is a 1); one that fits none is kept as read.
+    if (prof.fix) v = prof.fix(v)?.value ?? v;
+    found.add(v);
   };
   for (const line of String(text ?? '').split(/\r?\n/)) {
     const words = line.split(/\s+/).filter((w) => normaliseScan(w, prof));

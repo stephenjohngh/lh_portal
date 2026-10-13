@@ -111,7 +111,9 @@ describe('holding a definite answer', () => {
 
   it('before anything is definite, the tentative view is shown as before', () => {
     const tally = createScanTally();
-    const t = run(tally, ['ABC I23', 'ABC I23']);         // close match twice: offered, not yet definite
+    // close match twice: offered, not yet definite. (G for C is a lookalike the
+    // plate formats cannot settle; I for 1 now can — ukPlate.js — and would be exact.)
+    const t = run(tally, ['ABG 123', 'ABG 123']);
     const v = tally.view(t);
     expect(v.held).toBe(false);
     expect(v.matches.map((m) => m.value)).toEqual(['ABC 123']);
