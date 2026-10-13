@@ -18,7 +18,7 @@ import { requireUserId } from '#lib/utils/currentUser.js';
 import { logAudit } from '#lib/utils/auditLogger.js';
 import { getLogger } from '#lib/utils/logger.js';
 import { storeLoader } from '#lib/utils/storeLoad.js';
-import { validatePermit, permitRow, permitNumberLabel, hhmm, endNowFields } from '../utils/permitModel.js';
+import { validatePermit, permitRow, permitNumberLabel, hhmm, endNowFields, correctionFields } from '../utils/permitModel.js';
 import { today, fmtTime } from '#lib/utils/dates.js';
 
 const logger = getLogger('ParkingPermits');
@@ -88,6 +88,24 @@ function createPermitStore() {
     update((s) => ({ ...s, permits: s.permits.map((p) => (p.id === id ? { ...p, ...saved } : p)) }));
     logAudit('update', 'parking_permit', id, `Permit ${permitNumberLabel(permit_number)} ended early`, AUDIT);
     return saved;
+  }
+
+  /**
+   * Correct an issued permit (migration 244): the number stays, the details
+   * change, and the row records who corrected it and when. The audit line
+   * names the permit number and WHICH fields changed — never the values.
+   */
+  async function correct(permit, fields) {
+    const { id, permit_number } = permit;
+    const result = correctionFields(permit, fields);
+    if ('error' in result) throw new Error(result.error);
+    const saved = await api.update('parking_permits', id, {
+      ...result.row, corrected_at: new Date().toISOString(), corrected_by: await requireUserId(),
+    }, true);
+    update((s) => ({ ...s, permits: s.permits.map((p) => (p.id === id ? { ...p, ...saved } : p)) }));
+    logAudit('update', 'parking_permit', id,
+      `Permit ${permitNumberLabel(permit_number)} corrected (${result.changed.join(', ')})`, AUDIT);
+    return { ...permit, ...saved };
   }
 
   /** Delete a permit issued in error (admin). Its number is not reused. */
@@ -180,7 +198,7 @@ function createPermitStore() {
     await load();
   }
 
-  return { subscribe, load, ensureLoaded, issue, endEarly, remove, saveTemplate, setImage, clearImage };
+  return { subscribe, load, ensureLoaded, issue, endEarly, correct, remove, saveTemplate, setImage, clearImage };
 }
 
 export const permitStore = createPermitStore();

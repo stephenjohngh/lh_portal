@@ -3,8 +3,10 @@
      Issue: company, registration, valid from/to, issued by — the database
      gives the next number, the record is kept, and the finished A4 permit
      downloads as a PDF built in the browser from the admin's template.
-     Anyone with an editable Parking grant issues; an admin deletes a permit
-     issued in error and sets the template (PermitTemplatePanel). -->
+     Anyone with an editable Parking grant issues, and corrects a mistake with
+     Edit (migration 244: same number, re-downloaded to print again); an admin
+     deletes a permit issued in error and sets the template
+     (PermitTemplatePanel). -->
 <script>
   import { onMount } from 'svelte';
   import { permitStore } from '../stores/permitStore.js';
@@ -19,7 +21,7 @@
   import { errMessage } from '#lib/utils/errors.js';
   import {
     PERMIT_DURATIONS, validToFor, validatePermit, permitNumberLabel, permitStatus, permitDays,
-    reissueFields, recentValues, hhmm, fmtPermitWhen, DEFAULT_PERMIT_TIMES,
+    reissueFields, recentValues, hhmm, fmtPermitWhen, DEFAULT_PERMIT_TIMES, correctionFields,
   } from '../utils/permitModel.js';
   import PermitTemplatePanel from './PermitTemplatePanel.svelte';
   import Button        from '#lib/components/common/Button.svelte';
@@ -84,12 +86,60 @@
   // the issuer as whoever is issuing now.
   let issueSection;
   function reissue(p) {
+    editing = null;
     form = { ...form, ...reissueFields(p, today()), valid_from_time: startTime, valid_to_time: endTime };
     duration = 'day';
     issueError = '';
     issuedNote = `Filled in from permit ${permitNumberLabel(p.permit_number)} — check the dates, then issue.`;
     issueSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+  // ── Correct ─────────────────────────────────────────────────────────────
+  // Edit puts an issued permit into the same form. Saving keeps its number,
+  // records the correction and downloads it again to print; the old printed
+  // copy is then wrong and should be thrown away.
+  /** @type {any} */
+  let editing = null;
+  function startEdit(p) {
+    editing = p;
+    form = {
+      company: p.company ?? '', registration: p.registration ?? '',
+      valid_from: p.valid_from, valid_from_time: hhmm(p.valid_from_time),
+      valid_to: p.valid_to, valid_to_time: hhmm(p.valid_to_time),
+      issued_by: p.issued_by ?? '',
+    };
+    duration = 'custom';
+    issueError = ''; issuedNote = '';
+    issueSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function cancelEdit() {
+    const keep = form.issued_by;
+    editing = null;
+    form = { ...blankForm(), issued_by: keep };
+    duration = 'day';
+    issueError = '';
+  }
+  $: datesLocked = !!editing?.ended_early_at;
+
+  async function saveCorrection() {
+    issueError = ''; issuedNote = '';
+    const target = editing;
+    const check = correctionFields(target, form);
+    if ('error' in check) { issueError = check.error; return; }
+    issuing = true;
+    let saved = null;
+    try {
+      saved = await permitStore.correct(target, form);
+      await download(saved);
+      issuedNote = `Permit ${permitNumberLabel(saved.permit_number)} corrected and downloaded — print it, and throw the old copy away.`;
+      cancelEdit();
+    } catch (/** @type {any} */ err) {
+      issueError = saved
+        ? `Permit ${permitNumberLabel(saved.permit_number)} was corrected, but the file could not be made: ${errMessage(err)} Use ⬇ PDF in the list to try again.`
+        : errMessage(err, 'The permit could not be corrected.');
+      if (saved) editing = null;
+    } finally { issuing = false; }
+  }
+
   // Suggestions while typing, from the permits already issued (newest first).
   $: companies = recentValues($permitStore.permits, 'company');
   $: registrations = recentValues($permitStore.permits, 'registration');
@@ -190,7 +240,12 @@
   <div class="grid gap-4 lg:grid-cols-[19rem_1fr]">
     <!-- Issue -->
     <section bind:this={issueSection} class="bg-slate-800/60 border border-slate-700 rounded-xl p-4 space-y-3 self-start">
-      <h3 class="text-white font-semibold">Issue a permit</h3>
+      <h3 class="text-white font-semibold">
+        {editing ? `Correct permit ${permitNumberLabel(editing.permit_number)}` : 'Issue a permit'}
+      </h3>
+      {#if editing}
+        <p class="text-xs text-amber-300">The number stays the same. Saving downloads the corrected permit to print; throw the old printed copy away.</p>
+      {/if}
       {#if !canEdit}
         <p class="text-sm text-slate-400">You can see the permits issued, but not issue one.</p>
       {:else}
@@ -198,6 +253,7 @@
         <datalist id="permit-companies">{#each companies as c}<option value={c}></option>{/each}</datalist>
         <FormInput label="Vehicle registration" bind:value={form.registration} required inputClass="uppercase" list="permit-registrations" />
         <datalist id="permit-registrations">{#each registrations as r}<option value={r}></option>{/each}</datalist>
+        {#if !editing}
         <div>
           <p class="text-xs text-slate-400 mb-1">For</p>
           <div class="flex gap-2">
@@ -210,19 +266,26 @@
             {#if duration === 'custom'}<span class="text-xs text-slate-400 self-center">Dates set by hand</span>{/if}
           </div>
         </div>
+        {/if}
         <div class="grid grid-cols-[1fr_6.5rem] gap-2">
-          <FormInput label="Valid from" type="date" bind:value={form.valid_from} on:change={fromChanged} required />
-          <FormInput label="Time" type="time" bind:value={form.valid_from_time} required />
+          <FormInput label="Valid from" type="date" bind:value={form.valid_from} on:change={fromChanged} required disabled={datesLocked} />
+          <FormInput label="Time" type="time" bind:value={form.valid_from_time} required disabled={datesLocked} />
         </div>
         <div class="grid grid-cols-[1fr_6.5rem] gap-2">
-          <FormInput label="Valid to" type="date" bind:value={form.valid_to} min={form.valid_from} on:change={toChanged} required />
-          <FormInput label="Time" type="time" bind:value={form.valid_to_time} required />
+          <FormInput label="Valid to" type="date" bind:value={form.valid_to} min={form.valid_from} on:change={toChanged} required disabled={datesLocked} />
+          <FormInput label="Time" type="time" bind:value={form.valid_to_time} required disabled={datesLocked} />
         </div>
+        {#if datesLocked}<p class="text-xs text-slate-400">This permit was ended early, so its dates stay as they are.</p>{/if}
         <FormInput label="Issued by" bind:value={form.issued_by} required />
         {#if issueError}<ErrorDisplay message={issueError} />{/if}
         {#if issuedNote}<p class="text-sm text-green-400" data-testid="issued-note">{issuedNote}</p>{/if}
-        <Button on:click={issue} loading={issuing} disabled={issuing} fullWidth>Issue and download permit</Button>
-        <p class="text-xs text-slate-500">The next number is given when you press the button. The permit is a PDF to print.</p>
+        {#if editing}
+          <Button on:click={saveCorrection} loading={issuing} disabled={issuing} fullWidth>Save correction and download</Button>
+          <Button variant="secondary" on:click={cancelEdit} disabled={issuing} fullWidth>Cancel</Button>
+        {:else}
+          <Button on:click={issue} loading={issuing} disabled={issuing} fullWidth>Issue and download permit</Button>
+          <p class="text-xs text-slate-500">The next number is given when you press the button. The permit is a PDF to print.</p>
+        {/if}
       {/if}
     </section>
 
@@ -270,9 +333,12 @@
                       <span class="text-slate-500">({permitDays(p)} {permitDays(p) === 1 ? 'day' : 'days'})</span></div>
                   </td>
                   <td class="px-3 py-2">{p.issued_by}</td>
-                  <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-xs {st.cls}">{p.ended_early_at ? 'Ended early' : st.label}</span></td>
+                  <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-xs {st.cls}">{p.ended_early_at ? 'Ended early' : st.label}</span>
+                    {#if p.corrected_at}<div class="text-xs text-slate-500 mt-1">Corrected</div>{/if}</td>
                   <td class="px-3 py-2 text-right whitespace-nowrap">
                     {#if canEdit}
+                      <Button size="small" variant="secondary" title="Correct a mistake on this permit — it keeps its number"
+                        disabled={issuing} on:click={() => startEdit(p)}>Edit</Button>
                       <Button size="small" variant="secondary" title="Fill in the form with this company and vehicle, for new dates"
                         on:click={() => reissue(p)}>Use details</Button>
                     {/if}

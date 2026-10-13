@@ -180,3 +180,32 @@ export function endNowFields(permit, todayISO, nowTime) {
   }
   return { valid_to: todayISO, valid_to_time: t };
 }
+
+const CORRECTABLE = Object.freeze([
+  ['company', 'company'], ['registration', 'registration'],
+  ['valid_from', 'start date'], ['valid_from_time', 'start time'],
+  ['valid_to', 'end date'], ['valid_to_time', 'end time'],
+  ['issued_by', 'issued by'],
+]);
+
+/**
+ * Correcting an issued permit (migration 244): the same number, new details.
+ * Returns `{ row, changed }` — the fields to save and the NAMES of the fields
+ * that differ (for the audit line, which never carries the values) — or
+ * `{ error }`. ⛔ A permit ended early keeps its dates: its end is when it was
+ * stopped, and the database refuses a correction that moves them.
+ * @param {Record<string, any>} permit  as saved
+ * @param {Record<string, any>} fields  from the form
+ */
+export function correctionFields(permit, fields) {
+  const problem = validatePermit(fields);
+  if (problem) return { error: problem };
+  const row = permitRow(fields);
+  const before = { ...permitRow(permit) };
+  const changed = CORRECTABLE.filter(([k]) => row[k] !== before[k]).map(([, label]) => label);
+  if (changed.length === 0) return { error: 'Nothing has been changed.' };
+  if (permit.ended_early_at && ['valid_from', 'valid_from_time', 'valid_to', 'valid_to_time'].some((k) => row[k] !== before[k])) {
+    return { error: 'This permit was ended early, so its dates cannot be corrected. Correct the other details, or issue a new permit.' };
+  }
+  return { row, changed };
+}

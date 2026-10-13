@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { endNowFields } from './permitModel.js';
+import { endNowFields, correctionFields } from './permitModel.js';
 import {
   validToFor, displayReg, validatePermit, permitRow, permitNumberLabel, permitStatus, permitDays, permitFilename,
   reissueFields, recentValues, hhmm, fmtPermitWhen, findPermitsByRegistration,
@@ -143,5 +143,35 @@ describe('endNowFields — ending a permit early (migration 239)', () => {
   it('refuses the minute it started — the end must be after the start', () => {
     expect(endNowFields(p, '2026-10-10', '07:00')).toHaveProperty('error');
     expect(endNowFields(p, '2026-10-10', '07:01')).toEqual({ valid_to: '2026-10-10', valid_to_time: '07:01' });
+  });
+});
+
+describe('correctionFields — correcting an issued permit (migration 244)', () => {
+  const saved = { permit_number: 104, company: 'Acme Scaffolding', registration: 'AB12 CDE',
+    valid_from: '2026-10-06', valid_from_time: '07:00:00', valid_to: '2026-10-06', valid_to_time: '19:00:00',
+    issued_by: 'J Smith', ended_early_at: null };
+  const asForm = { ...saved, valid_from_time: '07:00', valid_to_time: '19:00' };
+
+  it('names the fields that changed, never their values', () => {
+    const r = correctionFields(saved, { ...asForm, registration: 'ab12 cdf', company: 'Acme Ltd' });
+    expect(r).not.toHaveProperty('error');
+    expect(r.changed).toEqual(['company', 'registration']);
+    expect(r.row.registration).toBe('AB12 CDF');
+    expect(r.row).not.toHaveProperty('permit_number');
+    expect(JSON.stringify(r.changed)).not.toMatch(/AB12|Acme/);
+  });
+
+  it('the same details in lower case are not a change', () => {
+    expect(correctionFields(saved, { ...asForm, registration: 'ab12 cde' })).toEqual({ error: 'Nothing has been changed.' });
+  });
+
+  it('applies the same rules as issuing', () => {
+    expect(correctionFields(saved, { ...asForm, company: '  ' })).toEqual({ error: 'Enter the company name.' });
+  });
+
+  it('an ended-early permit keeps its dates, but its other details can be put right', () => {
+    const ended = { ...saved, ended_early_at: '2026-10-06T10:00:00Z' };
+    expect(correctionFields(ended, { ...asForm, valid_to: '2026-10-07' })).toHaveProperty('error');
+    expect(correctionFields(ended, { ...asForm, registration: 'AB12 CDF' }).changed).toEqual(['registration']);
   });
 });

@@ -3919,6 +3919,8 @@ export type Database = {
           valid_to_time: string
           ended_early_at: string | null
           ended_early_by: string | null
+          corrected_at: string | null
+          corrected_by: string | null
         }
         Insert: {
           id?: string
@@ -3934,6 +3936,8 @@ export type Database = {
           valid_to_time?: string
           ended_early_at?: string | null
           ended_early_by?: string | null
+          corrected_at?: string | null
+          corrected_by?: string | null
         }
         Update: {
           id?: string
@@ -3949,6 +3953,8 @@ export type Database = {
           valid_to_time?: string
           ended_early_at?: string | null
           ended_early_by?: string | null
+          corrected_at?: string | null
+          corrected_by?: string | null
         }
         Relationships: [
             {
@@ -3961,6 +3967,13 @@ export type Database = {
             {
               foreignKeyName: "parking_permits_ended_early_by_fkey"
               columns: ["ended_early_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_permits_corrected_by_fkey"
+              columns: ["corrected_by"]
               isOneToOne: false
               referencedRelation: "profiles"
               referencedColumns: ["id"]
