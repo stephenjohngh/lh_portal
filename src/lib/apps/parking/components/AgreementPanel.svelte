@@ -24,6 +24,7 @@
   import Checkbox      from '#lib/components/common/Checkbox.svelte';
   import ErrorDisplay  from '#lib/components/common/ErrorDisplay.svelte';
   import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
+  import HolderModal   from './HolderModal.svelte';
 
   /** @type {import('../utils/bayModel.js').AgreementRow | null} */
   export let agreement = null;
@@ -71,6 +72,7 @@
   let shownFor = null;
   $: if (agreement?.id !== shownFor) {
     shownFor = agreement?.id; editing = false; ending = null; noticing = false; moving = false; error = '';
+    changingHolder = false; editingHolder = false;
     refreshTimeline();
   }
   function startEdit() {
@@ -79,6 +81,21 @@
       max_vehicles: String(agreement.max_vehicles ?? 1), notes: agreement.notes ?? '' };
     editing = true; error = '';
   }
+
+  // A holder entered wrongly (user, 2026-10-14): Edit corrects their details
+  // (the same person on every agreement they hold); on a draft, Change puts a
+  // different holder on it.
+  let editingHolder = false;
+  let changingHolder = false;
+  let newHolderId = '';
+  $: holderOptions = s.holders.filter(h => h.id !== agreement?.holder_id).map(h => ({
+    value: h.id, label: `${h.company_name ? h.company_name + ' — ' : ''}${h.display_name} (${HOLDER_TYPE_LABEL[h.holder_type]})`,
+  }));
+  $: canChangeHolder = canEdit && agreement?.status === 'draft' && !fromOffer;
+  function askChangeHolder() { newHolderId = ''; changingHolder = true; error = ''; }
+  const saveHolderChange = () => { const a = id(); const h = newHolderId;
+    if (!h) { error = 'Choose the holder.'; return; }
+    return run(async () => { await parkingStore.changeHolder(a, h); changingHolder = false; }); };
 
   let newVehicle = { registration: '', make: '', model: '', colour: '', is_ev: false };
 
@@ -196,6 +213,25 @@
       <dd class="text-slate-200">
         {#if holder}{holder.company_name ? holder.company_name + ' — ' : ''}{holder.display_name}
           <span class="text-slate-500">· {HOLDER_TYPE_LABEL[holder.holder_type]}</span>{/if}
+        {#if canEdit && holder}
+          <span class="inline-flex gap-1 ml-1 align-middle">
+            <Button variant="tertiary" size="xs" title="Correct this holder’s name, email or phone — it changes them on every agreement they hold"
+              on:click={() => editingHolder = true}>Edit</Button>
+            {#if canChangeHolder}
+              <Button variant="tertiary" size="xs" title="Put a different holder on this draft" on:click={askChangeHolder}>Change</Button>
+            {/if}
+          </span>
+        {/if}
+        {#if changingHolder}
+          <div class="mt-2 space-y-2">
+            <FormSelect label="Holder for this draft" bind:value={newHolderId} options={holderOptions} placeholder="-- Choose --" />
+            <p class="text-xs text-slate-500">Not listed? Add them on the Holders tab first.</p>
+            <div class="flex gap-2">
+              <Button size="small" variant="primary" disabled={busy} on:click={saveHolderChange}>Change holder</Button>
+              <Button size="small" variant="secondary" on:click={() => changingHolder = false}>Cancel</Button>
+            </div>
+          </div>
+        {/if}
       </dd>
       {#if holder?.email || holder?.phone}
         <dt class="text-slate-500">Contact</dt>
@@ -497,3 +533,5 @@
     on:cancel={() => confirmDelete = false}
   />
 {/if}
+
+<HolderModal show={editingHolder} {holder} on:close={() => editingHolder = false} on:saved={() => editingHolder = false} />

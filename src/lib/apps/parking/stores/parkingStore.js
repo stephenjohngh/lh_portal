@@ -228,6 +228,36 @@ function createParkingStore() {
   }
 
   /**
+   * Put the right holder on a DRAFT agreement chosen with the wrong one
+   * (user, 2026-10-14). ⛔ Drafts only: an active licence was made with the
+   * person named on it — a different party is a new agreement. A draft made
+   * from an accepted waiting-list offer keeps its applicant. The audit line
+   * names the agreement, never either person (the Parking rule).
+   */
+  async function changeHolder(id, holderId) {
+    const s = state();
+    const current = s.agreements.find(a => a.id === id);
+    if (!current) throw new Error('Agreement not found.');
+    if (current.status !== 'draft') {
+      throw new Error('Only a draft can change holder. Correct the holder’s details instead, or end this agreement and make a new one.');
+    }
+    if (s.applications.some(a => a.agreement_id === id && a.status === 'allocated')) {
+      throw new Error('This draft came from a waiting-list offer, so it stays with that applicant. Delete the draft to reopen the offer.');
+    }
+    if (holderId === current.holder_id) throw new Error('That is already the holder.');
+    const bay = s.bays.find(b => b.bay_id === current.bay_id);
+    const holder = s.holders.find(h => h.id === holderId);
+    const problem = validateAgreement({ ...current, holder_id: holderId }, bay, holder, s.agreements);
+    if (problem) throw new Error(problem);
+    const saved = await api.update('parking_agreements', id,
+      { holder_id: holderId, updated_by: requireUserId() }, true);
+    update(st => ({ ...st, agreements: st.agreements.map(a => a.id === id ? saved : a) }));
+    remerge();
+    logAudit('update', 'parking_agreement', id, `${saved.reference} — holder changed`, AUDIT);
+    return saved;
+  }
+
+  /**
    * Move an agreement through its lifecycle. Ending or terminating needs the
    * date it ended; ended and terminated are final, and a bay comes back by a
    * NEW agreement so the old one stays true about what happened.
@@ -672,7 +702,7 @@ function createParkingStore() {
     addTariff, deleteTariff,
     retentionDue, retentionRuns, runRetention,
     saveHolder,
-    createAgreement, updateAgreement, setStatus, deleteDraft,
+    createAgreement, updateAgreement, changeHolder, setStatus, deleteDraft,
     serveNotice, withdrawNotice,
     issueDevice, returnDevice, refundDeposit,
     moveToBay, loadEvents,

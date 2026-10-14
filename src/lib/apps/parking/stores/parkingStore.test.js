@@ -415,3 +415,38 @@ describe('changeVehicle (one vehicle per agreement)', () => {
     expect(get(parkingStore).vehicles.find((v) => v.id === 'v-old').to_date).toBeNull();
   });
 });
+
+describe('changeHolder (a draft made with the wrong holder)', () => {
+  const bob = { id: 'h2', holder_type: 'leaseholder', display_name: 'Bob Private', email: 'bob@example.com' };
+  const draft = { id: 'd1', reference: 'PA-0002', bay_id: 'b1', holder_id: 'h1', basis: 'licence',
+    status: 'draft', starts_on: '2026-10-01', ends_on: null };
+
+  beforeEach(() => {
+    tables.parking_bays = [{ id: 'b1', space_id: 's22', tenure: 'licensable' }];
+    tables.parking_holders = [holder, bob];
+    tables.parking_applications = [];
+  });
+
+  it('moves a draft to another holder, and the audit line names neither person', async () => {
+    tables.parking_agreements = [draft];
+    await parkingStore.load();
+    await parkingStore.changeHolder('d1', 'h2');
+    expect(h.api.update).toHaveBeenCalledWith('parking_agreements', 'd1',
+      expect.objectContaining({ holder_id: 'h2' }), true);
+    expect(get(parkingStore).agreements.find(a => a.id === 'd1').holder_id).toBe('h2');
+    const logged = JSON.stringify(h.logAudit.mock.calls);
+    for (const s of ['Alice', 'Bob', 'example.com']) expect(logged).not.toContain(s);
+  });
+
+  it('refuses a live agreement, and a draft made from a waiting-list offer', async () => {
+    tables.parking_agreements = [{ ...draft, status: 'active' }];
+    await parkingStore.load();
+    await expect(parkingStore.changeHolder('d1', 'h2')).rejects.toThrow(/Only a draft/);
+
+    tables.parking_agreements = [draft];
+    tables.parking_applications = [{ id: 'app1', holder_id: 'h1', status: 'allocated', agreement_id: 'd1', joined_on: '2026-01-01' }];
+    await parkingStore.load();
+    await expect(parkingStore.changeHolder('d1', 'h2')).rejects.toThrow(/waiting-list offer/);
+    expect(h.api.update).not.toHaveBeenCalledWith('parking_agreements', 'd1', expect.anything(), true);
+  });
+});
