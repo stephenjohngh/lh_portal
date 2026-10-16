@@ -186,7 +186,7 @@ describe('TextScanner', () => {
     expect(d.textContent).toMatch(/Read: AB12 CDE · 80% sure/);
     expect(d.textContent).toMatch(/photo 400×300/);
     expect(d.querySelectorAll('img')).toHaveLength(2);
-    expect(screen.getByRole('button', { name: 'Save these two pictures' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Save pictures' })).toBeTruthy();
     await fireEvent.click(screen.getByRole('button', { name: 'Hide what the reader sees' }));
     expect(screen.queryByTestId('scan-diagnostics')).toBeNull();
   });

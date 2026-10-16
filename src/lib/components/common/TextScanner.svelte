@@ -362,6 +362,9 @@
       <!-- In the header so it is always on screen (2026-10-13: at the foot of the
            panel it could be scrolled out of sight on a phone). -->
       <button class="ts-btn" on:click={toggleDiag} aria-pressed={diagOn}>{diagOn ? 'Hide what the reader sees' : 'What the reader sees'}</button>
+      {#if diagOn && diag}
+        <button class="ts-btn ts-save" on:click={saveDiag} data-testid="scan-save-diag">Save pictures</button>
+      {/if}
       <button class="ts-btn" on:click={close}>Close</button>
     </span>
   </div>
@@ -391,6 +394,22 @@
   </div>
 
   <div class="ts-panel">
+    <!-- First in the panel (2026-10-16): at the foot, under the matches and
+         buttons, it had to be scrolled to and was not found on a phone. -->
+    {#if diagOn}
+      <div class="ts-diag" data-testid="scan-diagnostics">
+        {#if diag}
+          <p class="ts-diag-label">Camera crop</p>
+          {#if diag.raw}<img src={diag.raw} alt="" />{/if}
+          <p class="ts-diag-label">Given to the reader</p>
+          {#if diag.prepared}<img src={diag.prepared} alt="" />{/if}
+          <p class="ts-diag-text">Read: <span>{diag.text.trim() || '(nothing)'}</span> · {Math.round(diag.confidence)}% sure</p>
+          <p class="ts-diag-info">{diag.info}</p>
+        {:else}
+          <p class="ts-diag-info">Waiting for the next read…</p>
+        {/if}
+      </div>
+    {/if}
     {#if readerError}
       <p class="ts-warn">{readerError}</p>
     {:else if !readerReady}
@@ -435,21 +454,6 @@
       {/if}
     </div>
     <p class="ts-note">Read on this device — the picture is not sent or kept.</p>
-    {#if diagOn}
-      <div class="ts-diag" data-testid="scan-diagnostics">
-        {#if diag}
-          <p class="ts-diag-label">Camera crop</p>
-          {#if diag.raw}<img src={diag.raw} alt="" />{/if}
-          <p class="ts-diag-label">Given to the reader</p>
-          {#if diag.prepared}<img src={diag.prepared} alt="" />{/if}
-          <p class="ts-diag-text">Read: <span>{diag.text.trim() || '(nothing)'}</span> · {Math.round(diag.confidence)}% sure</p>
-          <p class="ts-diag-info">{diag.info}</p>
-          <button class="ts-btn" on:click={saveDiag}>Save these two pictures</button>
-        {:else}
-          <p class="ts-diag-info">Waiting for the next read…</p>
-        {/if}
-      </div>
-    {/if}
   </div>
 </div>
 
@@ -526,5 +530,6 @@
   }
   .ts-primary { background: var(--ts-accent); border-color: var(--ts-accent); color: #fff; font-family: ui-monospace, monospace; }
   .ts-btn input[type='file'] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .ts-save { background: var(--ts-accent); border-color: var(--ts-accent); color: #fff; }
   .ts-note { margin: 0; font-size: 0.75rem; color: #64748b; }
 </style>
