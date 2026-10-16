@@ -22,6 +22,8 @@
    */
   export let note    = null;
   export let loading = false;
+  /** Bumped by the app when the Edit panel closes, so the file list re-reads. */
+  export let docsKey = 0;
 
   const dispatch = createEventDispatcher();
 
@@ -178,6 +180,7 @@
       {/if}
 
       <!-- Documents -->
+      {#key docsKey}
       <AttachedDocuments
         entityType="info_note"
         entityId={note.id}
@@ -187,6 +190,7 @@
         on:uploaded={(e) => dispatch('docUploaded', e.detail)}
         on:deleted={(e) => dispatch('docDeleted', e.detail)}
       />
+      {/key}
 
     </div>
 

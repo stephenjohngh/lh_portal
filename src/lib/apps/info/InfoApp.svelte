@@ -20,6 +20,8 @@
   import PublishedList    from './components/PublishedList.svelte';
   import SectionFormModal from './components/modals/SectionFormModal.svelte';
   import NoteFormModal    from './components/modals/NoteFormModal.svelte';
+  import { uploadDocument } from '#lib/utils/documentApi.js';
+  import { DOC_FOLDERS, entityFolderPath } from '#lib/utils/documentUtils.js';
 
   const logger = getLogger('InfoApp');
 
@@ -179,6 +181,10 @@
 
   function openNewNote()    { editingNote = null; showNoteModal = true; }
   function openEditNote(n)  { editingNote = n;    showNoteModal = true; }
+  // Files can be added or removed in the Edit panel; the note page re-reads
+  // its list when the panel closes.
+  let docsKey = 0;
+  $: if (!showNoteModal) docsKey += 1;
 
   async function handleNoteSave(e) {
     const data = e.detail;
@@ -191,6 +197,25 @@
         }
       } else {
         const note = await infoStore.createNote(data, $auth.user.id);
+        // Files picked in the New note form go up now the note exists. A file
+        // that fails does not undo the note: it is named, to add on the note.
+        const failed = [];
+        for (const file of data.files ?? []) {
+          try {
+            const doc = await uploadDocument(file, {
+              entity_type:  'info_note',
+              entity_id:    note.id,
+              display_name: file.name,
+              folder_path:  entityFolderPath(DOC_FOLDERS.INFO_NOTES, note.title, note.id),
+            });
+            handleDocUploaded({ detail: doc });
+          } catch (/** @type {any} */ err) {
+            failed.push(`${file.name} (${err.message})`);
+          }
+        }
+        if (failed.length) {
+          appError = `The note was created, but ${failed.length === 1 ? 'this file was' : 'these files were'} not uploaded — add ${failed.length === 1 ? 'it' : 'them'} from Edit: ${failed.join('; ')}`;
+        }
         // Reload the full notes list so the new note appears with joins (and
         // section counts stay correct — we always hold all notes).
         await infoStore.loadNotes(null);
@@ -257,7 +282,7 @@
     const doc = e.detail;
     logAudit('create', 'info_document', doc.id, doc.display_name || doc.filename,
       { appId: 'info', eventCategory: 'info', severity: 'info',
-        afterData: { note_id: viewingNoteId, filename: doc.filename } });
+        afterData: { note_id: doc.entity_id ?? viewingNoteId, filename: doc.filename } });
   }
 
   function handleDocDeleted(e) {
@@ -320,6 +345,7 @@
             on:archive={(e)    => handleArchive(e.detail)}
             on:docUploaded={handleDocUploaded}
             on:docDeleted={handleDocDeleted}
+            {docsKey}
           />
         {:else if publishedView}
           <PublishedList
@@ -361,6 +387,8 @@
   {sections}
   sectionId={selectedSectionId}
   on:save={handleNoteSave}
+  on:docUploaded={handleDocUploaded}
+  on:docDeleted={handleDocDeleted}
   on:close={() => showNoteModal = false}
 />
 

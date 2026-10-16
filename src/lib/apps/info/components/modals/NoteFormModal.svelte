@@ -11,6 +11,10 @@
   // Shared rich-text editor (common component).
   import RichTextEditor from '#lib/components/common/LazyRichTextEditor.svelte';
   import { parseTags, tagsToString } from '../../utils/infoHelpers.js';
+  import AttachedDocuments from '#lib/components/common/documents/AttachedDocuments.svelte';
+  import DocAttachInput    from '#lib/components/common/DocAttachInput.svelte';
+  import { DOC_FOLDERS, entityFolderPath } from '#lib/utils/documentUtils.js';
+  import { fmtBytes }     from '#lib/utils/files.js';
 
   export let show       = false;
   export let note       = null;       // null = create, object = edit
@@ -29,6 +33,22 @@
   let summary    = '';
   let visibility = 'internal';
   let slugManuallyEdited = false;
+
+  // Files (2026-10-16, user: people look for the upload in the edit panel).
+  // Editing: the shared panel, which saves each file at once. New: the files
+  // are held here and uploaded by the app once the note exists.
+  /** @type {File[]} */
+  let pendingFiles = [];
+  /** @type {File|null} */
+  let pickedFile = null;
+  let attachRef;
+  $: if (pickedFile) {
+    pendingFiles = [...pendingFiles, pickedFile];
+    pickedFile = null;
+    attachRef?.reset();
+  }
+  /** @param {number} i */
+  function removePending(i) { pendingFiles = pendingFiles.filter((_, j) => j !== i); }
 
   let saving       = false;
   let error        = '';
@@ -49,6 +69,7 @@
     summary    = note?.summary    ?? '';
     visibility = note?.visibility ?? 'internal';
     slugManuallyEdited = !!note?.slug;
+    pendingFiles = []; pickedFile = null;
     error = ''; titleError = ''; sectionError = ''; slugError = '';
   }
 
@@ -108,6 +129,7 @@
         slug:       slug.trim() || null,
         summary:    summary.trim() || null,
         visibility,
+        files:      note ? [] : pendingFiles,
       });
     } catch (/** @type {any} */ err) {
       error = err.message;
@@ -171,6 +193,37 @@
       placeholder="fire, safety, legal  (comma-separated)"
       disabled={saving}
     />
+
+    <!-- Files -->
+    {#if note}
+      <AttachedDocuments
+        entityType="info_note"
+        entityId={note.id}
+        title="Files"
+        canEdit={$permissions.canModify}
+        canDelete={$permissions.isAdmin}
+        folderPath={entityFolderPath(DOC_FOLDERS.INFO_NOTES, note.title, note.id)}
+        on:uploaded={(e) => dispatch('docUploaded', e.detail)}
+        on:deleted={(e) => dispatch('docDeleted', e.detail)}
+      />
+    {:else}
+      <div data-testid="note-pending-files">
+        <p class="text-sm font-medium text-gray-200 mb-2">Files</p>
+        {#if pendingFiles.length}
+          <ul class="mb-2 space-y-1">
+            {#each pendingFiles as f, i (i + f.name)}
+              <li class="flex items-center gap-2 text-sm text-slate-300 bg-slate-800/40 rounded px-3 py-1.5">
+                <span class="flex-1 truncate">{f.name}</span>
+                <span class="text-xs text-slate-500">{fmtBytes(f.size)}</span>
+                <Button variant="tertiary" size="xs" on:click={() => removePending(i)} disabled={saving}>Remove</Button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+        <DocAttachInput bind:this={attachRef} bind:file={pickedFile} />
+        <p class="text-xs text-slate-500 mt-1">Uploaded when the note is created.</p>
+      </div>
+    {/if}
 
     <label class="flex items-center gap-3 cursor-pointer">
       <Checkbox bind:checked={is_pinned} disabled={saving} />
