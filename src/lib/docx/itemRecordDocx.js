@@ -6,12 +6,16 @@
 // A4 portrait, the shared docxHelpers look: running header with the
 // generated-at stamp, page numbers.
 
-import { Document, Packer, Paragraph, Table, TableRow, HeadingLevel, TableLayoutType, WidthType } from 'docx';
+import { Document, Packer, Paragraph, Table, TableRow, TextRun, HeadingLevel, TableLayoutType, WidthType } from 'docx';
 import { run, para, hCell, dCell, makeHeader, makeFooter, DOC_STYLES, pageProps, CONTENT_W, COLOURS } from './docxHelpers.js';
 
 // Moves table: when · from → to · by · note (with action and time waited).
 const MOVE_COLS = [1700, 2900, 1900, CONTENT_W - 1700 - 2900 - 1900];
 const FACT_COLS = [2400, CONTENT_W - 2400];
+
+// A heading takes its look from DOC_STYLES (navy, bold); a run that set its own
+// size or colour would override it, so the text goes in plain.
+const h2 = (/** @type {string} */ text) => new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun(text)] });
 
 /** @param {Array<[string,string]>} rows */
 function factTable(rows) {
@@ -34,7 +38,7 @@ function factTable(rows) {
 export async function buildItemRecord(model, { generatedAt, generatedBy, filenameStem }) {
   /** @type {Array<Paragraph|Table>} */
   const content = [
-    new Paragraph({ heading: HeadingLevel.HEADING_1, children: [run(model.title, { size: 36, bold: true })] }),
+    new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun(model.title)] }),
     para(`Record of its handling in the workflow “${model.workflowName}”.`, { color: COLOURS.textMuted }),
     para(`Produced ${generatedAt} by ${generatedBy}.`, { color: COLOURS.textMuted, after: 240 }),
   ];
@@ -42,7 +46,7 @@ export async function buildItemRecord(model, { generatedAt, generatedBy, filenam
     content.push(para(`This workflow is marked as needing a full review before any change: ${model.reviewMark}.`, { color: COLOURS.textMuted }));
   }
 
-  content.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: [run('Where it stands')] }));
+  content.push(h2('Where it stands'));
   const nowRows = /** @type {Array<[string,string]>} */ ([
     ['Step', model.now.kind ? `${model.now.step} (${model.now.kind})` : model.now.step],
     ['In this step since', model.now.since],
@@ -51,15 +55,15 @@ export async function buildItemRecord(model, { generatedAt, generatedBy, filenam
   content.push(factTable(nowRows));
 
   if (model.facts.length) {
-    content.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: [run('Details')] }));
+    content.push(h2('Details'));
     content.push(factTable(model.facts));
   }
   for (const s of model.sections) {
-    content.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: [run(s.heading)] }));
+    content.push(h2(s.heading));
     for (const line of String(s.text).split(/\n{2,}/)) content.push(para(line.replace(/\n/g, ' ')));
   }
 
-  content.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: [run('History')] }));
+  content.push(h2('History'));
   if (model.moves.length) {
     content.push(new Table({
       width: { size: CONTENT_W, type: WidthType.DXA },
@@ -71,7 +75,7 @@ export async function buildItemRecord(model, { generatedAt, generatedBy, filenam
         ] }),
         ...model.moves.map((m, i) => new TableRow({ cantSplit: true, children: [
           dCell(m.at, MOVE_COLS[0], { alt: i % 2 === 1 }),
-          dCell([m.from ? `${m.from} → ${m.to}` : `Started: ${m.to}`, m.waited ? `after ${m.waited} in the step before` : ''].filter(Boolean).join('\n'), MOVE_COLS[1], { alt: i % 2 === 1 }),
+          dCell([m.from ? `${m.from} → ${m.to}` : `Started: ${m.to}`, m.waited ? `after ${m.waited} in ${m.from}` : ''].filter(Boolean).join('\n'), MOVE_COLS[1], { alt: i % 2 === 1 }),
           dCell(m.by, MOVE_COLS[2], { alt: i % 2 === 1 }),
           dCell([m.note, m.action ? `Action run: ${m.action}` : ''].filter(Boolean).join('\n') || '—', MOVE_COLS[3], { alt: i % 2 === 1 }),
         ] })),

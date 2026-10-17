@@ -76,7 +76,7 @@ describe('buildItemRecord — the Word file', () => {
     const text = xml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
     for (const s of ['Parking application PKR-2026-000001', 'Produced 17 Oct 2026, 22:00 by Pat Smith', 'a@example.com',
       'Received → Being checked', 'Checked against the lease', 'Action run: Add to the Parking waiting list',
-      'after 4 days in the step before', 'We use your details.', 'as the workflow names them today']) {
+      'after 4 days in Being checked', 'We use your details.', 'as the workflow names them today']) {
       expect(text).toContain(s);
     }
     expect(text).not.toMatch(/undefined|null|\[object Object\]/);
