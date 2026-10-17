@@ -21,9 +21,10 @@
   import { parkingStore } from '../stores/parkingStore.js';
   import { permitStore } from '../stores/permitStore.js';
   import { normaliseReg, formatReg, STATUS_LABEL } from '../utils/agreementModel.js';
-  import { findPermitsByRegistration, fmtPermitWhen, permitNumberLabel } from '../utils/permitModel.js';
-  import { fmtDate, today, fmtTime } from '#lib/utils/dates.js';
-  import { errMessage } from '#lib/utils/errors.js';
+  import { fmtPermitWhen, permitNumberLabel } from '../utils/permitModel.js';
+  import { scanCandidatesFrom } from '../utils/registrationLookup.js';
+  import { checkRegistration } from '../stores/registrationCheck.js';
+  import { fmtDate, fmtTime } from '#lib/utils/dates.js';
   import { online } from '#lib/stores/online.js';
   import { syncState } from '../stores/lookupAudit.js';
 
@@ -41,20 +42,6 @@
 
   // Every registration this page knows, for the scanner to match a plate to.
   $: scanCandidates = scanCandidatesFrom($parkingStore.vehicles, $permitStore.permits);
-  /** @param {any[]} vehicles @param {any[]} permits */
-  function scanCandidatesFrom(vehicles = [], permits = []) {
-    /** @type {Map<string, { value: string, from: Set<string> }>} */
-    const seen = new Map();
-    const add = (/** @type {string} */ reg, /** @type {string} */ from) => {
-      const key = normaliseReg(reg);
-      if (!key) return;
-      if (!seen.has(key)) seen.set(key, { value: reg, from: new Set() });
-      /** @type {any} */ (seen.get(key)).from.add(from);
-    };
-    for (const v of vehicles) add(formatReg(v.registration), 'car park');
-    for (const p of permits) add(p.registration, 'road permit');
-    return [...seen.values()].map(({ value, from }) => ({ value, label: [...from].join(' · ') }));
-  }
 
   function openScanner() {
     scanning = true;
@@ -77,16 +64,10 @@
 
   async function search() {
     if (normaliseReg(q).length < 2) { hits = null; return; }
-    searching = true; permitError = ''; searchedOffline = !$online;
+    searching = true; searchedOffline = !$online;
     try {
-      try {
-        await permitStore.ensureLoaded();
-        permitHits = findPermitsByRegistration(q, $permitStore.permits, today(), fmtTime(new Date().toISOString()));
-      } catch (/** @type {any} */ err) {
-        permitHits = [];
-        permitError = errMessage(err, 'The road permits could not be read.');
-      }
-      hits = parkingStore.lookupRegistration(q, permitHits.length, { offline: searchedOffline });
+      const r = await checkRegistration(q, { offline: searchedOffline });
+      permitHits = r.permitHits; permitError = r.permitError; hits = r.hits;
     } finally { searching = false; }
   }
   function close() { hits = null; q = ''; permitHits = []; permitError = ''; }

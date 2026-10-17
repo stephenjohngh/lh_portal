@@ -153,7 +153,12 @@
 <div class="space-y-4">
   <div class="space-y-2">
     <h2 class="heading-page">Parking</h2>
-    {#if hasAccess && loaded}<RegistrationSearch {loadedAt} on:showAgreement={showAgreement} on:showPermit={showPermit} />{/if}
+    {#if hasAccess && loaded}
+      <RegistrationSearch {loadedAt} on:showAgreement={showAgreement} on:showPermit={showPermit} />
+      <!-- The caretaker's page (2026-10-17): straight to the camera, one answer.
+           Open it here and bookmark it, or add it to the phone's home screen. -->
+      <a href="/parking/check" class="inline-block text-sm text-purple-300 hover:text-purple-200 underline">Car check page — scan a plate, for a bookmark →</a>
+    {/if}
   </div>
 
   <AppGate appId="parking" name="Parking" load={loadParking} requireGrant bind:ready={loaded}>
