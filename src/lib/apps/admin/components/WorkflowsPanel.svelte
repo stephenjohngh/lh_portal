@@ -8,7 +8,13 @@
      workflowProblem() below and refuses to remove a step something is in. -->
 <script>
   import { onMount } from 'svelte';
-  import { listWorkflows, loadWorkflow, saveWorkflow } from '#lib/workflow/workflowApi.js';
+  import { listWorkflows, loadWorkflow, saveWorkflow, listChanges } from '#lib/workflow/workflowApi.js';
+  import { definitionOf, definitionChanged, workflowDiff } from '#lib/workflow/workflowModel.js';
+  import { profiles, profilesStore } from '#lib/stores/profiles.js';
+  import { fmtDateTime } from '#lib/utils/dates.js';
+  import Modal from '#lib/components/common/Modal.svelte';
+  import FormInput from '#lib/components/common/FormInput.svelte';
+  import FormTextarea from '#lib/components/common/FormTextarea.svelte';
   import { workflowProblem, stepKeyFor, STEP_KINDS, orderedSteps } from '#lib/workflow/workflowModel.js';
   import { actionsFor } from '#lib/workflow/workflowActions.js';
   import { DEADLINE_BASES, DEADLINE_FROM, describeDeadline } from '#lib/workflow/workflowDeadlines.js';
@@ -35,6 +41,16 @@
   /** @type {any[]} */
   let moves = [];
   let loadedKey = '';
+  // The review mark (migration 249): a workflow that must not change without a
+  // full review. Changing a marked one asks who reviewed it and against what.
+  let reviewRequired = false;
+  let reviewReason = '';
+  /** @type {any} */
+  let loadedDef = null;
+  /** @type {any[]} */
+  let changes = [];
+  let askReview = false;
+  let review = { reviewedBy: '', reviewedAgainst: '', note: '' };
 
   /** @type {{ day: string, name: string }[]} */
   let offDays = [];
@@ -59,6 +75,7 @@
   }
 
   onMount(async () => {
+    profilesStore.load().catch(() => { /* names fall back to — */ });
     try {
       // The shipped bank holidays, when the list is empty (the seed rule).
       await ensureNonWorkingDays().catch((/** @type {any} */ err) => { dayError = errMessage(err, 'The bank holidays could not be added.'); });
@@ -79,11 +96,27 @@
       steps = orderedSteps(wf?.steps ?? []).map((s) => ({ ...s, deadline_days: s.deadline_days ?? '',
         deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered', isNew: false }));
       moves = (wf?.moves ?? []).map((m) => ({ ...m }));
+      reviewRequired = !!current?.review_required;
+      reviewReason = current?.review_reason ?? '';
+      loadedDef = current ? definitionOf({ name: current.name, description: current.description,
+        reviewRequired, reviewReason, steps, moves }) : null;
+      changes = current ? await listChanges(current.id) : [];
     } catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read that workflow.'); }
   }
 
   $: actions = current ? actionsFor(current.app_id) : [];
-  $: problem = current ? workflowProblem({ steps, moves, appId: current.app_id }) : null;
+  $: problem = current
+    ? workflowProblem({ steps, moves, appId: current.app_id })
+      ?? (reviewRequired && !reviewReason.trim() ? 'Say why this workflow needs a full review before it is changed.' : null)
+    : null;
+  $: changed = !!current && !!loadedDef && definitionChanged(loadedDef,
+    definitionOf({ name: current.name, description: current.description, reviewRequired, reviewReason, steps, moves }));
+  // Marked when it was read: a change needs the review, including taking the mark off.
+  $: needsReview = !!current?.review_required && changed;
+  $: pendingDiff = askReview && current && loadedDef
+    ? workflowDiff(loadedDef, definitionOf({ name: current.name, description: current.description, reviewRequired, reviewReason, steps, moves }))
+    : [];
+  $: nameOf = (/** @type {string|null} */ id) => $profiles.list?.find((p) => p.id === id)?.full_name ?? '—';
 
   function addStep() {
     const key = stepKeyFor('New step', steps.map((s) => s.key));
@@ -113,13 +146,19 @@
   }
   function removeMove(/** @type {any} */ m) { moves = moves.filter((x) => x !== m); }
 
-  async function save() {
+  function save() {
     if (!current || problem) return;
+    if (needsReview) { review = { reviewedBy: '', reviewedAgainst: '', note: '' }; askReview = true; return; }
+    doSave(null);
+  }
+
+  async function doSave(/** @type {any} */ withReview) {
     const wf = current;                       // captured before the await
     saving = true; error = ''; saved = '';
     try {
       await saveWorkflow({ key: wf.key, name: wf.name, appId: wf.app_id, description: wf.description,
-        steps: steps.map(({ isNew, ...s }) => s), moves });
+        steps: steps.map(({ isNew, ...s }) => s), moves, reviewRequired, reviewReason, review: withReview });
+      askReview = false;
       logAudit('update', 'workflow', wf.id, wf.name, { appId: 'admin', eventCategory: 'admin',
         afterData: { steps: steps.map((s) => s.key), moves: moves.map((m) => `${m.from_key}>${m.to_key}`) } });
       saved = 'Saved.';
@@ -153,6 +192,20 @@
 
     {#if current}
       {#if current.description}<p class="text-sm text-slate-400">{current.description}</p>{/if}
+
+      <div class="rounded-lg border p-3 space-y-2 {current.review_required ? 'border-amber-500/60 bg-amber-900/20' : 'border-slate-700'}" data-testid="workflow-review-mark">
+        {#if current.review_required}
+          <p class="text-sm text-amber-200">⚠ This workflow must not be changed without a full review: {current.review_reason}.
+            Saving a change asks who reviewed it and against what.</p>
+        {/if}
+        <label class="flex items-center gap-2 text-sm text-slate-200">
+          <input type="checkbox" bind:checked={reviewRequired} /> Needs a full review before any change
+        </label>
+        {#if reviewRequired}
+          <input class="{inputCls} w-full" bind:value={reviewReason} aria-label="Why it needs a review"
+            placeholder="Why — e.g. Statutory process: Building Safety Act 2022 s.93" />
+        {/if}
+      </div>
 
       <div class="space-y-2">
         <div class="flex items-center justify-between"><p class="text-sm font-semibold text-slate-200">Steps</p>
@@ -236,9 +289,29 @@
       {#if problem}<p class="text-sm text-amber-300" role="alert" data-testid="workflow-problem">{problem}</p>{/if}
       {#if saved}<p class="text-sm text-green-400" role="status">{saved}</p>{/if}
       <div class="flex gap-2">
-        <Button variant="primary" on:click={save} disabled={!!problem || saving} loading={saving}>Save workflow</Button>
-        <Button variant="secondary" on:click={() => (loadedKey = '')} disabled={saving}>Undo changes</Button>
+        <Button variant="primary" on:click={save} disabled={!!problem || saving || !changed} loading={saving}>
+          {needsReview ? 'Save — record the review…' : 'Save workflow'}</Button>
+        <Button variant="secondary" on:click={() => (loadedKey = '')} disabled={saving || !changed}>Undo changes</Button>
       </div>
+
+      {#if changes.length}
+        <div class="space-y-2 border-t border-slate-700 pt-3" data-testid="workflow-history">
+          <p class="text-sm font-semibold text-slate-200">Changes</p>
+          <ul class="space-y-2 text-sm">
+            {#each changes as c (c.id)}
+              <li class="border-b border-slate-800 pb-2">
+                <p class="text-xs text-slate-400">{fmtDateTime(c.changed_at)} · {nameOf(c.changed_by)}</p>
+                {#if c.reviewed_by}
+                  <p class="text-xs text-amber-200">Reviewed by {c.reviewed_by}, against {c.reviewed_against}{c.review_note ? ` — ${c.review_note}` : ''}</p>
+                {/if}
+                <ul class="list-disc pl-5 text-slate-300">
+                  {#each workflowDiff(c.before, c.after) as line}<li>{line}</li>{/each}
+                </ul>
+              </li>
+            {/each}
+          </ul>
+        </div>
+      {/if}
     {/if}
   {/if}
 
@@ -266,3 +339,21 @@
     {/if}
   </div>
 </section>
+
+<Modal show={askReview} title="Record the review" size="medium" on:close={() => (askReview = false)}>
+  <div class="space-y-3" data-testid="workflow-review-form">
+    <p class="text-sm text-slate-300">This workflow must not be changed without a full review{current?.review_reason ? ` (${current.review_reason})` : ''}.
+      Say who reviewed this change and what it was checked against.</p>
+    <ul class="list-disc pl-5 text-sm text-slate-400">
+      {#each pendingDiff as line}<li>{line}</li>{/each}
+    </ul>
+    <FormInput label="Reviewed by" bind:value={review.reviewedBy} placeholder="Name, and role if not on the portal" required />
+    <FormInput label="Reviewed against" bind:value={review.reviewedAgainst} placeholder="e.g. Building Safety Act 2022 s.93; the complaints procedure v3" required />
+    <FormTextarea label="Note" bind:value={review.note} rows={3} placeholder="Why the change, and anything the review found" />
+  </div>
+  <div slot="footer" class="flex gap-3">
+    <Button variant="secondary" on:click={() => (askReview = false)} disabled={saving}>Cancel</Button>
+    <Button variant="primary" loading={saving} disabled={saving || !review.reviewedBy.trim() || !review.reviewedAgainst.trim()}
+      on:click={() => doSave(review)}>Save the change</Button>
+  </div>
+</Modal>

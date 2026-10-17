@@ -5504,6 +5504,42 @@ export type Database = {
             }
           ]
       }
+      workflow_changes: {
+        Row: {
+          after: Json
+          before: Json | null
+          changed_at: string
+          changed_by: string | null
+          id: number
+          review_note: string | null
+          reviewed_against: string | null
+          reviewed_by: string | null
+          workflow_id: string
+        }
+        Insert: {
+          after: Json
+          before?: Json | null
+          changed_at?: string
+          changed_by?: string | null
+          id?: number
+          review_note?: string | null
+          reviewed_against?: string | null
+          reviewed_by?: string | null
+          workflow_id: string
+        }
+        Update: {
+          after?: Json
+          before?: Json | null
+          changed_at?: string
+          changed_by?: string | null
+          id?: number
+          review_note?: string | null
+          reviewed_against?: string | null
+          reviewed_by?: string | null
+          workflow_id?: string
+        }
+        Relationships: []
+      }
       workflow_events: {
         Row: {
           id: number
@@ -5732,6 +5768,8 @@ export type Database = {
       }
       workflows: {
         Row: {
+          review_reason: string | null
+          review_required: boolean
           id: string
           key: string
           name: string
@@ -5741,6 +5779,8 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          review_reason?: string | null
+          review_required?: boolean
           id?: string
           key: string
           name: string
@@ -5750,6 +5790,8 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          review_reason?: string | null
+          review_required?: boolean
           id?: string
           key?: string
           name?: string

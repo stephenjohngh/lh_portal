@@ -108,3 +108,75 @@ export function movesFrom(moves, stepKey, { isAdmin = false, canEdit = false } =
 export function orderedSteps(steps) {
   return [...steps].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 }
+
+// ── The review mark and change history (migration 249) ────────────────────
+
+/**
+ * A workflow's definition in the shape the database keeps and compares
+ * (workflow_definition()): what a save changed is the difference of two.
+ * @param {{ name: string, description?: string|null, reviewRequired?: boolean, reviewReason?: string|null,
+ *           steps: Step[], moves: Move[] }} w
+ */
+export function definitionOf({ name, description = null, reviewRequired = false, reviewReason = null, steps, moves }) {
+  const n = (/** @type {any} */ v) => (v === '' || v === undefined ? null : v);
+  return {
+    name, description: n(description), review_required: !!reviewRequired, review_reason: reviewRequired ? n(reviewReason) : null,
+    steps: steps.map((s) => ({ key: s.key, name: s.name, public_name: n(s.public_name), kind: s.kind,
+      deadline_days: s.deadline_days === '' || s.deadline_days == null ? null : Number(s.deadline_days),
+      deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered' })),
+    moves: moves.map((m) => ({ from_key: m.from_key, to_key: m.to_key, label: m.label, note_required: !!m.note_required,
+      admin_only: !!m.admin_only, action: n(m.action) })),
+  };
+}
+
+/** Has anything that a save would keep changed? @param {any} a @param {any} b */
+export function definitionChanged(a, b) {
+  return JSON.stringify(a) !== JSON.stringify(b);
+}
+
+/**
+ * What changed between two kept definitions, in words, for the history.
+ * @param {any} before  null for a new workflow
+ * @param {any} after
+ * @returns {string[]}
+ */
+export function workflowDiff(before, after) {
+  if (!before) return ['Set up.'];
+  /** @type {string[]} */
+  const out = [];
+  const deadline = (/** @type {any} */ s) => (s?.deadline_days
+    ? `${s.deadline_days} ${s.deadline_basis === 'working' ? 'working' : 'calendar'} days from ${s.deadline_from === 'started' ? 'the start' : 'reaching it'}`
+    : 'none');
+  if (before.name !== after.name) out.push(`Renamed “${before.name}” → “${after.name}”.`);
+  if (before.review_required !== after.review_required) {
+    out.push(after.review_required ? `Marked as needing a full review: ${after.review_reason}.` : 'Review mark removed.');
+  } else if (after.review_required && before.review_reason !== after.review_reason) {
+    out.push(`Review reason: “${before.review_reason}” → “${after.review_reason}”.`);
+  }
+  const bSteps = new Map((before.steps ?? []).map((/** @type {any} */ s) => [s.key, s]));
+  const aSteps = new Map((after.steps ?? []).map((/** @type {any} */ s) => [s.key, s]));
+  for (const [k, s] of aSteps) {
+    const was = bSteps.get(k);
+    if (!was) { out.push(`Step added: “${s.name}” (${STEP_KIND_LABEL[s.kind] ?? s.kind}).`); continue; }
+    if (was.name !== s.name) out.push(`Step “${was.name}” renamed “${s.name}”.`);
+    if ((was.public_name ?? null) !== (s.public_name ?? null)) out.push(`Step “${s.name}”: the name the public sees is now “${s.public_name ?? s.name}”.`);
+    if (was.kind !== s.kind) out.push(`Step “${s.name}”: ${STEP_KIND_LABEL[was.kind] ?? was.kind} → ${STEP_KIND_LABEL[s.kind] ?? s.kind}.`);
+    if (deadline(was) !== deadline(s)) out.push(`Step “${s.name}” deadline: ${deadline(was)} → ${deadline(s)}.`);
+  }
+  for (const [k, s] of bSteps) if (!aSteps.has(k)) out.push(`Step removed: “${s.name}”.`);
+  const mk = (/** @type {any} */ m) => `${m.from_key}>${m.to_key}`;
+  const name = (/** @type {string} */ k) => aSteps.get(k)?.name ?? bSteps.get(k)?.name ?? k;
+  const bMoves = new Map((before.moves ?? []).map((/** @type {any} */ m) => [mk(m), m]));
+  const aMoves = new Map((after.moves ?? []).map((/** @type {any} */ m) => [mk(m), m]));
+  for (const [k, m] of aMoves) {
+    const was = bMoves.get(k);
+    const where = `${name(m.from_key)} → ${name(m.to_key)}`;
+    if (!was) { out.push(`Move added: “${m.label}” (${where}).`); continue; }
+    if (was.label !== m.label) out.push(`Move ${where}: button “${was.label}” → “${m.label}”.`);
+    if (was.note_required !== m.note_required) out.push(`Move “${m.label}”: ${m.note_required ? 'now needs a note' : 'no longer needs a note'}.`);
+    if (was.admin_only !== m.admin_only) out.push(`Move “${m.label}”: ${m.admin_only ? 'now admin only' : 'no longer admin only'}.`);
+    if ((was.action ?? null) !== (m.action ?? null)) out.push(`Move “${m.label}”: action ${was.action ?? 'none'} → ${m.action ?? 'none'}.`);
+  }
+  for (const [k, m] of bMoves) if (!aMoves.has(k)) out.push(`Move removed: “${m.label}” (${name(m.from_key)} → ${name(m.to_key)}).`);
+  return out.length ? out : ['Nothing that is kept changed.'];
+}

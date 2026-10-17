@@ -31,12 +31,22 @@ export function listWorkflows() {
 
 /**
  * Save a workflow whole (admin). Steps keep their keys; moves are replaced.
+ * ⛔ A change to a workflow marked as needing a full review is refused by the
+ * database unless `review` says who reviewed it and what against.
  * @param {{ key: string, name: string, appId: string, description?: string|null,
- *           steps: import('./workflowModel.js').Step[], moves: import('./workflowModel.js').Move[] }} w
+ *           steps: import('./workflowModel.js').Step[], moves: import('./workflowModel.js').Move[],
+ *           reviewRequired?: boolean, reviewReason?: string|null,
+ *           review?: { reviewedBy: string, reviewedAgainst: string, note?: string|null } | null }} w
  */
-export function saveWorkflow({ key, name, appId, description = null, steps, moves }) {
+export function saveWorkflow({ key, name, appId, description = null, steps, moves,
+  reviewRequired = undefined, reviewReason = null, review = null }) {
   return api.rpc('workflow_save', {
     p_key: key, p_name: name, p_app_id: appId, p_description: description,
+    // The review mark (migration 249): undefined keeps it as it is.
+    p_review_required: reviewRequired === undefined ? null : !!reviewRequired,
+    p_review_reason: reviewReason || null,
+    // For a CHANGE to a marked workflow: who reviewed it and against what.
+    p_review: review ? { reviewed_by: review.reviewedBy, reviewed_against: review.reviewedAgainst, note: review.note ?? null } : null,
     p_steps: steps.map((s, i) => ({ key: s.key, name: s.name, public_name: s.public_name ?? null, kind: s.kind, position: i + 1,
       deadline_days: s.deadline_days === '' || s.deadline_days == null ? null : Number(s.deadline_days),
       deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered' })),
@@ -83,4 +93,9 @@ export async function listDeadlines(workflowKey) {
   return items
     .filter((i) => i.due_on && open.has(i.step_key))
     .map((i) => ({ id: i.id, label: i.label, due_on: i.due_on, step: name.get(i.step_key) ?? i.step_key, workflow: wf.workflow.name }));
+}
+
+/** A workflow's change history, newest first (admin). @param {string} workflowId */
+export function listChanges(workflowId) {
+  return api.getAll('workflow_changes', { filters: { workflow_id: workflowId }, orderBy: 'changed_at', ascending: false });
 }
