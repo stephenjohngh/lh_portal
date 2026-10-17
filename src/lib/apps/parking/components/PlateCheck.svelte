@@ -2,7 +2,8 @@
 <!-- Car check (2026-10-17, user: "for the caretaker looking at a car, its still
      quite a long process starting the portal and choosing the parking app").
      A page of its own at /parking/check, to bookmark or put on the home screen:
-     it opens straight to the camera, and answers in one line — allowed, not
+     it opens on a big Scan button (not the camera itself — user, same day), and
+     answers in one line — allowed, not
      yet, no longer, or not found — with the detail underneath.
      ⭐ The same lookup as the Parking app's Registration Lookup
      (stores/registrationCheck.js), so the two cannot answer differently; the
@@ -27,9 +28,6 @@
   import { fmtDate, fmtTime } from '#lib/utils/dates.js';
   import { errMessage } from '#lib/utils/errors.js';
 
-  /** Open the camera as soon as the car park has been read. */
-  export let autoScan = true;
-
   let ready = false;
   let loadedAt = 0;
   let scanning = false;
@@ -46,9 +44,6 @@
 
   $: scanCandidates = scanCandidatesFrom($parkingStore.vehicles, $permitStore.permits);
   $: verdict = result ? lookupVerdict(result.hits, result.permitHits, result.permitError) : null;
-
-  let opened = false;
-  $: if (ready && autoScan && !opened && !$parkingStore.error) { opened = true; scanning = true; }
 
   onMount(() => {
     startSync();

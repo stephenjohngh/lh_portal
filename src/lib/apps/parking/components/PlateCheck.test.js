@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 //
 // Car check (/parking/check, 2026-10-17): the caretaker's bookmark. It opens
-// on the camera, and a picked plate gives one plain answer.
+// on a big Scan button — the camera only when pressed — and a picked plate
+// gives one plain answer.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/svelte';
@@ -40,14 +41,17 @@ import PlateCheck from './PlateCheck.svelte';
 beforeEach(() => { cleanup(); h.checked.length = 0; h.online.set(true); });
 
 describe('Car check', () => {
-  it('opens on the camera', async () => {
+  it('opens on the Scan button, not the camera; the camera opens when it is pressed', async () => {
     render(PlateCheck);
+    const scan = await screen.findByRole('button', { name: /Scan a number plate/ });
+    expect(screen.queryByTestId('text-scanner')).toBeNull();
+    await fireEvent.click(scan);
     expect(await screen.findByTestId('text-scanner')).toBeTruthy();
   });
 
   it('a typed registration that is nowhere reads "Not found"', async () => {
     h.result = { hits: [], permitHits: [], permitError: '' };
-    render(PlateCheck, { props: { autoScan: false } });
+    render(PlateCheck);
     await screen.findByPlaceholderText('Or type it');
     await fireEvent.input(screen.getByPlaceholderText('Or type it'), { target: { value: 'zz99zzz' } });
     await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
@@ -60,7 +64,7 @@ describe('Car check', () => {
   it('a car with a licence today reads allowed, with its bay and holder', async () => {
     h.result = { permitHits: [], permitError: '', hits: [{ vehicle: { id: 'v1', registration: 'AB12CDE' }, standing: 'authorised',
       bay: { ref: 'L/PK/22' }, agreement: { reference: 'PA-0001', status: 'active' }, holder: { display_name: 'J Smith', phone: '0123' } }] };
-    render(PlateCheck, { props: { autoScan: false } });
+    render(PlateCheck);
     await screen.findByPlaceholderText('Or type it');
     await fireEvent.input(screen.getByPlaceholderText('Or type it'), { target: { value: 'AB12 CDE' } });
     await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
@@ -73,7 +77,7 @@ describe('Car check', () => {
   it('with no signal it says what it checked against, and still checks', async () => {
     h.online.set(false);
     h.result = { hits: [], permitHits: [], permitError: '' };
-    render(PlateCheck, { props: { autoScan: false } });
+    render(PlateCheck);
     await screen.findByPlaceholderText('Or type it');
     await fireEvent.input(screen.getByPlaceholderText('Or type it'), { target: { value: 'AB12CDE' } });
     await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
