@@ -3980,6 +3980,60 @@ export type Database = {
             }
           ]
       }
+      parking_requests: {
+        Row: {
+          application_id: string | null
+          company_name: string | null
+          correspondence_address: string | null
+          display_name: string
+          email: string
+          holder_id: string | null
+          holder_type: string
+          id: string
+          notes: string | null
+          phone: string | null
+          privacy_notice_text: string
+          received_at: string
+          reference: string
+          verification_code: string
+          wanted_size: string
+        }
+        Insert: {
+          application_id?: string | null
+          company_name?: string | null
+          correspondence_address?: string | null
+          display_name: string
+          email: string
+          holder_id?: string | null
+          holder_type: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          privacy_notice_text: string
+          received_at?: string
+          reference?: string
+          verification_code: string
+          wanted_size: string
+        }
+        Update: {
+          application_id?: string | null
+          company_name?: string | null
+          correspondence_address?: string | null
+          display_name?: string
+          email?: string
+          holder_id?: string | null
+          holder_type?: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          privacy_notice_text?: string
+          received_at?: string
+          reference?: string
+          verification_code?: string
+          wanted_size?: string
+        }
+        Relationships: []
+      }
       parking_retention_runs: {
         Row: {
           id: string
@@ -5405,6 +5459,159 @@ export type Database = {
               referencedColumns: ["id"]
             }
           ]
+      }
+      workflow_events: {
+        Row: {
+          action: string | null
+          at: string
+          by: string | null
+          from_key: string | null
+          id: number
+          item_id: string
+          note: string | null
+          to_key: string
+        }
+        Insert: {
+          action?: string | null
+          at?: string
+          by?: string | null
+          from_key?: string | null
+          id?: number
+          item_id: string
+          note?: string | null
+          to_key: string
+        }
+        Update: {
+          action?: string | null
+          at?: string
+          by?: string | null
+          from_key?: string | null
+          id?: number
+          item_id?: string
+          note?: string | null
+          to_key?: string
+        }
+        Relationships: []
+      }
+      workflow_items: {
+        Row: {
+          created_at: string
+          id: string
+          step_key: string
+          subject_id: string
+          updated_at: string
+          updated_by: string | null
+          workflow_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          step_key: string
+          subject_id: string
+          updated_at?: string
+          updated_by?: string | null
+          workflow_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          step_key?: string
+          subject_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          workflow_id?: string
+        }
+        Relationships: []
+      }
+      workflow_moves: {
+        Row: {
+          action: string | null
+          admin_only: boolean
+          from_key: string
+          label: string
+          note_required: boolean
+          position: number
+          to_key: string
+          workflow_id: string
+        }
+        Insert: {
+          action?: string | null
+          admin_only?: boolean
+          from_key: string
+          label: string
+          note_required?: boolean
+          position?: number
+          to_key: string
+          workflow_id: string
+        }
+        Update: {
+          action?: string | null
+          admin_only?: boolean
+          from_key?: string
+          label?: string
+          note_required?: boolean
+          position?: number
+          to_key?: string
+          workflow_id?: string
+        }
+        Relationships: []
+      }
+      workflow_steps: {
+        Row: {
+          key: string
+          kind: string
+          name: string
+          position: number
+          public_name: string | null
+          workflow_id: string
+        }
+        Insert: {
+          key: string
+          kind: string
+          name: string
+          position?: number
+          public_name?: string | null
+          workflow_id: string
+        }
+        Update: {
+          key?: string
+          kind?: string
+          name?: string
+          position?: number
+          public_name?: string | null
+          workflow_id?: string
+        }
+        Relationships: []
+      }
+      workflows: {
+        Row: {
+          app_id: string
+          description: string | null
+          id: string
+          key: string
+          name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          app_id: string
+          description?: string | null
+          id?: string
+          key: string
+          name: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          app_id?: string
+          description?: string | null
+          id?: string
+          key?: string
+          name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       works_schedule_items: {
         Row: {

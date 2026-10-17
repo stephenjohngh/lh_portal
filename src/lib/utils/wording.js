@@ -164,6 +164,16 @@ If you notice anything that you think could pose a risk to the safety of the bui
       + 'intended strictly for the designated recipient. Please do not copy, '
       + 'forward, or distribute these materials without prior written consent.',
   },
+  {
+    key: 'parkingApplyPrivacyNotice', area: 'Parking',
+    label: 'Privacy notice on the online parking application',
+    governs: 'Shown on the public form at /parking/apply. The applicant must agree to it, and the text they saw is kept with their application.',
+    tokens: ['business', 'building'],
+    default: '{business} will use the details you give here to deal with your application for a parking space at {building}: '
+      + 'to contact you about it, to keep your place on the waiting list and, if you are offered a space, to make the parking agreement. '
+      + 'Only the staff who manage parking can see them. If your application does not go ahead, your details are deleted after a short time; '
+      + 'if it does, they are kept with your parking records. You can ask {business} to show you, correct or delete what it holds about you.',
+  },
 ]);
 
 const BY_KEY = new Map(DEFS.map((d) => [d.key, d]));

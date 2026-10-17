@@ -133,10 +133,19 @@ describe('MOR timeline', () => {
 // ⛔ The rate-limit actions must all be accepted by public_upload_attempts, or
 // their attempts are never recorded and the limit never limits — which is what
 // the four Dossier actions did until migration 233 (§6ccc item 10, 2026-10-04).
+// ⏳ TEMPORARY, until the migration named is applied and `npm run db:rules` run:
+// then the second test below fails, saying to remove the entry.
+const AWAITING_MIGRATION = { parking_apply: 247 };
+
 describe('rate limits', () => {
+  it('an allowance for a migration not yet applied goes once it is', () => {
+    const accepted = SNAP.checks['public_upload_attempts.action'];
+    expect(Object.keys(AWAITING_MIGRATION).filter((k) => accepted.includes(k)),
+      'applied — remove it from AWAITING_MIGRATION').toEqual([]);
+  });
   it('every rate-limited action is one the attempts table accepts, and no other', () => {
     const accepted = SNAP.checks['public_upload_attempts.action'];
-    expect(sorted(Object.keys(RATE_LIMIT_WINDOWS)),
+    expect(sorted(Object.keys(RATE_LIMIT_WINDOWS).filter((k) => !(k in AWAITING_MIGRATION))),
       'a rate limit the attempts table does not accept never counts — widen its CHECK in a migration, then npm run db:rules')
       .toEqual(sorted(accepted));
   });

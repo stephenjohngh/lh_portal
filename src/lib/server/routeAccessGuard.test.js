@@ -29,6 +29,8 @@ const PUBLIC = {
   'mor/intake/submit':              'the public MOR report form — same-origin check, rate limit, photo signatures',
   'mor/intake/upload':              'the public MOR photo upload — same-origin check, rate limit, image scan',
   'mor/status/[reference]':         'the public case lookup — needs the per-case verification code',
+  'parking/apply':                  'the public parking application form — same-origin check, rate limit, a hidden bot field, checked again on the server',
+  'parking/apply/status':           'the public application lookup — needs the reference AND its code; returns the step name only',
   'pack/[token]/file/[documentId]': "a published pack's file — the unguessable token is the permission",
   'pack/[token]/unlock':            "a published pack's passphrase — rate-limited",
   'media/file/[fileId]':            'the file proxy — checks its own signed media-session cookie',

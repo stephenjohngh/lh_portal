@@ -47,7 +47,7 @@
   }
 
   $: rules = retentionRules(due?.periods);
-  $: anythingDue = !!due && ['agreements', 'vehicles', 'devices', 'applications', 'holders', 'permits', 'sightings', 'held_back_documents', 'held_back_photos'].some(k => due[k] > 0);
+  $: anythingDue = !!due && ['agreements', 'vehicles', 'devices', 'applications', 'holders', 'permits', 'sightings', 'requests', 'held_back_documents', 'held_back_photos'].some(k => due[k] > 0);
 </script>
 
 <section class="bg-slate-800 border border-slate-700 rounded-lg p-3 space-y-3" data-testid="retention">

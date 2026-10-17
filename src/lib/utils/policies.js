@@ -31,7 +31,8 @@ export const POLICIES_KEY = 'policies';
 export const RATE_LIMIT_WINDOWS = Object.freeze({
   photo_upload:  { windowMinutes: 15, label: 'Photos uploaded to the public MOR form, per address',   default: 10,  max: 100 },
   case_submit:   { windowMinutes: 60, label: 'Reports sent through the public MOR form, per address',  default: 3,   max: 50 },
-  status_lookup: { windowMinutes: 15, label: 'Public MOR status look-ups, per address',               default: 10,  max: 100 },
+  status_lookup: { windowMinutes: 15, label: 'Public status look-ups (MOR reports, parking applications), per address', default: 10,  max: 100 },
+  parking_apply: { windowMinutes: 60, label: 'Applications sent through the public parking form, per address', default: 3,   max: 50 },
   ai_suggest:    { windowMinutes: 60, label: 'AI action suggestions, per person',                     default: 60,  max: 1000 },
   ai_summary:    { windowMinutes: 60, label: 'AI summaries, per person',                              default: 60,  max: 1000 },
   pack_read:     { windowMinutes: 15, label: 'Published Dossier pack page views, per address',        default: 120, max: 2000 },

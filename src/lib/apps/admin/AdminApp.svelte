@@ -20,6 +20,7 @@
   import SpaceTypesPanel from './components/SpaceTypesPanel.svelte';
   import PortalSettingsPanel from './components/PortalSettingsPanel.svelte';
   import DueWindowsPanel from './components/DueWindowsPanel.svelte';
+  import WorkflowsPanel  from './components/WorkflowsPanel.svelte';
   import IdentityPanel from './components/IdentityPanel.svelte';
   import PoliciesPanel from './components/PoliciesPanel.svelte';
   import WordingPanel from './components/WordingPanel.svelte';
@@ -55,6 +56,7 @@
     { id: 'policies',  icon: '📏', label: 'Policies' },
     { id: 'wording',   icon: '✍', label: 'Wording' },
     { id: 'doc-categories', icon: '🗃', label: 'Document categories' },
+    { id: 'workflows', icon: '🔀', label: 'Workflows' },
     { id: 'documents', icon: '📁', label: 'Document Demo' },
   ];
   
@@ -306,6 +308,9 @@
 
   {:else if activeTab === 'doc-categories'}
     <DocumentCategoriesPanel />
+
+  {:else if activeTab === 'workflows'}
+    <WorkflowsPanel />
 
   {:else if activeTab === 'documents'}
     <DocumentsTab />

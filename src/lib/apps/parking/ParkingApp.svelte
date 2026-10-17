@@ -38,6 +38,7 @@
   import PricesTab          from './components/PricesTab.svelte';
   import PermitsTab         from './components/PermitsTab.svelte';
   import SightingsTab       from './components/SightingsTab.svelte';
+  import ApplicationsTab    from './components/ApplicationsTab.svelte';
   import { downloadBayPlan } from './utils/bayPlanImage.js';
   import Button             from '#lib/components/common/Button.svelte';
 
@@ -55,6 +56,7 @@
     { key: 'bays',       label: 'Bays' },
     { key: 'agreements', label: 'Agreements' },
     { key: 'holders',    label: 'Holders' },
+    { key: 'applications', label: 'Applications' },
     { key: 'waiting',    label: 'Waiting list' },
     { key: 'prices',     label: 'Prices' },
     { key: 'reports',    label: 'Reports' },
@@ -174,6 +176,8 @@
       <AgreementsTab {canEdit} bind:selectedId={selectedAgreementId} on:showBay={showBay} />
     {:else if tab === 'holders'}
       <HoldersTab {canEdit} on:showAgreement={showAgreement} />
+    {:else if tab === 'applications'}
+      <ApplicationsTab {canEdit} on:showWaitingList={() => (tab = 'waiting')} />
     {:else if tab === 'waiting'}
       <WaitingListTab {canEdit} on:accept={acceptOffer} />
     {:else if tab === 'permits'}

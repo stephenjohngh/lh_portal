@@ -21,7 +21,7 @@ export function retentionRules(periods) {
     `A vehicle becomes due ${plural(p.vehicle_months, 'month')} after it came off the agreement, or after the agreement ended. Removing it blanks its registration in the timeline.`,
     `A returned access device becomes due ${plural(p.device_months, 'month')} after it was returned, or after the agreement ended.`,
     '⛔ An access device that was never returned is never removed, and neither is its agreement: it still opens the gate.',
-    `A withdrawn or allocated waiting-list application becomes due ${plural(p.application_grace_days, 'day')} after it closed.`,
+    `A withdrawn or allocated waiting-list application becomes due ${plural(p.application_grace_days, 'day')} after it closed. So does an online application that was declined or withdrawn, or one accepted whose holder has since been removed.`,
     `A holder left with no agreement and no application becomes due ${plural(p.holder_months, 'month')} after their record was last changed.`,
   ];
   // Road permits joined the job in migration 239; a database without it says nothing about them.
@@ -46,6 +46,7 @@ export function retentionParts(counts) {
   if (counts.holders)      parts.push(plural(counts.holders, 'holder'));
   if (counts.permits)      parts.push(plural(counts.permits, 'road permit'));
   if (counts.sightings)    parts.push(plural(counts.sightings, 'unauthorised-parking sighting'));
+  if (counts.requests)     parts.push(plural(counts.requests, 'online application'));
   if (counts.documents_removed) parts.push(plural(counts.documents_removed, 'licence document'));
   if (counts.photos_removed) parts.push(plural(counts.photos_removed, 'sighting photo'));
   return parts;
