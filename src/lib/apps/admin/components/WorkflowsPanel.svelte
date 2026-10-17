@@ -1,5 +1,5 @@
 <!-- src/lib/apps/admin/components/WorkflowsPanel.svelte -->
-<!-- Admin → Other Config → Workflows (migration 247, 2026-10-17): the steps an
+<!-- Admin → Workflows (migration 247, 2026-10-17): the steps an
      item goes through and the moves between them, for any app that uses the
      shared workflow manager (#lib/workflow/). The first user is Parking's
      online application. A workflow appears here once its app has set it up

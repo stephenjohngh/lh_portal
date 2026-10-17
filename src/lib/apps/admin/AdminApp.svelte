@@ -46,6 +46,7 @@
     { key: 'users', icon: '👥', label: 'Users', count: users.length },
     { key: 'audit', icon: '📋', label: 'Audit Logs',      adminOnly: true },
     { key: 'types', icon: '🗂', label: 'Component Types', adminOnly: true },
+    { key: 'workflows', icon: '🔀', label: 'Workflows',   adminOnly: true },
   ];
   const otherConfigTabs = [
     { id: 'floors',    icon: '🏢', label: 'Floors' },
@@ -56,7 +57,6 @@
     { id: 'policies',  icon: '📏', label: 'Policies' },
     { id: 'wording',   icon: '✍', label: 'Wording' },
     { id: 'doc-categories', icon: '🗃', label: 'Document categories' },
-    { id: 'workflows', icon: '🔀', label: 'Workflows' },
     { id: 'documents', icon: '📁', label: 'Document Demo' },
   ];
   
