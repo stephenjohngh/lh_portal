@@ -23,6 +23,14 @@ vi.mock('../stores/parkingStore.js', () => ({ parkingStore: { load: async () => 
 vi.mock('#lib/workflow/workflowApi.js', () => ({ listEvents: async () => ({ items: [], events: [
   { item_id: 'ia', from_key: null, to_key: 'received', at: '2026-10-17T09:00:00Z' }] }) }));
 vi.mock('#lib/stores/permissions.js', () => ({ permissions: { subscribe: h.perms.subscribe } }));
+vi.mock('#lib/stores/profiles.js', () => ({
+  profiles: { subscribe: (r) => { r({ loaded: true, list: [{ id: 'me', full_name: 'Pat Smith' }] }); return () => {}; } },
+  profilesStore: { load: async () => [] },
+}));
+vi.mock('#lib/stores/auth.js', () => ({ auth: { subscribe: (r) => { r({ user: { id: 'me', email: 'pat@x.co' } }); return () => {}; } } }));
+const dl = vi.hoisted(() => ({ files: /** @type {any[]} */ ([]), audits: /** @type {any[]} */ ([]) }));
+vi.mock('#lib/utils/download.js', () => ({ downloadBlob: (blob, name) => { dl.files.push([blob, name]); } }));
+vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: (...a) => { dl.audits.push(a); } }));
 
 const ApplicationsTab = (await import('./ApplicationsTab.svelte')).default;
 
@@ -92,4 +100,18 @@ describe('Parking → Applications', () => {
     expect(diagram.querySelectorAll('[data-testid="workflow-diagram-step"]')).toHaveLength(5);
     await waitFor(() => expect(diagram.textContent).toMatch(/1 now/));
   });
+
+  it('⬇ Record downloads a Word record of the application; the audit line names only the reference', async () => {
+    dl.files.length = 0; dl.audits.length = 0;
+    h.req.set(state([REQ('a', 'PKR-2026-000001', 'received')]));
+    render(ApplicationsTab, { canEdit: true });
+    await fireEvent.click(await screen.findByText('PKR-2026-000001'));
+    await fireEvent.click(await screen.findByRole('button', { name: /Record/ }));
+    await waitFor(() => expect(dl.files).toHaveLength(1), { timeout: 10000 });
+    expect(dl.files[0][1]).toMatch(/^Record_PKR-2026-000001_\d{4}-\d{2}-\d{2}\.docx$/);
+    expect(dl.files[0][0].size).toBeGreaterThan(1000);
+    expect(dl.audits).toHaveLength(1);
+    expect(dl.audits[0].slice(0, 4)).toEqual(['export', 'parking_request', 'a', 'PKR-2026-000001']);
+    expect(JSON.stringify(dl.audits[0])).not.toMatch(/a@x\.co|Person a/);
+  }, 20000);
 });

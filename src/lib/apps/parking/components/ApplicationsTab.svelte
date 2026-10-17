@@ -27,6 +27,12 @@
   import Button from '#lib/components/common/Button.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
+  import { itemRecordModel } from '#lib/workflow/itemRecord.js';
+  import { profiles, profilesStore } from '#lib/stores/profiles.js';
+  import { auth } from '#lib/stores/auth.js';
+  import { logAudit } from '#lib/utils/auditLogger.js';
+  import { downloadBlob } from '#lib/utils/download.js';
+  import { fmtGenerated } from '#lib/utils/dates.js';
 
   export let canEdit = false;
   const dispatch = createEventDispatcher();
@@ -110,6 +116,53 @@
   }
 
   const sizeLabel = (/** @type {string} */ v) => (v === ANY_SIZE ? 'Any size' : v);
+
+  // The record of one application — what it is, where it stands, every move
+  // and who made it — as a Word file, for the file or to show what was done.
+  // Built in the browser from what this panel holds plus the full history.
+  let recording = false;
+  async function downloadRecord() {
+    const request = selected;                         // captured before the await
+    const item = request ? itemFor(request.id) : null;
+    if (!request || !item || !s.workflow) return;
+    recording = true; error = '';
+    try {
+      const [events] = await Promise.all([requestStore.history(item.id), profilesStore.load()]);
+      const list = /** @type {Array<{ id: string, full_name: string|null }>} */ ($profiles.list);
+      const people = Object.fromEntries(list.map((p) => [p.id, p.full_name || 'A user with no name set']));
+      const model = itemRecordModel({
+        workflow: s.workflow, steps: s.steps, item, events, people, todayISO: today(),
+        subject: {
+          title: `Parking application ${request.reference}`,
+          facts: [
+            ['Reference', request.reference],
+            ['Received', fmtDateTime(request.received_at)],
+            ['Name', request.display_name],
+            ['Company', request.company_name],
+            ['Kind', HOLDER_TYPE_LABEL[request.holder_type] ?? request.holder_type],
+            ['Email', request.email],
+            ['Phone', request.phone],
+            ['Address for letters', request.correspondence_address],
+            ['Size wanted', sizeLabel(request.wanted_size)],
+            ['Their notes', request.notes],
+            ['On the waiting list', request.application_id ? 'Yes' : ''],
+          ],
+          sections: [{ heading: 'Privacy notice they agreed to', text: request.privacy_notice_text }],
+        },
+      });
+      const { buildItemRecord } = await import('#lib/docx/itemRecordDocx.js');
+      const me = list.find((p) => p.id === $auth.user?.id)?.full_name || $auth.user?.email || 'a signed-in user';
+      const { bytes, filename } = await buildItemRecord(model, {
+        generatedAt: fmtGenerated(), generatedBy: me, filenameStem: `${request.reference}_${today()}`,
+      });
+      downloadBlob(new Blob([/** @type {BlobPart} */ (bytes)], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), filename);
+      // The reference only — the file holds personal details, the log does not.
+      logAudit('export', 'parking_request', request.id, request.reference,
+        { appId: 'parking', eventCategory: 'parking', afterData: { record: request.reference } });
+    } catch (/** @type {any} */ err) {
+      error = errMessage(err, 'Could not make the record.');
+    } finally { recording = false; }
+  }
 </script>
 
 {#if !ready}
@@ -178,7 +231,11 @@
               <p class="font-mono text-white">{selected.reference}</p>
               <p class="text-xs text-slate-400">Received {fmtDateTime(selected.received_at)}</p>
             </div>
-            <Button variant="tertiary" size="xs" on:click={() => (selectedId = null)}>Close</Button>
+            <div class="flex gap-1">
+              <Button variant="tertiary" size="xs" loading={recording} disabled={recording || !itemFor(selected.id)}
+                title="A Word record of this application and every move made on it" on:click={downloadRecord}>⬇ Record</Button>
+              <Button variant="tertiary" size="xs" on:click={() => (selectedId = null)}>Close</Button>
+            </div>
           </div>
           <p><span class="text-slate-400">Step:</span> <span class="text-white">{selectedStep?.name ?? '—'}</span>
             {#if selectedStep}<span class="text-xs text-slate-500">· {STEP_KIND_LABEL[selectedStep.kind]}</span>{/if}</p>
