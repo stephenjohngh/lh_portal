@@ -233,6 +233,10 @@
             "unknown",
             "visitor"
         ],
+        "parking_sightings.place": [
+            "car_park",
+            "road"
+        ],
         "statutory_register.kind": [
             "absence",
             "action",

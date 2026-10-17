@@ -47,6 +47,7 @@ import * as gtLifecycle        from '#lib/apps/golden_thread/utils/gtLifecycle.j
 import * as gtRiskLifecycle    from '#lib/apps/golden_thread/utils/gtRiskLifecycle.js';
 import * as gtRiskScoring      from '#lib/apps/golden_thread/utils/gtRiskScoring.js';
 import * as gtConstants        from '#lib/apps/golden_thread/utils/gtConstants.js';
+import * as sightingModel      from '#lib/apps/parking/utils/sightingModel.js';
 import * as agreementModel     from '#lib/apps/parking/utils/agreementModel.js';
 import * as waitingListModel   from '#lib/apps/parking/utils/waitingListModel.js';
 import * as tariffModel        from '#lib/apps/parking/utils/tariffModel.js';
@@ -101,6 +102,7 @@ const VALUE_LISTS = {
   'spaces.label_size':               () => values(spaceLabelSize.SPACE_LABEL_SIZES),   // migration 242
   'parking_tariffs.vat_treatment':    () => values(agreementModel.VAT_TREATMENTS),
   'parking_tariffs.period':           () => values(agreementModel.FEE_PERIODS),
+  'parking_sightings.place':          () => Object.keys(sightingModel.SIGHTING_PLACES),   // migration 245
   'parking_holders.holder_type':      () => values(agreementModel.HOLDER_TYPES),
   'parking_applications.status':      () => values(waitingListModel.APPLICATION_STATUSES),
   'parking_tariffs.holder_class':     () => values(tariffModel.HOLDER_CLASSES),

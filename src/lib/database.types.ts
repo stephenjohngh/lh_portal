@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema20.csv
+// Source: docs/ops/supabase_lhportal_schema21.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -4006,31 +4006,31 @@ export type Database = {
       }
       parking_sightings: {
         Row: {
+          id: string
+          registration: string
+          place: string
+          seen_at: string
+          notes: string | null
           created_at: string
           created_by: string | null
-          id: string
-          notes: string | null
-          place: string
-          registration: string
-          seen_at: string
         }
         Insert: {
+          id?: string
+          registration: string
+          place: string
+          seen_at?: string
+          notes?: string | null
           created_at?: string
           created_by?: string | null
-          id?: string
-          notes?: string | null
-          place: string
-          registration: string
-          seen_at?: string
         }
         Update: {
+          id?: string
+          registration?: string
+          place?: string
+          seen_at?: string
+          notes?: string | null
           created_at?: string
           created_by?: string | null
-          id?: string
-          notes?: string | null
-          place?: string
-          registration?: string
-          seen_at?: string
         }
         Relationships: [
             {
