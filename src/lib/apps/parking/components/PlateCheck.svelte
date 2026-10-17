@@ -10,7 +10,10 @@
      same audit line, queued with no signal (lookupAudit.js).
      ⚠ It reads the car park when it opens, so open it where there is a signal;
      after that it works in the basement, as the Parking app does. Nothing of
-     the car park is kept on the phone. -->
+     the car park is kept on the phone.
+     Unauthorised parking (migration 245, user, same day): an answer that is not
+     "Allowed" offers Record this car — where, a photo, a note — and every answer
+     shows the car's earlier sightings. -->
 <script>
   import { onMount, tick } from 'svelte';
   import AppGate from '#lib/components/common/AppGate.svelte';
@@ -22,6 +25,11 @@
   import { permitStore } from '../stores/permitStore.js';
   import { syncState, startSync, stopSync } from '../stores/lookupAudit.js';
   import { checkRegistration } from '../stores/registrationCheck.js';
+  import { sightingStore } from '../stores/sightingStore.js';
+  import { sightingsOf } from '../utils/sightingModel.js';
+  import { permissions } from '#lib/stores/permissions.js';
+  import RecordSighting from './RecordSighting.svelte';
+  import SightingHistory from './SightingHistory.svelte';
   import { scanCandidatesFrom, lookupVerdict, splitExact } from '../utils/registrationLookup.js';
   import { normaliseReg, formatReg, STATUS_LABEL } from '../utils/agreementModel.js';
   import { fmtPermitWhen, permitNumberLabel } from '../utils/permitModel.js';
@@ -37,14 +45,19 @@
   // hits / permitHits are the WHOLE registration only; other* contain it (splitExact).
   /** @type {null | { q: string, hits: any[], permitHits: any[], otherHits: any[], otherPermitHits: any[], permitError: string, offline: boolean }} */
   let result = null;
+  let recording = false;
+  let recordedNote = '';
 
   const load = () => {
     permitStore.ensureLoaded().catch(() => { /* the answer says road permits were not checked */ });
+    sightingStore.ensureLoaded().catch(() => { /* shown under the answer */ });
     return parkingStore.load().then(() => { loadedAt = Date.now(); });
   };
 
   $: scanCandidates = scanCandidatesFrom($parkingStore.vehicles, $permitStore.permits);
   $: verdict = result ? lookupVerdict(result.hits, result.permitHits, result.permitError) : null;
+  $: earlier = result ? sightingsOf(result.q, $sightingStore.sightings) : [];
+  $: canRecord = $permissions.isAdmin || $permissions.canModify;
 
   onMount(() => {
     startSync();
@@ -55,7 +68,7 @@
 
   async function check(/** @type {string} */ value) {
     if (normaliseReg(value).length < 2) return;
-    checking = true; error = '';
+    checking = true; error = ''; recording = false; recordedNote = '';
     const offline = !$online;
     try {
       const r = await checkRegistration(value, { offline });
@@ -73,7 +86,14 @@
     await check(q);
   }
 
-  function scanAgain() { result = null; q = ''; scanning = true; }
+  function scanAgain() { result = null; q = ''; recording = false; recordedNote = ''; scanning = true; }
+
+  /** @param {CustomEvent<{ sighting: any, photoError: string }>} e */
+  function recorded(e) {
+    recording = false;
+    recordedNote = `Recorded at ${fmtTime(e.detail.sighting.seen_at)}.`
+      + (e.detail.photoError ? ` The photo was NOT saved: ${e.detail.photoError}` : '');
+  }
 
   const TONE = {
     ok:      'bg-green-900/50 border-green-500 text-green-200',
@@ -161,7 +181,22 @@
           {#if verdict.tone === 'none'}
             <p class="text-xs text-slate-300">Bays that belong to flats may not have their holders recorded, and visitors are not recorded at all.</p>
           {/if}
+          {#if $sightingStore.error}
+            <p class="text-xs text-amber-300 border-t border-white/10 pt-2">Earlier sightings could not be read: {$sightingStore.error}</p>
+          {/if}
+          <SightingHistory sightings={earlier} />
+          {#if recordedNote}<p class="text-sm text-white border-t border-white/10 pt-2" role="status">✓ {recordedNote}</p>{/if}
         </div>
+
+        {#if verdict.tone !== 'ok' && canRecord}
+          {#if recording}
+            <RecordSighting registration={result.q} on:recorded={recorded} on:cancel={() => (recording = false)} />
+          {:else}
+            <button type="button" on:click={() => (recording = true)}
+              class="w-full min-h-[56px] rounded-xl border-2 border-red-400 text-red-200 text-lg font-semibold">
+              Record this car</button>
+          {/if}
+        {/if}
       {/if}
     </AppGate>
   </div>

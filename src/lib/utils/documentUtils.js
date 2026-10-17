@@ -198,6 +198,7 @@ export const DOC_FOLDERS = {
   ISSUES:        'Issues',
   PARKING:       'Parking Licences',
   PARKING_PERMITS: 'Parking Permits', // the permit template's two images
+  PARKING_SIGHTINGS: 'Unauthorised Parking', // photos of cars recorded by Car check (migration 245)
   LOOSE:         'Documents',      // uploaded in the admin tab, attached to nothing
 };
 

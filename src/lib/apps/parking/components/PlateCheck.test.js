@@ -19,7 +19,8 @@ const h = vi.hoisted(() => {
   }
   return { online: makeStore(true), sync: makeStore({ pending: 0, error: 0 }),
     parking: makeStore({ vehicles: [{ id: 'v1', registration: 'AB12CDE' }], error: null }),
-    permits: makeStore({ permits: [] }), result: null, checked: [] };
+    permits: makeStore({ permits: [] }), result: null, checked: [],
+    sightings: makeStore({ sightings: [], error: null }), recorded: [] };
 });
 
 // The real gate, with an admin who has been checked.
@@ -32,13 +33,24 @@ vi.mock('#lib/stores/online.js', () => ({ online: { subscribe: h.online.subscrib
 vi.mock('../stores/lookupAudit.js', () => ({ syncState: { subscribe: h.sync.subscribe }, startSync: () => {}, stopSync: () => {} }));
 vi.mock('../stores/parkingStore.js', () => ({ parkingStore: { subscribe: h.parking.subscribe, load: async () => {} } }));
 vi.mock('../stores/permitStore.js', () => ({ permitStore: { subscribe: h.permits.subscribe, ensureLoaded: async () => {} } }));
+vi.mock('../stores/sightingStore.js', () => ({ sightingStore: {
+  subscribe: h.sightings.subscribe, ensureLoaded: async () => {},
+  record: async (input) => { h.recorded.push(input); return { sighting: { id: 'n1', seen_at: '2026-10-17T09:15:00Z' }, photoError: '' }; },
+} }));
+vi.mock('#lib/apps/inspection/utils/imageCompression.js', () => ({ compressImage: async (b) => b }));
 vi.mock('../stores/registrationCheck.js', () => ({
   checkRegistration: async (q, o) => { h.checked.push([q, o]); return h.result; },
 }));
 
 import PlateCheck from './PlateCheck.svelte';
 
-beforeEach(() => { cleanup(); h.checked.length = 0; h.online.set(true); });
+beforeEach(() => { cleanup(); h.checked.length = 0; h.recorded.length = 0; h.online.set(true); h.sightings.set({ sightings: [], error: null }); });
+
+async function checkTyped(value) {
+  await fireEvent.input(await screen.findByPlaceholderText('Or type it'), { target: { value } });
+  await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+  return screen.findByTestId('car-check-result');
+}
 
 describe('Car check', () => {
   it('opens on the Scan button, not the camera; the camera opens when it is pressed', async () => {
@@ -96,5 +108,42 @@ describe('Car check', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
     await waitFor(() => expect(h.checked).toEqual([['AB12CDE', { offline: true }]]));
     expect((await screen.findByTestId('car-check-result')).textContent).toMatch(/no signal/i);
+  });
+
+  it('Not found offers Record this car; it saves where, the note and nothing else typed', async () => {
+    h.result = { hits: [], permitHits: [], permitError: '' };
+    render(PlateCheck);
+    await checkTyped('zz99 zzz');
+    await fireEvent.click(screen.getByRole('button', { name: 'Record this car' }));
+    const save = screen.getByRole('button', { name: 'Save' });
+    expect(save.hasAttribute('disabled')).toBe(true);                  // where, first
+    await fireEvent.click(screen.getByLabelText('Side road'));
+    await fireEvent.input(screen.getByRole('textbox', { name: 'Notes' }), { target: { value: 'on the corner' } });
+    await fireEvent.click(save);
+    await waitFor(() => expect(h.recorded).toHaveLength(1));
+    expect(h.recorded[0]).toMatchObject({ registration: 'zz99 zzz', place: 'road', notes: 'on the corner', photo: null });
+    expect((await screen.findByRole('status')).textContent).toMatch(/Recorded at/);
+  });
+
+  it('an allowed car is not offered for recording', async () => {
+    h.result = { hits: [], permitError: '', permitHits: [{ permit: { id: 'p1', registration: 'AB12CDE', permit_number: 7, company: 'Acme',
+      valid_from: '2000-01-01', valid_to: '2999-01-01' }, status: 'current' }] };
+    render(PlateCheck);
+    expect((await checkTyped('AB12CDE')).dataset.tone).toBe('ok');
+    expect(screen.queryByRole('button', { name: 'Record this car' })).toBeNull();
+  });
+
+  it('shows the car’s earlier sightings — of the whole registration only', async () => {
+    h.sightings.set({ error: null, sightings: [
+      { id: 's1', registration: 'ZZ99ZZZ', place: 'car_park', seen_at: '2026-10-10T08:00:00Z', notes: 'bay 12', photos: [] },
+      { id: 's2', registration: 'ZZ99ZZZA', place: 'road', seen_at: '2026-10-11T08:00:00Z', notes: 'other car', photos: [] },
+    ] });
+    h.result = { hits: [], permitHits: [], permitError: '' };
+    render(PlateCheck);
+    await checkTyped('ZZ99 ZZZ');
+    const hist = screen.getByTestId('sighting-history');
+    expect(hist.textContent).toMatch(/Seen here before — 1 time/);
+    expect(hist.textContent).toMatch(/bay 12/);
+    expect(hist.textContent).not.toMatch(/other car/);
   });
 });

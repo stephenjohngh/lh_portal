@@ -17,7 +17,9 @@
 //   2. the id must be one the PORTAL knows — a document_library,
 //      media_attachments or maintenance_documents row names it;
 //   3. a parking licence (document_library, entity_type parking_agreement)
-//      needs the Parking grant, as the table itself does (migration 227).
+//      needs the Parking grant, as the table itself does (migration 227); so
+//      does the photo of an unauthorised-parking sighting (media_attachments,
+//      entity_type parking_sighting, migration 245).
 //
 // ── Deleting ─────────────────────────────────────────────────────────────────
 // Any logged-in account could permanently delete any storage file by URL. Now
@@ -91,7 +93,7 @@ function likeContaining(ref) {
 /**
  * @typedef {{
  *   library:     Array<{ id: string, entity_type: string|null, filename?: string|null, display_name?: string|null, mime_type?: string|null }>,
- *   media:       Array<{ id: string, created_by: string|null, filename?: string|null, mime_type?: string|null }>,
+ *   media:       Array<{ id: string, entity_type?: string|null, created_by: string|null, filename?: string|null, mime_type?: string|null }>,
  *   maintenance: Array<{ id: string, uploaded_by: string|null, filename?: string|null, mime_type?: string|null }>,
  * }} FileRefs
  */
@@ -107,7 +109,7 @@ export async function findFileReferences(db, ref) {
   const pattern = likeContaining(ref);
   const [library, media, maintenance] = await Promise.all([
     db.from('document_library').select('id, entity_type, filename, display_name, mime_type').eq('provider_file_id', ref),
-    db.from('media_attachments').select('id, created_by, filename, mime_type').ilike('storage_url', pattern),
+    db.from('media_attachments').select('id, entity_type, created_by, filename, mime_type').ilike('storage_url', pattern),
     db.from('maintenance_documents').select('id, uploaded_by, filename, mime_type').ilike('storage_path', pattern),
   ]);
   for (const r of [library, media, maintenance]) if (r.error) throw new Error(r.error.message);
@@ -144,7 +146,8 @@ export async function loadViewer(db, userId) {
 export function canViewFile(refs, viewer) {
   const known = refs.library.length + refs.media.length + refs.maintenance.length > 0;
   if (!known) return false;
-  const parking = refs.library.some((r) => r.entity_type === 'parking_agreement');
+  const parking = refs.library.some((r) => r.entity_type === 'parking_agreement')
+    || refs.media.some((r) => r.entity_type === 'parking_sighting');
   if (parking && !viewer.isAdmin && !viewer.grants.has('parking')) return false;
   return true;
 }

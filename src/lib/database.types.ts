@@ -4004,6 +4004,44 @@ export type Database = {
         }
         Relationships: []
       }
+      parking_sightings: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          place: string
+          registration: string
+          seen_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          place: string
+          registration: string
+          seen_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          place?: string
+          registration?: string
+          seen_at?: string
+        }
+        Relationships: [
+            {
+              foreignKeyName: "parking_sightings_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
       parking_tariffs: {
         Row: {
           id: string

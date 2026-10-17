@@ -37,6 +37,7 @@
   import ReportsTab         from './components/ReportsTab.svelte';
   import PricesTab          from './components/PricesTab.svelte';
   import PermitsTab         from './components/PermitsTab.svelte';
+  import SightingsTab       from './components/SightingsTab.svelte';
   import { downloadBayPlan } from './utils/bayPlanImage.js';
   import Button             from '#lib/components/common/Button.svelte';
 
@@ -58,6 +59,7 @@
     { key: 'prices',     label: 'Prices' },
     { key: 'reports',    label: 'Reports' },
     { key: 'permits',    label: 'Road Permits' },
+    { key: 'sightings',  label: 'Unauthorised parking' },
   ];
   let tab = 'bays';
   // Set by the Registration Lookup: the permit to find on Road Permits. `at` makes the
@@ -175,6 +177,8 @@
       <WaitingListTab {canEdit} on:accept={acceptOffer} />
     {:else if tab === 'permits'}
       <PermitsTab {canEdit} query={permitQuery} />
+    {:else if tab === 'sightings'}
+      <SightingsTab />
     {:else if tab === 'prices'}
       <PricesTab />
     {:else if tab === 'reports'}

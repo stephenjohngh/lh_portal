@@ -55,6 +55,13 @@ describe('who may view a file through the proxy', () => {
     expect(canViewFile(refs, { isAdmin: false, grants: new Set(['parking']) })).toBe(true);
     expect(canViewFile(refs, { isAdmin: true, grants: new Set() })).toBe(true);
   });
+
+  it('holds an unauthorised-parking photo to the Parking grant (migration 245)', () => {
+    const refs = { ...none, media: [{ id: 'm', entity_type: 'parking_sighting', created_by: U2 }] };
+    expect(canViewFile(refs, viewer)).toBe(false);
+    expect(canViewFile(refs, { isAdmin: false, grants: new Set(['parking']) })).toBe(true);
+    expect(canViewFile(refs, { isAdmin: true, grants: new Set() })).toBe(true);
+  });
 });
 
 describe('who may delete a file', () => {
