@@ -257,3 +257,24 @@ describe('timeline summaries print dates, not ISO text', () => {
     expect(eventSummary({ event_type: 'device_issued', detail: { type: 'flat_fob', serial: null } })).not.toMatch(/\s$/);
   });
 });
+
+import { agreementRegistrations } from './agreementModel.js';
+describe('agreementRegistrations — the Registration column of the Agreements list (2026-10-17)', () => {
+  const V = [
+    { agreement_id: 'a1', registration: 'AB12CDE', to_date: null },
+    { agreement_id: 'a1', registration: 'OLD1OLD', to_date: '2026-01-01' },
+    { agreement_id: 'a2', registration: 'XY99ZZZ', to_date: '2026-05-01' },
+    { agreement_id: 'a2', registration: 'EARLIER', to_date: '2025-01-01' },
+    { agreement_id: 'a3', registration: 'LATER11', to_date: '2026-12-31' },
+  ];
+  it('shows the vehicles on it now, formatted, and not the ones that came off', () => {
+    expect(agreementRegistrations('a1', V, '2026-10-17')).toEqual({ regs: ['AB12 CDE'], past: false });
+    expect(agreementRegistrations('a3', V, '2026-10-17')).toEqual({ regs: ['LATER11'], past: false });
+  });
+  it('with none on it now, shows the last one, marked as past', () => {
+    expect(agreementRegistrations('a2', V, '2026-10-17')).toEqual({ regs: ['XY99 ZZZ'], past: true });
+  });
+  it('nothing for an agreement with no vehicles', () => {
+    expect(agreementRegistrations('a9', V, '2026-10-17')).toEqual({ regs: [], past: false });
+  });
+});

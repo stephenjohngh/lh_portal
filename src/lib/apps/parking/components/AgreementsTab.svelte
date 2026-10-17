@@ -4,7 +4,7 @@
   import { matchesSearch } from '#lib/utils/textSearch.js';
   import { revealOnNarrow } from '../utils/revealOnNarrow.js';
   import { parkingStore } from '../stores/parkingStore.js';
-  import { STATUSES, STATUS_LABEL, BASIS_LABEL, LIVE, unreturnedAfterEnd } from '../utils/agreementModel.js';
+  import { STATUSES, STATUS_LABEL, BASIS_LABEL, LIVE, unreturnedAfterEnd, agreementRegistrations } from '../utils/agreementModel.js';
   import { fmtDate } from '#lib/utils/dates.js';
   import AgreementPanel from './AgreementPanel.svelte';
 
@@ -20,6 +20,8 @@
     return h ? (h.company_name ? `${h.company_name} — ${h.display_name}` : h.display_name) : '—';
   };
   $: bayRef = (bayId) => s.bays.find(b => b.bay_id === bayId)?.ref ?? '—';
+  // The car(s) on each agreement now — or, once it has none, its last ones.
+  $: regsOf = (id) => agreementRegistrations(id, s.vehicles);
 
   // Ended agreements with a device still out: a security issue, because the
   // device still opens the gate.
@@ -29,15 +31,15 @@
       || (status === 'live' ? LIVE.has(a.status)
         : status === 'devices_out' ? devicesOutIds.has(a.id)
         : a.status === status))
-    .filter(a => matchesSearch([a.reference, bayRef(a.bay_id), holderName(a.holder_id), a.unit_ref], q))
+    .filter(a => matchesSearch([a.reference, bayRef(a.bay_id), holderName(a.holder_id), a.unit_ref, ...regsOf(a.id).regs], q))
     .sort((a, b) => Number(LIVE.has(b.status)) - Number(LIVE.has(a.status)) || b.starts_on.localeCompare(a.starts_on));
 
   $: selected = s.agreements.find(a => a.id === selectedId) ?? null;
 </script>
 
 <div class="flex flex-wrap items-center gap-2 mb-3">
-  <input bind:value={q} placeholder="Search reference, bay, holder…"
-    class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-60" />
+  <input bind:value={q} placeholder="Search reference, bay, holder, registration…"
+    class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-72" />
   <select bind:value={status} class="px-2 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200">
     <option value="live">Live (draft, active, notice)</option>
     <option value="">All</option>
@@ -58,12 +60,14 @@
             <th class="py-2 pr-3 font-medium">Reference</th>
             <th class="py-2 pr-3 font-medium">Bay</th>
             <th class="py-2 pr-3 font-medium">Holder</th>
+            <th class="py-2 pr-3 font-medium">Registration</th>
             <th class="py-2 pr-3 font-medium">Dates</th>
             <th class="py-2 font-medium">Status</th>
           </tr>
         </thead>
         <tbody>
           {#each rows as a (a.id)}
+            {@const r = regsOf(a.id)}
             <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
             <tr class="border-b border-slate-800 cursor-pointer hover:bg-slate-800/60 {a.id === selectedId ? 'bg-slate-800' : ''}"
               on:click={() => selectedId = a.id}>
@@ -71,6 +75,8 @@
               <td class="py-2 pr-3 font-mono text-slate-300">{bayRef(a.bay_id)}</td>
               <td class="py-2 pr-3 text-slate-200">{holderName(a.holder_id)}
                 <span class="text-xs text-slate-500">· {BASIS_LABEL[a.basis]}</span></td>
+              <td class="py-2 pr-3 font-mono whitespace-nowrap {r.past ? 'text-slate-500' : 'text-slate-200'}"
+                title={r.past ? 'No vehicle on it now — the last one' : ''}>{r.regs.length ? r.regs.join(', ') : '—'}</td>
               <td class="py-2 pr-3 text-xs text-slate-400">{fmtDate(a.starts_on)} → {a.ends_on ? fmtDate(a.ends_on) : 'rolling'}</td>
               <td class="py-2 text-xs text-slate-300">{STATUS_LABEL[a.status]}</td>
             </tr>

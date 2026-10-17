@@ -294,6 +294,23 @@ export function vehicleStanding(v, agreement, today) {
 const STANDING_ORDER = { authorised: 0, pending: 1, ended: 2 };
 
 /**
+ * The registrations to show against an agreement in a list (2026-10-17): the
+ * vehicles on it now (no end, or an end not yet passed), formatted; for an
+ * agreement with none now, its last ones, marked `past`.
+ * @param {string} agreementId
+ * @param {{ agreement_id: string, registration: string, to_date?: string|null }[]} vehicles
+ * @param {string} [today]
+ * @returns {{ regs: string[], past: boolean }}
+ */
+export function agreementRegistrations(agreementId, vehicles = [], today = todayISO()) {
+  const mine = vehicles.filter(v => v.agreement_id === agreementId);
+  const now = mine.filter(v => !v.to_date || v.to_date >= today);
+  if (now.length) return { regs: now.map(v => formatReg(v.registration)), past: false };
+  const lastEnd = mine.reduce((m, v) => (v.to_date && v.to_date > m ? v.to_date : m), '');
+  return { regs: mine.filter(v => v.to_date === lastEnd).map(v => formatReg(v.registration)), past: mine.length > 0 };
+}
+
+/**
  * "Whose car is this?" — every vehicle whose registration contains the
  * search, with its agreement, holder and bay, and where it stands today.
  * Authorised first.
