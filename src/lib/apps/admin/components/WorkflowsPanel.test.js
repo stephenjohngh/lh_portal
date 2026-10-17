@@ -14,6 +14,10 @@ vi.mock('#lib/workflow/workflowApi.js', () => ({
   saveWorkflow: async (w) => { h.saved.push(w); return 'w1'; },
 }));
 vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: () => {} }));
+vi.mock('#lib/workflow/nonWorkingDays.js', () => ({
+  ensureNonWorkingDays: async () => 0, addNonWorkingDay: async () => {}, removeNonWorkingDay: async () => {},
+  listNonWorkingDays: async () => [{ day: '2026-12-25', name: 'Christmas Day' }],
+}));
 
 const WorkflowsPanel = (await import('./WorkflowsPanel.svelte')).default;
 beforeEach(() => { cleanup(); h.saved.length = 0; });
@@ -41,5 +45,17 @@ describe('Admin → Workflows', () => {
     expect(h.saved[0]).toMatchObject({ key: WF.key, appId: 'parking' });
     expect(h.saved[0].steps.map((s) => s.key)).toEqual(WF.steps.map((s) => s.key));
     expect(h.saved[0].steps[0]).not.toHaveProperty('isNew');
+  });
+
+  it('a step can be given a deadline, said in words, and it is saved with the step; the non-working days are listed', async () => {
+    render(WorkflowsPanel);
+    const steps = await screen.findByTestId('workflow-steps');
+    await waitFor(() => expect(steps.querySelectorAll('tbody tr')).toHaveLength(WF.steps.length));
+    expect(screen.getByTestId('non-working-days').textContent).toMatch(/Christmas Day/);
+    await fireEvent.input(screen.getAllByLabelText('Deadline days')[1], { target: { value: '7' } });
+    expect((await screen.findByTestId('workflow-deadlines')).textContent).toMatch(/Being checked:.*Within 7/);
+    await fireEvent.click(screen.getByRole('button', { name: 'Save workflow' }));
+    await waitFor(() => expect(h.saved).toHaveLength(1));
+    expect(h.saved[0].steps.find((s) => s.key === 'checking')).toMatchObject({ deadline_days: 7 });
   });
 });

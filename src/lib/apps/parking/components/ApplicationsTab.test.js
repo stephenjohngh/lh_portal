@@ -24,8 +24,8 @@ vi.mock('#lib/stores/permissions.js', () => ({ permissions: { subscribe: h.perms
 
 const ApplicationsTab = (await import('./ApplicationsTab.svelte')).default;
 
-const REQ = (id, ref, step) => ({ request: { id, reference: ref, display_name: `Person ${id}`, email: `${id}@x.co`, holder_type: 'leaseholder',
-  wanted_size: 'Car', received_at: '2026-10-17T09:00:00Z', privacy_notice_text: 'notice' }, item: { id: `i${id}`, subject_id: id, step_key: step } });
+const REQ = (id, ref, step, due_on = null) => ({ request: { id, reference: ref, display_name: `Person ${id}`, email: `${id}@x.co`, holder_type: 'leaseholder',
+  wanted_size: 'Car', received_at: '2026-10-17T09:00:00Z', privacy_notice_text: 'notice' }, item: { id: `i${id}`, subject_id: id, step_key: step, due_on } });
 function state(list) {
   return { workflow: { id: 'w1' }, steps: WF.steps, moves: WF.moves, requests: list.map((x) => x.request), items: list.map((x) => x.item),
     loading: false, loaded: true, error: null };
@@ -72,5 +72,13 @@ describe('Parking → Applications', () => {
     h.req.set({ ...state([]), workflow: null });
     render(ApplicationsTab, { canEdit: true });
     await waitFor(() => expect(h.setUp).toBe(1));
+  });
+
+  it('shows how each open application stands against its step’s deadline', async () => {
+    h.req.set(state([REQ('a', 'PKR-2026-000001', 'received', '2000-01-03'), REQ('b', 'PKR-2026-000002', 'checking')]));
+    render(ApplicationsTab, { canEdit: true });
+    const due = await screen.findAllByTestId('application-due');
+    expect(due[0].textContent).toMatch(/days overdue/);
+    expect(due[1].textContent.trim()).toBe('');
   });
 });

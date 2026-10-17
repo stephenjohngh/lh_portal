@@ -11,6 +11,10 @@
   import { listWorkflows, loadWorkflow, saveWorkflow } from '#lib/workflow/workflowApi.js';
   import { workflowProblem, stepKeyFor, STEP_KINDS, orderedSteps } from '#lib/workflow/workflowModel.js';
   import { actionsFor } from '#lib/workflow/workflowActions.js';
+  import { DEADLINE_BASES, DEADLINE_FROM, describeDeadline } from '#lib/workflow/workflowDeadlines.js';
+  import { listNonWorkingDays, ensureNonWorkingDays, addNonWorkingDay, removeNonWorkingDay } from '#lib/workflow/nonWorkingDays.js';
+  import { fmtDate } from '#lib/utils/dates.js';
+  import { isFinished } from '#lib/workflow/workflowModel.js';
   import { logAudit } from '#lib/utils/auditLogger.js';
   import { errMessage } from '#lib/utils/errors.js';
   import Button from '#lib/components/common/Button.svelte';
@@ -32,8 +36,33 @@
   let moves = [];
   let loadedKey = '';
 
+  /** @type {{ day: string, name: string }[]} */
+  let offDays = [];
+  let newDay = '';
+  let newDayName = '';
+  let dayError = '';
+
+  async function readOffDays() {
+    try { offDays = await listNonWorkingDays(); }
+    catch (/** @type {any} */ err) { dayError = errMessage(err, 'Could not read the non-working days.'); }
+  }
+  async function addDay() {
+    dayError = '';
+    if (!newDay || !newDayName.trim()) { dayError = 'Give the date and what it is.'; return; }
+    try { await addNonWorkingDay(newDay, newDayName); newDay = ''; newDayName = ''; await readOffDays(); }
+    catch (/** @type {any} */ err) { dayError = errMessage(err, 'That day could not be added.'); }
+  }
+  async function removeDay(/** @type {string} */ day) {
+    dayError = '';
+    try { await removeNonWorkingDay(day); await readOffDays(); }
+    catch (/** @type {any} */ err) { dayError = errMessage(err, 'That day could not be removed.'); }
+  }
+
   onMount(async () => {
     try {
+      // The shipped bank holidays, when the list is empty (the seed rule).
+      await ensureNonWorkingDays().catch((/** @type {any} */ err) => { dayError = errMessage(err, 'The bank holidays could not be added.'); });
+      await readOffDays();
       workflows = await listWorkflows();
       if (workflows.length) chosenKey = workflows[0].key;
     } catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read the workflows.'); }
@@ -47,7 +76,8 @@
     try {
       const wf = await loadWorkflow(key);
       current = wf?.workflow ?? null;
-      steps = orderedSteps(wf?.steps ?? []).map((s) => ({ ...s, isNew: false }));
+      steps = orderedSteps(wf?.steps ?? []).map((s) => ({ ...s, deadline_days: s.deadline_days ?? '',
+        deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered', isNew: false }));
       moves = (wf?.moves ?? []).map((m) => ({ ...m }));
     } catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read that workflow.'); }
   }
@@ -57,7 +87,8 @@
 
   function addStep() {
     const key = stepKeyFor('New step', steps.map((s) => s.key));
-    steps = [...steps, { key, name: 'New step', public_name: '', kind: 'open', isNew: true }];
+    steps = [...steps, { key, name: 'New step', public_name: '', kind: 'open', deadline_days: '',
+      deadline_basis: 'calendar', deadline_from: 'entered', isNew: true }];
   }
   function renameNew(/** @type {any} */ st) {
     // A new step's key follows its name until it is saved; a saved step keeps its key.
@@ -129,7 +160,8 @@
         <div class="overflow-x-auto"><table class="w-full text-sm" data-testid="workflow-steps">
           <thead><tr class="text-left text-xs text-slate-400">
             <th class="py-1 pr-2 font-medium">Name (staff see)</th><th class="py-1 pr-2 font-medium">Name the applicant sees</th>
-            <th class="py-1 pr-2 font-medium">Kind</th><th class="py-1 pr-2 font-medium">Key</th><th></th></tr></thead>
+            <th class="py-1 pr-2 font-medium">Kind</th><th class="py-1 pr-2 font-medium">Deadline</th>
+            <th class="py-1 pr-2 font-medium">Key</th><th></th></tr></thead>
           <tbody>
             {#each steps as st, i (st)}
               <tr class="border-t border-slate-800">
@@ -137,6 +169,17 @@
                 <td class="py-1 pr-2"><input class="{inputCls} w-56" bind:value={st.public_name} placeholder="(same as staff)" aria-label="Name the applicant sees" /></td>
                 <td class="py-1 pr-2"><select class={inputCls} bind:value={st.kind} on:change={() => (steps = steps)} aria-label="Kind">
                   {#each STEP_KINDS as k}<option value={k.value} title={k.explains}>{k.label}</option>{/each}</select></td>
+                <td class="py-1 pr-2 whitespace-nowrap">
+                  {#if isFinished(st.kind)}<span class="text-xs text-slate-500">—</span>
+                  {:else}
+                    <input type="number" min="1" max="365" class="{inputCls} w-16" bind:value={st.deadline_days}
+                      on:input={() => (steps = steps)} placeholder="none" aria-label="Deadline days" />
+                    <select class={inputCls} bind:value={st.deadline_basis} on:change={() => (steps = steps)} aria-label="Deadline counts">
+                      {#each DEADLINE_BASES as b}<option value={b.value}>{b.label}</option>{/each}</select>
+                    <select class={inputCls} bind:value={st.deadline_from} on:change={() => (steps = steps)} aria-label="Deadline from">
+                      {#each DEADLINE_FROM as f}<option value={f.value}>{f.label}</option>{/each}</select>
+                  {/if}
+                </td>
                 <td class="py-1 pr-2 font-mono text-xs text-slate-500">{st.key}</td>
                 <td class="py-1 whitespace-nowrap">
                   <Button variant="tertiary" size="xs" on:click={() => moveStep(i, -1)} disabled={i === 0}>↑</Button>
@@ -182,6 +225,14 @@
         {/if}
       </div>
 
+      {#if steps.some((st) => st.deadline_days)}
+        <ul class="text-xs text-slate-400 list-disc pl-5" data-testid="workflow-deadlines">
+          {#each steps.filter((st) => st.deadline_days && !isFinished(st.kind)) as st (st)}
+            <li><span class="text-slate-300">{st.name}:</span> {describeDeadline({ ...st, deadline_days: Number(st.deadline_days) })}.</li>
+          {/each}
+        </ul>
+        <p class="text-xs text-slate-500">Saving re-dates what is in each step now. Working days skip weekends and the days below.</p>
+      {/if}
       {#if problem}<p class="text-sm text-amber-300" role="alert" data-testid="workflow-problem">{problem}</p>{/if}
       {#if saved}<p class="text-sm text-green-400" role="status">{saved}</p>{/if}
       <div class="flex gap-2">
@@ -190,4 +241,28 @@
       </div>
     {/if}
   {/if}
+
+  <div class="space-y-2 border-t border-slate-700 pt-4" data-testid="non-working-days">
+    <p class="text-sm font-semibold text-slate-200">Days that are not working days</p>
+    <p class="text-xs text-slate-400">A deadline in working days skips weekends and these. The bank holidays for England and Wales
+      to 2028 come with the portal; add the next years, or a day the office is closed.</p>
+    <ErrorDisplay message={dayError} onDismiss={() => (dayError = '')} />
+    <div class="flex flex-wrap items-end gap-2">
+      <input type="date" class={inputCls} bind:value={newDay} aria-label="Date" />
+      <input class="{inputCls} w-56" bind:value={newDayName} placeholder="e.g. Christmas Day" aria-label="What it is" />
+      <Button variant="tertiary" size="xs" on:click={addDay}>+ Add a day</Button>
+    </div>
+    {#if offDays.length}
+      <ul class="grid gap-x-6 gap-y-1 sm:grid-cols-2 text-sm">
+        {#each offDays as d (d.day)}
+          <li class="flex items-center justify-between gap-2 border-b border-slate-800 py-0.5">
+            <span><span class="text-slate-300">{fmtDate(d.day)}</span> <span class="text-slate-500">· {d.name}</span></span>
+            <Button variant="tertiary" size="xs" on:click={() => removeDay(d.day)}>Remove</Button>
+          </li>
+        {/each}
+      </ul>
+    {:else}
+      <p class="text-xs text-slate-500">None — working days skip only weekends.</p>
+    {/if}
+  </div>
 </section>

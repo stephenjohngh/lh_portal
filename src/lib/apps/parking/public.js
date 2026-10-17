@@ -14,11 +14,15 @@ import { listParkingBaySpaces } from '#lib/apps/building_assets/public.js';
 import { buildSpaceRef } from '#lib/utils/spaceRef.js';
 import { parkingDueItems } from './utils/parkingDue.js';
 import { todayISO } from './utils/agreementModel.js';
+import { listDeadlines } from '#lib/workflow/workflowApi.js';
+import { APPLICATION_WORKFLOW_KEY } from './utils/applicationWorkflow.js';
 
 /**
  * Parking's dated items for the Planner: agreements ending, notice running
  * out, drafts not activated, devices not returned, offers expiring, and bays
- * due back in use. Each row names a licence and a bay, never a person.
+ * due back in use — and online applications whose workflow step has a
+ * deadline (migration 248). Each row names a licence, a bay or an
+ * application's reference, never a person.
  *
  * Bounded at `to` only: an item already past is overdue, and must not fall out
  * of view for predating the Planner's window. RLS on every parking table is
@@ -37,5 +41,18 @@ export async function listParkingDueDates(to = null) {
   ]);
   const spaceById = new Map(spaces.map(s => [s.id, s]));
   const bayRefs = new Map(bays.map(b => [b.id, buildSpaceRef(spaceById.get(b.space_id), floors)]));
-  return parkingDueItems({ agreements, applications, devices, bays, bayRefs }, todayISO(), to);
+  const today = todayISO();
+  const items = parkingDueItems({ agreements, applications, devices, bays, bayRefs }, today, to);
+  // Application deadlines fail alone: a missing workflow is not a broken Planner.
+  const deadlines = await listDeadlines(APPLICATION_WORKFLOW_KEY).catch(() => []);
+  for (const d of deadlines) {
+    if (to && d.due_on > to) continue;
+    items.push({
+      id: `application:${d.id}`, kind: 'application', date: d.due_on,
+      title: `Application ${d.label ?? ''} — ${d.step}`.replace(/\s+—/, ' —'),
+      detail: d.due_on < today ? 'Past its step’s deadline' : null,
+      overdue: d.due_on < today, needsArranging: false,
+    });
+  }
+  return items;
 }

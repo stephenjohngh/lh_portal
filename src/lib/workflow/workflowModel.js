@@ -10,7 +10,8 @@
 import { actionsFor } from './workflowActions.js';
 
 /** @typedef {'start'|'open'|'done'|'declined'} StepKind */
-/** @typedef {{ key: string, name: string, public_name?: string|null, kind: StepKind, position?: number }} Step */
+/** @typedef {{ key: string, name: string, public_name?: string|null, kind: StepKind, position?: number,
+ *              deadline_days?: number|null, deadline_basis?: 'calendar'|'working', deadline_from?: 'entered'|'started' }} Step */
 /** @typedef {{ from_key: string, to_key: string, label: string, note_required?: boolean, admin_only?: boolean, action?: string|null, position?: number }} Move */
 
 /** The kinds of step — the database's CHECK list, with the words shown. */
@@ -46,6 +47,14 @@ export function workflowProblem({ steps, moves, appId }) {
   if (starts.length !== 1) return `A workflow needs exactly one start step (it has ${starts.length}).`;
   const keys = new Set();
   for (const s of steps) {
+    if (s.deadline_days != null && s.deadline_days !== '') {
+      const n = Number(s.deadline_days);
+      if (!Number.isInteger(n) || n < 1 || n > 365) return `Step "${s.name}": a deadline is 1 to 365 days.`;
+      if (isFinished(s.kind)) return `Step "${s.name}" is finished, so it has no deadline.`;
+    }
+    if (!['calendar', 'working'].includes(s.deadline_basis ?? 'calendar') || !['entered', 'started'].includes(s.deadline_from ?? 'entered')) {
+      return `Step "${s.name}": a deadline counts calendar or working days, from entering the step or from the start.`;
+    }
     if (!String(s.name ?? '').trim()) return 'Every step needs a name.';
     if (!/^[a-z][a-z0-9_]{0,40}$/.test(s.key ?? '')) return `Step "${s.name}" has a key that cannot be used.`;
     if (keys.has(s.key)) return `Two steps share the key "${s.key}".`;

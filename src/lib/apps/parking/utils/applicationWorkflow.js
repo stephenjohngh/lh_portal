@@ -18,8 +18,10 @@ export const DEFAULT_APPLICATION_WORKFLOW = Object.freeze({
   appId: 'parking',
   description: 'An application for a car park bay made on the public form (/parking/apply).',
   steps: [
-    { key: 'received',     name: 'Received',            public_name: 'Received — waiting to be checked', kind: 'start' },
-    { key: 'checking',     name: 'Being checked',       public_name: 'Being checked',                    kind: 'open' },
+    { key: 'received',     name: 'Received',            public_name: 'Received — waiting to be checked', kind: 'start',
+      deadline_days: 5,  deadline_basis: 'working', deadline_from: 'entered' },
+    { key: 'checking',     name: 'Being checked',       public_name: 'Being checked',                    kind: 'open',
+      deadline_days: 10, deadline_basis: 'working', deadline_from: 'entered' },
     { key: 'waiting_list', name: 'On the waiting list', public_name: 'Accepted — on the waiting list',   kind: 'done' },
     { key: 'declined',     name: 'Declined',            public_name: 'Not accepted',                     kind: 'declined' },
     { key: 'withdrawn',    name: 'Withdrawn',           public_name: 'Withdrawn',                        kind: 'declined' },

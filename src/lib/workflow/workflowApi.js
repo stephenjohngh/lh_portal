@@ -37,7 +37,9 @@ export function listWorkflows() {
 export function saveWorkflow({ key, name, appId, description = null, steps, moves }) {
   return api.rpc('workflow_save', {
     p_key: key, p_name: name, p_app_id: appId, p_description: description,
-    p_steps: steps.map((s, i) => ({ key: s.key, name: s.name, public_name: s.public_name ?? null, kind: s.kind, position: i + 1 })),
+    p_steps: steps.map((s, i) => ({ key: s.key, name: s.name, public_name: s.public_name ?? null, kind: s.kind, position: i + 1,
+      deadline_days: s.deadline_days === '' || s.deadline_days == null ? null : Number(s.deadline_days),
+      deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered' })),
     p_moves: moves.map((m, i) => ({
       from_key: m.from_key, to_key: m.to_key, label: m.label,
       note_required: !!m.note_required, admin_only: !!m.admin_only, action: m.action || null, position: i + 1,
@@ -63,4 +65,22 @@ export function itemHistory(itemId) {
  */
 export function moveItem(itemId, toKey, note = '') {
   return api.rpc('workflow_move', { p_item: itemId, p_to: toKey, p_note: note || null });
+}
+
+/**
+ * Open items with a deadline in a workflow, for the Planner (through the
+ * owning app's public.js, so its grant gates them): the item's label (never a
+ * person), its step and when it is due.
+ * @param {string} workflowKey
+ * @returns {Promise<Array<{ id: string, label: string|null, due_on: string, step: string, workflow: string }>>}
+ */
+export async function listDeadlines(workflowKey) {
+  const wf = await loadWorkflow(workflowKey);
+  if (!wf) return [];
+  const open = new Set(wf.steps.filter((s) => s.kind === 'start' || s.kind === 'open').map((s) => s.key));
+  const name = new Map(wf.steps.map((s) => [s.key, s.name]));
+  const items = await api.getAll('workflow_items', { filters: { workflow_id: wf.workflow.id }, orderBy: 'created_at' });
+  return items
+    .filter((i) => i.due_on && open.has(i.step_key))
+    .map((i) => ({ id: i.id, label: i.label, due_on: i.due_on, step: name.get(i.step_key) ?? i.step_key, workflow: wf.workflow.name }));
 }

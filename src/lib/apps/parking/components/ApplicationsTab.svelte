@@ -14,9 +14,10 @@
   import { permissions } from '#lib/stores/permissions.js';
   import { movesFrom, orderedSteps, isFinished, STEP_KIND_LABEL } from '#lib/workflow/workflowModel.js';
   import { actionLabel } from '#lib/workflow/workflowActions.js';
+  import { deadlineBand, deadlineWords, describeDeadline } from '#lib/workflow/workflowDeadlines.js';
   import { HOLDER_TYPE_LABEL } from '../utils/agreementModel.js';
   import { ANY_SIZE } from '../utils/waitingListModel.js';
-  import { fmtDateTime } from '#lib/utils/dates.js';
+  import { fmtDateTime, fmtDate } from '#lib/utils/dates.js';
   import { errMessage } from '#lib/utils/errors.js';
   import { matchesSearch } from '#lib/utils/textSearch.js';
   import Button from '#lib/components/common/Button.svelte';
@@ -60,6 +61,12 @@
   $: selectedStep = selected ? stepOf(selected.id) : null;
   $: moves = selectedStep ? movesFrom(s.moves, selectedStep.key, { isAdmin: $permissions.isAdmin, canEdit }) : [];
   $: nameOf = (/** @type {string} */ key) => stepByKey.get(key)?.name ?? key;
+  // An open item's deadline in its step (migration 248); a finished one has none.
+  $: dueOf = (/** @type {string} */ id) => {
+    const item = itemFor(id);
+    return item?.due_on && !isFinished(stepOf(id)?.kind ?? '') ? item.due_on : null;
+  };
+  const BAND_CLS = { overdue: 'text-red-400 font-semibold', due_soon: 'text-amber-300', ok: 'text-slate-400' };
 
   // History is read when an application is opened (keyed on its id, never the object).
   $: if (selected && selected.id !== historyFor) { historyFor = selected.id; note = ''; done = ''; loadHistory(selected.id); }
@@ -123,7 +130,7 @@
             <thead><tr class="border-b border-slate-700 text-left text-xs text-slate-400">
               <th class="py-2 pr-3 font-medium">Received</th><th class="py-2 pr-3 font-medium">Reference</th>
               <th class="py-2 pr-3 font-medium">Applicant</th><th class="py-2 pr-3 font-medium">Wants</th>
-              <th class="py-2 font-medium">Step</th></tr></thead>
+              <th class="py-2 pr-3 font-medium">Step</th><th class="py-2 font-medium">Due</th></tr></thead>
             <tbody>
               {#each rows as r (r.id)}
                 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
@@ -133,7 +140,9 @@
                   <td class="py-2 pr-3 font-mono text-slate-200">{r.reference}</td>
                   <td class="py-2 pr-3 text-slate-200">{r.display_name}{#if r.company_name}<span class="block text-xs text-slate-500">{r.company_name}</span>{/if}</td>
                   <td class="py-2 pr-3 text-slate-300">{sizeLabel(r.wanted_size)}</td>
-                  <td class="py-2 text-xs text-slate-300">{stepOf(r.id)?.name ?? '—'}</td>
+                  <td class="py-2 pr-3 text-xs text-slate-300">{stepOf(r.id)?.name ?? '—'}</td>
+                  <td class="py-2 text-xs whitespace-nowrap {BAND_CLS[deadlineBand(dueOf(r.id)) ?? 'ok']}" data-testid="application-due">
+                    {dueOf(r.id) ? deadlineWords(dueOf(r.id)) : ''}</td>
                 </tr>
               {/each}
             </tbody>
@@ -152,6 +161,10 @@
           </div>
           <p><span class="text-slate-400">Step:</span> <span class="text-white">{selectedStep?.name ?? '—'}</span>
             {#if selectedStep}<span class="text-xs text-slate-500">· {STEP_KIND_LABEL[selectedStep.kind]}</span>{/if}</p>
+          {#if dueOf(selected.id)}
+            <p class="{BAND_CLS[deadlineBand(dueOf(selected.id)) ?? 'ok']}">{deadlineWords(dueOf(selected.id))} — {fmtDate(dueOf(selected.id))}
+              <span class="block text-xs text-slate-500">{describeDeadline(selectedStep ?? {})}.</span></p>
+          {/if}
 
           <dl class="grid grid-cols-[7rem_1fr] gap-x-2 gap-y-1">
             <dt class="text-slate-400">Name</dt><dd class="text-slate-100">{selected.display_name}</dd>

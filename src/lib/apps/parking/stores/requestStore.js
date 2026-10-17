@@ -13,6 +13,7 @@ import { logAudit } from '#lib/utils/auditLogger.js';
 import { storeLoader } from '#lib/utils/storeLoad.js';
 import { loadWorkflow, listItems, itemHistory, moveItem, saveWorkflow } from '#lib/workflow/workflowApi.js';
 import { APPLICATION_WORKFLOW_KEY, DEFAULT_APPLICATION_WORKFLOW } from '../utils/applicationWorkflow.js';
+import { ensureNonWorkingDays } from '#lib/workflow/nonWorkingDays.js';
 
 const AUDIT = { appId: 'parking', eventCategory: 'parking' };
 
@@ -43,6 +44,7 @@ function createRequestStore() {
 
   /** Admin: save the shipped workflow when there is none, then read. */
   async function setUpWorkflow() {
+    await ensureNonWorkingDays();                 // working-day deadlines need the bank holidays
     await saveWorkflow(DEFAULT_APPLICATION_WORKFLOW);
     logAudit('create', 'workflow', null, DEFAULT_APPLICATION_WORKFLOW.name, AUDIT);
     await load();

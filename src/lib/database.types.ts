@@ -3353,6 +3353,27 @@ export type Database = {
             }
           ]
       }
+      non_working_days: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          day: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          day: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          day?: string
+          name?: string
+        }
+        Relationships: []
+      }
       parking_access_devices: {
         Row: {
           id: string
@@ -5525,6 +5546,8 @@ export type Database = {
       }
       workflow_items: {
         Row: {
+          due_on: string | null
+          label: string | null
           id: string
           workflow_id: string
           subject_id: string
@@ -5534,6 +5557,8 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          due_on?: string | null
+          label?: string | null
           id?: string
           workflow_id: string
           subject_id: string
@@ -5543,6 +5568,8 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          due_on?: string | null
+          label?: string | null
           id?: string
           workflow_id?: string
           subject_id?: string
@@ -5653,6 +5680,9 @@ export type Database = {
       }
       workflow_steps: {
         Row: {
+          deadline_basis: string
+          deadline_days: number | null
+          deadline_from: string
           workflow_id: string
           key: string
           name: string
@@ -5661,6 +5691,9 @@ export type Database = {
           position: number
         }
         Insert: {
+          deadline_basis?: string
+          deadline_days?: number | null
+          deadline_from?: string
           workflow_id: string
           key: string
           name: string
@@ -5669,6 +5702,9 @@ export type Database = {
           position?: number
         }
         Update: {
+          deadline_basis?: string
+          deadline_days?: number | null
+          deadline_from?: string
           workflow_id?: string
           key?: string
           name?: string

@@ -48,6 +48,7 @@ describe('the shipped defaults', () => {
       dossierLinkExpiry: 14, plannerArranging: 60, plannerWalk: 14,
       plannerDefaultNotice: 30, plannerCompetenceExpiry: 60,
       plannerBsrDeadline: 10, capitalRenewal: 365,
+      workflowStep: 2,   // migration 248: a workflow step's deadline
     });
   });
   it('cannot be changed by accident at run time', () => {

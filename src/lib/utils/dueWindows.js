@@ -36,6 +36,10 @@ import { daysUntil } from './dates.js';
 // Declared, then frozen, so the type checker reads `days` as a number rather
 // than as its exact value.
 const WINDOWS = {
+  workflowStep: {
+    days: 2, app: 'Workflows', label: 'A workflow step’s deadline',
+    where: 'Parking → Applications, and the Planner’s rows for application deadlines.',
+  },
   maintenanceJob: {
     days: 30, app: 'Maintenance', label: 'A scheduled maintenance job',
     where: 'Due work, All jobs and the summary counts show a job as due soon.',
