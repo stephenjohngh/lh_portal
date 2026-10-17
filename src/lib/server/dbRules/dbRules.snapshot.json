@@ -409,6 +409,10 @@
             "text",
             "textarea"
         ],
+        "workflow_steps.deadline_from": [
+            "entered",
+            "started"
+        ],
         "component_types.priority_base": [
             "critical",
             "high",
@@ -443,6 +447,10 @@
         "statutory_exclusions.decision": [
             "applicable",
             "not_applicable"
+        ],
+        "workflow_steps.deadline_basis": [
+            "calendar",
+            "working"
         ],
         "maintenance_documents.doc_type": [
             "certificate",

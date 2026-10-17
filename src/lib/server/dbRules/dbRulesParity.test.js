@@ -49,6 +49,7 @@ import * as gtRiskScoring      from '#lib/apps/golden_thread/utils/gtRiskScoring
 import * as gtConstants        from '#lib/apps/golden_thread/utils/gtConstants.js';
 import * as sightingModel      from '#lib/apps/parking/utils/sightingModel.js';
 import * as workflowModel      from '#lib/workflow/workflowModel.js';
+import * as workflowDeadlines  from '#lib/workflow/workflowDeadlines.js';
 import * as applicationForm    from '#lib/apps/parking/utils/applicationForm.js';
 import * as agreementModel     from '#lib/apps/parking/utils/agreementModel.js';
 import * as waitingListModel   from '#lib/apps/parking/utils/waitingListModel.js';
@@ -106,6 +107,8 @@ const VALUE_LISTS = {
   'parking_tariffs.period':           () => values(agreementModel.FEE_PERIODS),
   'parking_sightings.place':          () => Object.keys(sightingModel.SIGHTING_PLACES),   // migration 245
   'workflow_steps.kind':              () => values(workflowModel.STEP_KINDS),             // migration 247
+  'workflow_steps.deadline_basis':    () => values(workflowDeadlines.DEADLINE_BASES),     // migration 248
+  'workflow_steps.deadline_from':     () => values(workflowDeadlines.DEADLINE_FROM),      // migration 248
   'parking_requests.holder_type':     () => values(applicationForm.APPLICANT_KINDS),      // migration 247
   'parking_holders.holder_type':      () => values(agreementModel.HOLDER_TYPES),
   'parking_applications.status':      () => values(waitingListModel.APPLICATION_STATUSES),
