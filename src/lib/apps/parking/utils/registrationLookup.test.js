@@ -28,3 +28,22 @@ describe('scanCandidatesFrom', () => {
     expect(c).toEqual([{ value: 'AB12 CDE', label: 'car park · road permit' }, { value: 'X1', label: 'road permit' }]);
   });
 });
+
+import { splitExact } from './registrationLookup.js';
+describe('splitExact — Car check answers for the whole registration only', () => {
+  it('"XC" does not count as XCVB 675; it is offered as another car', () => {
+    const permitHits = [{ permit: { registration: 'XCVB 675' }, status: 'current' }];
+    const s = splitExact('xc', [], permitHits);
+    expect(s.permitHits).toEqual([]);
+    expect(s.otherPermitHits).toEqual(permitHits);
+    expect(lookupVerdict(s.hits, s.permitHits).tone).toBe('none');
+  });
+  it('the whole registration, any spacing or case, counts', () => {
+    const permitHits = [{ permit: { registration: 'XCVB 675' }, status: 'current' }];
+    const hits = [{ vehicle: { registration: 'XCVB675' }, standing: 'ended' }];
+    const s = splitExact('xcvb675', hits, permitHits);
+    expect(s.permitHits).toHaveLength(1);
+    expect(s.hits).toHaveLength(1);
+    expect(lookupVerdict(s.hits, s.permitHits).tone).toBe('ok');
+  });
+});

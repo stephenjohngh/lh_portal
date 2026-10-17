@@ -57,3 +57,24 @@ export function lookupVerdict(hits = [], permitHits = [], permitError = '') {
   }
   return { tone: 'none', title: unchecked ? 'Not in the car park — road permits NOT checked' : 'Not found', permitsUnchecked: unchecked };
 }
+
+/**
+ * Car check answers for the WHOLE registration only (2026-10-17, user: typing
+ * "XC" showed XCVB 675's road permit as "allowed"). The lookup itself matches
+ * any part — right at a desk, where a few letters find a car — so the results
+ * are split: those whose registration is exactly the one asked about, which
+ * decide the answer, and the rest, shown only as other cars that contain it.
+ * @param {string} q
+ * @param {{ vehicle: { registration: string } }[]} hits
+ * @param {{ permit: { registration: string } }[]} permitHits
+ */
+export function splitExact(q, hits = [], permitHits = []) {
+  const want = normaliseReg(q);
+  const same = (/** @type {string} */ reg) => normaliseReg(reg) === want;
+  return {
+    hits: hits.filter(h => same(h.vehicle.registration)),
+    permitHits: permitHits.filter(h => same(h.permit.registration)),
+    otherHits: hits.filter(h => !same(h.vehicle.registration)),
+    otherPermitHits: permitHits.filter(h => !same(h.permit.registration)),
+  };
+}

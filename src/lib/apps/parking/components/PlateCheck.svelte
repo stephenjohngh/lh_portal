@@ -22,7 +22,7 @@
   import { permitStore } from '../stores/permitStore.js';
   import { syncState, startSync, stopSync } from '../stores/lookupAudit.js';
   import { checkRegistration } from '../stores/registrationCheck.js';
-  import { scanCandidatesFrom, lookupVerdict } from '../utils/registrationLookup.js';
+  import { scanCandidatesFrom, lookupVerdict, splitExact } from '../utils/registrationLookup.js';
   import { normaliseReg, formatReg, STATUS_LABEL } from '../utils/agreementModel.js';
   import { fmtPermitWhen, permitNumberLabel } from '../utils/permitModel.js';
   import { fmtDate, fmtTime } from '#lib/utils/dates.js';
@@ -34,7 +34,8 @@
   let q = '';
   let checking = false;
   let error = '';
-  /** @type {null | { q: string, hits: any[], permitHits: any[], permitError: string, offline: boolean }} */
+  // hits / permitHits are the WHOLE registration only; other* contain it (splitExact).
+  /** @type {null | { q: string, hits: any[], permitHits: any[], otherHits: any[], otherPermitHits: any[], permitError: string, offline: boolean }} */
   let result = null;
 
   const load = () => {
@@ -58,7 +59,7 @@
     const offline = !$online;
     try {
       const r = await checkRegistration(value, { offline });
-      result = { q: value, ...r, offline };
+      result = { q: value, ...splitExact(value, r.hits, r.permitHits), permitError: r.permitError, offline };
     } catch (/** @type {any} */ err) {
       error = errMessage(err, 'That registration could not be checked.');
     } finally { checking = false; }
@@ -127,7 +128,7 @@
 
           {#each result.hits as h (h.vehicle.id)}
             <div class="text-sm border-t border-white/10 pt-2">
-              <p class="text-white">Car park · {h.bay?.ref ?? '—'} · {h.agreement?.reference ?? '—'} ({STATUS_LABEL[h.agreement?.status] ?? '—'})</p>
+              <p class="text-white"><span class="font-mono">{formatReg(h.vehicle.registration)}</span> · Car park · {h.bay?.ref ?? '—'} · {h.agreement?.reference ?? '—'} ({STATUS_LABEL[h.agreement?.status] ?? '—'})</p>
               <p>{h.holder?.display_name ?? '—'}{#if h.holder?.phone} · <a class="underline" href="tel:{h.holder.phone}">{h.holder.phone}</a>{/if}</p>
               {#if h.standing === 'authorised'}<p class="text-xs text-green-300">Authorised today</p>
               {:else if h.standing === 'pending'}<p class="text-xs text-sky-300">Not yet authorised{h.agreement?.status === 'draft'
@@ -138,7 +139,7 @@
 
           {#each result.permitHits as h (h.permit.id)}
             <div class="text-sm border-t border-white/10 pt-2">
-              <p class="text-white">Road permit {permitNumberLabel(h.permit.permit_number)} · {h.permit.company}</p>
+              <p class="text-white"><span class="font-mono">{h.permit.registration}</span> · Road permit {permitNumberLabel(h.permit.permit_number)} · {h.permit.company}</p>
               {#if h.status === 'current'}<p class="text-xs text-green-300">Current, until {fmtPermitWhen(h.permit.valid_to, h.permit.valid_to_time)}</p>
               {:else if h.status === 'upcoming'}<p class="text-xs text-sky-300">Starts {fmtPermitWhen(h.permit.valid_from, h.permit.valid_from_time)}</p>
               {:else}<p class="text-xs text-amber-300">{h.permit.ended_early_at ? 'Ended early' : 'Expired'} {fmtPermitWhen(h.permit.valid_to, h.permit.valid_to_time)}</p>{/if}
@@ -147,6 +148,15 @@
 
           {#if result.permitError}
             <p class="text-sm text-amber-300 border-t border-white/10 pt-2">Road permits were NOT checked: {result.permitError}</p>
+          {/if}
+          {#if result.otherHits.length || result.otherPermitHits.length}
+            <div class="text-sm border-t border-white/10 pt-2" data-testid="car-check-others">
+              <p class="text-slate-300">Other cars containing “{normaliseReg(result.q)}” — not this one:</p>
+              <ul class="mt-1 space-y-0.5 font-mono text-slate-200">
+                {#each result.otherHits as h (h.vehicle.id)}<li>{formatReg(h.vehicle.registration)} <span class="font-sans text-xs text-slate-400">car park</span></li>{/each}
+                {#each result.otherPermitHits as h (h.permit.id)}<li>{h.permit.registration} <span class="font-sans text-xs text-slate-400">road permit</span></li>{/each}
+              </ul>
+            </div>
           {/if}
           {#if verdict.tone === 'none'}
             <p class="text-xs text-slate-300">Bays that belong to flats may not have their holders recorded, and visitors are not recorded at all.</p>

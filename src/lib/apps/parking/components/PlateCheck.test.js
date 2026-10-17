@@ -74,6 +74,19 @@ describe('Car check', () => {
     expect(card.textContent).toMatch(/J Smith/);
   });
 
+  it('⛔ part of a registration is not that car: "XC" is Not found, and XCVB 675 is listed as another car', async () => {
+    h.result = { hits: [], permitError: '', permitHits: [{ permit: { id: 'p1', registration: 'XCVB 675', permit_number: 101, company: 'Acme',
+      valid_from: '2000-01-01', valid_to: '2999-01-01' }, status: 'current' }] };
+    render(PlateCheck);
+    await fireEvent.input(await screen.findByPlaceholderText('Or type it'), { target: { value: 'xc' } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+    const card = await screen.findByTestId('car-check-result');
+    expect(card.dataset.tone).toBe('none');
+    expect(card.textContent).toMatch(/Not found/);
+    expect(card.textContent).not.toMatch(/Allowed/);
+    expect(screen.getByTestId('car-check-others').textContent).toMatch(/XCVB 675/);
+  });
+
   it('with no signal it says what it checked against, and still checks', async () => {
     h.online.set(false);
     h.result = { hits: [], permitHits: [], permitError: '' };
