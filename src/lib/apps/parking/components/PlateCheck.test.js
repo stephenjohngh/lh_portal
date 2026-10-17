@@ -161,11 +161,11 @@ describe('Car check', () => {
     const card = await checkTyped('AB12CDE', 'Side road');
     expect(card.dataset.tone).toBe('none');
     expect(card.textContent).not.toMatch(/Allowed/);
-    expect(screen.getByTestId('car-check-elsewhere').textContent).toMatch(/car park licence today \(bay L\/PK\/22\) — not a road permit/);
+    expect(screen.getByTestId('car-check-elsewhere').textContent).toMatch(/This car has a car park licence \(bay L\/PK\/22\), but that covers the car park, not the side road\./);
     await fireEvent.click(screen.getByRole('button', { name: 'Record this car' }));
     await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(h.recorded).toHaveLength(1));
-    expect(h.recorded[0]).toMatchObject({ place: 'road', notes: expect.stringMatching(/car park licence today/) });
+    expect(h.recorded[0]).toMatchObject({ place: 'road', notes: expect.stringMatching(/This car has a car park licence/) });
   });
 
   it('changing where the car is changes the answer', async () => {

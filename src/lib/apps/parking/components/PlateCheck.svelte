@@ -172,7 +172,7 @@
           <p class="font-mono text-2xl text-white">{formatReg(normaliseReg(result.q))}</p>
           <p class="text-xl font-semibold">{verdict.title}</p>
           <p class="text-xs text-slate-300">Checked for the {SIGHTING_PLACES[place].toLowerCase()}.</p>
-          {#if verdict.elsewhere}<p class="text-sm text-white" data-testid="car-check-elsewhere">ℹ {verdict.elsewhere}</p>{/if}
+          {#if verdict.elsewhere}<p class="text-sm text-white" data-testid="car-check-elsewhere">{verdict.elsewhere}</p>{/if}
 
           {#if result.offline}
             <p class="text-xs text-amber-300">Checked with no signal, against the car park as read at {fmtTime(new Date(loadedAt).toISOString())}.</p>
@@ -209,9 +209,6 @@
                 {#each result.otherPermitHits as h (h.permit.id)}<li>{h.permit.registration} <span class="font-sans text-xs text-slate-400">road permit</span></li>{/each}
               </ul>
             </div>
-          {/if}
-          {#if verdict.tone === 'none'}
-            <p class="text-xs text-slate-300">Bays that belong to flats may not have their holders recorded, and visitors are not recorded at all.</p>
           {/if}
           {#if $sightingStore.error}
             <p class="text-xs text-amber-300 border-t border-white/10 pt-2">Earlier sightings could not be read: {$sightingStore.error}</p>

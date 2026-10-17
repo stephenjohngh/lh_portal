@@ -51,8 +51,8 @@ export function lookupVerdict(hits = [], permitHits = [], permitError = '', plac
   const licence = hits.find(h => h.standing === 'authorised');
   const permit = permitHits.find(h => h.status === 'current');
   const elsewhere = road
-    ? (licence ? `Has a car park licence today${licence.bay?.ref ? ` (bay ${licence.bay.ref})` : ''} — not a road permit.` : '')
-    : (permit ? `Has a current road permit${permit.permit?.permit_number != null ? ` (permit ${permit.permit.permit_number}${permit.permit.company ? `, ${permit.permit.company}` : ''})` : ''} — for the side road, not the car park.` : '');
+    ? (licence ? `This car has a car park licence${licence.bay?.ref ? ` (bay ${licence.bay.ref})` : ''}, but that covers the car park, not the side road.` : '')
+    : (permit ? `This car has a road permit${permit.permit?.permit_number != null ? ` (number ${permit.permit.permit_number}${permit.permit.company ? `, ${permit.permit.company}` : ''})` : ''}, but that covers the side road, not the car park.` : '');
   const tail = unchecked ? ' (road permits NOT checked)' : '';
   if (road ? permit : licence) {
     return { tone: 'ok', title: road ? 'Allowed — road permit' : 'Allowed — car park licence', permitsUnchecked: false, elsewhere: '' };

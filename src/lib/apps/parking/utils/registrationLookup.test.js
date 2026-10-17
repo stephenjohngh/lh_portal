@@ -9,14 +9,14 @@ describe('lookupVerdict — the answer by the car, for where it is (2026-10-17)'
     expect(lookupVerdict([licence], [], '', 'car_park').tone).toBe('ok');
     const v = lookupVerdict([], [permit], '', 'car_park');
     expect(v.tone).toBe('none');
-    expect(v.elsewhere).toMatch(/current road permit \(permit 101, Acme\) — for the side road, not the car park/);
+    expect(v.elsewhere).toMatch(/This car has a road permit \(number 101, Acme\), but that covers the side road, not the car park\./);
   });
   it('on the side road only a road permit counts — a car park licence does not, but is mentioned (the user’s case)', () => {
     expect(lookupVerdict([], [permit], '', 'road').tone).toBe('ok');
     const v = lookupVerdict([licence], [], '', 'road');
     expect(v.tone).toBe('none');
     expect(v.title).toBe('Not found');
-    expect(v.elsewhere).toMatch(/car park licence today \(bay L\/PK\/22\) — not a road permit/);
+    expect(v.elsewhere).toMatch(/This car has a car park licence \(bay L\/PK\/22\), but that covers the car park, not the side road\./);
   });
   it('known here but not yet, or no longer', () => {
     expect(lookupVerdict([{ standing: 'pending' }], [], '', 'car_park').tone).toBe('pending');
