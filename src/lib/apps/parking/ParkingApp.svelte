@@ -157,9 +157,10 @@
     <h2 class="heading-page">Parking</h2>
     {#if hasAccess && loaded}
       <RegistrationSearch {loadedAt} on:showAgreement={showAgreement} on:showPermit={showPermit} />
-      <!-- The caretaker's page (2026-10-17): straight to the camera, one answer.
-           Open it here and bookmark it, or add it to the phone's home screen. -->
-      <a href="/parking/check" class="inline-block text-sm text-purple-300 hover:text-purple-200 underline">Car check page — scan a plate, for a bookmark →</a>
+      <!-- The caretaker's page (2026-10-17): one answer for a car. Opened in a NEW
+           TAB, to bookmark or add to the home screen from there: in this tab it
+           would leave the portal, which warns and restarts the app on Back. -->
+      <a href="/parking/check" target="_blank" rel="noopener" class="inline-block text-sm text-purple-300 hover:text-purple-200 underline">Open Car check in a new tab — to bookmark ↗</a>
     {/if}
   </div>
 

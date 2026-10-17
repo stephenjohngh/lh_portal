@@ -58,7 +58,7 @@
   <LoadingSpinner text="Loading unauthorised parking…" />
 {:else}
   <div class="space-y-3">
-    <p class="text-sm text-slate-400">Cars recorded from <a href="/parking/check" class="underline">Car check</a> as not allowed
+    <p class="text-sm text-slate-400">Cars recorded from <a href="/parking/check" target="_blank" rel="noopener" class="underline">Car check ↗</a> as not allowed
       where they were. A record is a sighting — the car may yet prove to have been allowed.</p>
     <ErrorDisplay message={error || $sightingStore.error || ''} onDismiss={() => (error = '')} />
 
