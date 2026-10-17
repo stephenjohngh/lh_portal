@@ -29,7 +29,7 @@ vi.mock('#lib/utils/textScan/ocrReader.js', () => ({
 }));
 
 vi.mock('#lib/stores/online.js', () => ({ online: { subscribe: h.online.subscribe } }));
-vi.mock('../stores/lookupAudit.js', () => ({ syncState: { subscribe: h.sync.subscribe } }));
+vi.mock('../stores/parkingQueue.js', () => ({ syncState: { subscribe: h.sync.subscribe }, retryErrors: () => {} }));
 vi.mock('../stores/parkingStore.js', () => ({
   parkingStore: { subscribe: h.parking.subscribe, lookupRegistration: (q, n, o) => { h.lookups.push([q, n, o]); return []; } },
 }));
@@ -87,7 +87,7 @@ describe('Registration Lookup with no signal', () => {
     h.sync.set({ pending: 1, error: 0 });
     render(RegistrationSearch, { loadedAt: Date.parse('2026-10-10T08:30:00Z') });
     expect(screen.getByText('No signal')).toBeTruthy();
-    expect(screen.getByText(/1 lookup not yet recorded/)).toBeTruthy();
+    expect(screen.getByTestId('offline-queue-status').textContent).toMatch(/1 record waiting — sent when there is a signal/);
     const box = screen.getByLabelText('Registration Lookup:');
     await fireEvent.input(box, { target: { value: 'ABC 123' } });
     await fireEvent.keyDown(box, { key: 'Enter' });

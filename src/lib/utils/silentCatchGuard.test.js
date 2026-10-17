@@ -32,6 +32,8 @@ const ALLOWED = {
     'pause writes nothing to the server; a failure only leaves the list unrefreshed'],
   'lib/apps/inspection/stores/inspectionStore.js': [10,
     'the offline walk: the device cache, the outbox and the resume refreshes fall back to what the phone holds, and the sync queue retries'],
+  'lib/apps/parking/stores/parkingQueue.js': [1,
+    'a listener told an op was sent (the sightings list re-reading): its failure must not mark the sent op as unsent, and the list shows its own load error'],
   'lib/offline/syncRunner.js': [3,
     'the shared sync queue (Inspection, Parking): a failed drain is retried, and the outbox shows what is waiting'],
   'lib/utils/textScan/ocrReader.js': [1,

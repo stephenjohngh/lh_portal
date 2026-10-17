@@ -17,6 +17,7 @@
 // Running an op twice therefore lands on the same server state as running it once.
 
 import { errMessage } from '#lib/utils/errors.js';
+import { classifySyncError } from '#lib/offline/syncErrors.js';
 
 /**
  * @param {{ type: string, payload: object }} op
@@ -114,13 +115,11 @@ async function syncSessionComplete({ sessionId, fields }, deps) {
 }
 
 /**
- * Classify a thrown error as permanent (a database rejection — a retry can't fix
- * it) or transient (a network/transport failure — retry when back online). A
- * PostgREST rejection carries a `.code` (e.g. '23503' FK, '23514' CHECK); a
- * fetch/offline failure does not. See api.js handleError, which propagates `.code`.
+ * Classify a thrown error as permanent (the server said no — a retry can't fix
+ * it) or transient (retry when back online). The rule is shared by every
+ * offline queue: #lib/offline/syncErrors.js.
  * @param {any} e
  */
 export function classifyError(e) {
-  const permanent = !!(e && e.code != null);
-  return { ok: false, permanent, error: errMessage(e) };
+  return classifySyncError(e);
 }

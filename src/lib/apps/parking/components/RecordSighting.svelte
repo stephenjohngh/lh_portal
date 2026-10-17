@@ -1,9 +1,8 @@
 <!-- src/lib/apps/parking/components/RecordSighting.svelte -->
 <!-- Record a car that is not allowed where it is (migration 245): where, a
-     photo, a note. The date and time are the database's, when it is saved.
-     A failed save keeps everything on screen, to press Save again — the
-     basement often has no signal. A photo that cannot be uploaded does not
-     lose the record; it says so. -->
+     photo, a note. The date and time are the phone's, when Save is pressed.
+     It works with no signal (2026-10-17): Save keeps the record and photo on
+     the phone and they are sent when there is a signal (parkingQueue.js). -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { online } from '#lib/stores/online.js';
@@ -38,9 +37,9 @@
   async function save() {
     saving = true; error = '';
     try {
-      const { sighting, photoError } = await sightingStore.record({ registration, place, notes, photo });
+      const { sighting, queued, photoError } = await sightingStore.record({ registration, place, notes, photo });
       if (preview) URL.revokeObjectURL(preview);
-      dispatch('recorded', { sighting, photoError });
+      dispatch('recorded', { sighting, queued, photoError });
     } catch (/** @type {any} */ err) {
       error = errMessage(err, 'It could not be saved.')
         + ($online ? '' : ' There is no signal: keep this open and press Save again when there is.');
@@ -82,5 +81,5 @@
     <button type="button" on:click={() => dispatch('cancel')} disabled={saving}
       class="min-h-[52px] px-4 rounded-lg border border-slate-500 text-slate-200">Cancel</button>
   </div>
-  {#if !place}<p class="text-xs text-slate-400">Choose where the car is. The date and time are added when it is saved.</p>{/if}
+  {#if !place}<p class="text-xs text-slate-400">Choose where the car is. The date and time are added when you press Save.</p>{/if}
 </div>

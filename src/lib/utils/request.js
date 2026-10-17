@@ -19,10 +19,9 @@
 
 import { authHeaders } from '#lib/utils/authHeaders.js';
 
-// Shown when there is no valid session client-side (authHeaders throws) or the
-// server rejects the token (HTTP 401). Friendlier and more actionable than the
-// raw 'Not authenticated' / 'Unauthorized' strings these paths produce.
-export const SESSION_EXPIRED = 'Your session has expired — please log in again.';
+// The words for a missing or rejected session (HTTP 401) — #lib/utils/sessionExpired.js.
+import { SESSION_EXPIRED } from '#lib/utils/sessionExpired.js';
+export { SESSION_EXPIRED };
 
 /** authHeaders(), but a missing session surfaces as SESSION_EXPIRED. */
 async function headers() {

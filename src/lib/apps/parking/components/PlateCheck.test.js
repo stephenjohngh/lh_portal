@@ -30,7 +30,7 @@ vi.mock('#lib/stores/permissions.js', () => ({
 vi.mock('#lib/stores/auth.js', () => ({ auth: { subscribe: (run) => { run({ user: { id: 'u1' } }); return () => {}; } } }));
 vi.mock('#lib/utils/textScan/ocrReader.js', () => ({ startReader: async () => ({}), readText: async () => ({ text: '', confidence: 0 }), warmReader: async () => {} }));
 vi.mock('#lib/stores/online.js', () => ({ online: { subscribe: h.online.subscribe } }));
-vi.mock('../stores/lookupAudit.js', () => ({ syncState: { subscribe: h.sync.subscribe }, startSync: () => {}, stopSync: () => {} }));
+vi.mock('../stores/parkingQueue.js', () => ({ syncState: { subscribe: h.sync.subscribe }, startSync: () => {}, stopSync: () => {}, retryErrors: () => {} }));
 vi.mock('../stores/parkingStore.js', () => ({ parkingStore: { subscribe: h.parking.subscribe, load: async () => {} } }));
 vi.mock('../stores/permitStore.js', () => ({ permitStore: { subscribe: h.permits.subscribe, ensureLoaded: async () => {} } }));
 vi.mock('../stores/sightingStore.js', () => ({ sightingStore: {
@@ -145,5 +145,19 @@ describe('Car check', () => {
     expect(hist.textContent).toMatch(/Seen here before — 1 time/);
     expect(hist.textContent).toMatch(/bay 12/);
     expect(hist.textContent).not.toMatch(/other car/);
+  });
+
+  it('a sighting still on the phone shows at once, marked not sent yet', async () => {
+    h.sync.set({ pending: 1, error: 0, online: false, items: [
+      { seq: 1, type: 'sighting', status: 'pending', hasPhoto: true,
+        sighting: { id: 'w1', registration: 'ZZ99ZZZ', place: 'road', seen_at: '2026-10-17T22:00:00Z', notes: 'waiting one' } },
+    ] });
+    h.result = { hits: [], permitHits: [], permitError: '' };
+    render(PlateCheck);
+    await checkTyped('ZZ99ZZZ');
+    expect(screen.getByTestId('sighting-history').textContent).toMatch(/waiting one/);
+    expect(screen.getByTestId('sighting-waiting').textContent).toMatch(/not sent yet · with photo/);
+    expect(screen.getByTestId('offline-queue-status').textContent).toMatch(/1 record waiting/);
+    h.sync.set({ pending: 0, error: 0 });
   });
 });

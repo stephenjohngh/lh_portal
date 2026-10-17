@@ -23,12 +23,15 @@
 //   'session_complete' payload: { sessionId, notes, inspectedCount }
 
 import { isIdbAvailable } from '#lib/utils/idb.js';
-import { DAY_MS } from '#lib/utils/dates.js';
 import {
   STORE_OPS, STORE_CACHE, OP_PENDING, OP_SYNCING, OP_ERROR, OP_DONE,
   upgradeOutboxSchema, makeOpener, enqueue, listOps, listUnsyncedOps, setOpStatus, deleteOp, pruneDone,
   writeCache, readCache, summarizeOps, pickNextOp,
 } from '#lib/offline/outbox.js';
+import {
+  STORE_PHOTOS, upgradePhotoSchema, putPhoto, retirePhoto, RETIRED_PHOTO_MS, pruneRetiredPhotos,
+  getPhoto, deletePhoto, markPhotoUploaded, listPhotosWhere,
+} from '#lib/offline/photoStore.js';
 
 // The generic outbox lives in #lib/offline/outbox.js (shared with Parking (M),
 // 2026-10-10); it is re-exported here so this file stays the one Inspection imports.
@@ -37,16 +40,19 @@ export {
   enqueue, listOps, listUnsyncedOps, setOpStatus, deleteOp, pruneDone,
   writeCache, readCache, summarizeOps, pickNextOp,
 };
+// The photo store is shared too (#lib/offline/photoStore.js, 2026-10-17).
+export {
+  STORE_PHOTOS, putPhoto, retirePhoto, RETIRED_PHOTO_MS, pruneRetiredPhotos,
+  getPhoto, deletePhoto, markPhotoUploaded,
+};
 
 export const DB_NAME    = 'lh_inspection_offline';
 export const DB_VERSION = 1;
 
-export const STORE_PHOTOS = 'photos';
-
 /** Create the object stores on first open / version bump. */
 export function upgradeSchema(db) {
   upgradeOutboxSchema(db);
-  if (!db.objectStoreNames.contains(STORE_PHOTOS)) db.createObjectStore(STORE_PHOTOS, { keyPath: 'photoId' });
+  upgradePhotoSchema(db);
 }
 
 /**
@@ -155,71 +161,10 @@ export async function dropSession(handle, sessionId) {
   }
 }
 
-// -- Photos --------------------------------------------------------------------
-
-/**
- * Stash a captured photo Blob.
- * @param {object} handle
- * @param {{ photoId: string, inspectionId: string, blob: Blob, filename: string,
- *          folderPath: string[], uploaded?: boolean, url?: string|null }} photo
- */
-export async function putPhoto(handle, photo) {
-  await handle.put(STORE_PHOTOS, { uploaded: false, url: null, createdAt: Date.now(), ...photo });
-  return photo;
-}
-
-/**
- * A photo whose op has synced: drop the image, keep what it became.
- *
- * ⭐ The record stays, without its blob, so a later re-inspect that REMOVES this
- * photo (it knows it only by photoId) can still name the file to take off —
- * the url is learned only when the sync uploads it. A photo never uploaded
- * has nothing to remember and goes. Cleared after RETIRED_PHOTO_MS by
- * pruneRetiredPhotos. (2026-10-04, §6ccc item 7: re-inspects keep earlier photos.)
- */
-export async function retirePhoto(handle, photoId) {
-  const p = await handle.get(STORE_PHOTOS, photoId);
-  if (!p) return;
-  if (!p.uploaded || !p.url) { await deletePhoto(handle, photoId); return; }
-  await handle.put(STORE_PHOTOS, { ...p, blob: null, retiredAt: Date.now() });
-}
-
-/** How long a retired photo's url is remembered — a walk is done well within it. */
-export const RETIRED_PHOTO_MS = 14 * DAY_MS;
-
-/** Forget retired photos older than `maxAgeMs`. */
-export async function pruneRetiredPhotos(handle, maxAgeMs = RETIRED_PHOTO_MS, now = Date.now()) {
-  for (const p of await handle.getAll(STORE_PHOTOS)) {
-    if (p.blob == null && p.retiredAt != null && now - p.retiredAt > maxAgeMs) await deletePhoto(handle, p.photoId);
-  }
-}
-
-export function getPhoto(handle, photoId) {
-  return handle.get(STORE_PHOTOS, photoId);
-}
-
-export function deletePhoto(handle, photoId) {
-  return handle.delete(STORE_PHOTOS, photoId);
-}
+// -- Photos: the shared photo store (#lib/offline/photoStore.js) ----------------
 
 /** All stashed photos for one inspection. */
-export async function listPhotosFor(handle, inspectionId) {
-  const all = await handle.getAll(STORE_PHOTOS);
-  return all.filter(p => p.inspectionId === inspectionId);
+export function listPhotosFor(handle, inspectionId) {
+  return listPhotosWhere(handle, 'inspectionId', inspectionId);
 }
 
-/**
- * Mark a photo uploaded (idempotency: a retry then skips the re-upload).
- *
- * ⚠ `provider` is stored alongside the url because a replay skips the upload
- * and reuses what is recorded here — so without it, a photo that crossed a
- * crash would land in media_attachments with no provider and be deletable only
- * by inference. PROJECT_STATUS §6hh.
- */
-export async function markPhotoUploaded(handle, photoId, url, provider = null) {
-  const p = await handle.get(STORE_PHOTOS, photoId);
-  if (!p) return null;
-  const updated = { ...p, uploaded: true, url, provider };
-  await handle.put(STORE_PHOTOS, updated);
-  return updated;
-}

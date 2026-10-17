@@ -5,7 +5,7 @@
 // (/parking/check, 2026-10-17), so the two can never answer differently.
 // It searches what the page has loaded, so it works with no signal; the audit
 // line (parkingStore.lookupRegistration) waits on the phone until the signal
-// returns (lookupAudit.js).
+// returns (parkingQueue.js).
 
 import { get } from 'svelte/store';
 import { parkingStore } from './parkingStore.js';

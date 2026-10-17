@@ -7,7 +7,7 @@
      yet, no longer, or not found — with the detail underneath.
      ⭐ The same lookup as the Parking app's Registration Lookup
      (stores/registrationCheck.js), so the two cannot answer differently; the
-     same audit line, queued with no signal (lookupAudit.js).
+     same audit line, queued with no signal (parkingQueue.js).
      ⚠ It reads the car park when it opens, so open it where there is a signal;
      after that it works in the basement, as the Parking app does. Nothing of
      the car park is kept on the phone.
@@ -23,7 +23,8 @@
   import { online } from '#lib/stores/online.js';
   import { parkingStore } from '../stores/parkingStore.js';
   import { permitStore } from '../stores/permitStore.js';
-  import { syncState, startSync, stopSync } from '../stores/lookupAudit.js';
+  import { syncState, startSync, stopSync, retryErrors } from '../stores/parkingQueue.js';
+  import OfflineQueueStatus from '#lib/components/common/OfflineQueueStatus.svelte';
   import { checkRegistration } from '../stores/registrationCheck.js';
   import { sightingStore } from '../stores/sightingStore.js';
   import { sightingsOf } from '../utils/sightingModel.js';
@@ -56,7 +57,14 @@
 
   $: scanCandidates = scanCandidatesFrom($parkingStore.vehicles, $permitStore.permits);
   $: verdict = result ? lookupVerdict(result.hits, result.permitHits, result.permitError) : null;
-  $: earlier = result ? sightingsOf(result.q, $sightingStore.sightings) : [];
+  // Sightings still on the phone show at once, marked as not sent; a sent one
+  // replaces its waiting copy (same id).
+  $: waitingSightings = ($syncState.items ?? []).filter((i) => i.sighting)
+    .map((i) => ({ ...i.sighting, photos: [], waiting: true, failed: i.status === 'error', hasPhoto: i.hasPhoto }));
+  $: earlier = result ? sightingsOf(result.q, [
+    ...waitingSightings.filter((w) => !$sightingStore.sightings.some((s) => s.id === w.id)),
+    ...$sightingStore.sightings,
+  ]) : [];
   $: canRecord = $permissions.isAdmin || $permissions.canModify;
 
   onMount(() => {
@@ -88,10 +96,11 @@
 
   function scanAgain() { result = null; q = ''; recording = false; recordedNote = ''; scanning = true; }
 
-  /** @param {CustomEvent<{ sighting: any, photoError: string }>} e */
+  /** @param {CustomEvent<{ sighting: any, queued: boolean, photoError: string }>} e */
   function recorded(e) {
     recording = false;
     recordedNote = `Recorded at ${fmtTime(e.detail.sighting.seen_at)}.`
+      + (e.detail.queued && !$online ? ' Saved on the phone — it is sent when there is a signal.' : '')
       + (e.detail.photoError ? ` The photo was NOT saved: ${e.detail.photoError}` : '');
   }
 
@@ -118,9 +127,8 @@
         <p class="rounded bg-amber-900/40 px-3 py-2 text-sm text-amber-300">
           No signal — checking against the car park as read at {fmtTime(new Date(loadedAt).toISOString())}.</p>
       {/if}
-      {#if $syncState.pending + $syncState.error > 0}
-        <p class="text-xs text-amber-300">{$syncState.pending + $syncState.error} check{$syncState.pending + $syncState.error === 1 ? '' : 's'} not yet recorded — sent when the signal returns.</p>
-      {/if}
+      <!-- Checks (audit lines) and recorded cars both wait here with no signal. -->
+      <OfflineQueueStatus state={$syncState} what={['record', 'records']} onRetry={retryErrors} />
 
       <button type="button" on:click={scanAgain}
         class="w-full min-h-[64px] rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-lg font-semibold">

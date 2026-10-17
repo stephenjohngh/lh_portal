@@ -19,7 +19,7 @@ const h = vi.hoisted(() => ({
 vi.mock('#lib/utils/api.js', () => ({ api: h.api }));
 vi.mock('#lib/stores/auth.js', () => ({ auth: h.auth }));
 vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: h.logAudit }));
-vi.mock('./lookupAudit.js', () => ({ queueLookupAudit: h.queueLookupAudit }));
+vi.mock('./parkingQueue.js', () => ({ queueLookupAudit: h.queueLookupAudit }));
 vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 vi.mock('#lib/apps/building_assets/public.js', () => ({ listParkingBaySpaces: h.listParkingBaySpaces }));
 vi.mock('#lib/utils/request.js', () => ({ postJson: h.postJson }));

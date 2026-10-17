@@ -28,7 +28,7 @@ import {
 import { validateApplication, validateOffer, offerBlocks } from '../utils/waitingListModel.js';
 import { validateTariff, tariffRow, tariffFor, matchesTariff, reopenedBy } from '../utils/tariffModel.js';
 import { storeLoader } from '#lib/utils/storeLoad.js';
-import { queueLookupAudit } from './lookupAudit.js';
+import { queueLookupAudit } from './parkingQueue.js';
 
 const logger = getLogger('Parking');
 const AUDIT = { appId: 'parking', eventCategory: 'parking' };
@@ -612,7 +612,7 @@ function createParkingStore() {
    * with no signal (the basement). ⚠ Every search is AUDITED: it is the query
    * most open to curiosity, and the log is what makes it answerable afterwards.
    * The search text is logged, the results are not. The line goes through the
-   * offline outbox (lookupAudit.js), so a lookup made with no signal is
+   * offline outbox (parkingQueue.js), so a lookup made with no signal is
    * recorded when it returns.
    * @param {string} q
    * @param {number} [permitResults]  how many road permits the same lookup found — logged with it, one line per lookup

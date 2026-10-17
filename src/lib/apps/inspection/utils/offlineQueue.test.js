@@ -9,6 +9,7 @@
 // behaviour the browser store must also honour.
 
 import { describe, it, expect, beforeEach } from 'vitest';
+import { memIdb } from '#lib/testing/memIdb.test-helper.js';
 import {
   enqueue, enqueueInspectionSave, listOps, listUnsyncedOps, setOpStatus,
   deleteOp, dropSession, pruneDone,
@@ -20,38 +21,7 @@ import {
 
 // -- In-memory IdbHandle stub --------------------------------------------------
 
-function memHandle() {
-  const stores = { [STORE_OPS]: new Map(), [STORE_PHOTOS]: new Map(), [STORE_CACHE]: new Map() };
-  const cfg = {
-    [STORE_OPS]:    { keyPath: 'seq',     auto: true },
-    [STORE_PHOTOS]: { keyPath: 'photoId', auto: false },
-    [STORE_CACHE]:  { keyPath: 'key',     auto: false },
-  };
-  let seq = 0;
-  const clone = (v) => (v === undefined ? undefined : structuredClone(v));
-  return {
-    add: async (store, value) => {
-      const c = cfg[store];
-      let v = value;
-      if (c.auto && v[c.keyPath] == null) v = { ...v, [c.keyPath]: ++seq };
-      const k = v[c.keyPath];
-      if (stores[store].has(k)) throw new Error('ConstraintError: key exists');
-      stores[store].set(k, clone(v));
-      return k;
-    },
-    put: async (store, value) => {
-      const k = value[cfg[store].keyPath];
-      stores[store].set(k, clone(value));
-      return k;
-    },
-    get:    async (store, key) => clone(stores[store].get(key)),
-    getAll: async (store)      => [...stores[store].values()].map(clone),
-    count:  async (store)      => stores[store].size,
-    delete: async (store, key) => { stores[store].delete(key); },
-    clear:  async (store)      => { stores[store].clear(); },
-    close:  () => {},
-  };
-}
+const memHandle = () => memIdb();
 
 let h;
 beforeEach(() => { h = memHandle(); });

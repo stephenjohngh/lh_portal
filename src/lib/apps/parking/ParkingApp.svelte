@@ -17,7 +17,7 @@
   import { hasAppAccess } from '#lib/utils/appAccess.js';
   import { permitStore } from './stores/permitStore.js';
   import { onMount } from 'svelte';
-  import { startSync, stopSync } from './stores/lookupAudit.js';
+  import { startSync, stopSync } from './stores/parkingQueue.js';
   import AppGate from '#lib/components/common/AppGate.svelte';
   import { revealOnNarrow } from './utils/revealOnNarrow.js';
   import TabBar  from '#lib/components/common/TabBar.svelte';

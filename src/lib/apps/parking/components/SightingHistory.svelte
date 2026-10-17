@@ -7,7 +7,8 @@
   import { fmtDateTime } from '#lib/utils/dates.js';
   import { SIGHTING_PLACES } from '../utils/sightingModel.js';
 
-  /** @type {Array<{ id: string, place: string, seen_at: string, notes: string|null, photos: string[] }>} */
+  /** Waiting ones (still on the phone) carry `waiting`, `failed` and `hasPhoto`.
+   * @type {Array<{ id: string, place: string, seen_at: string, notes: string|null, photos: string[], waiting?: boolean, failed?: boolean, hasPhoto?: boolean }>} */
   export let sightings = [];
 
   /** @type {string[]|null} */
@@ -27,7 +28,9 @@
             </button>
           {/if}
           <span>
-            <span class="block text-slate-100">{fmtDateTime(s.seen_at)} · {SIGHTING_PLACES[s.place] ?? s.place}</span>
+            <span class="block text-slate-100">{fmtDateTime(s.seen_at)} · {SIGHTING_PLACES[s.place] ?? s.place}
+              {#if s.waiting}<span class="ml-1 text-xs rounded-full px-2 {s.failed ? 'bg-red-900/60 text-red-300' : 'bg-amber-900/60 text-amber-300'}"
+                data-testid="sighting-waiting">{s.failed ? 'could not be sent' : 'not sent yet'}{s.hasPhoto ? ' · with photo' : ''}</span>{/if}</span>
             {#if s.notes}<span class="block text-xs text-slate-300 whitespace-pre-line">{s.notes}</span>{/if}
           </span>
         </li>

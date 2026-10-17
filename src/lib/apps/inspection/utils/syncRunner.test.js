@@ -16,6 +16,7 @@
 // a file is deleted only when the attachment set stops naming it.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { memIdb } from '#lib/testing/memIdb.test-helper.js';
 import {
   STORE_OPS, STORE_PHOTOS, STORE_CACHE, enqueue, enqueueInspectionSave, putPhoto,
   listOps, setOpStatus, OP_SYNCING, OP_ERROR,
@@ -36,28 +37,7 @@ vi.mock('#lib/stores/online.js', async () => {
 vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 vi.mock('./inspectionSyncDeps.js', () => ({ makeSyncDeps: () => { throw new Error('the test injects its deps'); } }));
 
-/** IndexedDB's semantics, in memory: auto-increment key on ops, clone in and out. */
-function memHandle() {
-  const stores = { [STORE_OPS]: new Map(), [STORE_PHOTOS]: new Map(), [STORE_CACHE]: new Map() };
-  const keyPath = { [STORE_OPS]: 'seq', [STORE_PHOTOS]: 'photoId', [STORE_CACHE]: 'key' };
-  let seq = 0;
-  const clone = (/** @type {any} */ v) => (v === undefined ? undefined : structuredClone(v));
-  return {
-    add: async (/** @type {string} */ s, /** @type {any} */ v) => {
-      const val = s === STORE_OPS && v.seq == null ? { ...v, seq: ++seq } : v;
-      const k = val[keyPath[s]];
-      if (stores[s].has(k)) throw new Error('ConstraintError');
-      stores[s].set(k, clone(val)); return k;
-    },
-    put:    async (/** @type {string} */ s, /** @type {any} */ v) => { stores[s].set(v[keyPath[s]], clone(v)); return v[keyPath[s]]; },
-    get:    async (/** @type {string} */ s, /** @type {any} */ k) => clone(stores[s].get(k)),
-    getAll: async (/** @type {string} */ s) => [...stores[s].values()].map(clone),
-    count:  async (/** @type {string} */ s) => stores[s].size,
-    delete: async (/** @type {string} */ s, /** @type {any} */ k) => { stores[s].delete(k); },
-    clear:  async (/** @type {string} */ s) => { stores[s].clear(); },
-    close:  () => {},
-  };
-}
+const memHandle = () => memIdb();
 
 /** A server that behaves like the real one where the sync depends on it. */
 function fakeServer() {
