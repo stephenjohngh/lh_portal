@@ -15,6 +15,10 @@
   import { movesFrom, orderedSteps, isFinished, STEP_KIND_LABEL } from '#lib/workflow/workflowModel.js';
   import { actionLabel } from '#lib/workflow/workflowActions.js';
   import { deadlineBand, deadlineWords, describeDeadline } from '#lib/workflow/workflowDeadlines.js';
+  import { workflowStats } from '#lib/workflow/workflowStats.js';
+  import { listEvents } from '#lib/workflow/workflowApi.js';
+  import WorkflowDiagram from '#lib/workflow/WorkflowDiagram.svelte';
+  import { today } from '#lib/utils/dates.js';
   import { HOLDER_TYPE_LABEL } from '../utils/agreementModel.js';
   import { ANY_SIZE } from '../utils/waitingListModel.js';
   import { fmtDateTime, fmtDate } from '#lib/utils/dates.js';
@@ -66,6 +70,18 @@
     const item = itemFor(id);
     return item?.due_on && !isFinished(stepOf(id)?.kind ?? '') ? item.due_on : null;
   };
+  // The process drawn, with how many are where — read when opened.
+  let showProcess = false;
+  /** @type {any[]} */
+  let processEvents = [];
+  let eventsFor = '';
+  $: if (showProcess && s.workflow && eventsFor !== s.workflow.id) { eventsFor = s.workflow.id; readEvents(s.workflow.id); }
+  async function readEvents(/** @type {string} */ id) {
+    try { processEvents = (await listEvents(id)).events; }
+    catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read the process figures.'); }
+  }
+  $: processStats = showProcess && s.workflow
+    ? workflowStats({ steps: s.steps, moves: s.moves, items: s.items, events: processEvents, today: today() }) : null;
   const BAND_CLS = { overdue: 'text-red-400 font-semibold', due_soon: 'text-amber-300', ok: 'text-slate-400' };
 
   // History is read when an application is opened (keyed on its id, never the object).
@@ -109,6 +125,11 @@
     </p>
     <ErrorDisplay message={error || s.error || ''} onDismiss={() => (error = '')} />
     {#if done}<p class="text-sm text-green-400" role="status">{done}</p>{/if}
+
+    <details class="text-sm" bind:open={showProcess}>
+      <summary class="cursor-pointer text-slate-300">Show the process</summary>
+      <div class="mt-2"><WorkflowDiagram steps={s.steps} moves={s.moves} stats={processStats} title="Parking application — the process" /></div>
+    </details>
 
     <div class="flex flex-wrap gap-2 items-center">
       <input bind:value={q} placeholder="Search reference, name, email…" aria-label="Search applications"

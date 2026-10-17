@@ -16,6 +16,7 @@ vi.mock('#lib/workflow/workflowApi.js', () => ({
     steps: WF.steps.map((s, i) => ({ ...s, position: i + 1 })), moves: WF.moves.map((m) => ({ note_required: false, admin_only: false, action: null, ...m })) }),
   saveWorkflow: async (w) => { h.saved.push(w); return 'w1'; },
   listChanges: async () => h.changes,
+  listEvents: async () => ({ items: [{ id: 'i1', step_key: 'checking', due_on: '2000-01-01' }], events: [] }),
 }));
 vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: () => {} }));
 vi.mock('#lib/stores/profiles.js', () => ({
@@ -107,5 +108,16 @@ describe('Admin → Workflows', () => {
     expect(hist.textContent).toMatch(/Admin Person/);
     expect(hist.textContent).toMatch(/Reviewed by Pat Smith, against BSA 2022 s\.93 — rename/);
     expect(hist.textContent).toMatch(/Step “Received” renamed “Arrived”/);
+  });
+
+  it('draws the workflow, redraws it as it is edited, and shows how it is being used when asked', async () => {
+    await opened();
+    const diagram = screen.getByTestId('workflow-diagram');
+    expect(diagram.querySelectorAll('[data-testid="workflow-diagram-step"]')).toHaveLength(WF.steps.length);
+    await fireEvent.click(screen.getByRole('button', { name: '+ Add a step' }));
+    await waitFor(() => expect(diagram.querySelectorAll('[data-testid="workflow-diagram-step"]')).toHaveLength(WF.steps.length + 1));
+    await fireEvent.click(screen.getByLabelText('Show how it is being used'));
+    await waitFor(() => expect(diagram.textContent).toMatch(/1 now/));
+    expect(screen.getByText(/1 in all · 1 open · 1 overdue/)).toBeTruthy();
   });
 });

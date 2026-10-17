@@ -20,6 +20,8 @@ vi.mock('../stores/requestStore.js', () => ({ requestStore: {
   move: async (r, to, note) => { h.moved.push([r.reference, to, note]); return { step: to, action: h.action }; },
 } }));
 vi.mock('../stores/parkingStore.js', () => ({ parkingStore: { load: async () => { h.parkingLoads += 1; } } }));
+vi.mock('#lib/workflow/workflowApi.js', () => ({ listEvents: async () => ({ items: [], events: [
+  { item_id: 'ia', from_key: null, to_key: 'received', at: '2026-10-17T09:00:00Z' }] }) }));
 vi.mock('#lib/stores/permissions.js', () => ({ permissions: { subscribe: h.perms.subscribe } }));
 
 const ApplicationsTab = (await import('./ApplicationsTab.svelte')).default;
@@ -80,5 +82,14 @@ describe('Parking → Applications', () => {
     const due = await screen.findAllByTestId('application-due');
     expect(due[0].textContent).toMatch(/days overdue/);
     expect(due[1].textContent.trim()).toBe('');
+  });
+
+  it('the process can be shown, drawn from the workflow, with how many are in each step', async () => {
+    h.req.set(state([REQ('a', 'PKR-2026-000001', 'checking', '2000-01-03')]));
+    render(ApplicationsTab, { canEdit: true });
+    await fireEvent.click(await screen.findByText('Show the process'));
+    const diagram = await screen.findByTestId('workflow-diagram');
+    expect(diagram.querySelectorAll('[data-testid="workflow-diagram-step"]')).toHaveLength(5);
+    await waitFor(() => expect(diagram.textContent).toMatch(/1 now/));
   });
 });

@@ -8,7 +8,10 @@
      workflowProblem() below and refuses to remove a step something is in. -->
 <script>
   import { onMount } from 'svelte';
-  import { listWorkflows, loadWorkflow, saveWorkflow, listChanges } from '#lib/workflow/workflowApi.js';
+  import { listWorkflows, loadWorkflow, saveWorkflow, listChanges, listEvents } from '#lib/workflow/workflowApi.js';
+  import { workflowStats } from '#lib/workflow/workflowStats.js';
+  import WorkflowDiagram from '#lib/workflow/WorkflowDiagram.svelte';
+  import { today } from '#lib/utils/dates.js';
   import { definitionOf, definitionChanged, workflowDiff } from '#lib/workflow/workflowModel.js';
   import { profiles, profilesStore } from '#lib/stores/profiles.js';
   import { fmtDateTime } from '#lib/utils/dates.js';
@@ -50,6 +53,17 @@
   /** @type {any[]} */
   let changes = [];
   let askReview = false;
+  // The diagram's figures: read only when asked for (they read every move made).
+  let showUse = false;
+  /** @type {any} */
+  let usage = null;
+  let usageFor = '';
+  $: if (showUse && current && usageFor !== current.id) { usageFor = current.id; readUsage(current.id); }
+  async function readUsage(/** @type {string} */ id) {
+    try { usage = await listEvents(id); }
+    catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read how the workflow is being used.'); }
+  }
+  $: stats = showUse && usage ? workflowStats({ steps, moves, items: usage.items, events: usage.events, today: today() }) : null;
   let review = { reviewedBy: '', reviewedAgainst: '', note: '' };
 
   /** @type {{ day: string, name: string }[]} */
@@ -205,6 +219,16 @@
           <input class="{inputCls} w-full" bind:value={reviewReason} aria-label="Why it needs a review"
             placeholder="Why — e.g. Statutory process: Building Safety Act 2022 s.93" />
         {/if}
+      </div>
+
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-semibold text-slate-200">Diagram</p>
+          <label class="flex items-center gap-2 text-xs text-slate-300">
+            <input type="checkbox" bind:checked={showUse} /> Show how it is being used</label>
+        </div>
+        <WorkflowDiagram {steps} {moves} {stats} title="{current.name} — diagram" />
+        {#if stats}<p class="text-xs text-slate-400">{stats.total} in all · {stats.open} open · {stats.overdue} overdue.</p>{/if}
       </div>
 
       <div class="space-y-2">

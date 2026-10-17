@@ -99,3 +99,15 @@ export async function listDeadlines(workflowKey) {
 export function listChanges(workflowId) {
   return api.getAll('workflow_changes', { filters: { workflow_id: workflowId }, orderBy: 'changed_at', ascending: false });
 }
+
+/**
+ * Every move made in a workflow, oldest first — its event log, for the
+ * diagram's figures (workflowStats.js).
+ * @param {string} workflowId
+ */
+export async function listEvents(workflowId) {
+  const items = await listItems(workflowId);
+  if (!items.length) return { items, events: [] };
+  const events = await api.getAllIn('workflow_events', 'item_id', items.map((i) => i.id), { orderBy: 'at' });
+  return { items, events };
+}
