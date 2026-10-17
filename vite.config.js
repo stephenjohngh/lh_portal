@@ -143,12 +143,23 @@ function ocrAssets() {
 	};
 }
 
-export default defineConfig({
+// ⛔ The DEV-DB server (`npm run dev:devdb`, mode "devdb") gets its OWN
+// generated folder. SvelteKit 3 writes the static public variables — the
+// Supabase URL and anon key — into <outDir>/generated/dev/env/, and both dev
+// servers read whatever is there. With one shared folder, whichever server
+// started LAST decided the database for BOTH: on 2026-10-17 the 5173 "prod"
+// server was found handing the dev database's address to the browser, and the
+// 5174 page showed prod's. Separate folders keep each server on its own .env.
+const DEVDB_OUT_DIR = '.svelte-kit-devdb';
+
+export default defineConfig(({ mode }) => ({
 	plugins: [
 		tailwindcss(),
 		ocrAssets(),
 		sveltekit({
 			preprocess: vitePreprocess(),
+
+			...(mode === 'devdb' ? { outDir: DEVDB_OUT_DIR } : {}),
 
 			adapter: northflank
 				? adapterNode({ out: 'build' })
@@ -212,4 +223,4 @@ export default defineConfig({
 			'browser-image-compression'
 		]
 	}
-});
+}));
