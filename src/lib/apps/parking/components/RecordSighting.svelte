@@ -13,10 +13,13 @@
   import { formatReg, normaliseReg } from '../utils/agreementModel.js';
 
   export let registration = '';
+  /** Where the car is — chosen on Car check before checking (2026-10-17). */
+  export let place = '';
+  /** Starts the note: e.g. that the car has a permit for the OTHER place. */
+  export let prefillNotes = '';
 
   const dispatch = createEventDispatcher();
-  let place = '';
-  let notes = '';
+  let notes = prefillNotes;
   /** @type {Blob|null} */
   let photo = null;
   let preview = '';
@@ -50,15 +53,7 @@
 <div class="rounded-xl border border-slate-500 bg-slate-800 p-4 space-y-3" data-testid="record-sighting">
   <p class="text-lg font-semibold text-white">Record <span class="font-mono">{formatReg(normaliseReg(registration))}</span></p>
 
-  <fieldset class="flex gap-2">
-    <legend class="sr-only">Where is it?</legend>
-    {#each Object.entries(SIGHTING_PLACES) as [value, label]}
-      <label class="flex-1 min-h-[48px] flex items-center justify-center rounded-lg border cursor-pointer text-base
-        {place === value ? 'border-purple-400 bg-purple-900/40 text-white' : 'border-slate-600 text-slate-300'}">
-        <input type="radio" class="sr-only" bind:group={place} {value} /> {label}
-      </label>
-    {/each}
-  </fieldset>
+  <p class="text-sm text-slate-300">Where: <span class="text-white font-semibold">{SIGHTING_PLACES[place] ?? '—'}</span></p>
 
   <label class="relative flex min-h-[48px] items-center justify-center rounded-lg border border-slate-500 text-slate-200 cursor-pointer">
     📷 {photo ? 'Take the photo again' : 'Take a photo'}
@@ -81,5 +76,5 @@
     <button type="button" on:click={() => dispatch('cancel')} disabled={saving}
       class="min-h-[52px] px-4 rounded-lg border border-slate-500 text-slate-200">Cancel</button>
   </div>
-  {#if !place}<p class="text-xs text-slate-400">Choose where the car is. The date and time are added when you press Save.</p>{/if}
+  <p class="text-xs text-slate-400">The date and time are added when you press Save.</p>
 </div>

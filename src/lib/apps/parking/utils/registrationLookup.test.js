@@ -1,24 +1,35 @@
 import { describe, it, expect } from 'vitest';
 import { lookupVerdict, scanCandidatesFrom } from './registrationLookup.js';
 
-describe('lookupVerdict — the one-line answer by the car (2026-10-17)', () => {
-  it('a licence covering today, or a current road permit, is allowed', () => {
-    expect(lookupVerdict([{ standing: 'authorised' }], []).tone).toBe('ok');
-    expect(lookupVerdict([{ standing: 'ended' }], [{ status: 'current' }]).tone).toBe('ok');
+describe('lookupVerdict — the answer by the car, for where it is (2026-10-17)', () => {
+  const licence = { standing: 'authorised', bay: { ref: 'L/PK/22' } };
+  const permit = { status: 'current', permit: { permit_number: 101, company: 'Acme' } };
+
+  it('in the car park only a car park licence counts — a road permit does not, but is mentioned', () => {
+    expect(lookupVerdict([licence], [], '', 'car_park').tone).toBe('ok');
+    const v = lookupVerdict([], [permit], '', 'car_park');
+    expect(v.tone).toBe('none');
+    expect(v.elsewhere).toMatch(/current road permit \(permit 101, Acme\) — for the side road, not the car park/);
   });
-  it('known but starting later is "not yet", known but finished is "no longer"', () => {
-    expect(lookupVerdict([{ standing: 'pending' }], []).tone).toBe('pending');
-    expect(lookupVerdict([], [{ status: 'upcoming' }, { status: 'expired' }]).tone).toBe('pending');
-    expect(lookupVerdict([{ standing: 'ended' }], [{ status: 'expired' }]).tone).toBe('ended');
+  it('on the side road only a road permit counts — a car park licence does not, but is mentioned (the user’s case)', () => {
+    expect(lookupVerdict([], [permit], '', 'road').tone).toBe('ok');
+    const v = lookupVerdict([licence], [], '', 'road');
+    expect(v.tone).toBe('none');
+    expect(v.title).toBe('Not found');
+    expect(v.elsewhere).toMatch(/car park licence today \(bay L\/PK\/22\) — not a road permit/);
   });
-  it('nothing anywhere is "Not found"', () => {
-    expect(lookupVerdict([], [])).toMatchObject({ tone: 'none', title: 'Not found' });
+  it('known here but not yet, or no longer', () => {
+    expect(lookupVerdict([{ standing: 'pending' }], [], '', 'car_park').tone).toBe('pending');
+    expect(lookupVerdict([{ standing: 'ended' }], [], '', 'car_park').tone).toBe('ended');
+    expect(lookupVerdict([], [{ status: 'upcoming' }], '', 'road').tone).toBe('pending');
+    expect(lookupVerdict([], [{ status: 'expired' }], '', 'road').tone).toBe('ended');
+    expect(lookupVerdict([], [{ status: 'expired' }], '', 'car_park').tone).toBe('none');
   });
-  it('⛔ never says "Not found" when the road permits could not be read', () => {
-    const v = lookupVerdict([], [], 'no network');
+  it('⛔ on the side road, never "Not found" when the road permits could not be read; in the car park they do not matter', () => {
+    const v = lookupVerdict([], [], 'no network', 'road');
     expect(v.title).not.toBe('Not found');
-    expect(v.title).toMatch(/road permits NOT checked/);
-    expect(lookupVerdict([{ standing: 'ended' }], [], 'x').title).toMatch(/NOT checked/);
+    expect(v.title).toMatch(/NOT checked/);
+    expect(lookupVerdict([], [], 'no network', 'car_park').title).toBe('Not found');
   });
 });
 
@@ -36,7 +47,7 @@ describe('splitExact — Car check answers for the whole registration only', () 
     const s = splitExact('xc', [], permitHits);
     expect(s.permitHits).toEqual([]);
     expect(s.otherPermitHits).toEqual(permitHits);
-    expect(lookupVerdict(s.hits, s.permitHits).tone).toBe('none');
+    expect(lookupVerdict(s.hits, s.permitHits, '', 'road').tone).toBe('none');
   });
   it('the whole registration, any spacing or case, counts', () => {
     const permitHits = [{ permit: { registration: 'XCVB 675' }, status: 'current' }];
@@ -44,6 +55,6 @@ describe('splitExact — Car check answers for the whole registration only', () 
     const s = splitExact('xcvb675', hits, permitHits);
     expect(s.permitHits).toHaveLength(1);
     expect(s.hits).toHaveLength(1);
-    expect(lookupVerdict(s.hits, s.permitHits).tone).toBe('ok');
+    expect(lookupVerdict(s.hits, s.permitHits, '', 'road').tone).toBe('ok');
   });
 });

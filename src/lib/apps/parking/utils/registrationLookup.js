@@ -27,35 +27,42 @@ export function scanCandidatesFrom(vehicles = [], permits = []) {
 }
 
 /**
- * The one-line answer to a lookup, for a person standing next to the car.
- *   ok       — a licence covering today, or a road permit current now
- *   pending  — known, but not yet (a draft, or starting later)
- *   ended    — known, but no longer
- *   none     — not found anywhere looked
- * ⛔ When the road permits could not be read and nothing in the car park
- * covers it, the answer says the permits were NOT checked: "not found" would
- * read as a car with no permit.
- * @param {{ standing: string }[]} hits         car park results (agreementModel.findByRegistration)
- * @param {{ status: string }[]} permitHits     road permit results (permitModel.findPermitsByRegistration)
+ * The one-line answer to a check, for a person standing next to the car, FOR
+ * WHERE IT IS (2026-10-17, user: a car with only a car park licence read
+ * "allowed" on the side road). In the car park only a car park licence
+ * counts; on the side road only a road permit does.
+ *   ok       — a licence covering today (car park) / a permit current now (road)
+ *   pending  — known here, but not yet (a draft, or starting later)
+ *   ended    — known here, but no longer
+ *   none     — nothing for this place
+ * `elsewhere` says when the car IS allowed at the OTHER place — shown under
+ * the answer, and put in the note of a sighting. ⛔ On the side road, when the
+ * road permits could not be read, the answer says they were NOT checked:
+ * "not found" would read as a car with no permit.
+ * @param {{ standing: string, bay?: { ref?: string }|null }[]} hits   car park results (agreementModel.findByRegistration)
+ * @param {{ status: string, permit?: { permit_number?: number, company?: string } }[]} permitHits  road permits
  * @param {string} [permitError]
- * @returns {{ tone: 'ok'|'pending'|'ended'|'none', title: string, permitsUnchecked: boolean }}
+ * @param {'car_park'|'road'} [place]
+ * @returns {{ tone: 'ok'|'pending'|'ended'|'none', title: string, permitsUnchecked: boolean, elsewhere: string }}
  */
-export function lookupVerdict(hits = [], permitHits = [], permitError = '') {
-  const unchecked = !!permitError;
-  if (hits.some(h => h.standing === 'authorised')) {
-    return { tone: 'ok', title: 'Allowed — car park licence', permitsUnchecked: unchecked };
-  }
-  if (permitHits.some(h => h.status === 'current')) {
-    return { tone: 'ok', title: 'Allowed — road permit', permitsUnchecked: false };
-  }
+export function lookupVerdict(hits = [], permitHits = [], permitError = '', place = 'car_park') {
+  const road = place === 'road';
+  const unchecked = road && !!permitError;
+  const licence = hits.find(h => h.standing === 'authorised');
+  const permit = permitHits.find(h => h.status === 'current');
+  const elsewhere = road
+    ? (licence ? `Has a car park licence today${licence.bay?.ref ? ` (bay ${licence.bay.ref})` : ''} — not a road permit.` : '')
+    : (permit ? `Has a current road permit${permit.permit?.permit_number != null ? ` (permit ${permit.permit.permit_number}${permit.permit.company ? `, ${permit.permit.company}` : ''})` : ''} — for the side road, not the car park.` : '');
   const tail = unchecked ? ' (road permits NOT checked)' : '';
-  if (hits.some(h => h.standing === 'pending') || permitHits.some(h => h.status === 'upcoming')) {
-    return { tone: 'pending', title: `Known, but not allowed yet${tail}`, permitsUnchecked: unchecked };
+  if (road ? permit : licence) {
+    return { tone: 'ok', title: road ? 'Allowed — road permit' : 'Allowed — car park licence', permitsUnchecked: false, elsewhere: '' };
   }
-  if (hits.length || permitHits.length) {
-    return { tone: 'ended', title: `Known, but no longer allowed${tail}`, permitsUnchecked: unchecked };
+  const notYet = road ? permitHits.some(h => h.status === 'upcoming') : hits.some(h => h.standing === 'pending');
+  if (notYet) return { tone: 'pending', title: `Known, but not allowed here yet${tail}`, permitsUnchecked: unchecked, elsewhere };
+  if (road ? permitHits.length : hits.length) {
+    return { tone: 'ended', title: `Known, but no longer allowed here${tail}`, permitsUnchecked: unchecked, elsewhere };
   }
-  return { tone: 'none', title: unchecked ? 'Not in the car park — road permits NOT checked' : 'Not found', permitsUnchecked: unchecked };
+  return { tone: 'none', title: unchecked ? 'Road permits NOT checked' : 'Not found', permitsUnchecked: unchecked, elsewhere };
 }
 
 /**

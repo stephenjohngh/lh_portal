@@ -44,9 +44,10 @@ vi.mock('../stores/registrationCheck.js', () => ({
 
 import PlateCheck from './PlateCheck.svelte';
 
-beforeEach(() => { cleanup(); h.checked.length = 0; h.recorded.length = 0; h.online.set(true); h.sightings.set({ sightings: [], error: null }); });
+beforeEach(() => { cleanup(); localStorage.clear(); h.checked.length = 0; h.recorded.length = 0; h.online.set(true); h.sightings.set({ sightings: [], error: null }); });
 
-async function checkTyped(value) {
+async function checkTyped(value, place = 'Car park') {
+  await fireEvent.click(await screen.findByRole('button', { name: place }));
   await fireEvent.input(await screen.findByPlaceholderText('Or type it'), { target: { value } });
   await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
   return screen.findByTestId('car-check-result');
@@ -56,6 +57,9 @@ describe('Car check', () => {
   it('opens on the Scan button, not the camera; the camera opens when it is pressed', async () => {
     render(PlateCheck);
     const scan = await screen.findByRole('button', { name: /Scan a number plate/ });
+    expect(scan.hasAttribute('disabled')).toBe(true);              // where is the car, first
+    await fireEvent.click(screen.getByRole('button', { name: 'Side road' }));
+    expect(scan.hasAttribute('disabled')).toBe(false);
     expect(screen.queryByTestId('text-scanner')).toBeNull();
     await fireEvent.click(scan);
     expect(await screen.findByTestId('text-scanner')).toBeTruthy();
@@ -64,10 +68,7 @@ describe('Car check', () => {
   it('a typed registration that is nowhere reads "Not found"', async () => {
     h.result = { hits: [], permitHits: [], permitError: '' };
     render(PlateCheck);
-    await screen.findByPlaceholderText('Or type it');
-    await fireEvent.input(screen.getByPlaceholderText('Or type it'), { target: { value: 'zz99zzz' } });
-    await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
-    const card = await screen.findByTestId('car-check-result');
+    const card = await checkTyped('zz99zzz');
     expect(card.dataset.tone).toBe('none');
     expect(card.textContent).toMatch(/Not found/);
     expect(h.checked).toEqual([['zz99zzz', { offline: false }]]);
@@ -77,10 +78,7 @@ describe('Car check', () => {
     h.result = { permitHits: [], permitError: '', hits: [{ vehicle: { id: 'v1', registration: 'AB12CDE' }, standing: 'authorised',
       bay: { ref: 'L/PK/22' }, agreement: { reference: 'PA-0001', status: 'active' }, holder: { display_name: 'J Smith', phone: '0123' } }] };
     render(PlateCheck);
-    await screen.findByPlaceholderText('Or type it');
-    await fireEvent.input(screen.getByPlaceholderText('Or type it'), { target: { value: 'AB12 CDE' } });
-    await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
-    const card = await screen.findByTestId('car-check-result');
+    const card = await checkTyped('AB12 CDE', 'Car park');
     expect(card.dataset.tone).toBe('ok');
     expect(card.textContent).toMatch(/L\/PK\/22/);
     expect(card.textContent).toMatch(/J Smith/);
@@ -90,9 +88,7 @@ describe('Car check', () => {
     h.result = { hits: [], permitError: '', permitHits: [{ permit: { id: 'p1', registration: 'XCVB 675', permit_number: 101, company: 'Acme',
       valid_from: '2000-01-01', valid_to: '2999-01-01' }, status: 'current' }] };
     render(PlateCheck);
-    await fireEvent.input(await screen.findByPlaceholderText('Or type it'), { target: { value: 'xc' } });
-    await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
-    const card = await screen.findByTestId('car-check-result');
+    const card = await checkTyped('xc', 'Side road');
     expect(card.dataset.tone).toBe('none');
     expect(card.textContent).toMatch(/Not found/);
     expect(card.textContent).not.toMatch(/Allowed/);
@@ -103,21 +99,18 @@ describe('Car check', () => {
     h.online.set(false);
     h.result = { hits: [], permitHits: [], permitError: '' };
     render(PlateCheck);
-    await screen.findByPlaceholderText('Or type it');
-    await fireEvent.input(screen.getByPlaceholderText('Or type it'), { target: { value: 'AB12CDE' } });
-    await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+    await checkTyped('AB12CDE');
     await waitFor(() => expect(h.checked).toEqual([['AB12CDE', { offline: true }]]));
     expect((await screen.findByTestId('car-check-result')).textContent).toMatch(/no signal/i);
   });
 
-  it('Not found offers Record this car; it saves where, the note and nothing else typed', async () => {
+  it('Not found offers Record this car; it saves the place chosen for the check, and the note', async () => {
     h.result = { hits: [], permitHits: [], permitError: '' };
     render(PlateCheck);
-    await checkTyped('zz99 zzz');
+    await checkTyped('zz99 zzz', 'Side road');
     await fireEvent.click(screen.getByRole('button', { name: 'Record this car' }));
+    expect(screen.getByTestId('record-sighting').textContent).toMatch(/Where: Side road/);   // from the check
     const save = screen.getByRole('button', { name: 'Save' });
-    expect(save.hasAttribute('disabled')).toBe(true);                  // where, first
-    await fireEvent.click(screen.getByLabelText('Side road'));
     await fireEvent.input(screen.getByRole('textbox', { name: 'Notes' }), { target: { value: 'on the corner' } });
     await fireEvent.click(save);
     await waitFor(() => expect(h.recorded).toHaveLength(1));
@@ -129,7 +122,7 @@ describe('Car check', () => {
     h.result = { hits: [], permitError: '', permitHits: [{ permit: { id: 'p1', registration: 'AB12CDE', permit_number: 7, company: 'Acme',
       valid_from: '2000-01-01', valid_to: '2999-01-01' }, status: 'current' }] };
     render(PlateCheck);
-    expect((await checkTyped('AB12CDE')).dataset.tone).toBe('ok');
+    expect((await checkTyped('AB12CDE', 'Side road')).dataset.tone).toBe('ok');
     expect(screen.queryByRole('button', { name: 'Record this car' })).toBeNull();
   });
 
@@ -159,5 +152,28 @@ describe('Car check', () => {
     expect(screen.getByTestId('sighting-waiting').textContent).toMatch(/not sent yet · with photo/);
     expect(screen.getByTestId('offline-queue-status').textContent).toMatch(/1 record waiting/);
     h.sync.set({ pending: 0, error: 0 });
+  });
+
+  it('⛔ a car park licence does not cover the side road: Not found there, the licence mentioned, and put in the note', async () => {
+    h.result = { permitHits: [], permitError: '', hits: [{ vehicle: { id: 'v1', registration: 'AB12CDE' }, standing: 'authorised',
+      bay: { ref: 'L/PK/22' }, agreement: { reference: 'PA-0001', status: 'active' }, holder: { display_name: 'J Smith' } }] };
+    render(PlateCheck);
+    const card = await checkTyped('AB12CDE', 'Side road');
+    expect(card.dataset.tone).toBe('none');
+    expect(card.textContent).not.toMatch(/Allowed/);
+    expect(screen.getByTestId('car-check-elsewhere').textContent).toMatch(/car park licence today \(bay L\/PK\/22\) — not a road permit/);
+    await fireEvent.click(screen.getByRole('button', { name: 'Record this car' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(h.recorded).toHaveLength(1));
+    expect(h.recorded[0]).toMatchObject({ place: 'road', notes: expect.stringMatching(/car park licence today/) });
+  });
+
+  it('changing where the car is changes the answer', async () => {
+    h.result = { permitHits: [], permitError: '', hits: [{ vehicle: { id: 'v1', registration: 'AB12CDE' }, standing: 'authorised',
+      bay: { ref: 'L/PK/22' }, agreement: { reference: 'PA-0001', status: 'active' }, holder: null }] };
+    render(PlateCheck);
+    expect((await checkTyped('AB12CDE', 'Car park')).dataset.tone).toBe('ok');
+    await fireEvent.click(screen.getByRole('button', { name: 'Side road' }));
+    expect(screen.getByTestId('car-check-result').dataset.tone).toBe('none');
   });
 });

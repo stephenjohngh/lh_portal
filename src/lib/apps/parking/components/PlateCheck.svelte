@@ -11,6 +11,10 @@
      ⚠ It reads the car park when it opens, so open it where there is a signal;
      after that it works in the basement, as the Parking app does. Nothing of
      the car park is kept on the phone.
+     ⭐ WHERE THE CAR IS is chosen first (user, same day): in the car park only a
+     car park licence counts, on the side road only a road permit — a car with
+     only a car park licence is not "allowed" on the road. The other one, if the
+     car has it, is said under the answer and put in a sighting's note.
      Unauthorised parking (migration 245, user, same day): an answer that is not
      "Allowed" offers Record this car — where, a photo, a note — and every answer
      shows the car's earlier sightings. -->
@@ -27,7 +31,8 @@
   import OfflineQueueStatus from '#lib/components/common/OfflineQueueStatus.svelte';
   import { checkRegistration } from '../stores/registrationCheck.js';
   import { sightingStore } from '../stores/sightingStore.js';
-  import { sightingsOf } from '../utils/sightingModel.js';
+  import { sightingsOf, SIGHTING_PLACES } from '../utils/sightingModel.js';
+  import { getPref, setPref } from '#lib/utils/prefs.js';
   import { permissions } from '#lib/stores/permissions.js';
   import RecordSighting from './RecordSighting.svelte';
   import SightingHistory from './SightingHistory.svelte';
@@ -46,6 +51,11 @@
   // hits / permitHits are the WHOLE registration only; other* contain it (splitExact).
   /** @type {null | { q: string, hits: any[], permitHits: any[], otherHits: any[], otherPermitHits: any[], permitError: string, offline: boolean }} */
   let result = null;
+  // Where the car is — remembered on this phone, since the caretaker is
+  // usually checking one place at a time.
+  const PLACE_PREF = 'parking.carCheck.place';
+  let place = (() => { const p = getPref(PLACE_PREF, ''); return Object.hasOwn(SIGHTING_PLACES, p) ? p : ''; })();
+  function choosePlace(/** @type {string} */ p) { place = p; setPref(PLACE_PREF, p); recording = false; }
   let recording = false;
   let recordedNote = '';
 
@@ -56,7 +66,7 @@
   };
 
   $: scanCandidates = scanCandidatesFrom($parkingStore.vehicles, $permitStore.permits);
-  $: verdict = result ? lookupVerdict(result.hits, result.permitHits, result.permitError) : null;
+  $: verdict = result && place ? lookupVerdict(result.hits, result.permitHits, result.permitError, /** @type {any} */ (place)) : null;
   // Sightings still on the phone show at once, marked as not sent; a sent one
   // replaces its waiting copy (same id).
   $: waitingSightings = ($syncState.items ?? []).filter((i) => i.sighting)
@@ -75,7 +85,7 @@
   });
 
   async function check(/** @type {string} */ value) {
-    if (normaliseReg(value).length < 2) return;
+    if (normaliseReg(value).length < 2 || !place) return;
     checking = true; error = ''; recording = false; recordedNote = '';
     const offline = !$online;
     try {
@@ -130,8 +140,20 @@
       <!-- Checks (audit lines) and recorded cars both wait here with no signal. -->
       <OfflineQueueStatus state={$syncState} what={['record', 'records']} onRetry={retryErrors} />
 
-      <button type="button" on:click={scanAgain}
-        class="w-full min-h-[64px] rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-lg font-semibold">
+      <fieldset class="space-y-1" data-testid="car-check-place">
+        <legend class="text-sm text-slate-300">Where is the car?</legend>
+        <div class="flex gap-2">
+          {#each Object.entries(SIGHTING_PLACES) as [value, label]}
+            <button type="button" on:click={() => choosePlace(value)} aria-pressed={place === value}
+              class="flex-1 min-h-[48px] rounded-lg border text-base
+                {place === value ? 'border-purple-400 bg-purple-900/50 text-white font-semibold' : 'border-slate-600 text-slate-300'}">{label}</button>
+          {/each}
+        </div>
+        {#if !place}<p class="text-xs text-amber-300">Choose where the car is first: a car park licence does not cover the side road, and a road permit does not cover the car park.</p>{/if}
+      </fieldset>
+
+      <button type="button" on:click={scanAgain} disabled={!place}
+        class="w-full min-h-[64px] rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-lg font-semibold disabled:opacity-40">
         📷 {result ? 'Scan another' : 'Scan a number plate'}</button>
 
       <form class="flex gap-2" on:submit|preventDefault={() => check(q)}>
@@ -139,7 +161,7 @@
         <input id="car-check-reg" bind:value={q} placeholder="Or type it"
           enterkeyhint="search" autocapitalize="characters" autocomplete="off" spellcheck="false"
           class="flex-1 min-w-0 min-h-[48px] px-3 text-lg bg-slate-800 border border-slate-600 rounded-lg font-mono uppercase" />
-        <button type="submit" disabled={checking || normaliseReg(q).length < 2}
+        <button type="submit" disabled={checking || !place || normaliseReg(q).length < 2}
           class="min-h-[48px] px-4 rounded-lg border border-purple-500 text-purple-200 disabled:opacity-40">Check</button>
       </form>
 
@@ -149,6 +171,8 @@
         <div class="rounded-xl border-2 p-4 space-y-3 {TONE[verdict.tone]}" data-testid="car-check-result" data-tone={verdict.tone}>
           <p class="font-mono text-2xl text-white">{formatReg(normaliseReg(result.q))}</p>
           <p class="text-xl font-semibold">{verdict.title}</p>
+          <p class="text-xs text-slate-300">Checked for the {SIGHTING_PLACES[place].toLowerCase()}.</p>
+          {#if verdict.elsewhere}<p class="text-sm text-white" data-testid="car-check-elsewhere">ℹ {verdict.elsewhere}</p>{/if}
 
           {#if result.offline}
             <p class="text-xs text-amber-300">Checked with no signal, against the car park as read at {fmtTime(new Date(loadedAt).toISOString())}.</p>
@@ -198,7 +222,8 @@
 
         {#if verdict.tone !== 'ok' && canRecord}
           {#if recording}
-            <RecordSighting registration={result.q} on:recorded={recorded} on:cancel={() => (recording = false)} />
+            <RecordSighting registration={result.q} {place} prefillNotes={verdict.elsewhere}
+              on:recorded={recorded} on:cancel={() => (recording = false)} />
           {:else}
             <button type="button" on:click={() => (recording = true)}
               class="w-full min-h-[56px] rounded-xl border-2 border-red-400 text-red-200 text-lg font-semibold">
