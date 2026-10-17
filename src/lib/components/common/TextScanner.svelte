@@ -23,7 +23,7 @@
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { startReader, readText } from '#lib/utils/textScan/ocrReader.js';
   import { matchScan, readingsFrom, scanProfile } from '#lib/utils/textScan/scanMatch.js';
-  import { guideCrop, readSize, greyAndStretch, blackAndWhite, clearEdgesAndSpecks, closeGaps, withMargin } from '#lib/utils/textScan/scanImage.js';
+  import { guideCrop, readSize, greyAndStretch, blackAndWhite, clearEdgesAndSpecks, closeGaps, withMargin, preparePlate } from '#lib/utils/textScan/scanImage.js';
   import { errMessage } from '#lib/utils/errors.js';
   import { cameraHelp } from '#lib/utils/textScan/cameraHelp.js';
   import { createScanTally } from '#lib/utils/textScan/scanTally.js';
@@ -191,25 +191,33 @@
    * touching the edge and specks cleared, small gaps in letters closed, and a
    * white margin so the letters do not touch the edge. Returns the canvas for the reader, and
    * the drawn one for the diagnostics.
+   * `way` 'plate' is the second preparation for a number plate (2026-10-17,
+   * scanImage.js preparePlate): it reads a plate under a light or half in
+   * shadow that the usual one cannot, and misses some the usual one reads.
    * @param {(ctx: CanvasRenderingContext2D) => void} draw
    * @param {number} w @param {number} h
+   * @param {'usual'|'plate'} [way]
    */
-  function prepare(draw, w, h) {
+  function prepare(draw, w, h, way = 'usual') {
     const raw = document.createElement('canvas');
     raw.width = w; raw.height = h;
     const rctx = /** @type {CanvasRenderingContext2D} */ (raw.getContext('2d', { willReadFrequently: true }));
     draw(rctx);
     const img = rctx.getImageData(0, 0, w, h);
     const work = new Uint8ClampedArray(img.data);
-    greyAndStretch(work);
-    // Black and white by comparing each spot with its neighbourhood, so a plate
-    // under a light keeps its pale letters; which way round is judged from the
-    // middle, where the dark bodywork round a plate cannot fool it.
-    const bw = blackAndWhite(work, w, h);
-    // The bodywork, bumper and plate border touch the crop's edge and were
-    // read as letters; a nick in a letter's stroke read a D as "II".
-    clearEdgesAndSpecks(work, w, h);
-    closeGaps(work, w, h, 1);
+    let bw = { inverted: false };
+    if (way === 'plate') preparePlate(work, w, h);
+    else {
+      greyAndStretch(work);
+      // Black and white by comparing each spot with its neighbourhood, so a plate
+      // under a light keeps its pale letters; which way round is judged from the
+      // middle, where the dark bodywork round a plate cannot fool it.
+      bw = blackAndWhite(work, w, h);
+      // The bodywork, bumper and plate border touch the crop's edge and were
+      // read as letters; a nick in a letter's stroke read a D as "II".
+      clearEdgesAndSpecks(work, w, h);
+      closeGaps(work, w, h, 1);
+    }
     const padded = withMargin(work, w, h, Math.max(4, Math.round(h * 0.15)));
     const out = document.createElement('canvas');
     out.width = padded.w; out.height = padded.h;
@@ -249,6 +257,7 @@
     }
   }
 
+  let frameTurn = 0;
   async function readFrame() {
     const rect = video.getBoundingClientRect();
     const crop = guideCrop({
@@ -256,12 +265,15 @@
       viewW: rect.width, viewH: rect.height, boxFraction: BOX_FRACTION, aspect: boxAspect,
     });
     const size = readSize(crop.w, crop.h);
+    // A number plate is read the two ways in turn, and the frames vote: each
+    // way reads plates the other cannot (2026-10-17, the user's pictures 7–9).
+    const way = profile === 'registration' && (frameTurn++ % 2 === 1) ? 'plate' : 'usual';
     const { raw, out, bw } = prepare(
-      (ctx) => ctx.drawImage(video, crop.x, crop.y, crop.w, crop.h, 0, 0, size.w, size.h), size.w, size.h);
+      (ctx) => ctx.drawImage(video, crop.x, crop.y, crop.w, crop.h, 0, 0, size.w, size.h), size.w, size.h, way);
     const { text, confidence } = await readText(out, prof);
     noteDiag(raw, out, text, confidence,
       `camera ${video.videoWidth}×${video.videoHeight} · box ${crop.w}×${crop.h} px · read at ${size.w}×${size.h} · `
-      + `${bw.inverted ? 'light on dark, turned round · ' : ''}${focusInfo}`);
+      + `${way === 'plate' ? 'plate way · ' : ''}${bw.inverted ? 'light on dark, turned round · ' : ''}${focusInfo}`);
     if (photoMode) return;            // a photo was taken while this frame was read
     takeFrame(text, confidence);
   }

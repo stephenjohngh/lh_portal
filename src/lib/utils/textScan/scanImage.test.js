@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { guideCrop, readSize, greyAndStretch, blackAndWhite, withMargin, darkInMiddle, clearEdgesAndSpecks, closeGaps } from './scanImage.js';
+import { guideCrop, readSize, greyAndStretch, blackAndWhite, withMargin, darkInMiddle, clearEdgesAndSpecks, closeGaps, brightestChannel, evenRows, darkerThanPlate, clearEdgesCuttingJoins, preparePlate } from './scanImage.js';
 
 describe('the guide box, in camera pixels', () => {
   it('a portrait phone showing a landscape camera: the box is centred in what is visible', () => {
@@ -152,5 +152,76 @@ describe('closeGaps', () => {
     expect(after[1][2]).toBe('#');              // the nick at the top is filled
     expect(after[2].slice(4, 7)).toBe('...');   // the gap between the two shapes stays
     expect(before[2].slice(4, 7)).toBe('...');
+  });
+});
+
+describe('the second way for a number plate (2026-10-17, the user\'s pictures 7–9)', () => {
+  /** A grey picture w × h filled with `bg`, then `paint(set)` marks spots. */
+  const pic = (w, h, bg, paint) => {
+    const px = new Uint8ClampedArray(w * h * 4);
+    const set = (x, y, g) => { const i = (y * w + x) * 4; px[i] = px[i + 1] = px[i + 2] = g; px[i + 3] = 255; };
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) set(x, y, bg);
+    paint(set);
+    return { px, w, h };
+  };
+  const dark = ({ px, w }, x, y) => px[(y * w + x) * 4] === 0;
+
+  it('brightestChannel: a yellow plate is as bright as a white car', () => {
+    const px = new Uint8ClampedArray([250, 220, 30, 255, 250, 250, 250, 255]);
+    brightestChannel(px);
+    expect(px[0]).toBe(250);
+    expect(px[4]).toBe(250);
+  });
+
+  it('darkerThanPlate keeps the middle of a thick, washed-out stroke — blackAndWhite kept only its edges', () => {
+    // A plate (240) under a light with pale letters packed close (200): strokes
+    // 10 px wide, 5 px apart, in a crop 90 px tall — picture 9's B, 1 and 5.
+    const make = () => pic(200, 90, 240, (set) => {
+      for (const x0 of [60, 75, 90, 105]) for (let y = 15; y < 75; y++) for (let x = x0; x < x0 + 10; x++) set(x, y, 200);
+    });
+    const a = make();
+    darkerThanPlate(a.px, a.w, a.h);
+    expect(dark(a, 80, 45)).toBe(true);     // the middle of a stroke
+    expect(dark(a, 72, 45)).toBe(false);    // the gap between strokes
+    expect(dark(a, 30, 45)).toBe(false);    // the plate
+    const b = make();
+    blackAndWhite(b.px, b.w, b.h);
+    expect(dark(b, 80, 45)).toBe(false);    // the old way loses the middle (picture 9)
+  });
+
+  it('evenRows: a band of shadow over the top of the plate stays plate, the letters stay dark', () => {
+    // Rows 0–19 in shadow (plate 80), rows 20–59 in light (plate 210); a letter (20) through both.
+    const p = pic(120, 60, 210, (set) => {
+      for (let y = 0; y < 20; y++) for (let x = 0; x < 120; x++) set(x, y, 80);
+      for (let y = 5; y < 55; y++) for (let x = 50; x < 60; x++) set(x, y, 20);
+    });
+    evenRows(p.px, p.w, p.h);
+    darkerThanPlate(p.px, p.w, p.h);
+    expect(dark(p, 20, 18)).toBe(false);    // shadowed plate, just above the light (picture 7)
+    expect(dark(p, 55, 10)).toBe(true);     // the letter in the shadow
+    expect(dark(p, 55, 40)).toBe(true);     // the letter in the light
+  });
+
+  it('clearEdgesCuttingJoins keeps a letter that touches a thin border running to the edge — clearEdgesAndSpecks took both', () => {
+    // A thin border line (2 px) along row 4 from the left edge, touching a letter block below it.
+    const make = () => pic(120, 60, 255, (set) => {
+      for (let x = 0; x < 100; x++) { set(x, 4, 0); set(x, 5, 0); }
+      for (let y = 6; y < 50; y++) for (let x = 40; x < 52; x++) set(x, y, 0);
+    });
+    const a = make();
+    clearEdgesCuttingJoins(a.px, a.w, a.h);
+    expect(dark(a, 46, 30)).toBe(true);     // the letter is kept
+    expect(dark(a, 10, 4)).toBe(false);     // the border is cleared
+    const b = make();
+    clearEdgesAndSpecks(b.px, b.w, b.h);
+    expect(dark(b, 46, 30)).toBe(false);    // the old way cleared the letter with it (pictures 7, 9)
+  });
+
+  it('preparePlate leaves black and white, the plate light and the letter dark', () => {
+    const p = pic(120, 60, 200, (set) => { for (let y = 10; y < 50; y++) for (let x = 50; x < 62; x++) set(x, y, 30); });
+    preparePlate(p.px, p.w, p.h);
+    expect(new Set(Array.from(p.px.filter((_, i) => i % 4 === 0)))).toEqual(new Set([0, 255]));
+    expect(dark(p, 56, 30)).toBe(true);
+    expect(dark(p, 20, 30)).toBe(false);
   });
 });

@@ -238,3 +238,167 @@ export function closeGaps(px, w, h, r = 1) {
     }
   }
 }
+
+// ── The second way of preparing a number plate (2026-10-17) ──────────────────
+// From the user's car-park pictures 7–9. Two faults the first way cannot get
+// past: a plate under a light whose letters are only a little darker than the
+// plate (the black-and-white step kept their outlines and lost the middles),
+// and a plate whose top third lies in the shadow of the number-plate recess
+// (the shadow joined the letters to the border, and clearing the edge took the
+// letters with it). Neither way reads every picture; the live scanner uses
+// them in turn and the frames vote (TextScanner, scanTally.js).
+
+/**
+ * Brightness as the brightest of red, green and blue (2026-10-17): a yellow
+ * plate then counts as bright as a white one, and as bright as the white car
+ * round it, so neither looks like a shadow. In place, on RGBA pixels.
+ * @param {Uint8ClampedArray} px
+ */
+export function brightestChannel(px) {
+  for (let i = 0; i < px.length; i += 4) {
+    const v = Math.max(px[i], px[i + 1], px[i + 2]);
+    px[i] = px[i + 1] = px[i + 2] = v;
+  }
+}
+
+/**
+ * Even out a shadow that lies along a row (2026-10-17): each row is scaled so
+ * its bright level — the 90th percentile of its middle — is white. A plate is
+ * the brightest thing across its own rows, so a band of shadow over the top of
+ * the letters comes up to the plate's level and the letters stay dark. In
+ * place, on grey RGBA pixels (reads the red channel).
+ * @param {Uint8ClampedArray} px @param {number} w @param {number} h
+ */
+export function evenRows(px, w, h) {
+  const x0 = Math.floor(w * 0.15), x1 = Math.ceil(w * 0.85);
+  const vals = new Uint8Array(x1 - x0);
+  for (let y = 0; y < h; y++) {
+    for (let x = x0; x < x1; x++) vals[x - x0] = px[(y * w + x) * 4];
+    vals.sort();
+    const top = Math.max(16, vals[Math.floor(vals.length * 0.9)]);
+    for (let x = 0; x < w; x++) {
+      const q = (y * w + x) * 4;
+      const v = Math.min(255, (px[q] * 255) / top);
+      px[q] = px[q + 1] = px[q + 2] = v;
+    }
+  }
+}
+
+/** Square max filter (separable), radius r. @param {Float32Array} a @param {number} w @param {number} h @param {number} r */
+function maxFilter(a, w, h, r) {
+  const t = new Float32Array(w * h), o = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let m = 0; for (let k = Math.max(0, x - r); k <= Math.min(w - 1, x + r); k++) m = Math.max(m, a[y * w + k]);
+    t[y * w + x] = m;
+  }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let m = 0; for (let k = Math.max(0, y - r); k <= Math.min(h - 1, y + r); k++) m = Math.max(m, t[k * w + x]);
+    o[y * w + x] = m;
+  }
+  return o;
+}
+
+/** Square box blur (separable), radius r. @param {Float32Array} a @param {number} w @param {number} h @param {number} r */
+function boxBlur(a, w, h, r) {
+  const t = new Float32Array(w * h), o = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let s = 0, n = 0; for (let k = Math.max(0, x - r); k <= Math.min(w - 1, x + r); k++) { s += a[y * w + k]; n++; }
+    t[y * w + x] = s / n;
+  }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let s = 0, n = 0; for (let k = Math.max(0, y - r); k <= Math.min(h - 1, y + r); k++) { s += t[k * w + x]; n++; }
+    o[y * w + x] = s / n;
+  }
+  return o;
+}
+
+/**
+ * Black and white against the plate's own brightness (2026-10-17). The plate
+ * round each spot is found as the brightest thing within a little more than
+ * half a letter's stroke (7% of the crop's height), so inside a thick stroke
+ * it is still the plate, not the stroke; a spot is dark when it is below
+ * `k` of that. A glare that washes a letter out washes the plate beside it
+ * too, so the letter stays darker than its own plate — where comparing with
+ * the average round it (blackAndWhite) found only the letters' edges. Dark
+ * letters on a light plate only: number plates never come the other way.
+ * In place, on grey RGBA pixels.
+ * @param {Uint8ClampedArray} px @param {number} w @param {number} h
+ * @param {{ k?: number, reach?: number }} [opts]
+ */
+export function darkerThanPlate(px, w, h, { k = 0.85, reach = 0.07 } = {}) {
+  const g = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) g[i] = px[i * 4] + 1;
+  const r = Math.max(2, Math.round(h * reach));
+  const plate = boxBlur(maxFilter(g, w, h, r), w, h, Math.max(1, Math.round(r / 2)));
+  for (let i = 0; i < w * h; i++) {
+    const v = g[i] / plate[i] < k ? 0 : 255;
+    px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = v;
+    px[i * 4 + 3] = 255;
+  }
+}
+
+/**
+ * Square erosion or dilation of a mask (1 = dark), done along the rows and
+ * then the columns. Beyond the picture counts as light.
+ * @param {Uint8Array} m @param {number} w @param {number} h @param {number} r @param {boolean} grow
+ */
+function morph(m, w, h, r, grow) {
+  const t = new Uint8Array(w * h), o = new Uint8Array(w * h);
+  /** @param {Uint8Array} src @param {Uint8Array} dst @param {number} n @param {number} lines @param {number} step @param {number} stride */
+  const pass = (src, dst, n, lines, step, stride) => {
+    for (let l = 0; l < lines; l++) {
+      for (let i = 0; i < n; i++) {
+        let v = grow ? 0 : 1;
+        for (let k = i - r; k <= i + r; k++) {
+          const d = k < 0 || k >= n ? 0 : src[l * stride + k * step];
+          if (grow ? d : !d) { v = grow ? 1 : 0; break; }
+        }
+        dst[l * stride + i * step] = v;
+      }
+    }
+  };
+  pass(m, t, w, h, 1, w);       // along each row
+  pass(t, o, h, w, w, 1);       // down each column
+  return o;
+}
+
+/**
+ * Clear the edges and specks as clearEdgesAndSpecks does, but first cut the
+ * thin joins (2026-10-17): a letter touching the plate's thin border line, the
+ * border joined to the bodywork at the picture's edge, and the whole lot was
+ * cleared as one — the 1 and V of a plate went that way. The decision is made
+ * on a copy with everything thinner than 2r+1 px taken away (a morphological
+ * opening); the letters themselves are then kept whole. In place, on a black
+ * and white dark-on-light picture.
+ * @param {Uint8ClampedArray} px @param {number} w @param {number} h @param {number} [r]
+ */
+export function clearEdgesCuttingJoins(px, w, h, r = 2) {
+  const dark = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) dark[i] = px[i * 4] === 0 ? 1 : 0;
+  const opened = morph(morph(dark, w, h, r, false), w, h, r, true);
+  const probe = new Uint8ClampedArray(px.length);
+  for (let i = 0; i < w * h; i++) { const v = opened[i] ? 0 : 255; probe[i * 4] = probe[i * 4 + 1] = probe[i * 4 + 2] = v; probe[i * 4 + 3] = 255; }
+  clearEdgesAndSpecks(probe, w, h);
+  const kept = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) kept[i] = probe[i * 4] === 0 ? 1 : 0;
+  const near = morph(kept, w, h, r + 1, true);
+  for (let i = 0; i < w * h; i++) {
+    const v = dark[i] && near[i] ? 0 : 255;
+    px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = v;
+  }
+}
+
+/**
+ * The second preparation for a number plate, start to finish, in place on the
+ * crop's RGBA pixels; the caller adds the margin. (The first is greyAndStretch
+ * → blackAndWhite → clearEdgesAndSpecks → closeGaps.)
+ * @param {Uint8ClampedArray} px @param {number} w @param {number} h
+ */
+export function preparePlate(px, w, h) {
+  brightestChannel(px);
+  greyAndStretch(px);
+  evenRows(px, w, h);
+  darkerThanPlate(px, w, h);
+  clearEdgesCuttingJoins(px, w, h);
+  closeGaps(px, w, h, 1);
+}
