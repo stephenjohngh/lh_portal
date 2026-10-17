@@ -43,9 +43,8 @@ import { createClient }         from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL }  from '$app/env/public';
 import * as env from '$app/env/private';
 import { findFileReferences, canDeleteFile } from '#lib/server/mediaAccess.js';
-import { providerByName }       from '#lib/server/storage/index.js';
+import { deleteStoredFile }     from '#lib/server/storage/deleteStoredFile.js';
 import { resolveStorageRef }    from '#lib/server/storage/storageRef.js';
-import { friendlyStorageError } from '#lib/server/storage/storageErrors.js';
 import { requireAuth }          from '#lib/server/requireAuth.js';
 import { getLogger }            from '#lib/utils/logger.js';
 
@@ -84,7 +83,7 @@ export async function DELETE({ request }) {
   for (const f of files) {
     const url      = typeof f?.url === 'string' ? f.url : null;
     const declared = typeof f?.provider === 'string' ? f.provider : null;
-    const { provider, ref, bucket, reason } = resolveStorageRef(url, declared);
+    const { provider, ref, reason } = resolveStorageRef(url, declared);
 
     if (!ref) {
       logger('⚠ not deletable:', url, '—', reason);
@@ -105,30 +104,13 @@ export async function DELETE({ request }) {
       continue;
     }
 
-    const impl = providerByName(provider);
-    if (!impl) {
-      const error = `No provider implementation for "${provider}".`;
-      logger('⚠', error);
-      results.push({ url, ok: false, error });
-      continue;
-    }
-
-    // Asked before the delete: afterwards the file cannot say where it was.
-    let parent = null;
-    if (typeof impl.parentFolderOf === 'function') {
-      try { parent = await impl.parentFolderOf(ref); } catch { /* tidying is optional */ }
-    }
-
-    try {
-      await impl.deleteFile(ref, bucket ? { bucket } : undefined);
+    const done = await deleteStoredFile(url, provider, { wantParent: true });
+    if (done.ok) {
       results.push({ url, ok: true });
-      if (parent) emptied.set(parent, impl);
-    } catch (/** @type {any} */ err) {
-      // Already gone is the outcome we wanted; anything else is reported.
-      const msg = friendlyStorageError(err);
-      const gone = err?.code === 404 || err?.status === 404 || /not found/i.test(msg);
-      if (!gone) logger('⚠ deleteFile failed for', url, ':', msg);
-      results.push({ url, ok: gone, ...(gone ? {} : { error: msg }) });
+      if (done.parent) emptied.set(done.parent, done.impl);
+    } else {
+      logger('⚠ deleteFile failed for', url, ':', done.error);
+      results.push({ url, ok: false, error: done.error });
     }
   }
 

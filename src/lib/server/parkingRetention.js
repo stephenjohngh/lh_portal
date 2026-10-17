@@ -11,17 +11,22 @@
 //
 //   1. ask the function what is due, including the documents in the way
 //   2. delete each of those documents, file first, then its row
-//   3. run the function for real, which now removes those agreements too
+//   3. the same for unauthorised-parking photos (migration 246): each photo's
+//      file, then its media_attachments row
+//   4. run the function for real, which now removes those agreements and
+//      sightings too
 //
 // ⛔ A document that fails to delete is left, and so is its agreement: the
 // function still sees the row and holds the agreement back. Failing safe means
 // keeping personal data longer, never stranding a file.
 
 /**
- * @param {{ rpc: Function }} db  a SERVICE-ROLE client
- * @param {{ deleteDocument: (id: string) => Promise<void>, runBy: string }} deps
+ * @param {any} db  a SERVICE-ROLE client
+ * @param {{ deleteDocument: (id: string) => Promise<void>,
+ *           deleteStoredFile: (url: string, provider: string|null) => Promise<{ ok: boolean, error?: string }>,
+ *           runBy: string }} deps
  */
-export async function runParkingRetention(db, { deleteDocument, runBy }) {
+export async function runParkingRetention(db, { deleteDocument, deleteStoredFile, runBy }) {
   const due = await call(db, { p_dry_run: true });
   let removed = 0;
   let failed = 0;
@@ -33,10 +38,21 @@ export async function runParkingRetention(db, { deleteDocument, runBy }) {
       failed += 1;
     }
   }
+  // A sighting's photos: the file, then the row naming it. ⛔ A file that
+  // cannot go keeps its row, so the function keeps the sighting.
+  let photosRemoved = 0;
+  let photosFailed = 0;
+  for (const p of due?.photos_due ?? []) {
+    const done = await deleteStoredFile(p.url, p.provider ?? null);
+    if (!done.ok) { photosFailed += 1; continue; }
+    const { error } = await db.from('media_attachments').delete().eq('id', p.id);
+    if (error) photosFailed += 1; else photosRemoved += 1;
+  }
   const result = await call(db, { p_dry_run: false, p_run_by: runBy });
-  // documents_due is a list of ids, not something to show anybody.
-  const { documents_due, ...counts } = result ?? {};
-  return { ...counts, documents_removed: removed, documents_failed: failed };
+  // documents_due and photos_due are lists for this route, not for anybody to read.
+  const { documents_due, photos_due, ...counts } = result ?? {};
+  return { ...counts, documents_removed: removed, documents_failed: failed,
+    photos_removed: photosRemoved, photos_failed: photosFailed };
 }
 
 async function call(db, params) {

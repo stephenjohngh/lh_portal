@@ -28,6 +28,10 @@ export function retentionRules(periods) {
   if (p.permit_months != null) {
     rules.push(`A road permit becomes due ${plural(p.permit_months, 'month')} after it ended. Its number is not used again.`);
   }
+  // Unauthorised-parking sightings joined in migration 246.
+  if (p.sighting_months != null) {
+    rules.push(`An unauthorised-parking sighting, with its photo, becomes due ${plural(p.sighting_months, 'month')} after it was recorded.`);
+  }
   return rules;
 }
 
@@ -41,7 +45,9 @@ export function retentionParts(counts) {
   if (counts.applications) parts.push(plural(counts.applications, 'closed application'));
   if (counts.holders)      parts.push(plural(counts.holders, 'holder'));
   if (counts.permits)      parts.push(plural(counts.permits, 'road permit'));
+  if (counts.sightings)    parts.push(plural(counts.sightings, 'unauthorised-parking sighting'));
   if (counts.documents_removed) parts.push(plural(counts.documents_removed, 'licence document'));
+  if (counts.photos_removed) parts.push(plural(counts.photos_removed, 'sighting photo'));
   return parts;
 }
 
@@ -57,6 +63,13 @@ export function retentionSummary(counts, { due = false } = {}) {
   const failed = counts?.documents_failed
     ? ` ${plural(counts.documents_failed, 'licence document')} could not be deleted, so ${counts.documents_failed === 1 ? 'its' : 'their'} agreement stays.`
     : '';
-  if (!parts.length) return (due ? 'Nothing is due for removal.' : 'Nothing was removed.') + held + docs + failed;
-  return `${due ? 'Due for removal' : 'Removed'}: ${parts.join(', ')}.${held}${docs}${failed}`;
+  const photos = counts?.held_back_photos
+    ? ` ${plural(counts.held_back_photos, 'sighting')} ${counts.held_back_photos === 1 ? 'is' : 'are'} ${due ? 'also due but waiting' : 'still waiting'} for ${counts.held_back_photos === 1 ? 'its photo' : 'their photos'} to be removed${due ? ': Delete outdated records does that' : ''}.`
+    : '';
+  const photosFailed = counts?.photos_failed
+    ? ` ${plural(counts.photos_failed, 'sighting photo')} could not be deleted, so ${counts.photos_failed === 1 ? 'its sighting stays' : 'their sightings stay'}.`
+    : '';
+  const tail = held + docs + photos + failed + photosFailed;
+  if (!parts.length) return (due ? 'Nothing is due for removal.' : 'Nothing was removed.') + tail;
+  return `${due ? 'Due for removal' : 'Removed'}: ${parts.join(', ')}.${tail}`;
 }

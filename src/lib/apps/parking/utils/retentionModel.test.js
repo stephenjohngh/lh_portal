@@ -63,3 +63,16 @@ describe('road permits in retention (migration 239)', () => {
     expect(retentionParts({ permits: 2 })).toContain('2 road permits');
   });
 });
+
+describe('unauthorised-parking sightings in retention (migration 246)', () => {
+  it('states the 24-month rule only when the database returns it', () => {
+    const base = { agreement_years: 6, vehicle_months: 12, device_months: 12, application_grace_days: 30, holder_months: 12 };
+    expect(retentionRules(base).some(r => /sighting/.test(r))).toBe(false);
+    expect(retentionRules({ ...base, sighting_months: 24 }).some(r => /sighting, with its photo, becomes due 24 months/.test(r))).toBe(true);
+  });
+  it('counts sightings due, says which wait for their photo, and which photos could not go', () => {
+    expect(retentionSummary({ sightings: 2 }, { due: true })).toMatch(/Due for removal: 2 unauthorised-parking sightings/);
+    expect(retentionSummary({ held_back_photos: 1 }, { due: true })).toMatch(/1 sighting is also due but waiting for its photo/);
+    expect(retentionSummary({ sightings: 1, photos_removed: 1, photos_failed: 1 })).toMatch(/1 sighting photo could not be deleted/);
+  });
+});

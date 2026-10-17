@@ -47,7 +47,7 @@
   }
 
   $: rules = retentionRules(due?.periods);
-  $: anythingDue = !!due && ['agreements', 'vehicles', 'devices', 'applications', 'holders', 'permits', 'held_back_documents'].some(k => due[k] > 0);
+  $: anythingDue = !!due && ['agreements', 'vehicles', 'devices', 'applications', 'holders', 'permits', 'sightings', 'held_back_documents', 'held_back_photos'].some(k => due[k] > 0);
 </script>
 
 <section class="bg-slate-800 border border-slate-700 rounded-lg p-3 space-y-3" data-testid="retention">
@@ -82,7 +82,7 @@
 <ConfirmDialog
   show={confirming}
   title="Delete outdated records?"
-  message={due ? `${retentionSummary(due, { due: true })} Signed licence documents are deleted first. This cannot be undone.` : ''}
+  message={due ? `${retentionSummary(due, { due: true })} Signed licence documents and sighting photos are deleted first. This cannot be undone.` : ''}
   confirmText="Delete"
   danger={true}
   processing={running}
