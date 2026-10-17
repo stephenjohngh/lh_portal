@@ -149,7 +149,6 @@
                 {place === value ? 'border-purple-400 bg-purple-900/50 text-white font-semibold' : 'border-slate-600 text-slate-300'}">{label}</button>
           {/each}
         </div>
-        {#if !place}<p class="text-xs text-amber-300">Choose where the car is first: a car park licence does not cover the side road, and a road permit does not cover the car park.</p>{/if}
       </fieldset>
 
       <button type="button" on:click={scanAgain} disabled={!place}
