@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema21.csv
+// Source: docs/ops/supabase_lhportal_schema22.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -3982,57 +3982,72 @@ export type Database = {
       }
       parking_requests: {
         Row: {
-          application_id: string | null
-          company_name: string | null
-          correspondence_address: string | null
-          display_name: string
-          email: string
-          holder_id: string | null
-          holder_type: string
           id: string
-          notes: string | null
-          phone: string | null
-          privacy_notice_text: string
-          received_at: string
           reference: string
-          verification_code: string
+          holder_type: string
+          display_name: string
+          company_name: string | null
+          email: string
+          phone: string | null
+          correspondence_address: string | null
           wanted_size: string
+          notes: string | null
+          privacy_notice_text: string
+          verification_code: string
+          received_at: string
+          holder_id: string | null
+          application_id: string | null
         }
         Insert: {
-          application_id?: string | null
-          company_name?: string | null
-          correspondence_address?: string | null
-          display_name: string
-          email: string
-          holder_id?: string | null
-          holder_type: string
           id?: string
-          notes?: string | null
-          phone?: string | null
-          privacy_notice_text: string
-          received_at?: string
           reference?: string
-          verification_code: string
+          holder_type: string
+          display_name: string
+          company_name?: string | null
+          email: string
+          phone?: string | null
+          correspondence_address?: string | null
           wanted_size: string
+          notes?: string | null
+          privacy_notice_text: string
+          verification_code: string
+          received_at?: string
+          holder_id?: string | null
+          application_id?: string | null
         }
         Update: {
-          application_id?: string | null
-          company_name?: string | null
-          correspondence_address?: string | null
-          display_name?: string
-          email?: string
-          holder_id?: string | null
-          holder_type?: string
           id?: string
-          notes?: string | null
-          phone?: string | null
-          privacy_notice_text?: string
-          received_at?: string
           reference?: string
-          verification_code?: string
+          holder_type?: string
+          display_name?: string
+          company_name?: string | null
+          email?: string
+          phone?: string | null
+          correspondence_address?: string | null
           wanted_size?: string
+          notes?: string | null
+          privacy_notice_text?: string
+          verification_code?: string
+          received_at?: string
+          holder_id?: string | null
+          application_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+            {
+              foreignKeyName: "parking_requests_holder_id_fkey"
+              columns: ["holder_id"]
+              isOneToOne: false
+              referencedRelation: "parking_holders"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "parking_requests_application_id_fkey"
+              columns: ["application_id"]
+              isOneToOne: false
+              referencedRelation: "parking_applications"
+              referencedColumns: ["id"]
+            }
+          ]
       }
       parking_retention_runs: {
         Row: {
@@ -5462,156 +5477,252 @@ export type Database = {
       }
       workflow_events: {
         Row: {
+          id: number
+          item_id: string
+          from_key: string | null
+          to_key: string
+          note: string | null
           action: string | null
           at: string
           by: string | null
-          from_key: string | null
-          id: number
-          item_id: string
-          note: string | null
-          to_key: string
         }
         Insert: {
-          action?: string | null
-          at?: string
-          by?: string | null
-          from_key?: string | null
           id?: number
           item_id: string
-          note?: string | null
+          from_key?: string | null
           to_key: string
-        }
-        Update: {
+          note?: string | null
           action?: string | null
           at?: string
           by?: string | null
-          from_key?: string | null
+        }
+        Update: {
           id?: number
           item_id?: string
-          note?: string | null
+          from_key?: string | null
           to_key?: string
+          note?: string | null
+          action?: string | null
+          at?: string
+          by?: string | null
         }
-        Relationships: []
+        Relationships: [
+            {
+              foreignKeyName: "workflow_events_item_id_fkey"
+              columns: ["item_id"]
+              isOneToOne: false
+              referencedRelation: "workflow_items"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "workflow_events_by_fkey"
+              columns: ["by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
       }
       workflow_items: {
         Row: {
-          created_at: string
           id: string
-          step_key: string
+          workflow_id: string
           subject_id: string
+          step_key: string
+          created_at: string
           updated_at: string
           updated_by: string | null
-          workflow_id: string
         }
         Insert: {
-          created_at?: string
           id?: string
-          step_key: string
+          workflow_id: string
           subject_id: string
+          step_key: string
+          created_at?: string
           updated_at?: string
           updated_by?: string | null
-          workflow_id: string
         }
         Update: {
-          created_at?: string
           id?: string
-          step_key?: string
+          workflow_id?: string
           subject_id?: string
+          step_key?: string
+          created_at?: string
           updated_at?: string
           updated_by?: string | null
-          workflow_id?: string
         }
-        Relationships: []
+        Relationships: [
+            {
+              foreignKeyName: "workflow_items_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
+              referencedRelation: "workflows"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "workflow_items_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
+            },
+            {
+              foreignKeyName: "workflow_items_step_key_fkey"
+              columns: ["step_key"]
+              isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["key"]
+            },
+            {
+              foreignKeyName: "workflow_items_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
       }
       workflow_moves: {
         Row: {
-          action: string | null
-          admin_only: boolean
+          workflow_id: string
           from_key: string
+          to_key: string
           label: string
           note_required: boolean
+          admin_only: boolean
+          action: string | null
           position: number
-          to_key: string
-          workflow_id: string
         }
         Insert: {
-          action?: string | null
-          admin_only?: boolean
+          workflow_id: string
           from_key: string
+          to_key: string
           label: string
           note_required?: boolean
+          admin_only?: boolean
+          action?: string | null
           position?: number
-          to_key: string
-          workflow_id: string
         }
         Update: {
-          action?: string | null
-          admin_only?: boolean
+          workflow_id?: string
           from_key?: string
+          to_key?: string
           label?: string
           note_required?: boolean
+          admin_only?: boolean
+          action?: string | null
           position?: number
-          to_key?: string
-          workflow_id?: string
         }
-        Relationships: []
+        Relationships: [
+            {
+              foreignKeyName: "workflow_moves_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
+            },
+            {
+              foreignKeyName: "workflow_moves_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
+              referencedRelation: "workflows"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "workflow_moves_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
+            },
+            {
+              foreignKeyName: "workflow_moves_from_key_fkey"
+              columns: ["from_key"]
+              isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["key"]
+            },
+            {
+              foreignKeyName: "workflow_moves_to_key_fkey"
+              columns: ["to_key"]
+              isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["key"]
+            }
+          ]
       }
       workflow_steps: {
         Row: {
-          key: string
-          kind: string
-          name: string
-          position: number
-          public_name: string | null
           workflow_id: string
+          key: string
+          name: string
+          public_name: string | null
+          kind: string
+          position: number
         }
         Insert: {
-          key: string
-          kind: string
-          name: string
-          position?: number
-          public_name?: string | null
           workflow_id: string
+          key: string
+          name: string
+          public_name?: string | null
+          kind: string
+          position?: number
         }
         Update: {
-          key?: string
-          kind?: string
-          name?: string
-          position?: number
-          public_name?: string | null
           workflow_id?: string
+          key?: string
+          name?: string
+          public_name?: string | null
+          kind?: string
+          position?: number
         }
-        Relationships: []
+        Relationships: [
+            {
+              foreignKeyName: "workflow_steps_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
+              referencedRelation: "workflows"
+              referencedColumns: ["id"]
+            }
+          ]
       }
       workflows: {
         Row: {
-          app_id: string
-          description: string | null
           id: string
           key: string
           name: string
+          app_id: string
+          description: string | null
           updated_at: string
           updated_by: string | null
         }
         Insert: {
-          app_id: string
-          description?: string | null
           id?: string
           key: string
           name: string
+          app_id: string
+          description?: string | null
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
-          app_id?: string
-          description?: string | null
           id?: string
           key?: string
           name?: string
+          app_id?: string
+          description?: string | null
           updated_at?: string
           updated_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+            {
+              foreignKeyName: "workflows_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
       }
       works_schedule_items: {
         Row: {

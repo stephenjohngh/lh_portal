@@ -48,6 +48,8 @@ import * as gtRiskLifecycle    from '#lib/apps/golden_thread/utils/gtRiskLifecyc
 import * as gtRiskScoring      from '#lib/apps/golden_thread/utils/gtRiskScoring.js';
 import * as gtConstants        from '#lib/apps/golden_thread/utils/gtConstants.js';
 import * as sightingModel      from '#lib/apps/parking/utils/sightingModel.js';
+import * as workflowModel      from '#lib/workflow/workflowModel.js';
+import * as applicationForm    from '#lib/apps/parking/utils/applicationForm.js';
 import * as agreementModel     from '#lib/apps/parking/utils/agreementModel.js';
 import * as waitingListModel   from '#lib/apps/parking/utils/waitingListModel.js';
 import * as tariffModel        from '#lib/apps/parking/utils/tariffModel.js';
@@ -103,6 +105,8 @@ const VALUE_LISTS = {
   'parking_tariffs.vat_treatment':    () => values(agreementModel.VAT_TREATMENTS),
   'parking_tariffs.period':           () => values(agreementModel.FEE_PERIODS),
   'parking_sightings.place':          () => Object.keys(sightingModel.SIGHTING_PLACES),   // migration 245
+  'workflow_steps.kind':              () => values(workflowModel.STEP_KINDS),             // migration 247
+  'parking_requests.holder_type':     () => values(applicationForm.APPLICANT_KINDS),      // migration 247
   'parking_holders.holder_type':      () => values(agreementModel.HOLDER_TYPES),
   'parking_applications.status':      () => values(waitingListModel.APPLICATION_STATUSES),
   'parking_tariffs.holder_class':     () => values(tariffModel.HOLDER_CLASSES),
@@ -135,7 +139,7 @@ describe('MOR timeline', () => {
 // the four Dossier actions did until migration 233 (§6ccc item 10, 2026-10-04).
 // ⏳ TEMPORARY, until the migration named is applied and `npm run db:rules` run:
 // then the second test below fails, saying to remove the entry.
-const AWAITING_MIGRATION = { parking_apply: 247 };
+const AWAITING_MIGRATION = {};
 
 describe('rate limits', () => {
   it('an allowance for a migration not yet applied goes once it is', () => {

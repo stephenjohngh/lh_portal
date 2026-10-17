@@ -109,6 +109,12 @@
             "licensable",
             "not_for_allocation"
         ],
+        "workflow_steps.kind": [
+            "declined",
+            "done",
+            "open",
+            "start"
+        ],
         "display_items.status": [
             "damaged",
             "displayed",
@@ -384,6 +390,12 @@
             "square",
             "square_inner"
         ],
+        "parking_requests.holder_type": [
+            "external_company",
+            "external_individual",
+            "leaseholder",
+            "occupier"
+        ],
         "parking_tariffs.holder_class": [
             "all",
             "external",
@@ -424,6 +436,7 @@
             "pack_asset",
             "pack_read",
             "pack_unlock",
+            "parking_apply",
             "photo_upload",
             "status_lookup"
         ],
