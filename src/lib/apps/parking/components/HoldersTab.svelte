@@ -7,7 +7,7 @@
   import { matchesSearch } from '#lib/utils/textSearch.js';
   import { createEventDispatcher } from 'svelte';
   import { parkingStore } from '../stores/parkingStore.js';
-  import { HOLDER_TYPE_LABEL, STATUS_LABEL, LIVE } from '../utils/agreementModel.js';
+  import { HOLDER_TYPE_LABEL, STATUS_LABEL, LIVE, holderRegistrations } from '../utils/agreementModel.js';
   import Button      from '#lib/components/common/Button.svelte';
   import HolderModal from './HolderModal.svelte';
 
@@ -19,7 +19,9 @@
   let modalOpen = false;
 
   $: s = $parkingStore;
-  $: rows = s.holders.filter(h => matchesSearch([h.display_name, h.company_name], q));
+  // Their cars, across their agreements: on an agreement now, or (in grey) the last ones of one that has none.
+  $: regsOf = (id) => holderRegistrations(id, s.agreements, s.vehicles);
+  $: rows = s.holders.filter(h => { const r = regsOf(h.id); return matchesSearch([h.display_name, h.company_name, ...r.now, ...r.past], q); });
   $: agreementsOf = (id) => s.agreements.filter(a => a.holder_id === id);
   $: bayRef = (bayId) => s.bays.find(b => b.bay_id === bayId)?.ref ?? '—';
 
@@ -27,7 +29,7 @@
 </script>
 
 <div class="flex flex-wrap items-center gap-2 mb-3">
-  <input bind:value={q} placeholder="Search by name…"
+  <input bind:value={q} placeholder="Search name or registration…"
     class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-56 max-w-full" />
   {#if canEdit}<Button size="small" variant="primary" on:click={() => open(null)}>Add a holder</Button>{/if}
 </div>
@@ -41,17 +43,24 @@
         <th class="py-2 pr-3 font-medium">Name</th>
         <th class="py-2 pr-3 font-medium">Kind</th>
         <th class="py-2 pr-3 font-medium">Contact</th>
+        <th class="py-2 pr-3 font-medium">Registration</th>
         <th class="py-2 pr-3 font-medium">Agreements</th>
         <th class="py-2"></th>
       </tr>
     </thead>
     <tbody>
       {#each rows as h (h.id)}
+        {@const r = regsOf(h.id)}
         <tr class="border-b border-slate-800 align-top">
           <td class="py-2 pr-3 text-slate-200">{h.display_name}
             {#if h.company_name}<span class="block text-xs text-slate-500">{h.company_name}</span>{/if}</td>
           <td class="py-2 pr-3 text-xs text-slate-400">{HOLDER_TYPE_LABEL[h.holder_type]}</td>
           <td class="py-2 pr-3 text-xs text-slate-400">{h.email ?? ''}{#if h.phone}<span class="block">{h.phone}</span>{/if}</td>
+          <td class="py-2 pr-3 font-mono text-xs whitespace-nowrap">
+            {#each r.now as reg}<span class="block text-slate-200">{reg}</span>{/each}
+            {#each r.past as reg}<span class="block text-slate-500" title="Not on an agreement now — the last one">{reg}</span>{/each}
+            {#if !r.now.length && !r.past.length}<span class="text-slate-600">—</span>{/if}
+          </td>
           <td class="py-2 pr-3 text-xs">
             {#each agreementsOf(h.id) as a (a.id)}
               <button class="block text-left hover:underline {LIVE.has(a.status) ? 'text-slate-200' : 'text-slate-500'}"

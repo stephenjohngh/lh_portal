@@ -311,6 +311,26 @@ export function agreementRegistrations(agreementId, vehicles = [], today = today
 }
 
 /**
+ * A holder's registrations across their agreements (2026-10-17), for the
+ * Holders list: the cars on an agreement now, then — only where an agreement
+ * has none now — its last ones, as `past`. Each once.
+ * @param {string} holderId
+ * @param {{ id: string, holder_id: string }[]} agreements
+ * @param {{ agreement_id: string, registration: string, to_date?: string|null }[]} vehicles
+ * @param {string} [today]
+ * @returns {{ now: string[], past: string[] }}
+ */
+export function holderRegistrations(holderId, agreements = [], vehicles = [], today = todayISO()) {
+  const now = new Set(), past = new Set();
+  for (const a of agreements.filter(x => x.holder_id === holderId)) {
+    const r = agreementRegistrations(a.id, vehicles, today);
+    for (const reg of r.regs) (r.past ? past : now).add(reg);
+  }
+  for (const reg of now) past.delete(reg);
+  return { now: [...now], past: [...past] };
+}
+
+/**
  * "Whose car is this?" — every vehicle whose registration contains the
  * search, with its agreement, holder and bay, and where it stands today.
  * Authorised first.

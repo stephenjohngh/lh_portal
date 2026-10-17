@@ -278,3 +278,20 @@ describe('agreementRegistrations — the Registration column of the Agreements l
     expect(agreementRegistrations('a9', V, '2026-10-17')).toEqual({ regs: [], past: false });
   });
 });
+
+import { holderRegistrations } from './agreementModel.js';
+describe('holderRegistrations — the Registration column of the Holders list (2026-10-17)', () => {
+  const A = [{ id: 'a1', holder_id: 'h1' }, { id: 'a2', holder_id: 'h1' }, { id: 'a3', holder_id: 'h2' }];
+  const V = [
+    { agreement_id: 'a1', registration: 'AB12CDE', to_date: null },
+    { agreement_id: 'a2', registration: 'XY99ZZZ', to_date: '2026-05-01' },
+    { agreement_id: 'a2', registration: 'AB12CDE', to_date: '2026-05-01' },
+    { agreement_id: 'a3', registration: 'OTHER11', to_date: null },
+  ];
+  it('the cars on their agreements now, and — once each — the last ones of an agreement with none now', () => {
+    expect(holderRegistrations('h1', A, V, '2026-10-17')).toEqual({ now: ['AB12 CDE'], past: ['XY99 ZZZ'] });
+  });
+  it('nothing for a holder with no agreements', () => {
+    expect(holderRegistrations('h9', A, V, '2026-10-17')).toEqual({ now: [], past: [] });
+  });
+});
