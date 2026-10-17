@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema23.csv
+// Source: docs/ops/supabase_lhportal_schema24.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -5506,39 +5506,54 @@ export type Database = {
       }
       workflow_changes: {
         Row: {
-          after: Json
-          before: Json | null
+          id: number
+          workflow_id: string
           changed_at: string
           changed_by: string | null
-          id: number
-          review_note: string | null
-          reviewed_against: string | null
+          before: Json | null
+          after: Json
           reviewed_by: string | null
-          workflow_id: string
+          reviewed_against: string | null
+          review_note: string | null
         }
         Insert: {
-          after: Json
-          before?: Json | null
+          id?: number
+          workflow_id: string
           changed_at?: string
           changed_by?: string | null
-          id?: number
-          review_note?: string | null
-          reviewed_against?: string | null
+          before?: Json | null
+          after: Json
           reviewed_by?: string | null
-          workflow_id: string
+          reviewed_against?: string | null
+          review_note?: string | null
         }
         Update: {
-          after?: Json
-          before?: Json | null
+          id?: number
+          workflow_id?: string
           changed_at?: string
           changed_by?: string | null
-          id?: number
-          review_note?: string | null
-          reviewed_against?: string | null
+          before?: Json | null
+          after?: Json
           reviewed_by?: string | null
-          workflow_id?: string
+          reviewed_against?: string | null
+          review_note?: string | null
         }
-        Relationships: []
+        Relationships: [
+            {
+              foreignKeyName: "workflow_changes_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
+              referencedRelation: "workflows"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "workflow_changes_changed_by_fkey"
+              columns: ["changed_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
       }
       workflow_events: {
         Row: {
@@ -5689,22 +5704,22 @@ export type Database = {
               foreignKeyName: "workflow_moves_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
+            },
+            {
+              foreignKeyName: "workflow_moves_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
+            },
+            {
+              foreignKeyName: "workflow_moves_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
               referencedRelation: "workflows"
               referencedColumns: ["id"]
-            },
-            {
-              foreignKeyName: "workflow_moves_workflow_id_fkey"
-              columns: ["workflow_id"]
-              isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
-            },
-            {
-              foreignKeyName: "workflow_moves_workflow_id_fkey"
-              columns: ["workflow_id"]
-              isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
             },
             {
               foreignKeyName: "workflow_moves_from_key_fkey"
@@ -5768,8 +5783,6 @@ export type Database = {
       }
       workflows: {
         Row: {
-          review_reason: string | null
-          review_required: boolean
           id: string
           key: string
           name: string
@@ -5777,10 +5790,10 @@ export type Database = {
           description: string | null
           updated_at: string
           updated_by: string | null
+          review_required: boolean
+          review_reason: string | null
         }
         Insert: {
-          review_reason?: string | null
-          review_required?: boolean
           id?: string
           key: string
           name: string
@@ -5788,10 +5801,10 @@ export type Database = {
           description?: string | null
           updated_at?: string
           updated_by?: string | null
+          review_required?: boolean
+          review_reason?: string | null
         }
         Update: {
-          review_reason?: string | null
-          review_required?: boolean
           id?: string
           key?: string
           name?: string
@@ -5799,6 +5812,8 @@ export type Database = {
           description?: string | null
           updated_at?: string
           updated_by?: string | null
+          review_required?: boolean
+          review_reason?: string | null
         }
         Relationships: [
             {
