@@ -94,7 +94,7 @@
   function makeMove(/** @type {any} */ m) {
     const theCase = c;
     const n = note;
-    return run(m.to_key, async () => { await casesStore.move(theCase, m.to_key, n); note = ''; }, `${theCase.reference}: ${m.label}.`);
+    return run(m.to_key, async () => { await casesStore.move(theCase, m.to_key, n); note = ''; }, `${theCase.reference}: ${m.label} — now ${steps.find((st) => st.key === m.to_key)?.name ?? m.to_key}.`);
   }
   function assignTo(/** @type {string|null} */ uid) {
     const theCase = c;

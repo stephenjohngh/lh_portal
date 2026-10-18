@@ -67,7 +67,7 @@ function createCasesStore() {
   async function create(data) {
     const wf = state().workflow;
     if (!wf) throw new Error('Choose a process first.');
-    const uid = requireUserId();
+    const uid = await requireUserId();
     const row = await api.create('cases', {
       workflow_id: wf.id, title: data.title.trim(), description: data.description?.trim() || null,
       fields: data.fields, created_by: uid, updated_by: uid,
@@ -81,7 +81,7 @@ function createCasesStore() {
   async function save(/** @type {CaseRow} */ c, /** @type {{ title: string, description?: string|null, fields: Record<string, any> }} */ data) {
     const reference = c.reference;                    // captured before the await
     await api.update('cases', c.id, {
-      title: data.title.trim(), description: data.description?.trim() || null, fields: data.fields, updated_by: requireUserId(),
+      title: data.title.trim(), description: data.description?.trim() || null, fields: data.fields, updated_by: await requireUserId(),
     });
     logAudit('update', 'case', c.id, reference, { ...AUDIT, afterData: { reference } });
     await reload();

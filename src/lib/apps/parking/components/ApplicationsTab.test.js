@@ -68,7 +68,7 @@ describe('Parking → Applications', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Accept onto the waiting list' }));
     await waitFor(() => expect(h.moved).toEqual([['PKR-2026-000001', 'waiting_list', '']]));
     expect(h.parkingLoads).toBe(1);
-    expect(screen.getByRole('status')).toHaveTextContent('PKR-2026-000001: Accept onto the waiting list.');
+    expect(screen.getByRole('status')).toHaveTextContent('PKR-2026-000001: Accept onto the waiting list — now On the waiting list.');
     expect(await screen.findByTestId('application-history')).toBeTruthy();
   });
 

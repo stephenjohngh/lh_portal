@@ -127,7 +127,7 @@
     try {
       const result = await requestStore.move(request, m.to_key, note);
       if (result?.action) await parkingStore.load();  // the waiting list changed
-      done = `${request.reference}: ${m.label}.`;
+      done = `${request.reference}: ${m.label} — now ${stepByKey.get(m.to_key)?.name ?? m.to_key}.`;
       note = '';
       loadHistory(request.id);                        // re-read it, keeping the message above
     } catch (/** @type {any} */ err) {

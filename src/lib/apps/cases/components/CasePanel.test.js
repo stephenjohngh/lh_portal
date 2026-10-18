@@ -5,7 +5,7 @@
 // naming the field — before anything is pressed. The database refuses the
 // same move; this is the screen saying no first.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/svelte';
+import { render, screen, cleanup, fireEvent } from '@testing-library/svelte';
 
 vi.mock('../stores/casesStore.js', () => ({
   casesStore: { subscribe: (/** @type {any} */ f) => { f({}); return () => {}; },
@@ -44,5 +44,11 @@ describe('CasePanel', () => {
     const approve = /** @type {HTMLButtonElement} */ (screen.getByRole('button', { name: 'Approve' }));
     expect(approve.disabled).toBe(false);
     expect(screen.queryByTestId('case-move-refusal')).toBeNull();
+  });
+
+  it('a move made says the step reached, not only the button pressed', async () => {
+    render(CasePanel, { ...base, c: kase({ where: 'Riser 3' }) });
+    await fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('CAS-2026-000001: Approve — now Approved.');
   });
 });

@@ -56,4 +56,11 @@ describe('fields', () => {
     expect(words).toMatch(/Where/);
     expect(words).toMatch(/needs .*Where.* filled|needs Where filled/i);
   });
+
+  it('a field added as needed to open says so in the change history', () => {
+    const before = definitionOf({ name: 'Change control', steps, moves: [], fields: [] });
+    const after = definitionOf({ name: 'Change control', steps, moves: [],
+      fields: [{ key: 'contractor', label: 'Contractor', type: 'text', required_on_create: true, position: 0 }] });
+    expect(workflowDiff(before, after)).toContain('Field added: “Contractor” (Short text, needed to open a case).');
+  });
 });

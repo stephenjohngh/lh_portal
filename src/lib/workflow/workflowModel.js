@@ -279,7 +279,7 @@ export function workflowDiff(before, after) {
   const fieldName = (/** @type {string} */ k) => aFields.get(k)?.label ?? bFields.get(k)?.label ?? k;
   for (const [k, f] of aFields) {
     const was = bFields.get(k);
-    if (!was) { out.push(`Field added: “${f.label}” (${FIELD_TYPE_LABEL[f.type] ?? f.type}).`); continue; }
+    if (!was) { out.push(`Field added: “${f.label}” (${FIELD_TYPE_LABEL[f.type] ?? f.type}${f.required_on_create ? ', needed to open a case' : ''}).`); continue; }
     if (was.label !== f.label) out.push(`Field “${was.label}” renamed “${f.label}”.`);
     if (was.type !== f.type) out.push(`Field “${f.label}”: ${FIELD_TYPE_LABEL[was.type] ?? was.type} → ${FIELD_TYPE_LABEL[f.type] ?? f.type}.`);
     if (JSON.stringify(was.options ?? []) !== JSON.stringify(f.options ?? [])) out.push(`Field “${f.label}”: choices now ${(f.options ?? []).join(', ') || 'none'}.`);

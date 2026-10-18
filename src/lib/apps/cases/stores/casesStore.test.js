@@ -13,7 +13,7 @@ const h = vi.hoisted(() => ({
 vi.mock('#lib/utils/api.js', () => ({ api: h.api }));
 vi.mock('#lib/workflow/workflowApi.js', () => h.wf);
 vi.mock('#lib/utils/documentApi.js', () => ({ deleteDocumentsFor: h.deleteDocumentsFor }));
-vi.mock('#lib/utils/currentUser.js', () => ({ requireUserId: () => 'u1' }));
+vi.mock('#lib/utils/currentUser.js', () => ({ requireUserId: async () => 'u1' }));
 vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: h.logAudit }));
 vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 
@@ -55,7 +55,7 @@ describe('cases', () => {
 
   it('a case is opened in the chosen process, and the audit names its reference only', async () => {
     await casesStore.create({ title: ' Boiler ', description: '', fields: { contractor: 'ACME' } });
-    expect(h.api.create).toHaveBeenCalledWith('cases', expect.objectContaining({ workflow_id: 'w1', title: 'Boiler', description: null }), true);
+    expect(h.api.create).toHaveBeenCalledWith('cases', expect.objectContaining({ workflow_id: 'w1', title: 'Boiler', description: null, created_by: 'u1', updated_by: 'u1' }), true);
     const [, , , name, opts] = h.logAudit.mock.calls[0];
     expect(name).toBe('CAS-2026-000002');
     expect(JSON.stringify(opts)).not.toMatch(/Boiler|ACME/);
