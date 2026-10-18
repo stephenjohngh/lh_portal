@@ -20,6 +20,7 @@ import { listReviewsDue, listRiskReviewsDue, listCompetenceExpiries } from '#lib
 import { listObligationDueDates, listComplianceReviewDates, listUnaddressedFaults } from '#lib/apps/compliance/public.js';
 import { listWorksDue } from '#lib/apps/building_assets/public.js';
 import { listParkingDueDates } from '#lib/apps/parking/public.js';
+import { listComplaintDueDates } from '#lib/apps/complaints/public.js';
 import { listBsrReportDeadlines } from '#lib/apps/mor/public.js';
 import { today } from '#lib/utils/dates.js';
 import { storeLoader } from '#lib/utils/storeLoad.js';
@@ -127,7 +128,7 @@ function createPlannerStore() {
 
     const [jobs, meetings, actions, gtDocuments, obligations,
            certificates, bsrDeadlines, complianceReviews, riskReviews, competences,
-           worksDue, faults, parkingDue] = await Promise.all([
+           worksDue, faults, parkingDue, complaintDue] = await Promise.all([
       sources.has('maintenance')
         ? listScheduledWork(from, to).catch(fellShort('maintenance jobs')) : [],
       sources.has('meeting')
@@ -151,12 +152,13 @@ function createPlannerStore() {
       read('works_due',         'works schedules',        () => listWorksDue(to)),
       read('fault',             'open faults',            () => listUnaddressedFaults()),
       read('parking',           'parking dates',          () => listParkingDueDates(to)),
+      read('complaint',         'complaint deadlines',    () => listComplaintDueDates(to)),
     ]);
 
     const linked = linkedOccurrences({
       jobs, meetings, actions, gtDocuments, obligations,
       certificates, bsrDeadlines, complianceReviews, riskReviews, competences,
-      worksDue, faults, parkingDue,
+      worksDue, faults, parkingDue, complaintDue,
     }, today());
     update(s => ({ ...s, linked, linkedFailures: failures, loadingLinked: false }));
     return linked;

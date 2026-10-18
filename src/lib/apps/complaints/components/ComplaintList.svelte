@@ -10,13 +10,20 @@
   import { createEventDispatcher } from 'svelte';
   import Badge from '#lib/components/common/Badge.svelte';
   import { fmtDate, daysBetween, today } from '#lib/utils/dates.js';
-  import { statusMeta } from '../utils/complaintLifecycle.js';
+  import { statusMeta, isOpen } from '../utils/complaintLifecycle.js';
   import { categoryLabel } from '../utils/complaintOptions.js';
+  import { deadlineBand, deadlineWords } from '#lib/workflow/workflowDeadlines.js';
 
   export let cases = [];
+  /** The workflow's items (migration 252): each complaint's deadline and who has it. */
+  export let items = [];
+  /** @type {Record<string, string>} */
+  export let nameById = {};
   export let emptyMessage = 'Nothing here.';
 
   const dispatch = createEventDispatcher();
+  $: itemFor = (/** @type {string} */ id) => items.find((i) => i.subject_id === id) ?? null;
+  const BAND_CLS = { overdue: 'text-red-400 font-semibold', due_soon: 'text-amber-300', ok: 'text-slate-400' };
 
   /** Calendar days since it arrived (London) — the only ageing P0 has. */
   function daysOld(iso) {
@@ -54,10 +61,16 @@
             {#if age !== null} · {age} day{age === 1 ? '' : 's'} old{/if}
             · {categoryLabel(complaint.category)}
             {#if complaint.dwelling_ref} · {complaint.dwelling_ref}{/if}
-            {#if complaint.assigned_to_profile?.full_name}
-              · <span class="text-slate-400">{complaint.assigned_to_profile.full_name}</span>
+            {#if itemFor(complaint.id)?.assigned_to}
+              · <span class="text-slate-400" data-testid="complaint-list-with">with {nameById[itemFor(complaint.id)?.assigned_to] ?? 'a user no longer listed'}</span>
             {/if}
           </p>
+          {#if itemFor(complaint.id)?.due_on && isOpen(complaint.status)}
+            {@const due = itemFor(complaint.id)?.due_on}
+            <p class="text-[11px] mt-0.5 {BAND_CLS[deadlineBand(due) ?? 'ok']}" data-testid="complaint-list-due">
+              {deadlineWords(due)}
+            </p>
+          {/if}
         </div>
 
         <Badge color={meta.badge}>{meta.label}</Badge>

@@ -15,6 +15,10 @@
   import { permissions } from '#lib/stores/permissions.js';
   import AppGate from '#lib/components/common/AppGate.svelte';
   import { complaintsStore } from './stores/complaintsStore.js';
+  import { auth } from '#lib/stores/auth.js';
+  import { profiles, profilesStore } from '#lib/stores/profiles.js';
+  import { isMoveEvent } from '#lib/workflow/workflowModel.js';
+  import { deadlineBand } from '#lib/workflow/workflowDeadlines.js';
 
   import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
   import LoadingSpinner  from '#lib/components/common/LoadingSpinner.svelte';
@@ -47,14 +51,39 @@
 
   $: allCases = state.cases.filter(c => !statusFilter || c.status === statusFilter);
 
+  // The workflow (migration 252): each complaint's item — its deadline, who
+  // has it — and the people it may be given to.
+  $: itemFor = (/** @type {string} */ id) => state.items.find((i) => i.subject_id === id) ?? null;
+  $: me = $auth.user?.id ?? null;
+  $: nameById = Object.fromEntries(/** @type {Array<{ id: string, full_name: string|null }>} */ ($profiles.list)
+    .map((p) => [p.id, p.full_name || 'A user with no name set']));
+  /** @type {Array<{ id: string, full_name: string|null }>} */
+  let assignees = [];
+
   $: summary = (() => {
     const n = openCases.length;
     if (n === 0) return 'Nothing open';
     const unacknowledged = openCases.filter(c => !c.acknowledged_at).length;
-    return unacknowledged
-      ? `${n} open · ${unacknowledged} not yet acknowledged`
-      : `${n} open`;
+    const overdue = openCases.filter(c => deadlineBand(itemFor(c.id)?.due_on ?? null) === 'overdue').length;
+    return [`${n} open`, unacknowledged ? `${unacknowledged} not yet acknowledged` : '', overdue ? `${overdue} overdue` : '']
+      .filter(Boolean).join(' · ');
   })();
+
+  // Who made the selected complaint's last MOVE — for a four-eyes move. Read
+  // when a complaint is opened or moved (keyed on its id and step, never the object).
+  let lastMoverId = null;
+  let historyKey = '';
+  $: selectedItem = state.selected ? itemFor(state.selected.id) : null;
+  $: if (selectedItem && `${selectedItem.id}:${selectedItem.step_key}:${selectedItem.updated_at}` !== historyKey) {
+    historyKey = `${selectedItem.id}:${selectedItem.step_key}:${selectedItem.updated_at}`;
+    readLastMover(selectedItem.id);
+  }
+  async function readLastMover(/** @type {string} */ itemId) {
+    try {
+      const events = await complaintsStore.history(itemId);
+      lastMoverId = [...events].reverse().find(isMoveEvent)?.by ?? null;
+    } catch { lastMoverId = null; }   // the database makes the same check when the move is made
+  }
 
   // Nothing reads as empty until the first load has finished (AppGate). Before
   // it "No complaints recorded" or "0 open" would be untrue.
@@ -62,8 +91,21 @@
   // empty app; requireGrant says so in words instead.
   let ready = false;
   const loadComplaints = async () => {
-    try { await complaintsStore.load(); } catch { /* surfaced in state.error */ }
+    try {
+      await complaintsStore.load();
+      // The seed rule: the first administrator to open Complaints sets up its
+      // workflow (and attaches anything logged before it existed).
+      if (!$complaintsStore.workflow && $permissions.isAdmin) await complaintsStore.setUpWorkflow();
+      const [list] = await Promise.all([complaintsStore.assignees(), profilesStore.load()]);
+      assignees = list;
+    } catch { /* surfaced in state.error */ }
   };
+
+  async function assign(e) {
+    const id = state.selected?.id;                 // captured before the await
+    if (!id) return;
+    try { await complaintsStore.assign(id, e.detail, nameById[e.detail] ?? ''); } catch { /* surfaced */ }
+  }
 
   async function openCase(e) {
     try { await complaintsStore.select(e.detail); } catch { /* surfaced */ }
@@ -163,7 +205,16 @@
       complaint={state.selected}
       timeline={state.timeline}
       {canEdit}
+      isAdmin={$permissions.isAdmin}
+      item={selectedItem}
+      steps={state.steps}
+      wfMoves={state.moves}
+      {assignees}
+      {nameById}
+      {me}
+      {lastMoverId}
       saving={state.saving}
+      on:assign={assign}
       on:back={back}
       on:transition={transition}
       on:save={saveFields}
@@ -182,11 +233,11 @@
     </div>
 
   {:else if tab === 'open'}
-    <ComplaintList cases={openCases}
+    <ComplaintList cases={openCases} items={state.items} {nameById}
                    emptyMessage="Nothing open. Everything logged has been answered or closed."
                    on:open={openCase} />
   {:else}
-    <ComplaintList cases={allCases}
+    <ComplaintList cases={allCases} items={state.items} {nameById}
                    emptyMessage="Nothing matches that status."
                    on:open={openCase} />
   {/if}

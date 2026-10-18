@@ -57,6 +57,11 @@ export const SOURCES = {
   // Dates from parking/public.js `listParkingDueDates`. ⛔ A row names a
   // licence and a bay, never a person: the Planner is granted separately.
   parking:       { key: 'parking',       label: 'Parking',            app: 'Parking',         appId: 'parking',         category: 'other' },
+  // Complaints, 2026-10-18 (migration 252): the two clocks of a s.93
+  // complaint — acknowledge, respond — as its workflow step's deadline, from
+  // complaints/public.js `listComplaintDueDates`. ⛔ A row names the
+  // complaint's reference, never the complainant.
+  complaint:     { key: 'complaint',     label: 'Complaint',          app: 'Complaints',      appId: 'complaints',      category: 'compliance' },
 };
 
 
@@ -337,6 +342,21 @@ export function fromParkingDue(row) {
 }
 
 /**
+ * A complaint's deadline. The date is the workflow item's own (Complaints'
+ * public.js); the Planner only shows it.
+ * @param {any} row  from complaints/public.js `listComplaintDueDates`
+ */
+export function fromComplaintDue(row) {
+  return linkedOccurrence('complaint', {
+    id: row?.id,
+    title: row?.title ?? 'Complaint',
+    date: row?.date,
+    detail: row?.overdue ? 'Past its deadline' : null,
+    overdue: !!row?.overdue,
+  });
+}
+
+/**
  * Everything foreign, in one list.
  *
  * Each source is optional: a portal where somebody has no Golden Thread
@@ -346,7 +366,7 @@ export function fromParkingDue(row) {
 export function linkedOccurrences({
   jobs = [], meetings = [], actions = [], gtDocuments = [], obligations = [],
   certificates = [], bsrDeadlines = [], complianceReviews = [], riskReviews = [], competences = [],
-  worksDue = [], faults = [], parkingDue = [],
+  worksDue = [], faults = [], parkingDue = [], complaintDue = [],
 } = {}, today = null) {
   return [
     ...jobs.map(fromMaintenanceJob),
@@ -362,6 +382,7 @@ export function linkedOccurrences({
     ...worksDue.map(fromWorksDue),
     ...faults.map((f) => fromUnaddressedFault(f, today)),
     ...parkingDue.map(fromParkingDue),
+    ...complaintDue.map(fromComplaintDue),
   ]
     .filter(Boolean)
     .sort((a, b) => a.date.localeCompare(b.date));

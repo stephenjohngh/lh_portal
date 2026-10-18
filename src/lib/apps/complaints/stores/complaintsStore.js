@@ -12,12 +12,21 @@
 // transition, an immutable reference and a response with no text. Everything
 // here is so a person is told before they press the button rather than by a
 // constraint violation afterwards.
+//
+// ⭐ Since migration 252 a complaint MOVES through the shared workflow manager
+// ('complaint' workflow, seeded from utils/complaintWorkflow.js): its step is
+// its status, the database sets the status, dates and timeline in the same
+// transaction, and the item carries the two clocks (step deadlines) and who it
+// is with (the workflow's assignee). A direct status update is refused.
 
 import { writable } from 'svelte/store';
 import { api }      from '#lib/utils/api.js';
 import { logAudit } from '#lib/utils/auditLogger.js';
 import { getLogger } from '#lib/utils/logger.js';
-import { STATUS, stampsFor, entryTypeFor, blockedReason } from '../utils/complaintLifecycle.js';
+import { STATUS, blockedReason } from '../utils/complaintLifecycle.js';
+import { loadWorkflow, listItems, itemHistory, moveItem, saveWorkflow, assignItem, listAssignees } from '#lib/workflow/workflowApi.js';
+import { ensureNonWorkingDays } from '#lib/workflow/nonWorkingDays.js';
+import { COMPLAINT_WORKFLOW_KEY, DEFAULT_COMPLAINT_WORKFLOW } from '../utils/complaintWorkflow.js';
 import { storeLoader } from '../../../utils/storeLoad.js';
 import { currentUser } from '#lib/utils/currentUser.js';
 import { errMessage } from '#lib/utils/errors.js';
@@ -45,6 +54,7 @@ function createComplaintsStore() {
    *   selected: ComplaintCase | null,
    *   timeline: (import('#lib/database.types.ts').Tables<'complaint_timeline_entries'> & Record<string, any>)[],
    *   actions: (import('#lib/database.types.ts').Tables<'complaint_actions'> & Record<string, any>)[],
+   *   workflow: any|null, steps: any[], moves: any[], items: any[],
    *   loading: boolean,
    *   saving: boolean,
    *   error: string | null
@@ -55,6 +65,10 @@ function createComplaintsStore() {
     selected:   null,
     timeline:   [],
     actions:    [],
+    workflow:   null,
+    steps:      [],
+    moves:      [],
+    items:      [],
     loading:    false,
     saving:     false,
     error:      null,
@@ -92,10 +106,41 @@ function createComplaintsStore() {
 
   // ── Reading ───────────────────────────────────────────────────────────────
 
+  /** The workflow and its items: where each complaint is, its deadline, who has it. */
+  async function readWorkflow() {
+    const wf = await loadWorkflow(COMPLAINT_WORKFLOW_KEY);
+    if (!wf) return { workflow: null, steps: [], moves: [], items: [] };
+    return { ...wf, items: await listItems(wf.workflow.id) };
+  }
+
   const load = storeLoader(update,
-    () => api.getAll('complaint_cases', { select: CASE_SELECT, orderBy: 'received_at', ascending: false }),
-    (cases) => ({ cases }),
+    async () => {
+      const [cases, wf] = await Promise.all([
+        api.getAll('complaint_cases', { select: CASE_SELECT, orderBy: 'received_at', ascending: false }),
+        readWorkflow(),
+      ]);
+      return { cases, ...wf };
+    },
+    (data) => data,
     { what: 'the complaints', log: logger });
+
+  /** Re-read only the workflow's items (after a move or an assignment). */
+  async function reloadItems() {
+    const wf = await readWorkflow();
+    update(s => ({ ...s, ...wf }));
+  }
+
+  /**
+   * Admin: save the shipped workflow when there is none (the seed rule), attach
+   * any complaint logged before it existed, then read.
+   */
+  async function setUpWorkflow() {
+    await ensureNonWorkingDays();                 // the clocks count working days
+    await saveWorkflow(DEFAULT_COMPLAINT_WORKFLOW);
+    await api.rpc('complaint_attach_to_workflow', {});
+    logAudit('create', 'workflow', null, DEFAULT_COMPLAINT_WORKFLOW.name, { appId: 'complaints', eventCategory: 'complaints' });
+    await load();
+  }
 
   /**
    * One case, with its timeline and actions; `select(null)` closes it.
@@ -173,6 +218,7 @@ function createComplaintsStore() {
       });
 
       update(s => ({ ...s, cases: [row, ...s.cases], saving: false }));
+      await reloadItems();                       // the database made its workflow item
       return row;
     } catch (/** @type {any} */ err) {
       logger(`✖ create failed: ${err.message}`);
@@ -205,12 +251,12 @@ function createComplaintsStore() {
   }
 
   /**
-   * Move a complaint to a new status.
+   * Move a complaint on, through its workflow (migration 252).
    *
-   * The single place a status changes, so the date stamps and the timeline
-   * entry cannot drift apart. Refuses locally first — the trigger would refuse
-   * too, but a constraint violation is a poor way to learn you needed to write
-   * the response.
+   * Refuses locally first — s.93's machine and "write the response first" —
+   * and the database refuses the same things: the workflow's move and its
+   * conditions, then the case's own trigger and CHECK. The database sets the
+   * status and dates and writes the case's timeline in the same transaction.
    */
   async function transition(id, to, note = '') {
     update(s => ({ ...s, saving: true, error: null }));
@@ -218,16 +264,11 @@ function createComplaintsStore() {
       const before = await api.getById('complaint_cases', id, '*');
       const why = blockedReason(before, to);
       if (why) throw new Error(why);
+      let item = null;
+      update(s => { item = s.items.find(i => i.subject_id === id) ?? null; return s; });
+      if (!item) throw new Error('This complaint is not in its workflow yet — an administrator opening Complaints sets it up.');
 
-      const author = await currentUserProfile();
-      await api.update('complaint_cases', id, {
-        status: to,
-        ...stampsFor(to),
-        updated_by: author.id,
-      });
-
-      await addTimelineEntry(id, entryTypeFor(to), note, author,
-        { from_status: before.status, to_status: to });
+      await moveItem(/** @type {any} */ (item).id, to, note);
 
       logAudit('update', 'complaint', id, before.reference, {
         appId: 'complaints', eventCategory: 'complaints',
@@ -239,11 +280,12 @@ function createComplaintsStore() {
       const timeline = await api.get('complaint_timeline_entries', {
         filters: { case_id: id }, orderBy: 'created_at', ascending: true,
       });
+      await reloadItems();
       update(s => ({ ...s, timeline, saving: false }));
       return row;
     } catch (/** @type {any} */ err) {
       logger(`✖ transition(${id} -> ${to}) failed: ${err.message}`);
-      update(s => ({ ...s, saving: false, error: err.message }));
+      update(s => ({ ...s, saving: false, error: errMessage(err) }));
       throw err;
     }
   }
@@ -285,16 +327,38 @@ function createComplaintsStore() {
     return refresh(id);
   }
 
+  /**
+   * Give a complaint to someone, or to nobody — the workflow's assignee
+   * (migration 250), the same as every workflow. The case's own `assigned_to`
+   * column is no longer written. Also noted on the case's timeline.
+   */
   async function assign(id, userId, userName) {
-    const author = await currentUserProfile();
-    await api.update('complaint_cases', id, { assigned_to: userId || null, updated_by: author.id });
-    await addTimelineEntry(id, 'assignment',
-      userId ? `Assigned to ${userName}.` : 'Unassigned.', author);
-    const timeline = await api.get('complaint_timeline_entries', {
-      filters: { case_id: id }, orderBy: 'created_at', ascending: true,
-    });
-    update(s => ({ ...s, timeline }));
-    return refresh(id);
+    let item = null;
+    update(s => { item = s.items.find(i => i.subject_id === id) ?? null; return s; });
+    if (!item) throw new Error('This complaint is not in its workflow yet.');
+    const result = await assignItem(/** @type {any} */ (item).id, userId || null);
+    if (result?.changed) {
+      const author = await currentUserProfile();
+      await addTimelineEntry(id, 'assignment', userId ? `Given to ${userName}.` : 'Now with no one.', author);
+      const timeline = await api.get('complaint_timeline_entries', {
+        filters: { case_id: id }, orderBy: 'created_at', ascending: true,
+      });
+      update(s => ({ ...s, timeline }));
+    }
+    await reloadItems();
+    return result;
+  }
+
+  /** Who a complaint may be given to. */
+  function assignees() {
+    let wf = null;
+    update(s => { wf = s.workflow; return s; });
+    return wf ? listAssignees(/** @type {any} */ (wf).id) : Promise.resolve([]);
+  }
+
+  /** One item's history (for the printable record). @param {string} itemId */
+  function history(itemId) {
+    return itemHistory(itemId);
   }
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -340,7 +404,7 @@ function createComplaintsStore() {
 
   return {
     subscribe,
-    load, select, refresh,
+    load, select, refresh, setUpWorkflow, reloadItems, assignees, history,
     create, save, transition,
     // ⛔ These six did not set `error` when they failed, and the screen swallows
     // the throw on the understanding that the store has shown it — so a failed

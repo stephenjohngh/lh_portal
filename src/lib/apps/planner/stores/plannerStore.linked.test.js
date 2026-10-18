@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
 
-const h = vi.hoisted(() => ({ jobsFail: false, obligations: [], morFail: false, parkingFail: false, parkingCalls: 0 }));
+const h = vi.hoisted(() => ({ jobsFail: false, obligations: [], morFail: false, parkingFail: false, parkingCalls: 0, complaintCalls: 0 }));
 
 vi.mock('#lib/utils/api.js', () => ({ api: {} }));
 vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: vi.fn() }));
@@ -33,6 +33,12 @@ vi.mock('#lib/apps/mor/public.js', () => ({
   }),
 }));
 
+vi.mock('#lib/apps/complaints/public.js', () => ({
+  listComplaintDueDates: vi.fn(async () => {
+    h.complaintCalls += 1;
+    return [{ id: 'complaint:i1', title: 'Complaint CMP-2026-000001 — Received', date: '2026-10-23', overdue: false }];
+  }),
+}));
 vi.mock('#lib/apps/parking/public.js', () => ({
   listParkingDueDates: vi.fn(async () => {
     h.parkingCalls += 1;
@@ -45,7 +51,17 @@ vi.mock('#lib/apps/parking/public.js', () => ({
 import { plannerStore } from './plannerStore.js';
 
 describe('plannerStore.loadLinked', () => {
-  beforeEach(() => { h.jobsFail = false; h.obligations = []; h.morFail = false; h.parkingFail = false; h.parkingCalls = 0; });
+  beforeEach(() => { h.jobsFail = false; h.obligations = []; h.morFail = false; h.parkingFail = false; h.parkingCalls = 0; h.complaintCalls = 0; });
+
+  it('complaint deadlines are read only for someone with Complaints, and named by reference', async () => {
+    await plannerStore.loadLinked('2026-01-01', '2026-12-31', new Set(['parking']));
+    expect(h.complaintCalls).toBe(0);
+    await plannerStore.loadLinked('2026-01-01', '2026-12-31', new Set(['complaint']));
+    expect(h.complaintCalls).toBe(1);
+    const row = get(plannerStore).linked.find(i => i.source === 'complaint');
+    expect(row).toMatchObject({ date: '2026-10-23', ownerApp: 'Complaints' });
+    expect(row.series.title).toBe('Complaint CMP-2026-000001 — Received');
+  });
 
   // Parking, 2026-09-26. A source not granted is never fetched, and one that
   // fails is named without emptying the rest.

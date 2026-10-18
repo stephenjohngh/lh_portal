@@ -6,18 +6,23 @@
      the interface cannot offer something the database will refuse — and where a
      move is legal but not yet possible (responding with no response written) it
      is shown DISABLED with the reason, rather than hidden. A control that
-     vanishes leaves somebody wondering where it went. -->
+     vanishes leaves somebody wondering where it went.
+
+     ⭐ Since migration 252 the moves are the 'complaint' WORKFLOW's (Admin →
+     Workflows), with their conditions, and the case carries the workflow's
+     deadline (the two clocks) and who it is with. -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import Button        from '#lib/components/common/Button.svelte';
-  import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
   import FormTextarea  from '#lib/components/common/FormTextarea.svelte';
   import FormSelect    from '#lib/components/common/FormSelect.svelte';
   import Badge         from '#lib/components/common/Badge.svelte';
   import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
   import ComplaintTimeline from './ComplaintTimeline.svelte';
   import { fmtDateTime, fmtDate } from '#lib/utils/dates.js';
-  import { statusMeta, nextStatuses, blockedReason, STATUS } from '../utils/complaintLifecycle.js';
+  import { statusMeta, blockedReason, STATUS } from '../utils/complaintLifecycle.js';
+  import { movesFrom, moveRefusal } from '#lib/workflow/workflowModel.js';
+  import { deadlineBand, deadlineWords, describeDeadline } from '#lib/workflow/workflowDeadlines.js';
   import { categoryLabel, channelLabel, complainantLabel,
            OUTCOMES, asOptions } from '../utils/complaintOptions.js';
 
@@ -25,6 +30,17 @@
   export let timeline = [];
   export let canEdit = false;
   export let saving = false;
+  export let isAdmin = false;
+  /** The complaint's workflow item (migration 252); null until the workflow is set up. */
+  export let item = null;
+  /** The workflow's steps and moves. */
+  export let steps = [];
+  export let wfMoves = [];
+  /** Who it may be given to, everyone's names by id, the viewer, and who made the last move. */
+  export let assignees = [];
+  export let nameById = {};
+  export let me = null;
+  export let lastMoverId = null;
 
   const dispatch = createEventDispatcher();
 
@@ -44,14 +60,26 @@
   }
 
   $: meta = statusMeta(complaint?.status);
-  $: moves = nextStatuses(complaint?.status);
+  $: stepByKey = new Map(steps.map((st) => [st.key, st]));
+  $: step = item ? stepByKey.get(item.step_key) ?? null : null;
+  $: finished = step ? step.kind === 'done' || step.kind === 'declined' : false;
+  $: moves = item ? movesFrom(wfMoves, item.step_key, { isAdmin, canEdit }) : [];
+  $: moveTo = (/** @type {string} */ to) => moves.find((m) => m.to_key === to) ?? null;
+  $: due = item?.due_on && !finished ? item.due_on : null;
+  const BAND_CLS = { overdue: 'text-red-400 font-semibold', due_soon: 'text-amber-300', ok: 'text-slate-300' };
+  $: withName = (/** @type {string|null|undefined} */ uid) => (uid ? nameById[uid] || 'A user no longer listed' : '');
 
   /** The response draft is what `blockedReason` should judge, not the saved value. */
   $: probe = { ...complaint, response_text: responseDraft };
 
+  /** Why a move cannot be made now — the workflow's conditions, then s.93's. */
+  $: whyNot = (/** @type {any} */ m) => moveRefusal(m, { userId: me, assignedTo: item?.assigned_to ?? null, lastMoverId })
+    || blockedReason(probe, m.to_key)
+    || (m.note_required && !note.trim() ? 'Add a note to say why.' : null);
+
   function requestTransition(to) {
-    const why = blockedReason(probe, to);
-    if (why) return;
+    const m = moveTo(to);
+    if (!m || whyNot(m)) return;
     pendingTransition = to;
   }
 
@@ -96,11 +124,36 @@
         <p class="text-slate-500">Came in by</p>
         <p class="text-slate-300">{channelLabel(complaint.channel)}</p>
       </div>
-      <div>
-        <p class="text-slate-500">Assigned to</p>
-        <p class="text-slate-300">{complaint.assigned_to_profile?.full_name ?? 'Nobody'}</p>
+      <div data-testid="complaint-with">
+        <p class="text-slate-500">With</p>
+        {#if canEdit && item && !finished}
+          <select class="mt-0.5 w-full px-2 py-1 text-xs bg-slate-900 border border-slate-600 rounded text-slate-200"
+            aria-label="Who it is with" value={item.assigned_to ?? ''} disabled={saving}
+            on:change={(e) => dispatch('assign', /** @type {HTMLSelectElement} */ (e.currentTarget).value || null)}>
+            <option value="">No one</option>
+            {#each assignees as p (p.id)}<option value={p.id}>{p.full_name || 'A user with no name set'}{p.id === me ? ' (me)' : ''}</option>{/each}
+            {#if item.assigned_to && !assignees.some((p) => p.id === item.assigned_to)}
+              <option value={item.assigned_to}>{withName(item.assigned_to)} (can no longer work these)</option>
+            {/if}
+          </select>
+          {#if me && item.assigned_to !== me && assignees.some((p) => p.id === me)}
+            <Button variant="tertiary" size="xs" disabled={saving} on:click={() => dispatch('assign', me)}>Take it</Button>
+          {/if}
+        {:else}
+          <p class="text-slate-300">{withName(item?.assigned_to) || 'No one'}</p>
+        {/if}
       </div>
     </div>
+
+    {#if due}
+      <p class="text-xs {BAND_CLS[deadlineBand(due) ?? 'ok']}" data-testid="complaint-due">
+        {step?.name ?? ''}: {deadlineWords(due)} — {fmtDate(due)}
+        <span class="block text-[11px] text-slate-500">{describeDeadline(step ?? {})}.</span>
+      </p>
+    {/if}
+    {#if !item}
+      <p class="text-[11px] text-amber-300">Not yet in its workflow — an administrator opening Complaints sets it up. It cannot be moved on until then.</p>
+    {/if}
 
     <div class="p-3 rounded border border-slate-700 bg-slate-800/40">
       <p class="text-[11px] text-slate-500 mb-1">What was said</p>
@@ -192,36 +245,28 @@
 
     <!-- ── The legal moves ────────────────────────────────────────────── -->
     {#if canEdit && moves.length}
-      <div class="border-t border-slate-700 pt-3 space-y-2">
-        <FormTextarea label="Note to record with this step (optional)"
+      <div class="border-t border-slate-700 pt-3 space-y-2" data-testid="complaint-moves">
+        <FormTextarea label={moves.some((m) => m.note_required) ? 'Note to record with this step (needed for some)' : 'Note to record with this step (optional)'}
                       bind:value={note} rows={2}
                       placeholder="What was done, or why" />
         <div class="flex flex-wrap gap-2">
-          {#each moves as to}
-            {@const why = blockedReason(probe, to)}
-            {#if to === STATUS.CLOSED || to === STATUS.ESCALATED}
-              <ProtectedButton requireAdmin={true} variant="secondary" size="small"
-                               disabled={saving || !!why} title={why ?? ''}
-                               on:click={() => requestTransition(to)}>
-                {statusMeta(to).label}
-              </ProtectedButton>
-            {:else}
-              <Button variant="secondary" size="small"
-                      disabled={saving || !!why} title={why ?? ''}
-                      on:click={() => requestTransition(to)}>
-                {statusMeta(to).label}
-              </Button>
-            {/if}
+          {#each moves as m (m.to_key)}
+            {@const why = whyNot(m)}
+            <Button variant="secondary" size="small"
+                    disabled={saving || !!why} title={why ?? ''}
+                    on:click={() => requestTransition(m.to_key)}>
+              {m.label}
+            </Button>
           {/each}
         </div>
-        {#each moves as to}
-          {@const why = blockedReason(probe, to)}
+        {#each moves as m (m.to_key)}
+          {@const why = whyNot(m)}
           {#if why}
-            <p class="text-[11px] text-amber-400/90">{statusMeta(to).label}: {why}</p>
+            <p class="text-[11px] text-amber-400/90" data-testid="complaint-move-refusal">{m.label}: {why}</p>
           {/if}
         {/each}
       </div>
-    {:else if moves.length === 0}
+    {:else if item && moves.length === 0 && finished}
       <p class="text-xs text-slate-500 border-t border-slate-700 pt-3">
         Nothing further happens to a complaint in this state.
       </p>
@@ -254,7 +299,7 @@
 
   <ConfirmDialog
     show={!!pendingTransition}
-    title={pendingTransition ? `Move to ${statusMeta(pendingTransition).label}?` : ''}
+    title={pendingTransition ? `${moveTo(pendingTransition)?.label ?? statusMeta(pendingTransition).label}?` : ''}
     message={pendingTransition === STATUS.WITHDRAWN
       ? 'The complainant withdrew this. It stays on the record and cannot be moved again.'
       : pendingTransition === STATUS.ESCALATED

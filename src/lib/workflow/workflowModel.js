@@ -110,9 +110,8 @@ export function workflowProblem({ steps, moves, appId }) {
     const pair = `${m.from_key}>${m.to_key}`;
     if (pairs.has(pair)) return `There are two moves from "${byKey.get(m.from_key)?.name}" to "${byKey.get(m.to_key)?.name}".`;
     pairs.add(pair);
-    if (isFinished(byKey.get(m.from_key)?.kind ?? '')) {
-      return `Step "${m.from_key}" is finished, so nothing can move on from it.`;
-    }
+    // A move OUT of a finished step is allowed (migration 252): a reopen. The
+    // item is open again and its deadline counted afresh.
     if (!['anyone', 'assignee'].includes(m.who ?? 'anyone')) {
       return `The move "${m.label}": who may make it is anyone who can edit, or only the person it is with.`;
     }
