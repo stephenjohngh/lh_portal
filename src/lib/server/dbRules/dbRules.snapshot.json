@@ -140,6 +140,10 @@
             "closed",
             "open"
         ],
+        "workflow_events.kind": [
+            "assign",
+            "move"
+        ],
         "info_notes.visibility": [
             "internal",
             "public",

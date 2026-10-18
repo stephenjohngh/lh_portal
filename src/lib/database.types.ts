@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema24.csv
+// Source: docs/ops/supabase_lhportal_schema25.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -5557,8 +5557,6 @@ export type Database = {
       }
       workflow_events: {
         Row: {
-          assigned_to: string | null
-          kind: string
           id: number
           item_id: string
           from_key: string | null
@@ -5567,10 +5565,10 @@ export type Database = {
           action: string | null
           at: string
           by: string | null
+          kind: string
+          assigned_to: string | null
         }
         Insert: {
-          assigned_to?: string | null
-          kind?: string
           id?: number
           item_id: string
           from_key?: string | null
@@ -5579,10 +5577,10 @@ export type Database = {
           action?: string | null
           at?: string
           by?: string | null
+          kind?: string
+          assigned_to?: string | null
         }
         Update: {
-          assigned_to?: string | null
-          kind?: string
           id?: number
           item_id?: string
           from_key?: string | null
@@ -5591,6 +5589,8 @@ export type Database = {
           action?: string | null
           at?: string
           by?: string | null
+          kind?: string
+          assigned_to?: string | null
         }
         Relationships: [
             {
@@ -5606,12 +5606,18 @@ export type Database = {
               isOneToOne: false
               referencedRelation: "profiles"
               referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "workflow_events_assigned_to_fkey"
+              columns: ["assigned_to"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
             }
           ]
       }
       workflow_items: {
         Row: {
-          assigned_to: string | null
           id: string
           workflow_id: string
           subject_id: string
@@ -5621,9 +5627,9 @@ export type Database = {
           updated_by: string | null
           due_on: string | null
           label: string | null
+          assigned_to: string | null
         }
         Insert: {
-          assigned_to?: string | null
           id?: string
           workflow_id: string
           subject_id: string
@@ -5633,9 +5639,9 @@ export type Database = {
           updated_by?: string | null
           due_on?: string | null
           label?: string | null
+          assigned_to?: string | null
         }
         Update: {
-          assigned_to?: string | null
           id?: string
           workflow_id?: string
           subject_id?: string
@@ -5645,21 +5651,22 @@ export type Database = {
           updated_by?: string | null
           due_on?: string | null
           label?: string | null
+          assigned_to?: string | null
         }
         Relationships: [
             {
               foreignKeyName: "workflow_items_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
+              referencedRelation: "workflows"
+              referencedColumns: ["id"]
             },
             {
               foreignKeyName: "workflow_items_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
-              referencedRelation: "workflows"
-              referencedColumns: ["id"]
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
             },
             {
               foreignKeyName: "workflow_items_step_key_fkey"
@@ -5671,6 +5678,13 @@ export type Database = {
             {
               foreignKeyName: "workflow_items_updated_by_fkey"
               columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "workflow_items_assigned_to_fkey"
+              columns: ["assigned_to"]
               isOneToOne: false
               referencedRelation: "profiles"
               referencedColumns: ["id"]
@@ -5720,15 +5734,15 @@ export type Database = {
               foreignKeyName: "workflow_moves_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
+              referencedRelation: "workflows"
+              referencedColumns: ["id"]
             },
             {
               foreignKeyName: "workflow_moves_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
-              referencedRelation: "workflows"
-              referencedColumns: ["id"]
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
             },
             {
               foreignKeyName: "workflow_moves_from_key_fkey"
