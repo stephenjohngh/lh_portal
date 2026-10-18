@@ -227,7 +227,9 @@
     </div>
     {#if due}
       <p class={BAND_CLS[deadlineBand(due) ?? 'ok']} data-testid="wf-due">{deadlineWords(due)} — {fmtDate(due)}
-        <span class="block text-xs text-slate-500">{describeDeadline(step ?? {})}.</span></p>
+        <!-- A date the subject sets itself (an action's due date, migration 255)
+             comes with no step rule to describe. -->
+        {#if describeDeadline(step ?? {})}<span class="block text-xs text-slate-500">{describeDeadline(step ?? {})}.</span>{/if}</p>
     {/if}
     {#if !finished}
       <div class="flex items-center gap-2 flex-wrap" data-testid="wf-with">
