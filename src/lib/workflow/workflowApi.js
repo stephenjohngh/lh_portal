@@ -60,6 +60,9 @@ export function saveWorkflow({ key, name, appId, description = null, steps, move
       from_key: m.from_key, to_key: m.to_key, label: m.label,
       note_required: !!m.note_required, admin_only: !!m.admin_only, action: m.action || null,
       who: m.who || 'anyone', four_eyes: !!m.four_eyes, required_fields: m.required_fields ?? [], position: i + 1,
+      // Timers (migration 259): the system makes the move after N days in its step.
+      timer_days: m.timer_days === '' || m.timer_days == null ? null : Number(m.timer_days),
+      timer_basis: m.timer_basis ?? 'calendar',
     })),
     p_fields: fields === undefined ? null : fields.map((f, i) => ({
       key: f.key, label: f.label, type: f.type, options: (f.options ?? []).map(String).filter((o) => o.trim()),
@@ -153,4 +156,24 @@ export async function listEvents(workflowId) {
   if (!items.length) return { items, events: [] };
   const events = await api.getAllIn('workflow_events', 'item_id', items.map((i) => i.id), { orderBy: 'at' });
   return { items, events };
+}
+
+/**
+ * When an item's timed move falls due (migration 259) — the day the nightly
+ * run makes it — or null when its step has no timer. The database counts it,
+ * as it counts deadlines (working days skip the non-working days).
+ * @param {string} itemId @returns {Promise<string|null>}
+ */
+export async function timerDue(itemId) {
+  return (await api.rpc('workflow_timer_due', { p_item: itemId })) ?? null;
+}
+
+/** The latest runs of the timers (admin): when, how many moved, what failed. */
+export function listTimerRuns(count = 5) {
+  return api.get('workflow_timer_runs', { orderBy: 'ran_at', ascending: false, limit: count });
+}
+
+/** Run the timers now (admin) — what the nightly job does. */
+export function runTimers() {
+  return api.rpc('workflow_run_timers', {});
 }

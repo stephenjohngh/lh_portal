@@ -27,11 +27,11 @@
   import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import FieldInput from './FieldInput.svelte';
-  import { movesFrom, moveRefusal, isFinished, isMoveEvent, STEP_KIND_LABEL } from './workflowModel.js';
+  import { movesFrom, moveRefusal, isFinished, isMoveEvent, STEP_KIND_LABEL, timerWords } from './workflowModel.js';
   import { deadlineBand, deadlineWords, describeDeadline } from './workflowDeadlines.js';
   import { actionLabel } from './workflowActions.js';
   import { itemRecordModel, assignWords } from './itemRecord.js';
-  import { itemHistory, setItemFields } from './workflowApi.js';
+  import { itemHistory, setItemFields, timerDue } from './workflowApi.js';
   import { fieldText, fieldChanges, fieldDraft, LINK_TYPES } from './workflowFieldValues.js';
   import { loadLinkOptions } from './fieldLinks.js';
   import { downloadBlob } from '#lib/utils/download.js';
@@ -111,6 +111,21 @@
   $: step = item ? stepByKey.get(item.step_key) ?? null : null;
   $: finished = isFinished(step?.kind ?? '');
   $: offered = item ? movesFrom(moves, item.step_key, { isAdmin, canEdit }) : [];
+
+  // ── A timed move out of this step (migration 259): the system makes it
+  // overnight once the item has sat here long enough. Its day is the
+  // database's to count (working days skip the non-working days).
+  $: timed = item ? moves.find((m) => m.from_key === item.step_key && m.timer_days) ?? null : null;
+  /** @type {string|null} */
+  let timerOn = null;
+  let timerFor = '';
+  $: if (timed && item && `${item.id}:${item.step_key}` !== timerFor) { timerFor = `${item.id}:${item.step_key}`; readTimer(item.id); }
+  $: if (!timed) { timerOn = null; timerFor = ''; }
+  async function readTimer(/** @type {string} */ id) {
+    timerOn = null;
+    try { timerOn = await timerDue(id); }
+    catch (/** @type {any} */ err) { timerOn = null; }
+  }
   $: lastMoverId = [...history].reverse().find(isMoveEvent)?.by ?? null;
   $: withName = (/** @type {string|null|undefined} */ uid) => (uid ? nameById[uid] || 'A user no longer listed' : '');
   $: due = item?.due_on && !finished ? item.due_on : null;
@@ -230,6 +245,10 @@
         <!-- A date the subject sets itself (an action's due date, migration 255)
              comes with no step rule to describe. -->
         {#if describeDeadline(step ?? {})}<span class="block text-xs text-slate-500">{describeDeadline(step ?? {})}.</span>{/if}</p>
+    {/if}
+    {#if timed && timerOn && !finished}
+      <p class="text-xs text-slate-400" data-testid="wf-timer">⏲ <strong>{timed.label}</strong> happens by itself on {fmtDate(timerOn)}
+        — after {timerWords(timed)} here — unless it is moved before then.</p>
     {/if}
     {#if !finished}
       <div class="flex items-center gap-2 flex-wrap" data-testid="wf-with">

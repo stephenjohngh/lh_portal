@@ -196,6 +196,60 @@ const RUNTIME = [
     if exists (select 1 from workflow_items i join workflows w on w.id = i.workflow_id
                 where w.key = 'works_schedule' and not exists (select 1 from works_schedules s where s.id = i.subject_id))
       then raise exception 'left behind'; end if;`, null],
+  // Migration 259: timers — a move the system makes after N days in its step.
+  ['a timed move is made by the run once due, by nobody, with its reason', `
+    perform workflow_save('dbtest_timer', 'DB test timer', 'cases', null,
+      '[{"key":"open","name":"Open","kind":"start","position":1},{"key":"done","name":"Done","kind":"done","position":2}]',
+      '[{"from_key":"open","to_key":"done","label":"Lapse","timer_days":2,"position":1}]', null, null, null, '[]', null);
+    perform case_open((select id from workflows where key = 'dbtest_timer'), 'TIMER old', null, '{}');
+    perform case_open((select id from workflows where key = 'dbtest_timer'), 'TIMER new', null, '{}');
+    update workflow_items set started_at = now() - interval '5 days'
+     where subject_id = (select id from cases where title = 'TIMER old');
+    update workflow_events set at = now() - interval '5 days'
+     where item_id = (select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'TIMER old');
+    perform workflow_run_timers();
+    if (select i.step_key from workflow_items i join cases c on c.id = i.subject_id where c.title = 'TIMER old') <> 'done'
+      then raise exception 'the due one did not move'; end if;
+    if (select i.step_key from workflow_items i join cases c on c.id = i.subject_id where c.title = 'TIMER new') <> 'open'
+      then raise exception 'the new one moved too early'; end if;
+    if not exists (select 1 from workflow_events e join workflow_items i on i.id = e.item_id join cases c on c.id = i.subject_id
+                    where c.title = 'TIMER old' and e.by is null and e.note = 'Automatic — 2 days in Open') then
+      raise exception 'no automatic history row'; end if;
+    if (select moved from workflow_timer_runs order by ran_at desc limit 1) < 1 then raise exception 'the run was not kept'; end if;`, null],
+  ['a timed move that cannot be made is counted as failed, and nothing moves', `
+    perform workflow_save('dbtest_timer2', 'DB test timer 2', 'cases', null,
+      '[{"key":"open","name":"Open","kind":"start","position":1},{"key":"done","name":"Done","kind":"done","position":2}]',
+      '[{"from_key":"open","to_key":"done","label":"Lapse","timer_days":1,"required_fields":["why"],"position":1}]', null, null, null,
+      '[{"key":"why","label":"Why","type":"text","position":1}]', null);
+    perform case_open((select id from workflows where key = 'dbtest_timer2'), 'TIMER blocked', null, '{}');
+    update workflow_items set started_at = now() - interval '5 days'
+     where subject_id = (select id from cases where title = 'TIMER blocked');
+    update workflow_events set at = now() - interval '5 days'
+     where item_id = (select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'TIMER blocked');
+    perform workflow_run_timers();
+    if (select i.step_key from workflow_items i join cases c on c.id = i.subject_id where c.title = 'TIMER blocked') <> 'open'
+      then raise exception 'it moved without its field'; end if;
+    if not exists (select 1 from workflow_timer_runs r, jsonb_array_elements(r.failures) f
+                    where f->>'label' like 'CAS-%' and f->>'reason' like '%Why%') then
+      raise exception 'the failure was not kept'; end if;`, null],
+  ['an action’s status follows a timed move too (an app rule that needs an admin)', `
+    perform workflow_save('compliance_action', 'Compliance action', 'compliance', null,
+      ${lit(ACTION_WF.steps.map((x, n) => ({ ...x, position: n + 1 })))},
+      ${lit(ACTION_WF.moves.map((m, n) => (m.from_key === 'open' && m.to_key === 'in_progress' ? { ...m, timer_days: 1, position: n + 1 } : { ...m, position: n + 1 })))},
+      null, null, null, '[]', null);
+    perform compliance_action_attach_to_workflow();
+    update workflow_items set started_at = now() - interval '5 days'
+     where subject_id = (select id from statutory_register where template_key = 'a2') and step_key = 'open';
+    update workflow_events set at = now() - interval '5 days'
+     where item_id = (select i.id from workflow_items i join statutory_register r on r.id = i.subject_id where r.template_key = 'a2');
+    perform set_config('request.jwt.claims', '{}', true);
+    perform set_config('request.jwt.claim.sub', '', true);
+    perform workflow_run_timers();
+    perform set_config('request.jwt.claims', json_build_object('sub', (select id from profiles where is_admin order by created_at limit 1), 'role', 'authenticated')::text, true);
+    perform set_config('request.jwt.claim.sub', (select id::text from profiles where is_admin order by created_at limit 1), true);
+    if (select action_status from statutory_register where template_key = 'a2') <> 'in_progress'
+       or (select step_key from workflow_items i join statutory_register r on r.id = i.subject_id where r.template_key = 'a2') <> 'in_progress'
+      then raise exception 'not moved by the nightly run'; end if;`, null],
 ];
 
 describe.skipIf(!RUN)('workflow manager — the database (dev, rolled back)', () => {

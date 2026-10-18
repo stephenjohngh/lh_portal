@@ -13,7 +13,7 @@ import { contractProblem } from './workflowContracts.js';
 /** @typedef {'start'|'open'|'done'|'declined'} StepKind */
 /** @typedef {{ key: string, name: string, public_name?: string|null, kind: StepKind, position?: number,
  *              deadline_days?: number|null, deadline_basis?: 'calendar'|'working', deadline_from?: 'entered'|'started' }} Step */
-/** @typedef {{ from_key: string, to_key: string, label: string, note_required?: boolean, admin_only?: boolean, action?: string|null, who?: string, four_eyes?: boolean, required_fields?: string[], position?: number }} Move */
+/** @typedef {{ from_key: string, to_key: string, label: string, note_required?: boolean, admin_only?: boolean, action?: string|null, who?: string, four_eyes?: boolean, required_fields?: string[], timer_days?: number|string|null, timer_basis?: string, position?: number }} Move */
 /** @typedef {{ key: string, label: string, type: string, options?: string[], help?: string|null, required_on_create?: boolean, position?: number }} Field */
 
 /** The kinds of step — the database's CHECK list, with the words shown. */
@@ -165,12 +165,28 @@ export function workflowProblem({ steps, moves, appId, fields = [] }) {
     if (!['anyone', 'assignee'].includes(m.who ?? 'anyone')) {
       return `The move "${m.label}": who may make it is anyone who can edit, or only the person it is with.`;
     }
+    // Timers (migration 259): a move the system makes by itself after N days.
+    if (m.timer_days != null && m.timer_days !== '') {
+      const n = Number(m.timer_days);
+      if (!Number.isInteger(n) || n < 1 || n > 365) return `The move "${m.label}": a timer is 1 to 365 days.`;
+      if (m.action) return `The move "${m.label}" runs an action, so it cannot be made by a timer — a person must make it.`;
+      if (isFinished(byKey.get(m.from_key)?.kind)) return `The move "${m.label}" leaves a finished step, so it cannot be made by a timer.`;
+    }
+    if (!['calendar', 'working'].includes(m.timer_basis ?? 'calendar')) {
+      return `The move "${m.label}": a timer counts calendar or working days.`;
+    }
     if (m.action) {
       if (!actionsFor(appId).some((a) => a.key === m.action)) return `The action "${m.action}" is not one this app offers.`;
       if (byKey.get(m.to_key)?.kind !== 'done') {
         return `The move "${m.label}" runs an action, so it must lead to a finished (accepted) step.`;
       }
     }
+  }
+  // Only one move out of a step may happen by itself.
+  const timed = new Map();
+  for (const m of moves.filter((x) => x.timer_days != null && x.timer_days !== '')) {
+    if (timed.has(m.from_key)) return `Step "${byKey.get(m.from_key)?.name}" has more than one move with a timer — only one can happen by itself.`;
+    timed.set(m.from_key, m);
   }
   // A move out of a finished step is a reopen (252) — but not out of a step
   // reached by an action, which cannot be undone (254).
@@ -217,6 +233,12 @@ export function orderedSteps(steps) {
  * @param {{ name: string, description?: string|null, reviewRequired?: boolean, reviewReason?: string|null,
  *           steps: Step[], moves: Move[], fields?: Field[] }} w
  */
+/** A move's timer in words: "30 working days". @param {{ timer_days?: any, timer_basis?: string }} m */
+export function timerWords(m) {
+  const n = Number(m.timer_days);
+  return `${n} ${m.timer_basis === 'working' ? 'working ' : ''}day${n === 1 ? '' : 's'}`;
+}
+
 export function definitionOf({ name, description = null, reviewRequired = false, reviewReason = null, steps, moves, fields = [] }) {
   const n = (/** @type {any} */ v) => (v === '' || v === undefined ? null : v);
   return {
@@ -226,7 +248,9 @@ export function definitionOf({ name, description = null, reviewRequired = false,
       deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered' })),
     moves: moves.map((m) => ({ from_key: m.from_key, to_key: m.to_key, label: m.label, note_required: !!m.note_required,
       admin_only: !!m.admin_only, action: n(m.action), who: m.who ?? 'anyone', four_eyes: !!m.four_eyes,
-      required_fields: [...(m.required_fields ?? [])] })),
+      required_fields: [...(m.required_fields ?? [])],
+      timer_days: m.timer_days === '' || m.timer_days == null ? null : Number(m.timer_days),
+      timer_basis: m.timer_basis ?? 'calendar' })),
     fields: fields.map((f) => ({ key: f.key, label: f.label, type: f.type, options: (f.options ?? []).map(String),
       help: n(f.help), required_on_create: !!f.required_on_create })),
   };
@@ -276,7 +300,7 @@ export function workflowDiff(before, after) {
     const where = `${name(m.from_key)} → ${name(m.to_key)}`;
     if (!was) {
       const extras = [m.note_required && 'needs a note', m.admin_only && 'admin only', (m.who ?? 'anyone') === 'assignee' && 'only the person it is with',
-        m.four_eyes && 'four-eyes', m.action && `action ${m.action}`,
+        m.four_eyes && 'four-eyes', m.action && `action ${m.action}`, m.timer_days && `by itself after ${timerWords(m)}`,
         (m.required_fields ?? []).length && `needs ${(m.required_fields ?? []).map((/** @type {string} */ k) => after.fields?.find((/** @type {any} */ f) => f.key === k)?.label ?? k).join(', ')} filled`].filter(Boolean);
       out.push(`Move added: “${m.label}” (${where})${extras.length ? ` — ${extras.join('; ')}` : ''}.`);
       continue;
@@ -291,6 +315,9 @@ export function workflowDiff(before, after) {
       out.push(`Move “${m.label}”: ${m.four_eyes ? 'now four-eyes — not the person who made the last move' : 'no longer four-eyes'}.`);
     }
     if ((was.action ?? null) !== (m.action ?? null)) out.push(`Move “${m.label}”: action ${was.action ?? 'none'} → ${m.action ?? 'none'}.`);
+    if ((was.timer_days ?? null) !== (m.timer_days ?? null) || (was.timer_days && (was.timer_basis ?? 'calendar') !== (m.timer_basis ?? 'calendar'))) {
+      out.push(`Move “${m.label}”: ${m.timer_days ? `now made by itself after ${timerWords(m)} in its step` : 'no longer made by itself'}.`);
+    }
   }
   for (const [k, m] of bMoves) if (!aMoves.has(k)) out.push(`Move removed: “${m.label}” (${name(m.from_key)} → ${name(m.to_key)}).`);
   // Fields (migration 253) — and which a move needs filled.

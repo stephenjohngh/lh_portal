@@ -8,7 +8,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/svelte';
 import { DEFAULT_APPLICATION_WORKFLOW as WF } from '#lib/apps/parking/utils/applicationWorkflow.js';
 
-const h = vi.hoisted(() => ({ saved: /** @type {any[]} */ ([]), marked: false, changes: /** @type {any[]} */ ([]), app: 'parking', renamed: false }));
+const h = vi.hoisted(() => ({ saved: /** @type {any[]} */ ([]), marked: false, changes: /** @type {any[]} */ ([]), app: 'parking', renamed: false,
+  timerRuns: /** @type {any[]} */ ([]), ran: 0 }));
 vi.mock('#lib/workflow/workflowApi.js', () => ({
   listWorkflows: async () => [{ id: 'w1', key: WF.key, name: WF.name, app_id: h.app, description: WF.description }],
   loadWorkflow: async () => ({ fields: [], workflow: { id: 'w1', key: WF.key, name: WF.name, app_id: h.app, description: WF.description,
@@ -18,6 +19,8 @@ vi.mock('#lib/workflow/workflowApi.js', () => ({
   saveWorkflow: async (w) => { h.saved.push(w); return 'w1'; },
   listChanges: async () => h.changes,
   listEvents: async () => ({ items: [{ id: 'i1', step_key: 'checking', due_on: '2000-01-01' }], events: [] }),
+  listTimerRuns: async () => h.timerRuns ?? [],
+  runTimers: async () => { h.ran = (h.ran ?? 0) + 1; return { moved: 2, failed: 0, failures: [] }; },
 }));
 vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: () => {} }));
 vi.mock('#lib/stores/profiles.js', () => ({
@@ -30,7 +33,7 @@ vi.mock('#lib/workflow/nonWorkingDays.js', () => ({
 }));
 
 const WorkflowsPanel = (await import('./WorkflowsPanel.svelte')).default;
-beforeEach(() => { cleanup(); h.saved.length = 0; h.marked = false; h.changes = []; h.app = 'parking'; h.renamed = false; });
+beforeEach(() => { cleanup(); h.saved.length = 0; h.marked = false; h.changes = []; h.app = 'parking'; h.renamed = false; h.timerRuns = []; h.ran = 0; });
 
 async function opened() {
   render(WorkflowsPanel);
@@ -69,6 +72,27 @@ describe('Admin → Workflows', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Save workflow' }));
     await waitFor(() => expect(h.saved).toHaveLength(1));
     expect(h.saved[0].steps.find((s) => s.key === 'checking')).toMatchObject({ deadline_days: 7 });
+  });
+
+  // Timers (migration 259): a move made by itself after N days in its step.
+  it('a move can be set to happen by itself; it is saved with the move and said in the change', async () => {
+    await opened();
+    const timers = screen.getAllByLabelText(/made by itself after \(days\)/);
+    await fireEvent.input(timers[2], { target: { value: '30' } });              // Decline
+    await fireEvent.change(await screen.findByLabelText(/timer counts/), { target: { value: 'working' } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Save workflow' }));
+    await waitFor(() => expect(h.saved).toHaveLength(1));
+    expect(h.saved[0].moves[2]).toMatchObject({ timer_days: 30, timer_basis: 'working' });
+  });
+
+  it('lists what the timer runs did, and an admin can run them now', async () => {
+    h.timerRuns = [{ id: 'r1', ran_at: '2026-10-18T03:15:00Z', moved: 1, failed: 1,
+      failures: [{ label: 'CAS-2026-000003', move: 'Lapse', reason: 'Fill in "Why" first.' }] }];
+    await opened();
+    const box = await screen.findByTestId('workflow-timers');
+    await waitFor(() => expect(box.textContent).toMatch(/1 moved, 1 could not be:.*CAS-2026-000003 — Lapse: Fill in "Why" first\./s));
+    await fireEvent.click(screen.getByRole('button', { name: 'Run timers now' }));
+    await waitFor(() => expect(h.ran).toBe(1));
   });
 
   it('marking needs a reason, and is saved with the workflow', async () => {

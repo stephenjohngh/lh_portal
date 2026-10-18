@@ -5820,6 +5820,8 @@ export type Database = {
           who: string
           four_eyes: boolean
           required_fields: string[]
+          timer_days: number | null
+          timer_basis: string
         }
         Insert: {
           workflow_id: string
@@ -5833,6 +5835,8 @@ export type Database = {
           who?: string
           four_eyes?: boolean
           required_fields?: string[]
+          timer_days?: number | null
+          timer_basis?: string
         }
         Update: {
           workflow_id?: string
@@ -5846,6 +5850,8 @@ export type Database = {
           who?: string
           four_eyes?: boolean
           required_fields?: string[]
+          timer_days?: number | null
+          timer_basis?: string
         }
         Relationships: [
             {
@@ -5884,6 +5890,30 @@ export type Database = {
               referencedColumns: ["key"]
             }
           ]
+      }
+      workflow_timer_runs: {
+        Row: {
+          id: string
+          ran_at: string
+          moved: number
+          failed: number
+          failures: Json
+        }
+        Insert: {
+          id?: string
+          ran_at?: string
+          moved?: number
+          failed?: number
+          failures?: Json
+        }
+        Update: {
+          id?: string
+          ran_at?: string
+          moved?: number
+          failed?: number
+          failures?: Json
+        }
+        Relationships: []
       }
       workflow_steps: {
         Row: {

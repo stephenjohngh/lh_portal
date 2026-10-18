@@ -8,7 +8,7 @@
      workflowProblem() below and refuses to remove a step something is in. -->
 <script>
   import { onMount } from 'svelte';
-  import { listWorkflows, loadWorkflow, saveWorkflow, listChanges, listEvents } from '#lib/workflow/workflowApi.js';
+  import { listWorkflows, loadWorkflow, saveWorkflow, listChanges, listEvents, listTimerRuns, runTimers } from '#lib/workflow/workflowApi.js';
   import { workflowStats } from '#lib/workflow/workflowStats.js';
   import WorkflowDiagram from '#lib/workflow/WorkflowDiagram.svelte';
   import { today } from '#lib/utils/dates.js';
@@ -94,7 +94,27 @@
     catch (/** @type {any} */ err) { dayError = errMessage(err, 'That day could not be removed.'); }
   }
 
+  // ── Timers (migration 259) ──
+  /** @type {any[]} */
+  let timerRuns = [];
+  let runningTimers = false;
+  async function readTimerRuns() {
+    try { timerRuns = await listTimerRuns(5); }
+    catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read the timer runs.'); }
+  }
+  async function runTimersNow() {
+    runningTimers = true; error = '';
+    try {
+      const r = await runTimers();
+      saved = `Timers run: ${r?.moved ?? 0} moved${r?.failed ? `, ${r.failed} could not be` : ''}.`;
+      logAudit('update', 'workflow', null, 'Timers run by hand', { appId: 'admin', eventCategory: 'admin', afterData: { moved: r?.moved ?? 0, failed: r?.failed ?? 0 } });
+      await readTimerRuns();
+    } catch (/** @type {any} */ err) { error = errMessage(err, 'Could not run the timers.'); }
+    finally { runningTimers = false; }
+  }
+
   onMount(async () => {
+    readTimerRuns();
     profilesStore.load().catch(() => { /* names fall back to — */ });
     try {
       // The shipped bank holidays, when the list is empty (the seed rule).
@@ -145,7 +165,7 @@
     steps = orderedSteps(shipped.steps.map((/** @type {any} */ s, /** @type {number} */ i) => ({ ...s, position: i + 1 })))
       .map((s) => ({ ...s, public_name: s.public_name ?? '', deadline_days: s.deadline_days ?? '',
         deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered', isNew: false }));
-    moves = shipped.moves.map((/** @type {any} */ m) => ({ note_required: false, admin_only: false, action: '', who: 'anyone', four_eyes: false,
+    moves = shipped.moves.map((/** @type {any} */ m) => ({ note_required: false, admin_only: false, action: '', who: 'anyone', four_eyes: false, timer_days: null, timer_basis: 'calendar',
       ...m, required_fields: [...(m.required_fields ?? [])] }));
     saved = 'The shipped steps and moves are in the editor — look them over, then save.';
   }
@@ -191,7 +211,7 @@
   function addMove() {
     const from = steps[0]?.key ?? '';
     const to = steps.find((s) => s.key !== from)?.key ?? '';
-    moves = [...moves, { from_key: from, to_key: to, label: 'New move', note_required: false, admin_only: false, action: '', who: 'anyone', four_eyes: false }];
+    moves = [...moves, { from_key: from, to_key: to, label: 'New move', note_required: false, admin_only: false, action: '', who: 'anyone', four_eyes: false, timer_days: null, timer_basis: 'calendar' }];
   }
   function removeMove(/** @type {any} */ m) { moves = moves.filter((x) => x !== m); }
 
@@ -418,7 +438,8 @@
             <th class="py-1 pr-2 font-medium">Button</th><th class="py-1 pr-2 font-medium">Note needed</th>
             <th class="py-1 pr-2 font-medium">Admin only</th><th class="py-1 pr-2 font-medium">Who may</th>
             <th class="py-1 pr-2 font-medium" title="Not the person who made the last move">Four-eyes</th>
-            <th class="py-1 pr-2 font-medium">Action</th><th class="py-1 pr-2 font-medium">Fields needed</th><th></th></tr></thead>
+            <th class="py-1 pr-2 font-medium">Action</th><th class="py-1 pr-2 font-medium">Fields needed</th>
+            <th class="py-1 pr-2 font-medium" title="Made by the system, overnight, once an item has been this long in the step">By itself after</th><th></th></tr></thead>
           <tbody>
             {#each moves as m (m)}
               <tr class="border-t border-slate-800">
@@ -442,6 +463,16 @@
                       <input type="checkbox" checked={(m.required_fields ?? []).includes(f.key)} on:change={() => toggleNeeded(m, f.key)}
                         aria-label="{m.label} needs {f.label}" /> {f.label}</label>
                   {:else}<span class="text-xs text-slate-500">—</span>{/each}
+                </td>
+                <!-- Timers (migration 259): the move the system makes, overnight,
+                     once an item has sat this long in the step. -->
+                <td class="py-1 pr-2 whitespace-nowrap" data-testid="move-timer">
+                  <input type="number" min="1" max="365" class="{inputCls} w-16" bind:value={m.timer_days} on:input={() => (moves = moves)}
+                    aria-label="{m.label}: made by itself after (days)" placeholder="—" />
+                  {#if m.timer_days}
+                    <select class={inputCls} bind:value={m.timer_basis} on:change={() => (moves = moves)} aria-label="{m.label}: timer counts">
+                      <option value="calendar">days</option><option value="working">working days</option></select>
+                  {/if}
                 </td>
                 <td class="py-1"><Button variant="danger" size="xs" on:click={() => removeMove(m)}>Remove</Button></td>
               </tr>
@@ -513,6 +544,30 @@
       </ul>
     {:else}
       <p class="text-xs text-slate-500">None — working days skip only weekends.</p>
+    {/if}
+  </div>
+
+  <!-- ── Timers (migration 259) ─────────────────────────────────────────────
+       A move with "By itself after" is made by the database every night at
+       03:15 (UTC) for every item that has sat in its step that long. What
+       each run did is kept; it moves items and deletes nothing. -->
+  <div class="space-y-2 border-t border-slate-700 pt-4" data-testid="workflow-timers">
+    <div class="flex items-center justify-between gap-2">
+      <p class="text-sm font-semibold text-slate-200">Timers</p>
+      <Button variant="secondary" size="xs" loading={runningTimers} disabled={runningTimers} on:click={runTimersNow}>Run timers now</Button>
+    </div>
+    <p class="text-xs text-slate-400">A move set to happen <em>by itself after</em> a number of days is made every night, at about
+      03:15 (UTC), for each item that has been in its step that long — recorded as “Automatic” with no person's name.
+      Nothing is deleted.</p>
+    {#if timerRuns.length}
+      <ul class="text-xs text-slate-300 space-y-1">
+        {#each timerRuns as run (run.id)}
+          <li>{fmtDateTime(run.ran_at)} — {run.moved} moved{#if run.failed}, <span class="text-amber-300">{run.failed} could not be:</span>
+            {#each run.failures ?? [] as f}<span class="block pl-3 text-amber-200/80">{f.label ?? 'An item'} — {f.move}: {f.reason}</span>{/each}{/if}</li>
+        {/each}
+      </ul>
+    {:else}
+      <p class="text-xs text-slate-500">The timers have not run yet.</p>
     {/if}
   </div>
 </section>
