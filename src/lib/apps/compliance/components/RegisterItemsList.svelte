@@ -269,6 +269,9 @@
     background: rgb(15 23 42 / 0.45); border: 1px solid rgb(71 85 105 / 0.4);
   }
   .row.expanded { border-color: rgb(71 85 105 / 0.8); }
+  /* Scrolled to from a requirement's completion action (W4): clear the
+     portal's fixed header rather than landing beneath it. */
+  .row { scroll-margin-top: 5rem; }
   .row-head { display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; width: 100%; }
   .row-main { min-width: 0; flex: 1; }
   .row-title { display: flex; align-items: baseline; gap: 0.4rem; flex-wrap: wrap; }

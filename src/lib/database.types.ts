@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema29.csv
+// Source: docs/ops/supabase_lhportal_schema30.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -5210,7 +5210,6 @@ export type Database = {
           suggested_scope: Json | null
           scope_note: string | null
           operationally_incomplete: boolean
-          completion_action_key: string | null
           assurance_only: string | null
           reviewer_note: string | null
           superseded_on: string | null
@@ -5238,6 +5237,7 @@ export type Database = {
           action_status: string
           sort_order: number | null
           id: string
+          completion_action_key: string | null
         }
         Insert: {
           template_key: string
@@ -5266,7 +5266,6 @@ export type Database = {
           suggested_scope?: Json | null
           scope_note?: string | null
           operationally_incomplete?: boolean
-          completion_action_key?: string | null
           assurance_only?: string | null
           reviewer_note?: string | null
           superseded_on?: string | null
@@ -5294,6 +5293,7 @@ export type Database = {
           action_status?: string
           sort_order?: number | null
           id?: string
+          completion_action_key?: string | null
         }
         Update: {
           template_key?: string
@@ -5322,7 +5322,6 @@ export type Database = {
           suggested_scope?: Json | null
           scope_note?: string | null
           operationally_incomplete?: boolean
-          completion_action_key?: string | null
           assurance_only?: string | null
           reviewer_note?: string | null
           superseded_on?: string | null
@@ -5350,8 +5349,17 @@ export type Database = {
           action_status?: string
           sort_order?: number | null
           id?: string
+          completion_action_key?: string | null
         }
-        Relationships: []
+        Relationships: [
+            {
+              foreignKeyName: "statutory_register_completion_action_key_fkey"
+              columns: ["completion_action_key"]
+              isOneToOne: false
+              referencedRelation: "statutory_register"
+              referencedColumns: ["template_key"]
+            }
+          ]
       }
       type_attribute_options: {
         Row: {
