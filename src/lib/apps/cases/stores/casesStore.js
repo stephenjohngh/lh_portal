@@ -60,28 +60,28 @@ function createCasesStore() {
   }
 
   /**
-   * Open a case. The database refuses it if a field needed to open one is
-   * missing, and puts it at the process's start step.
-   * @param {{ title: string, description?: string|null, fields: Record<string, any> }} data
+   * Open a case (migration 254, case_open()): the database checks the fields
+   * needed to open one and every value, puts the case at the process's start
+   * step and the values on its item.
+   * @param {{ title: string, description?: string|null, fields: Record<string, string|null> }} data
+   * @returns {Promise<{ id: string, reference: string }>}
    */
   async function create(data) {
     const wf = state().workflow;
     if (!wf) throw new Error('Choose a process first.');
-    const uid = await requireUserId();
-    const row = await api.create('cases', {
-      workflow_id: wf.id, title: data.title.trim(), description: data.description?.trim() || null,
-      fields: data.fields, created_by: uid, updated_by: uid,
-    }, true);
+    const row = await api.rpc('case_open', {
+      p_workflow: wf.id, p_title: data.title.trim(), p_description: data.description?.trim() || null, p_fields: data.fields,
+    });
     logAudit('create', 'case', row.id, row.reference, { ...AUDIT, afterData: { reference: row.reference, process: wf.key } });
     await reload();
     return row;
   }
 
-  /** Edit a case's title, description and fields — never its process or reference. */
-  async function save(/** @type {CaseRow} */ c, /** @type {{ title: string, description?: string|null, fields: Record<string, any> }} */ data) {
+  /** Edit a case's title and description — never its process or reference (field values are the item's). */
+  async function save(/** @type {CaseRow} */ c, /** @type {{ title: string, description?: string|null }} */ data) {
     const reference = c.reference;                    // captured before the await
     await api.update('cases', c.id, {
-      title: data.title.trim(), description: data.description?.trim() || null, fields: data.fields, updated_by: await requireUserId(),
+      title: data.title.trim(), description: data.description?.trim() || null, updated_by: await requireUserId(),
     });
     logAudit('update', 'case', c.id, reference, { ...AUDIT, afterData: { reference } });
     await reload();

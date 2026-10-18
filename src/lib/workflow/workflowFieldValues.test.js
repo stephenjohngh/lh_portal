@@ -1,8 +1,9 @@
-// A Cases process's fields, pure: what a link offers, how a value reads, what
-// is missing to open a case, and what is saved — a value under a field the
-// process no longer has is KEPT, never dropped by an edit.
+// A process's field values, pure: what a link offers, how a value reads, what
+// is missing to open a case, and what a save sends — only the changes, a
+// cleared field as null, and never a field the process no longer has (so the
+// value held under it is kept).
 import { describe, it, expect } from 'vitest';
-import { linkOptions, fieldText, missingToOpen, fieldsForSave, LINK_TYPES } from './caseFields.js';
+import { linkOptions, fieldText, missingToOpen, fieldChanges, fieldDraft, LINK_TYPES } from './workflowFieldValues.js';
 
 const FIELDS = [
   { key: 'contractor', label: 'Contractor', type: 'text', required_on_create: true, position: 1 },
@@ -11,7 +12,7 @@ const FIELDS = [
   { key: 'start', label: 'Start', type: 'date', position: 0, required_on_create: true },
 ];
 
-describe('caseFields', () => {
+describe('workflowFieldValues', () => {
   it('the link types are component, space and person', () => {
     expect([...LINK_TYPES]).toEqual(['component', 'space', 'person']);
   });
@@ -35,13 +36,16 @@ describe('caseFields', () => {
     expect(missingToOpen(FIELDS, { start: '2026-10-20', contractor: 'ACME' })).toBeNull();
   });
 
-  it('saved: blanks dropped, numbers as numbers, text trimmed', () => {
-    expect(fieldsForSave(FIELDS, { contractor: ' ACME ', cost: '12.5', where: '' }))
-      .toEqual({ contractor: 'ACME', cost: 12.5 });
+  it('a save sends only what changed, text trimmed, a cleared field as null', () => {
+    expect(fieldChanges(FIELDS, { contractor: ' ACME ', cost: '12.5', where: '', start: '' }, { contractor: 'Old', where: 's1' }))
+      .toEqual({ contractor: 'ACME', cost: '12.5', where: null });
   });
 
-  it('a value under a field the process no longer has is kept', () => {
-    expect(fieldsForSave(FIELDS, { contractor: 'ACME' }, { contractor: 'Old', removed_field: 'kept' }))
-      .toEqual({ contractor: 'ACME', removed_field: 'kept' });
+  it('nothing changed sends nothing; a value under a removed field is never sent', () => {
+    expect(fieldChanges(FIELDS, { contractor: 'ACME', cost: 3 }, { contractor: 'ACME', cost: 3, removed_field: 'kept' })).toEqual({});
+  });
+
+  it('the draft has every current field', () => {
+    expect(fieldDraft(FIELDS, { contractor: 'ACME', removed_field: 'x' })).toEqual({ contractor: 'ACME', where: '', cost: '', start: '' });
   });
 });

@@ -197,11 +197,26 @@ describe('the database rules snapshot', () => {
   });
 });
 
+// ⏳ TEMPORARY, like AWAITING_MIGRATION above: values the code already knows
+// and the migration named has not yet added to the database's CHECK. Each goes
+// once that migration is applied and `npm run db:rules` run — the first test
+// below then fails, saying to remove it.
+/** @type {Record<string, { values: string[], migration: string }>} */
+const VALUES_AWAITING_MIGRATION = {
+  'workflow_events.kind': { values: ['fields'], migration: '254_workflow_review_fixes.sql' },
+};
+
 describe('value lists: the code holds exactly what the database accepts', () => {
+  it('a value allowance goes once its migration is applied', () => {
+    const applied = Object.entries(VALUES_AWAITING_MIGRATION)
+      .filter(([col, w]) => w.values.some((v) => (SNAP.checks[col] ?? []).includes(v))).map(([col]) => col);
+    expect(applied, 'applied — remove it from VALUES_AWAITING_MIGRATION').toEqual([]);
+  });
   for (const [col, read] of Object.entries(VALUE_LISTS)) {
     it(col, () => {
       expect(SNAP.checks[col], `no CHECK list for ${col} in the snapshot`).toBeDefined();
-      expect(sorted(read())).toEqual(sorted(SNAP.checks[col]));
+      const awaiting = VALUES_AWAITING_MIGRATION[col]?.values ?? [];
+      expect(sorted(read().filter((v) => !awaiting.includes(v)))).toEqual(sorted(SNAP.checks[col]));
     });
   }
 });

@@ -107,9 +107,10 @@
 
   // The record of one application — what it is, where it stands, every move
   // and who made it — as a Word file (the shared controls build it).
+  $: audit = selected ? { appId: 'parking', entityType: 'parking_request', entityId: selected.id } : null;
+  const onFieldsSaved = () => requestStore.load();
   $: record = selected ? {
     filenameStem: `${selected.reference}_${today()}`,
-    audit: { appId: 'parking', entityType: 'parking_request', entityId: selected.id },
     subject: () => ({
       title: `Parking application ${selected.reference}`,
       facts: [
@@ -199,9 +200,9 @@
             </div>
             <Button variant="tertiary" size="xs" on:click={() => (selectedId = null)}>Close</Button>
           </div>
-          <WorkflowItemControls item={itemFor(selected.id)} workflow={s.workflow} steps={s.steps} moves={s.moves}
+          <WorkflowItemControls item={itemFor(selected.id)} workflow={s.workflow} steps={s.steps} moves={s.moves} fields={s.fields}
             reference={selected.reference} isAdmin={$permissions.isAdmin} {canEdit} {me} {assignees} {nameById}
-            {onMove} {onAssign} {record}>
+            {onMove} {onAssign} {onFieldsSaved} {audit} {record}>
             <dl class="grid grid-cols-[7rem_1fr] gap-x-2 gap-y-1">
               <dt class="text-slate-400">Name</dt><dd class="text-slate-100">{selected.display_name}</dd>
               {#if selected.company_name}<dt class="text-slate-400">Company</dt><dd class="text-slate-100">{selected.company_name}</dd>{/if}

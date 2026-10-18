@@ -69,11 +69,12 @@ export function itemRecordModel({ workflow, steps, item, events, subject, people
   const moves = ordered.map((e) => {
     const isMove = isMoveEvent(e);
     const row = {
-      kind: isMove ? 'move' : 'assign',
+      // A move, an assignment, or (254) field values changed — the note says which.
+      kind: isMove ? 'move' : e.kind === 'fields' ? 'fields' : 'assign',
       at: fmtDateTime(e.at),
       from: isMove && e.from_key ? stepName(e.from_key) : '',
       to: isMove ? stepName(e.to_key) : '',
-      assigned: isMove ? '' : assignWords(e.assigned_to, people),
+      assigned: isMove ? '' : e.kind === 'fields' ? 'Fields changed' : assignWords(e.assigned_to, people),
       by: whoMade(e.by, people),
       note: e.note ?? '',
       action: e.action ? actionLabel(e.action) : '',

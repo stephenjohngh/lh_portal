@@ -23,10 +23,12 @@ vi.mock('../stores/requestStore.js', () => ({ requestStore: {
 } }));
 vi.mock('../stores/parkingStore.js', () => ({ parkingStore: { load: async () => { h.parkingLoads += 1; } } }));
 vi.mock('#lib/workflow/workflowApi.js', () => ({
+  setItemFields: async () => ({ fields: {}, changed: true }),
   // The item's history, read by the shared controls (#lib/workflow/WorkflowItemControls).
   itemHistory: async () => h.hist ?? [{ id: 1, from_key: null, to_key: 'received', note: 'Received from the online form', at: '2026-10-17T09:00:00Z' }],
   listEvents: async () => ({ items: [], events: [
   { item_id: 'ia', from_key: null, to_key: 'received', at: '2026-10-17T09:00:00Z' }] }) }));
+vi.mock('#lib/workflow/fieldLinks.js', () => ({ loadLinkOptions: async () => ({ component: [], space: [], person: [] }) }));
 vi.mock('#lib/stores/permissions.js', () => ({ permissions: { subscribe: h.perms.subscribe } }));
 vi.mock('#lib/stores/profiles.js', () => ({
   profiles: { subscribe: (r) => { r({ loaded: true, list: [{ id: 'me', full_name: 'Pat Smith' }, { id: 'u2', full_name: 'Sam Lee' }] }); return () => {}; } },

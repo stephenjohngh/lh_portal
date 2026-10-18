@@ -19,20 +19,20 @@ const AUDIT = { appId: 'parking', eventCategory: 'parking' };
 
 /**
  * @typedef {import('#lib/database.types.ts').Tables<'parking_requests'> & Record<string, any>} ParkingRequest
- * @typedef {{ requests: ParkingRequest[], items: any[], workflow: any|null, steps: any[], moves: any[],
+ * @typedef {{ requests: ParkingRequest[], items: any[], workflow: any|null, steps: any[], moves: any[], fields: any[],
  *             loading: boolean, loaded?: boolean, error: string|null }} State
  */
 
 function createRequestStore() {
   const { subscribe, update } = writable(/** @type {State} */ ({
-    requests: [], items: [], workflow: null, steps: [], moves: [], loading: false, error: null,
+    requests: [], items: [], workflow: null, steps: [], moves: [], fields: [], loading: false, error: null,
   }));
   const state = () => get({ subscribe });
 
   const load = storeLoader(update,
     async () => {
       const wf = await loadWorkflow(APPLICATION_WORKFLOW_KEY);
-      if (!wf) return { workflow: null, steps: [], moves: [], items: [], requests: [] };
+      if (!wf) return { workflow: null, steps: [], moves: [], fields: [], items: [], requests: [] };
       const [items, requests] = await Promise.all([
         listItems(wf.workflow.id),
         api.getAll('parking_requests', { orderBy: 'received_at', ascending: false }),

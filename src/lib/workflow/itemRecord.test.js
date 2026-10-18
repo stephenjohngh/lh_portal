@@ -99,5 +99,11 @@ describe('buildItemRecord — the Word file', () => {
     const w = itemRecordModel({ ...base, events: withAssign.slice(0, 3), item: { step_key: 'checking', assigned_to: 'u1', created_at: '2026-10-01T09:00:00Z' } });
     expect(w.now.with).toBe('Pat Smith');
   });
-});
 
+  it('a field change reads as one, never as an assignment', () => {
+    const r = itemRecordModel({ workflow: { name: 'W' }, steps: [{ key: 'open', name: 'Open', kind: 'start' }],
+      item: { step_key: 'open', created_at: '2026-10-01T09:00:00Z' }, subject: { title: 'X', facts: [] }, todayISO: '2026-10-02',
+      events: [{ id: 1, kind: 'fields', from_key: 'open', to_key: 'open', note: 'Changed: Where', action: null, at: '2026-10-01T10:00:00Z', by: null }] });
+    expect(r.moves[0]).toMatchObject({ kind: 'fields', assigned: 'Fields changed', note: 'Changed: Where' });
+  });
+});

@@ -77,7 +77,7 @@ export async function buildItemRecord(model, { generatedAt, generatedBy, filenam
         ] }),
         ...model.moves.map((m, i) => new TableRow({ cantSplit: true, children: [
           dCell(m.at, MOVE_COLS[0], { alt: i % 2 === 1 }),
-          dCell(m.kind === 'assign' ? m.assigned
+          dCell(m.kind !== 'move' ? m.assigned
             : [m.from ? `${m.from} → ${m.to}` : `Started: ${m.to}`, m.waited ? `after ${m.waited} in ${m.from}` : ''].filter(Boolean).join('\n'),
             MOVE_COLS[1], { alt: i % 2 === 1 }),
           dCell(m.by, MOVE_COLS[2], { alt: i % 2 === 1 }),

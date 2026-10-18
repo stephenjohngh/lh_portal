@@ -8,6 +8,7 @@
 // decision (CLAUDE.md, standing decisions).
 
 import { actionsFor } from './workflowActions.js';
+import { contractProblem } from './workflowContracts.js';
 
 /** @typedef {'start'|'open'|'done'|'declined'} StepKind */
 /** @typedef {{ key: string, name: string, public_name?: string|null, kind: StepKind, position?: number,
@@ -25,7 +26,8 @@ export const STEP_KINDS = Object.freeze([
 export const STEP_KIND_LABEL = Object.fromEntries(STEP_KINDS.map((k) => [k.value, k.label]));
 
 /**
- * The kinds of field a Cases process can have (migration 253). The last three
+ * The kinds of field a process can have (migration 253; any process since
+ * 254 — the values are the item's). The last three
  * LINK to something in the portal: a component, a space, a portal user.
  * ⛔ A person is a PORTAL USER (staff, a contractor account) — never a
  * resident; the resident-data rule.
@@ -82,14 +84,16 @@ export function moveRefusal(m, { userId = null, assignedTo = null, lastMoverId =
 }
 
 /**
- * What a history row records (migration 250): a MOVE between steps, or an
- * ASSIGN — who the item is with changed, the step did not. ⚠ Anything that
+ * What a history row records (migration 250): a MOVE between steps, an
+ * ASSIGN — who the item is with changed, the step did not — or (254) FIELDS,
+ * its field values changed, the note naming which. ⚠ Anything that
  * counts moves (the diagram's figures, how long an item sat in a step) reads
  * moves only; a row from before 250 has no kind and is a move.
  */
 export const EVENT_KINDS = Object.freeze([
   { value: 'move',   label: 'Moved' },
   { value: 'assign', label: 'Assigned' },
+  { value: 'fields', label: 'Fields changed' },
 ]);
 /** @param {{ kind?: string|null }} e */
 export const isMoveEvent = (e) => (e.kind ?? 'move') === 'move';
@@ -140,6 +144,9 @@ export function workflowProblem({ steps, moves, appId, fields = [] }) {
     if (!String(f.label ?? '').trim()) return `Every field needs a label ("${f.key}" has none).`;
     if (!FIELD_TYPES.some((t) => t.value === f.type)) return `The field "${f.label}" has a type that is not offered.`;
     if (f.type === 'choice' && !(f.options ?? []).some((o) => String(o).trim())) return `The choice field "${f.label}" needs at least one choice.`;
+    if (f.required_on_create && appId !== 'cases') {
+      return `The field "${f.label}": only a Cases process is opened with a form, so only its fields can be needed to open one.`;
+    }
   }
   const byKey = new Map(steps.map((s) => [s.key, s]));
   const pairs = new Set();
@@ -165,6 +172,12 @@ export function workflowProblem({ steps, moves, appId, fields = [] }) {
       }
     }
   }
+  // A move out of a finished step is a reopen (252) — but not out of a step
+  // reached by an action, which cannot be undone (254).
+  const outOfAction = moves.find((m) => moves.some((a) => a.to_key === m.from_key && a.action));
+  if (outOfAction) {
+    return `Step "${byKey.get(outOfAction.from_key)?.name}" is reached by a move that runs an action, which cannot be undone, so no move may lead out of it.`;
+  }
   // Every step reachable from the start.
   const reached = new Set([starts[0].key]);
   for (let grew = true; grew;) {
@@ -175,7 +188,8 @@ export function workflowProblem({ steps, moves, appId, fields = [] }) {
   }
   const lost = steps.find((s) => !reached.has(s.key));
   if (lost) return `Step "${lost.key}" cannot be reached from the start.`;
-  return null;
+  // What the owning app needs the workflow to keep (254).
+  return contractProblem(appId, { steps, moves });
 }
 
 /**
@@ -260,7 +274,13 @@ export function workflowDiff(before, after) {
   for (const [k, m] of aMoves) {
     const was = bMoves.get(k);
     const where = `${name(m.from_key)} → ${name(m.to_key)}`;
-    if (!was) { out.push(`Move added: “${m.label}” (${where}).`); continue; }
+    if (!was) {
+      const extras = [m.note_required && 'needs a note', m.admin_only && 'admin only', (m.who ?? 'anyone') === 'assignee' && 'only the person it is with',
+        m.four_eyes && 'four-eyes', m.action && `action ${m.action}`,
+        (m.required_fields ?? []).length && `needs ${(m.required_fields ?? []).map((/** @type {string} */ k) => after.fields?.find((/** @type {any} */ f) => f.key === k)?.label ?? k).join(', ')} filled`].filter(Boolean);
+      out.push(`Move added: “${m.label}” (${where})${extras.length ? ` — ${extras.join('; ')}` : ''}.`);
+      continue;
+    }
     if (was.label !== m.label) out.push(`Move ${where}: button “${was.label}” → “${m.label}”.`);
     if (was.note_required !== m.note_required) out.push(`Move “${m.label}”: ${m.note_required ? 'now needs a note' : 'no longer needs a note'}.`);
     if (was.admin_only !== m.admin_only) out.push(`Move “${m.label}”: ${m.admin_only ? 'now admin only' : 'no longer admin only'}.`);
@@ -286,7 +306,7 @@ export function workflowDiff(before, after) {
     if (!!was.required_on_create !== !!f.required_on_create) out.push(`Field “${f.label}”: ${f.required_on_create ? 'now needed to open a case' : 'no longer needed to open a case'}.`);
     if ((was.help ?? null) !== (f.help ?? null)) out.push(`Field “${f.label}”: help text changed.`);
   }
-  for (const [k, f] of bFields) if (!aFields.has(k)) out.push(`Field removed: “${f.label}” (what cases hold in it is kept).`);
+  for (const [k, f] of bFields) if (!aFields.has(k)) out.push(`Field removed: “${f.label}” (what items hold in it is kept).`);
   for (const [k, m] of aMoves) {
     const was = bMoves.get(k);
     if (!was) continue;

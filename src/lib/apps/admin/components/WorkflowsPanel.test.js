@@ -8,12 +8,13 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/svelte';
 import { DEFAULT_APPLICATION_WORKFLOW as WF } from '#lib/apps/parking/utils/applicationWorkflow.js';
 
-const h = vi.hoisted(() => ({ saved: /** @type {any[]} */ ([]), marked: false, changes: /** @type {any[]} */ ([]), app: 'parking' }));
+const h = vi.hoisted(() => ({ saved: /** @type {any[]} */ ([]), marked: false, changes: /** @type {any[]} */ ([]), app: 'parking', renamed: false }));
 vi.mock('#lib/workflow/workflowApi.js', () => ({
   listWorkflows: async () => [{ id: 'w1', key: WF.key, name: WF.name, app_id: h.app, description: WF.description }],
   loadWorkflow: async () => ({ fields: [], workflow: { id: 'w1', key: WF.key, name: WF.name, app_id: h.app, description: WF.description,
+      updated_at: '2026-10-18T08:00:00Z',
       review_required: h.marked, review_reason: h.marked ? 'Statutory — BSA s.93' : null },
-    steps: WF.steps.map((s, i) => ({ ...s, position: i + 1 })), moves: WF.moves.map((m) => ({ note_required: false, admin_only: false, action: null, ...m, ...(h.app === 'cases' ? { action: null } : {}) })) }),
+    steps: WF.steps.map((s, i) => ({ ...s, position: i + 1, ...(h.renamed && i === 0 ? { name: 'Arrived' } : {}) })), moves: WF.moves.map((m) => ({ note_required: false, admin_only: false, action: null, ...m, ...(h.app !== 'parking' ? { action: null } : {}) })) }),
   saveWorkflow: async (w) => { h.saved.push(w); return 'w1'; },
   listChanges: async () => h.changes,
   listEvents: async () => ({ items: [{ id: 'i1', step_key: 'checking', due_on: '2000-01-01' }], events: [] }),
@@ -29,7 +30,7 @@ vi.mock('#lib/workflow/nonWorkingDays.js', () => ({
 }));
 
 const WorkflowsPanel = (await import('./WorkflowsPanel.svelte')).default;
-beforeEach(() => { cleanup(); h.saved.length = 0; h.marked = false; h.changes = []; h.app = 'parking'; });
+beforeEach(() => { cleanup(); h.saved.length = 0; h.marked = false; h.changes = []; h.app = 'parking'; h.renamed = false; });
 
 async function opened() {
   render(WorkflowsPanel);
@@ -121,20 +122,47 @@ describe('Admin → Workflows', () => {
     expect(screen.getByText(/1 in all · 1 open · 1 overdue/)).toBeTruthy();
   });
 
-  it('a Cases process has fields: one added, a move made to need it, both saved; other apps have none', async () => {
+  it('any process has fields: one added and a move made to need it are saved; only Cases asks "needed to open"', async () => {
     await opened();
-    expect(screen.queryByTestId('workflow-fields')).toBeNull();
+    await fireEvent.click(screen.getByRole('button', { name: '+ Add a field' }));
+    await fireEvent.input(screen.getByLabelText('Field label'), { target: { value: 'Checked ID' } });
+    expect(screen.queryByLabelText('Needed to open a case')).toBeNull();           // Parking is not opened with a form
+    const first = WF.moves[0];
+    await fireEvent.click(screen.getByLabelText(`${first.label} needs Checked ID`));
+    expect(screen.queryByTestId('workflow-problem')).toBeNull();
+    await fireEvent.click(screen.getByRole('button', { name: 'Save workflow' }));
+    await waitFor(() => expect(h.saved).toHaveLength(1));
+    expect(h.saved[0].fields).toEqual([expect.objectContaining({ key: 'checked_id', label: 'Checked ID', type: 'text' })]);
+    expect(h.saved[0].moves.find((m) => m.label === first.label).required_fields).toEqual(['checked_id']);
     cleanup();
     h.app = 'cases';
     await opened();
     await fireEvent.click(screen.getByRole('button', { name: '+ Add a field' }));
-    await fireEvent.input(screen.getByLabelText('Field label'), { target: { value: 'Contractor' } });
-    const first = WF.moves[0];
-    await fireEvent.click(screen.getByLabelText(`${first.label} needs Contractor`));
-    expect(screen.queryByTestId('workflow-problem')).toBeNull();
+    expect(screen.getByLabelText('Needed to open a case')).toBeTruthy();
+  });
+
+  it('a save says when the workflow was read, so one over somebody else’s is refused', async () => {
+    await opened();
+    await fireEvent.input(screen.getAllByLabelText('Step name')[0], { target: { value: 'Arrived' } });
     await fireEvent.click(screen.getByRole('button', { name: 'Save workflow' }));
     await waitFor(() => expect(h.saved).toHaveLength(1));
-    expect(h.saved[0].fields).toEqual([expect.objectContaining({ key: 'contractor', label: 'Contractor', type: 'text' })]);
-    expect(h.saved[0].moves.find((m) => m.label === first.label).required_fields).toEqual(['contractor']);
+    expect(h.saved[0].expectedUpdatedAt).toBe('2026-10-18T08:00:00Z');
+  });
+
+  it('a workflow that differs from the shipped one says how, and the shipped steps can be loaded back', async () => {
+    h.renamed = true;
+    await opened();
+    const box = await screen.findByTestId('workflow-shipped');
+    expect(box.textContent).toMatch(/Step “Received” renamed “Arrived”/);
+    await fireEvent.click(screen.getByRole('button', { name: 'Load the shipped steps and moves' }));
+    expect(screen.getAllByLabelText('Step name')[0]).toHaveValue('Received');
+  });
+
+  it('an app with fixed parts says so, and its fixed kinds cannot be changed here', async () => {
+    h.app = 'complaints';
+    await opened();
+    expect(screen.getByTestId('workflow-contract').textContent).toMatch(/complaint statuses/);
+    // The mock's steps are Parking's, which break Complaints' fixed parts: the save says why.
+    expect((await screen.findByTestId('workflow-problem')).textContent).toMatch(/are fixed/);
   });
 });

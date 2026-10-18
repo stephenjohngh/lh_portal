@@ -197,6 +197,8 @@
       workflow={state.workflow}
       steps={state.steps}
       wfMoves={state.moves}
+      fields={state.fields}
+      onFieldsSaved={complaintsStore.reloadItems}
       {assignees}
       {nameById}
       {me}

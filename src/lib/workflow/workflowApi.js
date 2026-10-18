@@ -39,11 +39,13 @@ export function listWorkflows() {
  *           steps: import('./workflowModel.js').Step[], moves: import('./workflowModel.js').Move[],
  *           reviewRequired?: boolean, reviewReason?: string|null,
  *           review?: { reviewedBy: string, reviewedAgainst: string, note?: string|null } | null,
- *           fields?: import('./workflowModel.js').Field[] }} w
- *   fields — a Cases process's fields (migration 253); undefined leaves them as they are
+ *           fields?: import('./workflowModel.js').Field[], expectedUpdatedAt?: string|null }} w
+ *   fields — the process's fields (migration 253); undefined leaves them as they are
+ *   expectedUpdatedAt — the workflow's updated_at when it was read: the save is
+ *     refused if someone else saved since (migration 254); null skips the check
  */
 export function saveWorkflow({ key, name, appId, description = null, steps, moves,
-  reviewRequired = undefined, reviewReason = null, review = null, fields = undefined }) {
+  reviewRequired = undefined, reviewReason = null, review = null, fields = undefined, expectedUpdatedAt = null }) {
   return api.rpc('workflow_save', {
     p_key: key, p_name: name, p_app_id: appId, p_description: description,
     // The review mark (migration 249): undefined keeps it as it is.
@@ -63,7 +65,19 @@ export function saveWorkflow({ key, name, appId, description = null, steps, move
       key: f.key, label: f.label, type: f.type, options: (f.options ?? []).map(String).filter((o) => o.trim()),
       help: f.help || null, required_on_create: !!f.required_on_create, position: i + 1,
     })),
+    p_expected_updated_at: expectedUpdatedAt || null,
   });
+}
+
+/**
+ * Change an item's field values (migration 254): only the fields given, a
+ * null clearing one. The database checks each against its field and keeps the
+ * change in the item's history.
+ * @param {string} itemId @param {Record<string, string|null>} changes
+ * @returns {Promise<{ fields: Record<string, any>, changed: boolean }>}
+ */
+export function setItemFields(itemId, changes) {
+  return api.rpc('workflow_set_fields', { p_item: itemId, p_fields: changes });
 }
 
 /** A workflow's items (each names its subject by id). @param {string} workflowId */

@@ -22,6 +22,7 @@
 		"check:register": "node scripts/check-register-claims.mjs",
 		"test": "vitest run",
 		"test:coverage": "vitest run --coverage",
+		"test:db": "cross-env LH_DB_TESTS=dev vitest run src/lib/workflow/workflowDb.test.js",
 		"db:push:dev": "node scripts/db-push.mjs dev",
 		"db:push:test": "node scripts/db-push.mjs test",
 		"db:push:prod": "node scripts/db-push.mjs prod",

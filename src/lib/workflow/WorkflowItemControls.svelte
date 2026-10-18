@@ -3,29 +3,37 @@
      (2026-10-18 review: three hand-made copies had already drifted).
 
      It shows where the item is (step, deadline), who it is with (and Take it),
-     the moves from its step — each held back with the reason when it cannot be
-     made yet, in the database's own words — the note, the history and the
-     printable record. The app's own details go in the default slot, between
-     where it stands and what can be done next.
+     the process's FIELDS with the item's values (migration 254 — any process
+     may have them), the moves from its step — each held back with the reason
+     when it cannot be made yet, in the database's own words — the note, the
+     history and the printable record. The app's own details go in the default
+     slot, between where it stands and its fields.
 
      The app keeps what is its own:
        · onMove(move, note) / onAssign(userId) do the change through the app's
          store, so the app's side effects (its timeline, a reload) stay there;
          a throw is shown here as the reason.
+       · onFieldsSaved() — re-read after field values change (they are saved
+         here, through workflow_set_fields()).
        · extraRefusal(move) — the app's own reason a move cannot be made yet
          (s.93's for a complaint, unsaved changes for a case), checked first.
        · confirmMove(move) — { title, message, danger } to ask first, or null.
-     The database makes every check again when the move is made. -->
+       · audit — { appId, entityType, entityId } for its audit lines (the
+         reference only — never a name or a value).
+     The database makes every check again when the change is made. -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import Button from '#lib/components/common/Button.svelte';
   import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
+  import FieldInput from './FieldInput.svelte';
   import { movesFrom, moveRefusal, isFinished, isMoveEvent, STEP_KIND_LABEL } from './workflowModel.js';
   import { deadlineBand, deadlineWords, describeDeadline } from './workflowDeadlines.js';
   import { actionLabel } from './workflowActions.js';
   import { itemRecordModel, assignWords } from './itemRecord.js';
-  import { itemHistory } from './workflowApi.js';
+  import { itemHistory, setItemFields } from './workflowApi.js';
+  import { fieldText, fieldChanges, fieldDraft, LINK_TYPES } from './workflowFieldValues.js';
+  import { loadLinkOptions } from './fieldLinks.js';
   import { downloadBlob } from '#lib/utils/download.js';
   import { fmtDateTime, fmtDate, fmtGenerated, today } from '#lib/utils/dates.js';
   import { errMessage } from '#lib/utils/errors.js';
@@ -35,25 +43,25 @@
   /** @type {any} */ export let workflow = null;
   /** @type {any[]} */ export let steps = [];
   /** @type {any[]} */ export let moves = [];
-  /** The subject's reference, for the confirmation line. */
+  /** The process's fields (workflow_fields). @type {any[]} */ export let fields = [];
+  /** The subject's reference, for the confirmation line and the audit. */
   export let reference = '';
   export let isAdmin = false;
   export let canEdit = false;
   /** @type {string|null} */ export let me = null;
   /** @type {Array<{ id: string, full_name: string|null }>} */ export let assignees = [];
   /** @type {Record<string, string>} */ export let nameById = {};
-  /** A Cases process's fields and the case's saved values (moves may need them). */
-  /** @type {any[]} */ export let fields = [];
-  /** @type {Record<string, any>} */ export let values = {};
   /** @type {(move: any, note: string) => Promise<any>} */ export let onMove;
   /** @type {(userId: string|null) => Promise<any>} */ export let onAssign;
+  /** @type {() => Promise<any>} */ export let onFieldsSaved = async () => {};
   /** @type {(move: any) => string|null} */ export let extraRefusal = () => null;
   /** @type {(move: any) => ({ title: string, message: string, danger?: boolean } | null)} */ export let confirmMove = () => null;
+  /** @type {{ appId: string, entityType: string, entityId: string } | null} */ export let audit = null;
   export let showHistory = true;
   /**
    * The printable record, or null for none: what the subject is (title, facts,
-   * sections), the file's name, and the audit line (its reference only).
-   * @type {null | { subject: () => any, filenameStem: string, audit: { appId: string, entityType: string, entityId: string } }}
+   * sections) and the file's name. The fields are added to its facts here.
+   * @type {null | { subject: () => any, filenameStem: string }}
    */
   export let record = null;
   /** Words for "no move from here". */
@@ -69,15 +77,34 @@
   let history = [];
   let assignNonce = 0;                               // redraws the choice when a change is refused
 
-  // History is read per item and re-read after each change (keyed on the id, never the object).
-  let historyFor = '';
-  $: if ((item?.id ?? '') !== historyFor) { historyFor = item?.id ?? ''; note = ''; done = ''; error = ''; readHistory(); }
+  // History and the field draft are read per item (keyed on the id, never the object).
+  let itemFor = '';
+  /** @type {Record<string, any>} */
+  let draft = {};
+  $: if ((item?.id ?? '') !== itemFor) {
+    itemFor = item?.id ?? '';
+    note = ''; done = ''; error = '';
+    draft = fieldDraft(fields, item?.fields ?? {});
+    readHistory();
+  }
   async function readHistory() {
     const id = item?.id;
     history = [];
     if (!id) return;
     try { history = await itemHistory(id); }
     catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read its history.'); }
+  }
+
+  // What the link fields offer, read once per process that has one.
+  /** @type {any} */
+  let links = { component: [], space: [], person: [] };
+  let linksFor = '';
+  $: needsLinks = fields.some((f) => LINK_TYPES.includes(f.type));
+  $: if (needsLinks && workflow && linksFor !== workflow.id) { linksFor = workflow.id; readLinks(); }
+  async function readLinks() {
+    try {
+      links = await loadLinkOptions(fields, Object.entries(nameById).map(([id, full_name]) => ({ id, full_name })));
+    } catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read what the link fields offer.'); }
   }
 
   $: stepByKey = new Map(steps.map((st) => [st.key, st]));
@@ -87,9 +114,12 @@
   $: lastMoverId = [...history].reverse().find(isMoveEvent)?.by ?? null;
   $: withName = (/** @type {string|null|undefined} */ uid) => (uid ? nameById[uid] || 'A user no longer listed' : '');
   $: due = item?.due_on && !finished ? item.due_on : null;
-  /** Why a move cannot be made now: the app's reason, the workflow's conditions, then the note. */
+  $: changes = fieldChanges(fields, draft, item?.fields ?? {});
+  $: fieldsDirty = Object.keys(changes).length > 0;
+  /** Why a move cannot be made now: the app's reason, unsaved fields, the workflow's conditions, then the note. */
   $: whyNot = (/** @type {any} */ m) => extraRefusal(m)
-    || moveRefusal(m, { userId: me, assignedTo: item?.assigned_to ?? null, lastMoverId, fields, values })
+    || (fieldsDirty ? 'Save the fields first.' : null)
+    || moveRefusal(m, { userId: me, assignedTo: item?.assigned_to ?? null, lastMoverId, fields, values: item?.fields ?? {} })
     || (m.note_required && !note.trim() ? 'Add a note to say why.' : null);
   /** Each reason once, with the buttons it holds back — several moves can be held for different reasons. */
   $: reasons = (() => {
@@ -133,26 +163,53 @@
     } catch (/** @type {any} */ err) { error = errMessage(err, 'That could not be done.'); assignNonce += 1; }
     finally { busy = ''; }
   }
+  async function saveFields() {
+    const it = item;                                 // captured before the await
+    const ref = reference;
+    const send = changes;
+    const a = audit;
+    if (!it) return;
+    busy = 'fields'; error = ''; done = '';
+    try {
+      const result = await setItemFields(it.id, send);
+      draft = fieldDraft(fields, result?.fields ?? {});
+      done = `${ref}: saved.`;
+      // The labels changed, never the values (they may name a person or say more than the log should).
+      if (a) logAudit('update', a.entityType, a.entityId, `${ref} — fields`, { appId: a.appId, eventCategory: a.appId,
+        afterData: { fields: Object.keys(send).map((k) => fields.find((f) => f.key === k)?.label ?? k) } });
+      dispatch('changed', { fields: true });
+      await Promise.all([onFieldsSaved(), readHistory()]);
+    } catch (/** @type {any} */ err) { error = errMessage(err, 'The fields could not be saved.'); }
+    finally { busy = ''; }
+  }
 
   async function downloadRecord() {
     const it = item;                                 // captured before the await
     const rec = record;
+    const a = audit;
     if (!it || !workflow || !rec) return;
     busy = 'record'; error = '';
     try {
       const events = await itemHistory(it.id);
-      const model = itemRecordModel({ workflow, steps, item: it, events, people: nameById, todayISO: today(), subject: rec.subject() });
+      const subject = rec.subject();
+      const withFields = { ...subject, facts: [...(subject.facts ?? []),
+        ...fields.map((f) => /** @type {[string, string]} */ ([f.label, fieldText(f, it.fields?.[f.key], links)]))] };
+      const model = itemRecordModel({ workflow, steps, item: it, events, people: nameById, todayISO: today(), subject: withFields });
       const { buildItemRecord } = await import('#lib/docx/itemRecordDocx.js');
       const { bytes, filename } = await buildItemRecord(model, {
         generatedAt: fmtGenerated(), generatedBy: withName(me) || 'a signed-in user', filenameStem: rec.filenameStem,
       });
       downloadBlob(new Blob([/** @type {BlobPart} */ (bytes)], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), filename);
       // The reference only — the file may hold personal details, the log does not.
-      logAudit('export', rec.audit.entityType, rec.audit.entityId, reference,
-        { appId: rec.audit.appId, eventCategory: rec.audit.appId, afterData: { record: reference } });
+      if (a) logAudit('export', a.entityType, a.entityId, reference, { appId: a.appId, eventCategory: a.appId, afterData: { record: reference } });
     } catch (/** @type {any} */ err) { error = errMessage(err, 'Could not make the record.'); }
     finally { busy = ''; }
   }
+
+  /** A history row in words. @param {any} e */
+  const eventWords = (e) => (isMoveEvent(e)
+    ? `${e.from_key ? `${stepByKey.get(e.from_key)?.name ?? e.from_key} → ` : ''}${stepByKey.get(e.to_key)?.name ?? e.to_key}`
+    : e.kind === 'fields' ? 'Fields changed' : assignWords(e.assigned_to, nameById));
 </script>
 
 <div class="space-y-3 text-sm" data-testid="wf-item">
@@ -201,6 +258,22 @@
 
   <slot />
 
+  {#if item && fields.length}
+    <div class="space-y-2 border-t border-slate-700 pt-3" data-testid="wf-fields">
+      {#if canEdit}
+        {#each fields as f (f.key)}<FieldInput field={f} bind:value={draft[f.key]} {links} />{/each}
+        <div class="flex gap-2">
+          <Button size="small" variant="primary" disabled={!fieldsDirty || !!busy} loading={busy === 'fields'} on:click={saveFields}>Save fields</Button>
+          <Button size="small" variant="secondary" disabled={!fieldsDirty || !!busy} on:click={() => (draft = fieldDraft(fields, item?.fields ?? {}))}>Undo</Button>
+        </div>
+      {:else}
+        <dl class="grid grid-cols-[10rem_1fr] gap-x-2 gap-y-1">
+          {#each fields as f (f.key)}<dt class="text-slate-400">{f.label}</dt><dd class="text-slate-100">{fieldText(f, item.fields?.[f.key], links)}</dd>{/each}
+        </dl>
+      {/if}
+    </div>
+  {/if}
+
   {#if item && offered.length}
     <div class="space-y-2 border-t border-slate-700 pt-3" data-testid="wf-moves">
       <label class="block">
@@ -229,8 +302,7 @@
       <p class="text-xs text-slate-400 mb-1">History</p>
       <ul class="space-y-1 text-xs" data-testid="wf-history">
         {#each history as e (e.id)}
-          <li><span class="text-slate-400">{fmtDateTime(e.at)}</span> ·
-            {#if isMoveEvent(e)}{e.from_key ? `${stepByKey.get(e.from_key)?.name ?? e.from_key} → ` : ''}{stepByKey.get(e.to_key)?.name ?? e.to_key}{:else}{assignWords(e.assigned_to, nameById)}{/if}
+          <li><span class="text-slate-400">{fmtDateTime(e.at)}</span> · {eventWords(e)}
             {#if e.by}<span class="text-slate-500"> · {withName(e.by)}</span>{/if}
             {#if e.note}<span class="block text-slate-300 whitespace-pre-line">{e.note}</span>{/if}</li>
         {/each}

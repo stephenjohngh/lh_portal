@@ -35,6 +35,7 @@
   /** @type {any} */ export let workflow = null;
   /** @type {any[]} */ export let steps = [];
   /** @type {any[]} */ export let wfMoves = [];
+  /** The workflow's fields (migration 254 — any process may have them). @type {any[]} */ export let fields = [];
   /** Who it may be given to, everyone's names by id, and the viewer. */
   /** @type {Array<{ id: string, full_name: string|null }>} */ export let assignees = [];
   /** @type {Record<string, string>} */ export let nameById = {};
@@ -42,6 +43,7 @@
   /** The change itself, through the store (its timeline entry, its reload). */
   /** @type {(move: any, note: string) => Promise<any>} */ export let onMove;
   /** @type {(userId: string|null) => Promise<any>} */ export let onAssign;
+  /** @type {() => Promise<any>} */ export let onFieldsSaved = async () => {};
 
   const dispatch = createEventDispatcher();
 
@@ -75,9 +77,9 @@
         : 'This is recorded on the timeline and cannot be undone, only moved on from.',
     danger: m.to_key === STATUS.WITHDRAWN || m.to_key === STATUS.ESCALATED,
   });
+  $: audit = complaint ? { appId: 'complaints', entityType: 'complaint', entityId: complaint.id } : null;
   $: record = complaint ? {
     filenameStem: `${complaint.reference}_${today()}`,
-    audit: { appId: 'complaints', entityType: 'complaint', entityId: complaint.id },
     subject: () => ({
       title: `Building safety complaint ${complaint.reference}`,
       facts: [['Reference', complaint.reference], ['Received', fmtDateTime(complaint.received_at)],
@@ -128,7 +130,7 @@
     </div>
 
     <WorkflowItemControls {item} {workflow} {steps} moves={wfMoves} reference={complaint.reference} {isAdmin} {canEdit} {me}
-      {assignees} {nameById} {onMove} {onAssign} {extraRefusal} {confirmMove} {record} showHistory={false}
+      {fields} {assignees} {nameById} {onMove} {onAssign} {onFieldsSaved} {extraRefusal} {confirmMove} {audit} {record} showHistory={false}
       finishedText="Nothing further happens to a complaint in this state.">
     <div class="p-3 rounded border border-slate-700 bg-slate-800/40">
       <p class="text-[11px] text-slate-500 mb-1">What was said</p>

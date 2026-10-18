@@ -1,0 +1,161 @@
+// The workflow manager's DATABASE half, tested (2026-10-18 review). Until now
+// workflow_save() and workflow_move() — the code every process depends on —
+// had only been rehearsed by hand in rolled-back transactions, and nothing
+// held them to the browser's copy of the rules.
+//
+// ⛔ Runs only when asked, only against DEV, and ALWAYS rolls back:
+//     npm run test:db
+// ⚠ It expects the Complaints workflow to be set up on dev (an admin opening
+// Complaints does it). It reads DEV_DB_URL from .env and refuses a URL that is PROD_DB_URL. Every
+// statement runs inside one transaction ended by ROLLBACK, so nothing it does
+// is kept. With LH_DB_TEST_MIGRATION=supabase/migrations/NNN_x.sql it runs that
+// migration first, inside the same transaction — a rehearsal before applying.
+//
+// It sends the SHARED list of workflows that must be refused
+// (workflowSaveCases.test-helper.js) to workflow_save(), then plays through
+// the runtime rules: opening a case, the fields a move needs, the history of a
+// field change, a save over somebody else's, a deleted subject, a complaint's
+// clock from its receipt, a bank holiday re-dating a deadline.
+
+import { describe, it, expect, beforeAll } from 'vitest';
+import { readFileSync, existsSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { SAVE_CASES } from './workflowSaveCases.test-helper.js';
+
+const RUN = process.env.LH_DB_TESTS === 'dev';
+const PSQL = process.platform === 'win32' ? 'C:/Program Files/PostgreSQL/18/bin/psql.exe' : 'psql';
+
+/** @returns {Record<string, string>} */
+function readEnv() {
+  if (!existsSync('.env')) return {};
+  return Object.fromEntries(readFileSync('.env', 'utf8').split(/\r?\n/)
+    .map((l) => /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(l))
+    .filter(Boolean).map((m) => [/** @type {any} */ (m)[1], /** @type {any} */ (m)[2].replace(/^["']|["']$/g, '')]));
+}
+
+const lit = (/** @type {any} */ v) => `'${JSON.stringify(v).replace(/'/g, "''")}'::jsonb`;
+const txt = (/** @type {string} */ v) => `'${v.replace(/'/g, "''")}'`;
+
+/** One check: run `body` (plpgsql), expect an error matching `pattern`, or none when pattern is null. */
+function check(/** @type {string} */ name, /** @type {string} */ body, /** @type {string|null} */ pattern) {
+  const n = txt(name);
+  return `do $t$ begin
+  begin
+    ${body}
+    raise notice 'RESULT|%|%', ${n}, ${pattern ? `'FAIL|it was accepted'` : `'OK|'`};
+  exception when others then
+    if sqlerrm like 'RESULT|%' then raise; end if;
+    raise notice 'RESULT|%|%', ${n}, case when ${pattern ? `sqlerrm ~ ${txt(pattern)}` : 'false'} then 'OK|' else 'FAIL|' || sqlerrm end;
+  end;
+end $t$;`;
+}
+
+/** A save case as a call to workflow_save(). */
+function saveCall(/** @type {any} */ c, /** @type {number} */ i) {
+  const steps = c.steps.map((/** @type {any} */ s, /** @type {number} */ n) => ({ ...s, position: n + 1 }));
+  const moves = c.moves.map((/** @type {any} */ m, /** @type {number} */ n) => ({ ...m, position: n + 1 }));
+  return `perform workflow_save('dbtest_${i}', 'DB test ${i}', ${txt(c.appId)}, null, ${lit(steps)}, ${lit(moves)}, null, null, null, ${lit(c.fields ?? [])}, null);`;
+}
+
+/** The runtime checks, in order; each sees what the ones before it did. */
+const RUNTIME = [
+  ['set up a Cases process with a needed field and a field a move needs', `
+    perform workflow_save('dbtest_case', 'DB test case', 'cases', null,
+      '[{"key":"open","name":"Open","kind":"start","position":1,"deadline_days":5,"deadline_basis":"working","deadline_from":"started"},{"key":"done","name":"Done","kind":"done","position":2}]',
+      '[{"from_key":"open","to_key":"done","label":"Finish","required_fields":["ok"],"position":1}]',
+      null, null, null,
+      '[{"key":"contractor","label":"Contractor","type":"text","required_on_create":true,"position":1},{"key":"ok","label":"Checked","type":"yes_no","position":2}]', null);`, null],
+  ['a case is not opened without a field needed to open it', `
+    perform case_open((select id from workflows where key = 'dbtest_case'), 'T', null, '{}');`, 'Fill in "Contractor" to open a case'],
+  ['a case opens with it, its values on its item', `
+    perform case_open((select id from workflows where key = 'dbtest_case'), 'T', null, '{"contractor":"ACME"}');
+    if (select i.fields->>'contractor' from workflow_items i join cases c on c.id = i.subject_id where c.title = 'T') <> 'ACME'
+      then raise exception 'the value did not reach the item'; end if;`, null],
+  ['a move needing a field is refused until it is filled', `
+    perform workflow_move((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'T'), 'done', null);`,
+    'Fill in "Checked" first'],
+  ['a value is checked against its field', `
+    perform workflow_set_fields((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'T'), '{"ok":"Maybe"}');`,
+    '"Checked" must be Yes or No'],
+  ['a field the process has not got is refused', `
+    perform workflow_set_fields((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'T'), '{"nope":"x"}');`,
+    'There is no field "nope"'],
+  ['a field change is kept in the history, and the move then goes', `
+    perform workflow_set_fields((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'T'), '{"ok":"Yes"}');
+    if not exists (select 1 from workflow_events e join workflow_items i on i.id = e.item_id join cases c on c.id = i.subject_id
+                    where c.title = 'T' and e.kind = 'fields' and e.note = 'Changed: Checked') then raise exception 'no history row'; end if;
+    perform workflow_move((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'T'), 'done', null);`, null],
+  ['a save over somebody else’s is refused', `
+    perform workflow_save('dbtest_case', 'DB test case', 'cases', null,
+      '[{"key":"open","name":"Open","kind":"start","position":1},{"key":"done","name":"Done","kind":"done","position":2}]',
+      '[{"from_key":"open","to_key":"done","label":"Finish","position":1}]', null, null, null, null, '2000-01-01T00:00:00Z');`,
+    'Someone else changed this workflow'],
+  ['a deleted case takes its item with it', `
+    delete from cases where title = 'T';
+    if exists (select 1 from workflow_items i where i.workflow_id = (select id from workflows where key = 'dbtest_case')) then
+      raise exception 'the item was left behind'; end if;`, null],
+  ['a complaint’s clock runs from when it was received', `
+    insert into complaint_cases (subject, description, received_at, created_by, updated_by)
+         values ('DB test', 'x', now() - interval '3 days', auth.uid(), auth.uid());
+    if (select i.started_at::date from workflow_items i join complaint_cases c on c.id = i.subject_id where c.subject = 'DB test')
+       <> (now() - interval '3 days')::date then raise exception 'the clock did not start at receipt'; end if;`, null],
+  ['a complaint cannot have been received in the future', `
+    insert into complaint_cases (subject, description, received_at, created_by, updated_by)
+         values ('DB test future', 'x', now() + interval '2 days', auth.uid(), auth.uid());`, 'cannot have been received in the future'],
+  ['a complaint moves through the app’s hook, and its status follows', `
+    perform workflow_move((select i.id from workflow_items i join complaint_cases c on c.id = i.subject_id where c.subject = 'DB test'), 'acknowledged', null);
+    if (select status from complaint_cases where subject = 'DB test') <> 'acknowledged' then raise exception 'the status did not follow'; end if;`, null],
+  ['a bank holiday added re-dates a deadline it falls within', `
+    perform case_open((select id from workflows where key = 'dbtest_case'), 'U', null, '{"contractor":"ACME"}');
+    declare d0 date; d1 date; begin
+      select i.due_on into d0 from workflow_items i join cases c on c.id = i.subject_id where c.title = 'U';
+      insert into non_working_days (day, name) select d, 'DB test' from generate_series(current_date + 1, d0, '1 day') d
+        where extract(isodow from d) < 6 and not exists (select 1 from non_working_days w where w.day = d) limit 1;
+      select i.due_on into d1 from workflow_items i join cases c on c.id = i.subject_id where c.title = 'U';
+      if d1 <= d0 then raise exception 'not re-dated (% then %)', d0, d1; end if;
+    end;`, null],
+];
+
+describe.skipIf(!RUN)('workflow manager — the database (dev, rolled back)', () => {
+  /** @type {Map<string, string>} */
+  const results = new Map();
+  let output = '';
+
+  beforeAll(() => {
+    const env = { ...readEnv(), ...process.env };
+    const url = env.DEV_DB_URL;
+    if (!url) throw new Error('DEV_DB_URL is not set in .env');
+    if (env.PROD_DB_URL && url === env.PROD_DB_URL) throw new Error('DEV_DB_URL is the production database — refusing');
+    let migration = '';
+    if (env.LH_DB_TEST_MIGRATION) {
+      migration = readFileSync(env.LH_DB_TEST_MIGRATION, 'utf8').replace(/^\s*begin\s*;\s*$/gim, '').replace(/^\s*commit\s*;\s*$/gim, '');
+    }
+    const sql = [
+      'begin;',
+      migration,
+      // Act as the first administrator (auth.uid() reads the request's claims).
+      `select set_config('request.jwt.claims', json_build_object('sub', (select id from profiles where is_admin order by created_at limit 1), 'role', 'authenticated')::text, true);`,
+      `select set_config('request.jwt.claim.sub', (select id::text from profiles where is_admin order by created_at limit 1), true);`,
+      ...SAVE_CASES.map((c, i) => check(`save: ${c.name}`, saveCall(c, i), c.expect ? c.expect.source : null)),
+      ...RUNTIME.map(([name, body, pattern]) => check(`run: ${name}`, /** @type {string} */ (body), pattern)),
+      // Someone with no grant may not change an item's fields.
+      `select set_config('request.jwt.claims', json_build_object('sub', (select p.id from profiles p where not p.is_admin and not exists (select 1 from app_permissions a where a.user_id = p.id and a.app_id = 'cases') limit 1), 'role', 'authenticated')::text, true);`,
+      `select set_config('request.jwt.claim.sub', (select p.id::text from profiles p where not p.is_admin and not exists (select 1 from app_permissions a where a.user_id = p.id and a.app_id = 'cases') limit 1), true);`,
+      check('run: someone without the grant cannot change a field',
+        `perform workflow_set_fields((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'U'), '{"ok":"No"}');`,
+        'You cannot change this'),
+      'rollback;',
+    ].join('\n');
+    const r = spawnSync(PSQL, [url, '-X', '-q', '-v', 'ON_ERROR_STOP=1'], { input: sql, encoding: 'utf8', maxBuffer: 50e6 });
+    output = `${r.stdout ?? ''}\n${r.stderr ?? ''}`;
+    for (const m of output.matchAll(/RESULT\|([^|]*)\|(OK|FAIL)\|(.*)/g)) results.set(m[1], m[2] === 'OK' ? 'OK' : m[3]);
+    if (r.status !== 0 && !results.size) throw new Error(`psql failed:\n${output.slice(0, 4000)}`);
+  }, 120000);
+
+  const names = [...SAVE_CASES.map((c) => `save: ${c.name}`), ...RUNTIME.map(([n]) => `run: ${n}`), 'run: someone without the grant cannot change a field'];
+  for (const name of names) {
+    it(name, () => {
+      expect(results.get(name), output.slice(-3000)).toBe('OK');
+    });
+  }
+});

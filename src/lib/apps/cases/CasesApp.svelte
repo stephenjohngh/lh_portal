@@ -14,14 +14,14 @@
   import Button from '#lib/components/common/Button.svelte';
   import Modal from '#lib/components/common/Modal.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
-  import FieldInput from './components/FieldInput.svelte';
+  import FieldInput from '#lib/workflow/FieldInput.svelte';
   import CasePanel from './components/CasePanel.svelte';
   import { casesStore } from './stores/casesStore.js';
-  import { linkOptions, missingToOpen, fieldsForSave, LINK_TYPES } from './utils/caseFields.js';
+  import { missingToOpen, fieldChanges, LINK_TYPES } from '#lib/workflow/workflowFieldValues.js';
+  import { loadLinkOptions } from '#lib/workflow/fieldLinks.js';
   import { permissions } from '#lib/stores/permissions.js';
   import { auth } from '#lib/stores/auth.js';
   import { profiles, profilesStore } from '#lib/stores/profiles.js';
-  import { api } from '#lib/utils/api.js';
   import { isFinished } from '#lib/workflow/workflowModel.js';
   import { deadlineBand, deadlineWords } from '#lib/workflow/workflowDeadlines.js';
   import { matchesSearch } from '#lib/utils/textSearch.js';
@@ -49,21 +49,12 @@
     } catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read the cases.'); }
   };
 
-  // What the link fields offer — read once per process that has one.
+  // What the link fields offer, for the Open a case form — read once per process that has one.
   $: needsLinks = s.fields.some((f) => LINK_TYPES.includes(f.type));
   $: if (ready && s.workflow && needsLinks && linksFor !== s.workflow.id) { linksFor = s.workflow.id; readLinks(); }
-  $: if (ready && s.workflow && !needsLinks) links = { ...links, person: linkOptions({ people: $profiles.list }).person };
   async function readLinks() {
-    try {
-      const want = new Set(s.fields.map((f) => f.type));
-      const [components, spaces, floors, types] = await Promise.all([
-        want.has('component') ? api.getAll('components', { select: 'id, label, asset_id, type_code, floor_id' }) : [],
-        want.has('space') ? api.getAll('spaces', { select: 'id, label, name, kind, assigned_id, floor_id' }) : [],
-        want.has('component') || want.has('space') ? api.get('floors', { select: 'id, short_name' }) : [],
-        want.has('component') ? api.getAll('component_types', { select: 'id, code, initial' }) : [],
-      ]);
-      links = linkOptions({ components, spaces, floors, types, people: $profiles.list });
-    } catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read what the link fields offer.'); }
+    try { links = await loadLinkOptions(s.fields, $profiles.list); }
+    catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read what the link fields offer.'); }
   }
 
   async function choose(/** @type {string} */ key) {
@@ -108,7 +99,7 @@
     if (newBlocked) return;
     creating = true; newError = '';
     try {
-      const row = await casesStore.create({ title: newTitle, description: newDescription, fields: fieldsForSave(s.fields, newValues) });
+      const row = await casesStore.create({ title: newTitle, description: newDescription, fields: fieldChanges(s.fields, newValues, {}) });
       showNew = false;
       selectedId = row.id;
     } catch (/** @type {any} */ err) { newError = errMessage(err, 'The case could not be opened.'); }
@@ -175,7 +166,7 @@
         </div>
         {#if selected}
           <CasePanel c={selected} item={itemFor(selected.id)} workflow={s.workflow} steps={s.steps} moves={s.moves} fields={s.fields}
-            {links} {assignees} {nameById} {me} isAdmin={$permissions.isAdmin} {canEdit} on:closed={() => (selectedId = null)} />
+            {assignees} {nameById} {me} isAdmin={$permissions.isAdmin} {canEdit} on:closed={() => (selectedId = null)} />
         {/if}
       </div>
     {/if}

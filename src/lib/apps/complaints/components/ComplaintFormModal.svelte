@@ -22,6 +22,7 @@
   import FormTextarea from '#lib/components/common/FormTextarea.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import { CATEGORIES, CHANNELS, COMPLAINANT_TYPES, asOptions } from '../utils/complaintOptions.js';
+  import { toDateTimeLocal } from '#lib/utils/dates.js';
 
   export let show = false;
 
@@ -37,6 +38,10 @@
   let entitlementBasis = '';
   let dwellingRef = '';
   let scopeRationale = '';
+  // When it was RECEIVED (migration 254): the acknowledge and respond clocks run
+  // from it, so a letter logged days after it arrived keeps its real deadline.
+  let receivedLocal = '';
+  let nowLocal = '';
 
   let saving = false;
   let error = '';
@@ -50,6 +55,8 @@
       subject = ''; description = ''; category = 'fire_safety'; channel = 'email';
       complainantName = ''; complainantContact = ''; complainantType = 'resident';
       entitlementBasis = ''; dwellingRef = ''; scopeRationale = '';
+      nowLocal = toDateTimeLocal(new Date().toISOString());
+      receivedLocal = nowLocal;
       saving = false; error = '';
     }
   }
@@ -62,6 +69,9 @@
   function save() {
     if (!subject.trim())     { error = 'A short subject is needed.'; return; }
     if (!description.trim()) { error = 'Record what was said.'; return; }
+    const received = receivedLocal ? new Date(receivedLocal) : null;
+    if (!received || Number.isNaN(received.getTime())) { error = 'Say when it was received.'; return; }
+    if (received.getTime() > Date.now() + 5 * 60_000) { error = 'It cannot have been received in the future.'; return; }
     if (!inScope && !scopeRationale.trim()) {
       error = 'Say why this is not a building-safety complaint — it goes on the record.';
       return;
@@ -72,6 +82,7 @@
     dispatch('save', {
       subject: subject.trim(),
       description: description.trim(),
+      received_at: received.toISOString(),
       category,
       in_scope: inScope,
       scope_rationale: inScope ? null : scopeRationale.trim(),
@@ -109,6 +120,10 @@
       </div>
       <FormSelect label="How it reached us" bind:value={channel}
                   placeholder="" options={asOptions(CHANNELS)} />
+    </div>
+    <div class="max-w-xs">
+      <FormInput label="When it was received" type="datetime-local" bind:value={receivedLocal} max={nowLocal}
+                 helpText="The deadlines to acknowledge and respond run from this, not from when it is logged." />
     </div>
 
     {#if !inScope}

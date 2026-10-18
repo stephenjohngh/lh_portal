@@ -7,13 +7,11 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { casesStore } from '../stores/casesStore.js';
-  import FieldInput from './FieldInput.svelte';
   import AttachedDocuments from '#lib/components/common/documents/AttachedDocuments.svelte';
   import Button from '#lib/components/common/Button.svelte';
   import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import WorkflowItemControls from '#lib/workflow/WorkflowItemControls.svelte';
-  import { fieldText, fieldsForSave } from '../utils/caseFields.js';
   import { DOC_FOLDERS, entityFolderPath } from '#lib/utils/documentUtils.js';
   import { fmtDateTime, today } from '#lib/utils/dates.js';
   import { errMessage } from '#lib/utils/errors.js';
@@ -24,7 +22,6 @@
   /** @type {any[]} */ export let steps = [];
   /** @type {any[]} */ export let moves = [];
   /** @type {any[]} */ export let fields = [];
-  /** @type {any} */ export let links = { component: [], space: [], person: [] };
   /** @type {Array<{ id: string, full_name: string|null }>} */ export let assignees = [];
   /** @type {Record<string, string>} */ export let nameById = {};
   /** @type {string|null} */ export let me = null;
@@ -40,38 +37,31 @@
   let draftFor = '';
   let title = '';
   let description = '';
-  /** @type {Record<string, any>} */
-  let values = {};
   $: if (c && c.id !== draftFor) { draftFor = c.id; resetDraft(); }
   function resetDraft() {
     title = c.title ?? ''; description = c.description ?? '';
-    values = Object.fromEntries(fields.map((f) => [f.key, c.fields?.[f.key] ?? '']));
     done = ''; error = '';
   }
-
-  $: saved = fieldsForSave(fields, c?.fields ?? {}, c?.fields ?? {});
-  $: draft = fieldsForSave(fields, values, c?.fields ?? {});
-  $: dirty = !!c && (title.trim() !== (c.title ?? '') || description.trim() !== (c.description ?? '')
-    || JSON.stringify(draft) !== JSON.stringify(saved));
+  $: dirty = !!c && (title.trim() !== (c.title ?? '') || description.trim() !== (c.description ?? ''));
 
   async function saveDraft() {
     const theCase = c;                               // captured before the await
     busy = 'save'; error = ''; done = '';
-    try { await casesStore.save(theCase, { title, description, fields: draft }); done = `${theCase.reference}: saved.`; }
+    try { await casesStore.save(theCase, { title, description }); done = `${theCase.reference}: saved.`; }
     catch (/** @type {any} */ err) { error = errMessage(err, 'It could not be saved.'); }
     finally { busy = ''; }
   }
   // The item's controls make the change through the store (its audit line, its reload).
   const onMove = (/** @type {any} */ m, /** @type {string} */ note) => casesStore.move(c, m.to_key, note);
   const onAssign = (/** @type {string|null} */ uid) => casesStore.assign(c, uid);
+  const onFieldsSaved = () => casesStore.reload();
   const extraRefusal = () => (dirty ? 'Save your changes first.' : null);
+  $: audit = c ? { appId: 'cases', entityType: 'case', entityId: c.id } : null;
   $: record = c ? {
     filenameStem: `${c.reference}_${today()}`,
-    audit: { appId: 'cases', entityType: 'case', entityId: c.id },
     subject: () => ({
       title: `${workflow?.name ?? 'Case'} ${c.reference}`,
-      facts: [['Reference', c.reference], ['Opened', fmtDateTime(c.created_at)], ['Title', c.title],
-        ...fields.map((f) => /** @type {[string, string]} */ ([f.label, fieldText(f, c.fields?.[f.key], links)]))],
+      facts: [['Reference', c.reference], ['Opened', fmtDateTime(c.created_at)], ['Title', c.title]],
       sections: [{ heading: 'Description', text: c.description }],
     }),
   } : null;
@@ -100,14 +90,13 @@
     {#if done}<p class="text-sm text-green-400" role="status">{done}</p>{/if}
 
     <WorkflowItemControls {item} {workflow} {steps} {moves} reference={c.reference} {isAdmin} {canEdit} {me}
-      {assignees} {nameById} {fields} values={c.fields ?? {}} {onMove} {onAssign} {extraRefusal} {record}>
+      {assignees} {nameById} {fields} {onMove} {onAssign} {onFieldsSaved} {extraRefusal} {audit} {record}>
       <div class="space-y-2 border-t border-slate-700 pt-3" data-testid="case-details">
         {#if canEdit}
           <label class="block text-xs text-slate-400">Title
             <input class="mt-1 w-full px-2 py-1.5 text-sm bg-slate-900 border border-slate-600 rounded text-slate-200" bind:value={title} /></label>
           <label class="block text-xs text-slate-400">Description
             <textarea rows="3" class="mt-1 w-full px-2 py-1.5 text-sm bg-slate-900 border border-slate-600 rounded text-slate-200" bind:value={description}></textarea></label>
-          {#each fields as f (f.key)}<FieldInput field={f} bind:value={values[f.key]} {links} />{/each}
           <div class="flex gap-2">
             <Button size="small" variant="primary" disabled={!dirty || !title.trim() || !!busy} loading={busy === 'save'} on:click={saveDraft}>Save changes</Button>
             <Button size="small" variant="secondary" disabled={!dirty || !!busy} on:click={resetDraft}>Undo changes</Button>
@@ -115,9 +104,6 @@
         {:else}
           <p class="text-white">{c.title}</p>
           {#if c.description}<p class="text-slate-300 whitespace-pre-line">{c.description}</p>{/if}
-          <dl class="grid grid-cols-[10rem_1fr] gap-x-2 gap-y-1">
-            {#each fields as f (f.key)}<dt class="text-slate-400">{f.label}</dt><dd class="text-slate-100">{fieldText(f, c.fields?.[f.key], links)}</dd>{/each}
-          </dl>
         {/if}
       </div>
       <div class="border-t border-slate-700 pt-3">

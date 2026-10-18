@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
 
 const h = vi.hoisted(() => ({
-  api: { get: vi.fn(), getAll: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+  api: { get: vi.fn(), getAll: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), rpc: vi.fn() },
   wf: { loadWorkflow: vi.fn(), listItems: vi.fn(), itemHistory: vi.fn(), moveItem: vi.fn(), assignItem: vi.fn(), listAssignees: vi.fn() },
   logAudit: vi.fn(),
   deleteDocumentsFor: vi.fn(),
@@ -21,7 +21,7 @@ const { casesStore } = await import('./casesStore.js');
 
 const PROCESSES = [{ id: 'w1', key: 'case_change', name: 'Change control', app_id: 'cases' },
                    { id: 'w2', key: 'case_triage', name: 'Concern triage', app_id: 'cases' }];
-const CASE = { id: 'c1', reference: 'CAS-2026-000001', title: 'Flat 12 boiler swap', fields: {} };
+const CASE = { id: 'c1', reference: 'CAS-2026-000001', title: 'Flat 12 boiler swap' };
 
 beforeEach(async () => {
   vi.clearAllMocks();
@@ -33,7 +33,7 @@ beforeEach(async () => {
   }));
   h.wf.listItems.mockResolvedValue([{ id: 'i1', subject_id: 'c1', step_key: 'open' }]);
   h.wf.moveItem.mockResolvedValue({ step: 'done' });
-  h.api.create.mockResolvedValue({ id: 'c2', reference: 'CAS-2026-000002' });
+  h.api.rpc.mockResolvedValue({ id: 'c2', reference: 'CAS-2026-000002' });
   h.deleteDocumentsFor.mockResolvedValue(undefined);
   await casesStore.load();
 });
@@ -53,12 +53,18 @@ describe('cases', () => {
     expect(get(casesStore).chosen).toBe('case_change');
   });
 
-  it('a case is opened in the chosen process, and the audit names its reference only', async () => {
+  it('a case is opened through case_open() in the chosen process, and the audit names its reference only', async () => {
     await casesStore.create({ title: ' Boiler ', description: '', fields: { contractor: 'ACME' } });
-    expect(h.api.create).toHaveBeenCalledWith('cases', expect.objectContaining({ workflow_id: 'w1', title: 'Boiler', description: null, created_by: 'u1', updated_by: 'u1' }), true);
+    expect(h.api.rpc).toHaveBeenCalledWith('case_open', { p_workflow: 'w1', p_title: 'Boiler', p_description: null, p_fields: { contractor: 'ACME' } });
+    expect(h.api.create).not.toHaveBeenCalled();                   // never a direct insert: it would skip the field checks
     const [, , , name, opts] = h.logAudit.mock.calls[0];
     expect(name).toBe('CAS-2026-000002');
     expect(JSON.stringify(opts)).not.toMatch(/Boiler|ACME/);
+  });
+
+  it('an edit stamps who made it (the user id is awaited, never a promise)', async () => {
+    await casesStore.save(/** @type {any} */ (CASE), { title: 'Boiler swap', description: '' });
+    expect(h.api.update).toHaveBeenCalledWith('cases', 'c1', { title: 'Boiler swap', description: null, updated_by: 'u1' });
   });
 
   it('a move goes to the workflow item — the audit names reference and step, never the title', async () => {

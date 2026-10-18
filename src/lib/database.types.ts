@@ -382,7 +382,6 @@ export type Database = {
           reference: string
           title: string
           description: string | null
-          fields: Json
           created_at: string
           created_by: string | null
           updated_at: string
@@ -394,7 +393,6 @@ export type Database = {
           reference?: string
           title: string
           description?: string | null
-          fields?: Json
           created_at?: string
           created_by?: string | null
           updated_at?: string
@@ -406,7 +404,6 @@ export type Database = {
           reference?: string
           title?: string
           description?: string | null
-          fields?: Json
           created_at?: string
           created_by?: string | null
           updated_at?: string
@@ -5730,6 +5727,8 @@ export type Database = {
           due_on: string | null
           label: string | null
           assigned_to: string | null
+          fields: Json
+          started_at: string
         }
         Insert: {
           id?: string
@@ -5742,6 +5741,8 @@ export type Database = {
           due_on?: string | null
           label?: string | null
           assigned_to?: string | null
+          fields?: Json
+          started_at?: string
         }
         Update: {
           id?: string
@@ -5754,6 +5755,8 @@ export type Database = {
           due_on?: string | null
           label?: string | null
           assigned_to?: string | null
+          fields?: Json
+          started_at?: string
         }
         Relationships: [
             {

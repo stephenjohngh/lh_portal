@@ -11,7 +11,9 @@ import { DEFAULT_COMPLAINT_WORKFLOW as W } from '../utils/complaintWorkflow.js';
 // The item's controls are the shared ones (#lib/workflow/WorkflowItemControls),
 // which read the item's history — who made the last move — themselves.
 const h = vi.hoisted(() => ({ hist: /** @type {any[]} */ ([]), assigned: /** @type {any[]} */ ([]), moved: /** @type {any[]} */ ([]) }));
-vi.mock('#lib/workflow/workflowApi.js', () => ({ itemHistory: async () => h.hist }));
+vi.mock('#lib/workflow/workflowApi.js', () => ({ itemHistory: async () => h.hist, setItemFields: async () => ({ fields: {}, changed: true }) }));
+vi.mock('#lib/workflow/fieldLinks.js', () => ({ loadLinkOptions: async () => ({ component: [], space: [], person: [] }) }));
+
 vi.mock('#lib/supabaseClient.js', () => ({ supabase: {} }));
 vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: vi.fn() }));
 const ComplaintDetail = (await import('./ComplaintDetail.svelte')).default;

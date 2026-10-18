@@ -54,7 +54,7 @@ function createComplaintsStore() {
    *   selected: ComplaintCase | null,
    *   timeline: (import('#lib/database.types.ts').Tables<'complaint_timeline_entries'> & Record<string, any>)[],
    *   actions: (import('#lib/database.types.ts').Tables<'complaint_actions'> & Record<string, any>)[],
-   *   workflow: any|null, steps: any[], moves: any[], items: any[],
+   *   workflow: any|null, steps: any[], moves: any[], fields: any[], items: any[],
    *   loading: boolean,
    *   saving: boolean,
    *   error: string | null
@@ -68,6 +68,7 @@ function createComplaintsStore() {
     workflow:   null,
     steps:      [],
     moves:      [],
+    fields:     [],
     items:      [],
     loading:    false,
     saving:     false,
@@ -109,7 +110,7 @@ function createComplaintsStore() {
   /** The workflow and its items: where each complaint is, its deadline, who has it. */
   async function readWorkflow() {
     const wf = await loadWorkflow(COMPLAINT_WORKFLOW_KEY);
-    if (!wf) return { workflow: null, steps: [], moves: [], items: [] };
+    if (!wf) return { workflow: null, steps: [], moves: [], fields: [], items: [] };
     return { ...wf, items: await listItems(wf.workflow.id) };
   }
 

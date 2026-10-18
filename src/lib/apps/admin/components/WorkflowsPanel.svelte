@@ -20,6 +20,8 @@
   import FormTextarea from '#lib/components/common/FormTextarea.svelte';
   import { workflowProblem, stepKeyFor, STEP_KINDS, MOVE_WHO, FIELD_TYPES, orderedSteps } from '#lib/workflow/workflowModel.js';
   import { actionsFor } from '#lib/workflow/workflowActions.js';
+  import { contractFor } from '#lib/workflow/workflowContracts.js';
+  import { shippedWorkflowFor } from '#lib/workflow/shippedWorkflows.js';
   import { DEADLINE_BASES, DEADLINE_FROM, describeDeadline } from '#lib/workflow/workflowDeadlines.js';
   import { listNonWorkingDays, ensureNonWorkingDays, addNonWorkingDay, removeNonWorkingDay } from '#lib/workflow/nonWorkingDays.js';
   import { fmtDate } from '#lib/utils/dates.js';
@@ -43,8 +45,8 @@
   let steps = [];
   /** @type {any[]} */
   let moves = [];
-  // A Cases process's fields (migration 253): each with `optionsText`, the
-  // choices one per line, while it is being edited.
+  // The process's fields (migration 253; any process since 254): each with
+  // `optionsText`, the choices one per line, while it is being edited.
   /** @type {any[]} */
   let fields = [];
   let loadedKey = '';
@@ -124,8 +126,29 @@
   }
 
   $: actions = current ? actionsFor(current.app_id) : [];
-  // A Cases process (migration 253) has fields of its own; other apps' workflows do not.
+  // Only a Cases process is opened with a form, so only its fields can be needed to open one.
   $: isCases = current?.app_id === 'cases';
+  // What the owning app needs the workflow to keep (migration 254): shown, and
+  // the fixed kinds cannot be changed here; the save checks the rest.
+  $: contract = current ? contractFor(current.app_id) : null;
+  $: fixedKind = (/** @type {any} */ st) => contract?.steps?.[st.key] ?? null;
+  // The shipped version, when there is one: how this building's differs.
+  $: shipped = current ? shippedWorkflowFor(current.key) : null;
+  $: shippedDiff = shipped && loadedDef
+    ? workflowDiff(definitionOf({ name: shipped.name, description: shipped.description ?? null, reviewRequired: !!shipped.reviewRequired,
+        reviewReason: shipped.reviewReason ?? null, steps: shipped.steps, moves: shipped.moves, fields: shipped.fields ?? [] }), loadedDef)
+      .filter((l) => l !== 'Nothing that is kept changed.')
+    : [];
+  /** Put the shipped steps and moves in the editor — saved, and reviewed if marked, like any change. */
+  function loadShipped() {
+    if (!shipped) return;
+    steps = orderedSteps(shipped.steps.map((/** @type {any} */ s, /** @type {number} */ i) => ({ ...s, position: i + 1 })))
+      .map((s) => ({ ...s, public_name: s.public_name ?? '', deadline_days: s.deadline_days ?? '',
+        deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered', isNew: false }));
+    moves = shipped.moves.map((/** @type {any} */ m) => ({ note_required: false, admin_only: false, action: '', who: 'anyone', four_eyes: false,
+      ...m, required_fields: [...(m.required_fields ?? [])] }));
+    saved = 'The shipped steps and moves are in the editor — look them over, then save.';
+  }
   /** The fields as saved: choices from their lines, none on a field that is not a choice. */
   function fieldsOut(/** @type {any[]} */ list) {
     return list.map(({ optionsText, isNew, ...f }) => ({ ...f,
@@ -172,13 +195,13 @@
   }
   function removeMove(/** @type {any} */ m) { moves = moves.filter((x) => x !== m); }
 
-  // ── A Cases process's fields (migration 253) ──
+  // ── The process's fields (migration 253; any process since 254) ──
   function addField() {
     const key = stepKeyFor('New field', fields.map((f) => f.key));
     fields = [...fields, { key, label: 'New field', type: 'text', optionsText: '', help: '', required_on_create: false, isNew: true }];
   }
   function renameNewField(/** @type {any} */ f) {
-    // A new field's key follows its label until it is saved; a saved one keeps its key (cases hold values under it).
+    // A new field's key follows its label until it is saved; a saved one keeps its key (items hold values under it).
     if (f.isNew) f.key = stepKeyFor(f.label, fields.filter((x) => x !== f).map((x) => x.key));
     fields = fields;
   }
@@ -232,7 +255,7 @@
     try {
       await saveWorkflow({ key: wf.key, name: wf.name, appId: wf.app_id, description: wf.description,
         steps: steps.map(({ isNew, ...s }) => s), moves, reviewRequired, reviewReason, review: withReview,
-        fields: isCases ? fieldsOut(fields) : undefined });
+        fields: fieldsOut(fields), expectedUpdatedAt: wf.updated_at });
       askReview = false;
       logAudit('update', 'workflow', wf.id, wf.name, { appId: 'admin', eventCategory: 'admin',
         afterData: { steps: steps.map((s) => s.key), moves: moves.map((m) => `${m.from_key}>${m.to_key}`) } });
@@ -292,6 +315,17 @@
         {/if}
       </div>
 
+      {#if contract}
+        <p class="text-xs text-slate-400 rounded border border-slate-700 p-2" data-testid="workflow-contract">🔒 {contract.explains}</p>
+      {/if}
+      {#if shippedDiff.length}
+        <details class="text-xs text-slate-400 rounded border border-slate-700 p-2" data-testid="workflow-shipped">
+          <summary class="cursor-pointer text-slate-300">Differs from the version that ships with the portal ({shippedDiff.length})</summary>
+          <ul class="mt-1 list-disc pl-5">{#each shippedDiff as line (line)}<li>{line}</li>{/each}</ul>
+          <Button variant="tertiary" size="xs" on:click={loadShipped}>Load the shipped steps and moves</Button>
+        </details>
+      {/if}
+
       <div class="space-y-2">
         <div class="flex items-center justify-between">
           <p class="text-sm font-semibold text-slate-200">Diagram</p>
@@ -315,7 +349,8 @@
               <tr class="border-t border-slate-800">
                 <td class="py-1 pr-2"><input class="{inputCls} w-44" bind:value={st.name} on:input={() => renameNew(st)} aria-label="Step name" /></td>
                 <td class="py-1 pr-2"><input class="{inputCls} w-56" bind:value={st.public_name} placeholder="(same as staff)" aria-label="Name the applicant sees" /></td>
-                <td class="py-1 pr-2"><select class={inputCls} bind:value={st.kind} on:change={() => (steps = steps)} aria-label="Kind">
+                <td class="py-1 pr-2"><select class={inputCls} bind:value={st.kind} on:change={() => (steps = steps)} aria-label="Kind"
+                  disabled={!!fixedKind(st)} title={fixedKind(st) ? 'Fixed by the app' : ''}>
                   {#each STEP_KINDS as k}<option value={k.value} title={k.explains}>{k.label}</option>{/each}</select></td>
                 <td class="py-1 pr-2 whitespace-nowrap">
                   {#if isFinished(st.kind)}<span class="text-xs text-slate-500">—</span>
@@ -340,15 +375,15 @@
         </table></div>
       </div>
 
-      {#if isCases}
+      {#if current}
         <div class="space-y-2">
           <div class="flex items-center justify-between"><p class="text-sm font-semibold text-slate-200">Fields</p>
             <Button variant="tertiary" size="xs" on:click={addField}>+ Add a field</Button></div>
-          {#if fields.length === 0}<p class="text-xs text-slate-500">No fields yet: a case has a title and a description, and attachments. Add what this process needs to record.</p>{/if}
+          {#if fields.length === 0}<p class="text-xs text-slate-500">No fields yet. Add what this process needs to record on each item; a move can be made to need one filled.</p>{/if}
           <div class="overflow-x-auto"><table class="w-full text-sm" data-testid="workflow-fields">
             <thead><tr class="text-left text-xs text-slate-400">
               <th class="py-1 pr-2 font-medium">Label</th><th class="py-1 pr-2 font-medium">Type</th>
-              <th class="py-1 pr-2 font-medium">Choices (one per line)</th><th class="py-1 pr-2 font-medium">Needed to open</th>
+              <th class="py-1 pr-2 font-medium">Choices (one per line)</th>{#if isCases}<th class="py-1 pr-2 font-medium">Needed to open</th>{/if}
               <th class="py-1 pr-2 font-medium">Help</th><th class="py-1 pr-2 font-medium">Key</th><th></th></tr></thead>
             <tbody>
               {#each fields as f, i (f)}
@@ -358,7 +393,7 @@
                     {#each FIELD_TYPES as t (t.value)}<option value={t.value}>{t.label}</option>{/each}</select></td>
                   <td class="py-1 pr-2">{#if f.type === 'choice'}<textarea class="{inputCls} w-44" rows="2" bind:value={f.optionsText}
                     on:input={() => (fields = fields)} aria-label="Choices"></textarea>{:else}<span class="text-xs text-slate-500">—</span>{/if}</td>
-                  <td class="py-1 pr-2 text-center"><input type="checkbox" bind:checked={f.required_on_create} on:change={() => (fields = fields)} aria-label="Needed to open a case" /></td>
+                  {#if isCases}<td class="py-1 pr-2 text-center"><input type="checkbox" bind:checked={f.required_on_create} on:change={() => (fields = fields)} aria-label="Needed to open a case" /></td>{/if}
                   <td class="py-1 pr-2"><input class="{inputCls} w-48" bind:value={f.help} on:input={() => (fields = fields)} placeholder="(optional)" aria-label="Field help" /></td>
                   <td class="py-1 pr-2 font-mono text-xs text-slate-500">{f.key}</td>
                   <td class="py-1 whitespace-nowrap">
@@ -383,7 +418,7 @@
             <th class="py-1 pr-2 font-medium">Button</th><th class="py-1 pr-2 font-medium">Note needed</th>
             <th class="py-1 pr-2 font-medium">Admin only</th><th class="py-1 pr-2 font-medium">Who may</th>
             <th class="py-1 pr-2 font-medium" title="Not the person who made the last move">Four-eyes</th>
-            <th class="py-1 pr-2 font-medium">Action</th>{#if isCases}<th class="py-1 pr-2 font-medium">Fields needed</th>{/if}<th></th></tr></thead>
+            <th class="py-1 pr-2 font-medium">Action</th><th class="py-1 pr-2 font-medium">Fields needed</th><th></th></tr></thead>
           <tbody>
             {#each moves as m (m)}
               <tr class="border-t border-slate-800">
@@ -401,15 +436,13 @@
                 <td class="py-1 pr-2"><select class={inputCls} bind:value={m.action} on:change={() => (moves = moves)} aria-label="Action">
                   <option value="">None</option>
                   {#each actions as a (a.key)}<option value={a.key} title={a.explains}>{a.label}</option>{/each}</select></td>
-                {#if isCases}
-                  <td class="py-1 pr-2" data-testid="move-fields-needed">
-                    {#each fields as f (f.key)}
-                      <label class="flex items-center gap-1 text-xs text-slate-300 whitespace-nowrap">
-                        <input type="checkbox" checked={(m.required_fields ?? []).includes(f.key)} on:change={() => toggleNeeded(m, f.key)}
-                          aria-label="{m.label} needs {f.label}" /> {f.label}</label>
-                    {:else}<span class="text-xs text-slate-500">—</span>{/each}
-                  </td>
-                {/if}
+                <td class="py-1 pr-2" data-testid="move-fields-needed">
+                  {#each fields as f (f.key)}
+                    <label class="flex items-center gap-1 text-xs text-slate-300 whitespace-nowrap">
+                      <input type="checkbox" checked={(m.required_fields ?? []).includes(f.key)} on:change={() => toggleNeeded(m, f.key)}
+                        aria-label="{m.label} needs {f.label}" /> {f.label}</label>
+                  {:else}<span class="text-xs text-slate-500">—</span>{/each}
+                </td>
                 <td class="py-1"><Button variant="danger" size="xs" on:click={() => removeMove(m)}>Remove</Button></td>
               </tr>
             {/each}
