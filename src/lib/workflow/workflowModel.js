@@ -57,6 +57,9 @@ export const MOVE_WHO = Object.freeze([
   { value: 'assignee', label: 'Only the person it is with' },
 ]);
 
+/** How a timer counts its days — held to workflow_moves' CHECK by dbRulesParity.test.js. */
+export const TIMER_BASES = ['calendar', 'working'];
+
 /**
  * Why THIS person cannot make this move now, or null — the database's own
  * conditions (workflow_move(), migration 251), said before anything is
@@ -172,7 +175,7 @@ export function workflowProblem({ steps, moves, appId, fields = [] }) {
       if (m.action) return `The move "${m.label}" runs an action, so it cannot be made by a timer — a person must make it.`;
       if (isFinished(byKey.get(m.from_key)?.kind)) return `The move "${m.label}" leaves a finished step, so it cannot be made by a timer.`;
     }
-    if (!['calendar', 'working'].includes(m.timer_basis ?? 'calendar')) {
+    if (!TIMER_BASES.includes(m.timer_basis ?? 'calendar')) {
       return `The move "${m.label}": a timer counts calendar or working days.`;
     }
     if (m.action) {

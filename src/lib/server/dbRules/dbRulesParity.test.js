@@ -112,6 +112,7 @@ const VALUE_LISTS = {
   'workflow_steps.deadline_from':     () => values(workflowDeadlines.DEADLINE_FROM),      // migration 248
   'workflow_events.kind':             () => values(workflowModel.EVENT_KINDS),            // migration 250
   'workflow_moves.who':               () => values(workflowModel.MOVE_WHO),               // migration 251
+  'workflow_moves.timer_basis':       () => values(workflowModel.TIMER_BASES),            // migration 259
   'workflow_fields.type':             () => values(workflowModel.FIELD_TYPES),            // migration 253
   'parking_requests.holder_type':     () => values(applicationForm.APPLICANT_KINDS),      // migration 247
   'parking_holders.holder_type':      () => values(agreementModel.HOLDER_TYPES),

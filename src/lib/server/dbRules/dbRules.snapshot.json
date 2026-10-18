@@ -354,6 +354,10 @@
             "repair",
             "test"
         ],
+        "workflow_moves.timer_basis": [
+            "calendar",
+            "working"
+        ],
         "component_types.marker_size": [
             "lg",
             "md",
