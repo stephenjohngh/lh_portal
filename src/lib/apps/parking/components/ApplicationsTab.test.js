@@ -10,13 +10,13 @@ const h = vi.hoisted(() => {
   const makeStore = (init) => { let v = init; const subs = new Set();
     return { subscribe: (r) => { r(v); subs.add(r); return () => subs.delete(r); }, set: (n) => { v = n; subs.forEach((r) => r(v)); }, get: () => v }; };
   return { req: makeStore({}), perms: makeStore({ isAdmin: false, canModify: true }), moved: /** @type {any[]} */ ([]),
-    parkingLoads: 0, setUp: 0, action: /** @type {string|null} */ (null), assigned: /** @type {any[]} */ ([]) };
+    parkingLoads: 0, setUp: 0, action: /** @type {string|null} */ (null), assigned: /** @type {any[]} */ ([]), hist: /** @type {any[]|null} */ (null) };
 });
 vi.mock('../stores/requestStore.js', () => ({ requestStore: {
   subscribe: h.req.subscribe,
   load: async () => {},
   setUpWorkflow: async () => { h.setUp += 1; },
-  history: async () => [{ id: 1, from_key: null, to_key: 'received', note: 'Received from the online form', at: '2026-10-17T09:00:00Z' }],
+  history: async () => h.hist ?? [{ id: 1, from_key: null, to_key: 'received', note: 'Received from the online form', at: '2026-10-17T09:00:00Z' }],
   move: async (r, to, note) => { h.moved.push([r.reference, to, note]); return { step: to, action: h.action }; },
   assign: async (r, uid) => { h.assigned.push([r.reference, uid]); return { assigned_to: uid, changed: true }; },
   assignees: async () => [{ id: 'me', full_name: 'Pat Smith' }, { id: 'u2', full_name: 'Sam Lee' }],
@@ -43,7 +43,7 @@ function state(list) {
     loading: false, loaded: true, error: null };
 }
 
-beforeEach(() => { cleanup(); h.assigned.length = 0; h.moved.length = 0; h.parkingLoads = 0; h.setUp = 0; h.action = null; h.perms.set({ isAdmin: false, canModify: true }); });
+beforeEach(() => { cleanup(); h.hist = null; h.assigned.length = 0; h.moved.length = 0; h.parkingLoads = 0; h.setUp = 0; h.action = null; h.perms.set({ isAdmin: false, canModify: true }); });
 
 describe('Parking → Applications', () => {
   it('lists the open applications with their step; finished ones are behind the filter', async () => {
@@ -143,6 +143,26 @@ describe('Parking → Applications', () => {
     const box = await screen.findByTestId('application-assignee');
     expect(box.textContent).toMatch(/Sam Lee/);
     expect(screen.queryByLabelText('Who it is with')).toBeNull();
+  });
+
+  it('a four-eyes move is held back for the person who made the last move; an assignee-only move until it is theirs — each saying why', async () => {
+    const moves = WF.moves.map((m) => (m.to_key === 'declined' && m.from_key === 'checking' ? { ...m, four_eyes: true }
+      : m.to_key === 'waiting_list' ? { ...m, who: 'assignee' } : m));
+    h.hist = [
+      { id: 1, kind: 'move', from_key: null, to_key: 'received', at: '2026-10-17T09:00:00Z', by: null },
+      { id: 2, kind: 'move', from_key: 'received', to_key: 'checking', at: '2026-10-17T10:00:00Z', by: 'me' },
+    ];
+    h.req.set({ ...state([REQ('a', 'PKR-2026-000001', 'checking')]), moves });
+    render(ApplicationsTab, { canEdit: true });
+    await fireEvent.click(await screen.findByText('PKR-2026-000001'));
+    await fireEvent.input(await screen.findByRole('textbox', { name: /Note/ }), { target: { value: 'a reason' } });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Decline' }).hasAttribute('disabled')).toBe(true));
+    expect(screen.getByRole('button', { name: 'Accept onto the waiting list' }).hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Withdrawn' }).hasAttribute('disabled')).toBe(false);   // no condition
+    const why = screen.getAllByTestId('move-refusal').map((p) => p.textContent);
+    expect(why).toEqual(expect.arrayContaining([
+      'Give it to someone first: only the person it is with can do this.',
+      'Someone other than the person who made the last move must do this.']));
   });
 });
 

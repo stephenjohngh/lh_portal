@@ -19,7 +19,8 @@ describe('definitionOf — the shape the database keeps', () => {
     expect(d.steps[0]).toMatchObject({ deadline_days: null, deadline_basis: 'calendar', deadline_from: 'entered', public_name: null });
     expect(d.steps[1].deadline_days).toBe(10);
     expect(d.review_reason).toBeNull();
-    expect(d.moves[0]).toEqual({ from_key: 'received', to_key: 'checking', label: 'Start checking', note_required: false, admin_only: false, action: null });
+    expect(d.moves[0]).toEqual({ from_key: 'received', to_key: 'checking', label: 'Start checking', note_required: false, admin_only: false, action: null,
+      who: 'anyone', four_eyes: false });     // migration 251: the database's definition carries both
   });
   it('a re-save with nothing different is not a change; an edit is', () => {
     expect(definitionChanged(def(), def())).toBe(false);

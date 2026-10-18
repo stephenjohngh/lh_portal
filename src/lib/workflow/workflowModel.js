@@ -12,7 +12,7 @@ import { actionsFor } from './workflowActions.js';
 /** @typedef {'start'|'open'|'done'|'declined'} StepKind */
 /** @typedef {{ key: string, name: string, public_name?: string|null, kind: StepKind, position?: number,
  *              deadline_days?: number|null, deadline_basis?: 'calendar'|'working', deadline_from?: 'entered'|'started' }} Step */
-/** @typedef {{ from_key: string, to_key: string, label: string, note_required?: boolean, admin_only?: boolean, action?: string|null, position?: number }} Move */
+/** @typedef {{ from_key: string, to_key: string, label: string, note_required?: boolean, admin_only?: boolean, action?: string|null, who?: string, four_eyes?: boolean, position?: number }} Move */
 
 /** The kinds of step — the database's CHECK list, with the words shown. */
 export const STEP_KINDS = Object.freeze([
@@ -22,6 +22,34 @@ export const STEP_KINDS = Object.freeze([
   { value: 'declined', label: 'Finished — not accepted', explains: 'A finished step: declined, withdrawn or similar.' },
 ]);
 export const STEP_KIND_LABEL = Object.fromEntries(STEP_KINDS.map((k) => [k.value, k.label]));
+
+/**
+ * Who may make a move (migration 251): anyone who can edit the app, or only
+ * the person the item is with. ⛔ Like four-eyes, it binds administrators too.
+ */
+export const MOVE_WHO = Object.freeze([
+  { value: 'anyone',   label: 'Anyone who can edit' },
+  { value: 'assignee', label: 'Only the person it is with' },
+]);
+
+/**
+ * Why THIS person cannot make this move now, or null — the database's own
+ * conditions (workflow_move(), migration 251), said before anything is
+ * pressed. admin_only and the grant are filtered out earlier (movesFrom).
+ * @param {Move} m
+ * @param {{ userId?: string|null, assignedTo?: string|null, lastMoverId?: string|null }} ctx
+ *   lastMoverId — who made the item's last MOVE (an assignment is not one)
+ */
+export function moveRefusal(m, { userId = null, assignedTo = null, lastMoverId = null } = {}) {
+  if ((m.who ?? 'anyone') === 'assignee') {
+    if (!assignedTo) return 'Give it to someone first: only the person it is with can do this.';
+    if (assignedTo !== userId) return 'Only the person it is with can do this.';
+  }
+  if (m.four_eyes && lastMoverId && lastMoverId === userId) {
+    return 'Someone other than the person who made the last move must do this.';
+  }
+  return null;
+}
 
 /**
  * What a history row records (migration 250): a MOVE between steps, or an
@@ -85,6 +113,9 @@ export function workflowProblem({ steps, moves, appId }) {
     if (isFinished(byKey.get(m.from_key)?.kind ?? '')) {
       return `Step "${m.from_key}" is finished, so nothing can move on from it.`;
     }
+    if (!['anyone', 'assignee'].includes(m.who ?? 'anyone')) {
+      return `The move "${m.label}": who may make it is anyone who can edit, or only the person it is with.`;
+    }
     if (m.action) {
       if (!actionsFor(appId).some((a) => a.key === m.action)) return `The action "${m.action}" is not one this app offers.`;
       if (byKey.get(m.to_key)?.kind !== 'done') {
@@ -138,7 +169,7 @@ export function definitionOf({ name, description = null, reviewRequired = false,
       deadline_days: s.deadline_days === '' || s.deadline_days == null ? null : Number(s.deadline_days),
       deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered' })),
     moves: moves.map((m) => ({ from_key: m.from_key, to_key: m.to_key, label: m.label, note_required: !!m.note_required,
-      admin_only: !!m.admin_only, action: n(m.action) })),
+      admin_only: !!m.admin_only, action: n(m.action), who: m.who ?? 'anyone', four_eyes: !!m.four_eyes })),
   };
 }
 
@@ -188,6 +219,12 @@ export function workflowDiff(before, after) {
     if (was.label !== m.label) out.push(`Move ${where}: button “${was.label}” → “${m.label}”.`);
     if (was.note_required !== m.note_required) out.push(`Move “${m.label}”: ${m.note_required ? 'now needs a note' : 'no longer needs a note'}.`);
     if (was.admin_only !== m.admin_only) out.push(`Move “${m.label}”: ${m.admin_only ? 'now admin only' : 'no longer admin only'}.`);
+    if ((was.who ?? 'anyone') !== (m.who ?? 'anyone')) {
+      out.push(`Move “${m.label}”: ${(m.who ?? 'anyone') === 'assignee' ? 'now only the person it is with' : 'now anyone who can edit'}.`);
+    }
+    if (!!was.four_eyes !== !!m.four_eyes) {
+      out.push(`Move “${m.label}”: ${m.four_eyes ? 'now four-eyes — not the person who made the last move' : 'no longer four-eyes'}.`);
+    }
     if ((was.action ?? null) !== (m.action ?? null)) out.push(`Move “${m.label}”: action ${was.action ?? 'none'} → ${m.action ?? 'none'}.`);
   }
   for (const [k, m] of bMoves) if (!aMoves.has(k)) out.push(`Move removed: “${m.label}” (${name(m.from_key)} → ${name(m.to_key)}).`);

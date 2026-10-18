@@ -18,7 +18,7 @@
   import Modal from '#lib/components/common/Modal.svelte';
   import FormInput from '#lib/components/common/FormInput.svelte';
   import FormTextarea from '#lib/components/common/FormTextarea.svelte';
-  import { workflowProblem, stepKeyFor, STEP_KINDS, orderedSteps } from '#lib/workflow/workflowModel.js';
+  import { workflowProblem, stepKeyFor, STEP_KINDS, MOVE_WHO, orderedSteps } from '#lib/workflow/workflowModel.js';
   import { actionsFor } from '#lib/workflow/workflowActions.js';
   import { DEADLINE_BASES, DEADLINE_FROM, describeDeadline } from '#lib/workflow/workflowDeadlines.js';
   import { listNonWorkingDays, ensureNonWorkingDays, addNonWorkingDay, removeNonWorkingDay } from '#lib/workflow/nonWorkingDays.js';
@@ -156,7 +156,7 @@
   function addMove() {
     const from = steps[0]?.key ?? '';
     const to = steps.find((s) => s.key !== from)?.key ?? '';
-    moves = [...moves, { from_key: from, to_key: to, label: 'New move', note_required: false, admin_only: false, action: '' }];
+    moves = [...moves, { from_key: from, to_key: to, label: 'New move', note_required: false, admin_only: false, action: '', who: 'anyone', four_eyes: false }];
   }
   function removeMove(/** @type {any} */ m) { moves = moves.filter((x) => x !== m); }
 
@@ -276,7 +276,9 @@
           <thead><tr class="text-left text-xs text-slate-400">
             <th class="py-1 pr-2 font-medium">From</th><th class="py-1 pr-2 font-medium">To</th>
             <th class="py-1 pr-2 font-medium">Button</th><th class="py-1 pr-2 font-medium">Note needed</th>
-            <th class="py-1 pr-2 font-medium">Admin only</th><th class="py-1 pr-2 font-medium">Action</th><th></th></tr></thead>
+            <th class="py-1 pr-2 font-medium">Admin only</th><th class="py-1 pr-2 font-medium">Who may</th>
+            <th class="py-1 pr-2 font-medium" title="Not the person who made the last move">Four-eyes</th>
+            <th class="py-1 pr-2 font-medium">Action</th><th></th></tr></thead>
           <tbody>
             {#each moves as m (m)}
               <tr class="border-t border-slate-800">
@@ -287,6 +289,10 @@
                 <td class="py-1 pr-2"><input class="{inputCls} w-48" bind:value={m.label} on:input={() => (moves = moves)} aria-label="Button label" /></td>
                 <td class="py-1 pr-2 text-center"><input type="checkbox" bind:checked={m.note_required} aria-label="Note needed" /></td>
                 <td class="py-1 pr-2 text-center"><input type="checkbox" bind:checked={m.admin_only} aria-label="Admin only" /></td>
+                <td class="py-1 pr-2"><select class={inputCls} bind:value={m.who} on:change={() => (moves = moves)} aria-label="Who may make it">
+                  {#each MOVE_WHO as w (w.value)}<option value={w.value}>{w.label}</option>{/each}</select></td>
+                <td class="py-1 pr-2 text-center"><input type="checkbox" bind:checked={m.four_eyes} on:change={() => (moves = moves)}
+                  aria-label="Four-eyes" title="Must be made by someone other than the person who made the last move" /></td>
                 <td class="py-1 pr-2"><select class={inputCls} bind:value={m.action} on:change={() => (moves = moves)} aria-label="Action">
                   <option value="">None</option>
                   {#each actions as a (a.key)}<option value={a.key} title={a.explains}>{a.label}</option>{/each}</select></td>

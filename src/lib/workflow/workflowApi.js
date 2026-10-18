@@ -52,7 +52,8 @@ export function saveWorkflow({ key, name, appId, description = null, steps, move
       deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered' })),
     p_moves: moves.map((m, i) => ({
       from_key: m.from_key, to_key: m.to_key, label: m.label,
-      note_required: !!m.note_required, admin_only: !!m.admin_only, action: m.action || null, position: i + 1,
+      note_required: !!m.note_required, admin_only: !!m.admin_only, action: m.action || null,
+      who: m.who || 'anyone', four_eyes: !!m.four_eyes, position: i + 1,
     })),
   });
 }

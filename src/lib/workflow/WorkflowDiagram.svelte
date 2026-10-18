@@ -13,7 +13,7 @@
 
   /** @type {Array<{ key: string, name: string, kind: string, position?: number, deadline_days?: number|string|null, deadline_basis?: string, deadline_from?: string }>} */
   export let steps = [];
-  /** @type {Array<{ from_key: string, to_key: string, label: string, note_required?: boolean, admin_only?: boolean, action?: string|null }>} */
+  /** @type {Array<{ from_key: string, to_key: string, label: string, note_required?: boolean, admin_only?: boolean, action?: string|null, who?: string, four_eyes?: boolean }>} */
   export let moves = [];
   /** @type {ReturnType<typeof import('./workflowStats.js').workflowStats> | null} */
   export let stats = null;
@@ -42,11 +42,11 @@
       {@const mv = moves.find((m) => m.from_key === e.from && m.to_key === e.to)}
       <path d={e.path} fill="none" stroke={e.back ? '#64748b' : '#94a3b8'} stroke-dasharray={e.back ? '5 4' : ''}
         stroke-width={stats ? 1.2 + (3 * used) / maxMoves : 1.5} marker-end="url(#wf-arrow)">
-        <title>{e.label}{mv?.note_required ? ' — needs a note' : ''}{mv?.admin_only ? ' — admin only' : ''}{mv?.action ? ' — runs an action' : ''}{stats ? ` — made ${used} time${used === 1 ? '' : 's'}` : ''}</title>
+        <title>{e.label}{mv?.note_required ? ' — needs a note' : ''}{mv?.admin_only ? ' — admin only' : ''}{mv?.who === 'assignee' ? ' — only the person it is with' : ''}{mv?.four_eyes ? ' — four-eyes: not the person who made the last move' : ''}{mv?.action ? ' — runs an action' : ''}{stats ? ` — made ${used} time${used === 1 ? '' : 's'}` : ''}</title>
       </path>
       <text x={e.labelX} y={e.labelY} text-anchor="middle" font-size="10" fill="#cbd5e1" class="select-none"
         stroke="#0f172a" stroke-width="3" paint-order="stroke">
-        {e.label}{mv?.note_required ? ' ✎' : ''}{mv?.admin_only ? ' 🔒' : ''}{mv?.action ? ' ⚙' : ''}{stats && used ? ` (${used})` : ''}
+        {e.label}{mv?.note_required ? ' ✎' : ''}{mv?.admin_only ? ' 🔒' : ''}{mv?.who === 'assignee' ? ' 👤' : ''}{mv?.four_eyes ? ' 👥' : ''}{mv?.action ? ' ⚙' : ''}{stats && used ? ` (${used})` : ''}
       </text>
     {/each}
 
@@ -70,7 +70,7 @@
     {/each}
   </svg>
   <p class="mt-1 text-xs text-slate-500">
-    Teal: start · grey: in progress · green: accepted · red: not accepted · dashed: a move back · ✎ needs a note · 🔒 admin only · ⚙ runs an action · ⏱ has a deadline{stats ? ' · thicker arrow: used more · red badge: overdue · “d”: median days spent there' : ''}
+    Teal: start · grey: in progress · green: accepted · red: not accepted · dashed: a move back · ✎ needs a note · 🔒 admin only · 👤 only the person it is with · 👥 four-eyes · ⚙ runs an action · ⏱ has a deadline{stats ? ' · thicker arrow: used more · red badge: overdue · “d”: median days spent there' : ''}
   </p>
   {#if offPath.length}
     <p class="mt-1 text-xs text-amber-300" data-testid="workflow-diagram-offpath">

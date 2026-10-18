@@ -5693,6 +5693,8 @@ export type Database = {
       }
       workflow_moves: {
         Row: {
+          four_eyes: boolean
+          who: string
           workflow_id: string
           from_key: string
           to_key: string
@@ -5703,6 +5705,8 @@ export type Database = {
           position: number
         }
         Insert: {
+          four_eyes?: boolean
+          who?: string
           workflow_id: string
           from_key: string
           to_key: string
@@ -5713,6 +5717,8 @@ export type Database = {
           position?: number
         }
         Update: {
+          four_eyes?: boolean
+          who?: string
           workflow_id?: string
           from_key?: string
           to_key?: string

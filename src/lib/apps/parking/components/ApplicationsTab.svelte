@@ -12,7 +12,7 @@
   import { requestStore } from '../stores/requestStore.js';
   import { parkingStore } from '../stores/parkingStore.js';
   import { permissions } from '#lib/stores/permissions.js';
-  import { movesFrom, orderedSteps, isFinished, isMoveEvent, STEP_KIND_LABEL } from '#lib/workflow/workflowModel.js';
+  import { movesFrom, moveRefusal, orderedSteps, isFinished, isMoveEvent, STEP_KIND_LABEL } from '#lib/workflow/workflowModel.js';
   import { actionLabel } from '#lib/workflow/workflowActions.js';
   import { deadlineBand, deadlineWords, describeDeadline } from '#lib/workflow/workflowDeadlines.js';
   import { workflowStats } from '#lib/workflow/workflowStats.js';
@@ -85,6 +85,12 @@
   $: selectedStep = selected ? stepOf(selected.id) : null;
   $: moves = selectedStep ? movesFrom(s.moves, selectedStep.key, { isAdmin: $permissions.isAdmin, canEdit }) : [];
   $: nameOf = (/** @type {string} */ key) => stepByKey.get(key)?.name ?? key;
+  // The move conditions (migration 251), said before anything is pressed: who
+  // made the last MOVE (four-eyes), and who it is with (assignee only).
+  $: lastMoverId = [...history].reverse().find(isMoveEvent)?.by ?? null;
+  $: refusalOf = (/** @type {any} */ m) => moveRefusal(m, {
+    userId: me, assignedTo: selected ? itemFor(selected.id)?.assigned_to ?? null : null, lastMoverId });
+  $: refusals = [...new Set(moves.map(refusalOf).filter(Boolean))];
   // An open item's deadline in its step (migration 248); a finished one has none.
   $: dueOf = (/** @type {string} */ id) => {
     const item = itemFor(id);
@@ -329,10 +335,13 @@
               <div class="flex flex-wrap gap-2">
                 {#each moves as m (m.to_key)}
                   <Button size="small" variant={stepByKey.get(m.to_key)?.kind === 'declined' ? 'danger' : stepByKey.get(m.to_key)?.kind === 'done' ? 'primary' : 'secondary'}
-                    disabled={!!moving || (m.note_required && !note.trim())} loading={moving === m.to_key}
-                    title={m.action ? actionLabel(m.action) : ''} on:click={() => makeMove(m)}>{m.label}</Button>
+                    disabled={!!moving || !!refusalOf(m) || (m.note_required && !note.trim())} loading={moving === m.to_key}
+                    title={refusalOf(m) || (m.action ? actionLabel(m.action) : '')} on:click={() => makeMove(m)}>{m.label}</Button>
                 {/each}
               </div>
+              {#each refusals as why (why)}
+                <p class="text-xs text-amber-300" data-testid="move-refusal">{why}</p>
+              {/each}
             </div>
           {:else if selectedStep && !isFinished(selectedStep.kind)}
             <p class="text-xs text-slate-500">You cannot move this one on.</p>
