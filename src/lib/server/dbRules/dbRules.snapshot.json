@@ -148,6 +148,17 @@
             "assign",
             "move"
         ],
+        "workflow_fields.type": [
+            "choice",
+            "component",
+            "date",
+            "long_text",
+            "number",
+            "person",
+            "space",
+            "text",
+            "yes_no"
+        ],
         "info_notes.visibility": [
             "internal",
             "public",
@@ -156,6 +167,7 @@
         "app_permissions.app_id": [
             "admin",
             "building_assets",
+            "cases",
             "complaints",
             "compliance",
             "dossier",
