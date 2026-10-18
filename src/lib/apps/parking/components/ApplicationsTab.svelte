@@ -123,7 +123,7 @@
       if (result?.action) await parkingStore.load();  // the waiting list changed
       done = `${request.reference}: ${m.label}.`;
       note = '';
-      historyFor = null;                              // re-read the history
+      loadHistory(request.id);                        // re-read it, keeping the message above
     } catch (/** @type {any} */ err) {
       error = errMessage(err, 'That could not be done.');
     } finally { moving = ''; }
@@ -139,7 +139,7 @@
     try {
       const result = await requestStore.assign(request, userId);
       if (result?.changed) done = `${request.reference}: ${userId ? `now with ${withName(userId)}` : 'now with no one'}.`;
-      historyFor = null;                              // re-read the history
+      loadHistory(request.id);                        // re-read it, keeping the message above
     } catch (/** @type {any} */ err) {
       error = errMessage(err, 'That could not be done.');
       assignNonce += 1;                               // put the choice back to what it is

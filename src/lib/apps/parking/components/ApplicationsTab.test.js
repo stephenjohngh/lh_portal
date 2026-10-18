@@ -68,6 +68,7 @@ describe('Parking → Applications', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Accept onto the waiting list' }));
     await waitFor(() => expect(h.moved).toEqual([['PKR-2026-000001', 'waiting_list', '']]));
     expect(h.parkingLoads).toBe(1);
+    expect(screen.getByRole('status')).toHaveTextContent('PKR-2026-000001: Accept onto the waiting list.');
     expect(await screen.findByTestId('application-history')).toBeTruthy();
   });
 
@@ -129,6 +130,7 @@ describe('Parking → Applications', () => {
     await fireEvent.click(await screen.findByText('PKR-2026-000001'));
     await fireEvent.click(await screen.findByRole('button', { name: 'Take it' }));
     await waitFor(() => expect(h.assigned).toEqual([['PKR-2026-000001', 'me']]));
+    expect(await screen.findByRole('status')).toHaveTextContent('PKR-2026-000001: now with Pat Smith.');
     await fireEvent.change(screen.getByLabelText('Who it is with'), { target: { value: '' } });
     await waitFor(() => expect(h.assigned).toEqual([['PKR-2026-000001', 'me'], ['PKR-2026-000001', null]]));
   });
