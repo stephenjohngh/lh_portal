@@ -1,5 +1,9 @@
 <!-- src/lib/apps/maintenance/components/JobDetailPanel.svelte -->
-<!-- Modal showing full job detail, documents, component results, history chain and actions. -->
+<!-- Modal showing full job detail, documents, component results, history chain and actions.
+     Its stages are the shared workflow controls (migration 260): where the job
+     is, its deadline, who it is with, the moves (Book, Mark attended, Cancel,
+     Re-open…), the history and the printable record. A move into a finished
+     step is handed to Record completion, which records the result with it. -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { maintenanceStore }  from '../stores/maintenanceStore.js';
@@ -19,6 +23,9 @@
   import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import { errMessage } from '#lib/utils/errors.js';
+  import WorkflowItemControls from '#lib/workflow/WorkflowItemControls.svelte';
+  import { auth } from '#lib/stores/auth.js';
+  import { profiles, profilesStore } from '#lib/stores/profiles.js';
 
   export let job;
   export let show = true;
@@ -34,6 +41,38 @@
   $: canEdit       = $permissions.isAdmin;
   // Contractors can complete their own assigned jobs
   $: canComplete   = canEdit || store.isContractor;
+  // …and move them through their stages, as the table lets them write them.
+  $: me            = $auth.user?.id ?? null;
+  $: canMove       = canEdit || (store.isContractor && !!me && job?.contractor_id === me);
+
+  // The job's place in its workflow (migration 260).
+  $: wfItem   = job?.id ? (store.wfItems ?? []).find(i => i.subject_id === job.id) ?? null : null;
+  $: kindOf   = (/** @type {string} */ key) => (store.steps ?? []).find(st => st.key === key)?.kind ?? null;
+  $: nameById = Object.fromEntries(($profiles.list ?? []).map(p => [p.id, p.full_name ?? '']));
+  /** A move into a finished — accepted step is Record completion's: it needs the result. */
+  let completeTo = null;
+  const handOff = (/** @type {any} */ m) => {
+    if (kindOf(m.to_key) !== 'done') return false;
+    completeTo = m.to_key;
+    showComplete = true;
+    return true;
+  };
+  async function onWfMove(/** @type {any} */ m, /** @type {string} */ note) {
+    await maintenanceStore.moveJob(job.id, m.to_key, note);
+    dispatch('changed');
+  }
+  $: wfAudit  = job ? { appId: 'maintenance', entityType: 'maintenance_job', entityId: job.id } : null;
+  $: wfRecord = job ? {
+    filenameStem: `Maintenance_job_${(job.title ?? 'job').replace(/[^A-Za-z0-9]+/g, '_').slice(0, 40)}_${today()}`,
+    subject: () => ({
+      title: `Maintenance job — ${job.title}`,
+      facts: [['Covers', `${scopeTypeLabel(job.scope_type)} ${job.scope_label ?? ''}`.trim()],
+        ['Scheduled', fmtDate(job.scheduled_date)], ['Hard expiry', job.hard_expiry_date ? fmtDate(job.hard_expiry_date) : '—'],
+        ['Contractor', job.contractor_name || '—'], ['Completed', job.completed_date ? fmtDate(job.completed_date) : '—'],
+        ['Result', res?.label ?? '—'], ['Reference', job.reference_number || '—']],
+      sections: [{ heading: 'Description', text: job.description }, { heading: 'Completion notes', text: job.completion_notes }],
+    }),
+  } : null;
 
   // History chain
   $: prevJob = job?.id ? store.jobs.find(j => j.next_job_id === job.id) : null;
@@ -45,13 +84,13 @@
 
   let showEdit       = false;
   let showComplete   = false;
-  let showCancelConf = false;
   let showDeleteConf = false;
   let downloading    = false;
   let downloadError  = '';
   let deleteError    = '';
 
   onMount(async () => {
+    profilesStore.load();
     if (job?.id) {
       const promises = [];
       if (!store.docsByJob[job.id]) {
@@ -79,13 +118,6 @@
     return 'text-slate-500';
   }
 
-  async function handleCancel() {
-    await maintenanceStore.cancelJob(job.id);
-    showCancelConf = false;
-    dispatch('changed');
-    dispatch('close');
-  }
-
   async function handleDelete() {
     const jobId = job.id;               // capture before the await
     showDeleteConf = false;
@@ -97,12 +129,6 @@
       deleteError = errMessage(err);
       return;
     }
-    dispatch('changed');
-    dispatch('close');
-  }
-
-  async function handleReopen() {
-    await maintenanceStore.reopenJob(job.id);
     dispatch('changed');
     dispatch('close');
   }
@@ -156,6 +182,22 @@
       {/if}
       {#if deleteError}
         <ErrorDisplay message={deleteError} onDismiss={() => deleteError = ''} />
+      {/if}
+
+      <!-- Its stage, deadline, who it is with and the moves (migration 260). -->
+      {#if store.workflow}
+        <div class="p-3 rounded border border-slate-700 bg-slate-800/40" data-testid="job-workflow">
+          {#if wfItem}
+            <WorkflowItemControls item={wfItem} workflow={store.workflow} steps={store.steps} moves={store.moves}
+              fields={store.fields} reference={job.title} isAdmin={canEdit} canEdit={canMove} {me}
+              assignees={store.assignees} {nameById}
+              onMove={onWfMove} onAssign={(uid) => maintenanceStore.assignJob(wfItem.id, uid)}
+              {handOff} audit={wfAudit} record={wfRecord}
+              finishedText="Nothing further happens to this job unless it is re-opened." />
+          {:else}
+            <p class="text-xs text-amber-300">This job is not in its workflow. Reload the page; if it stays like this, report it.</p>
+          {/if}
+        </div>
       {/if}
 
       <!-- Key details grid -->
@@ -338,17 +380,7 @@
     <!-- Footer actions -->
     <div slot="footer" class="flex items-center justify-between gap-3 flex-wrap">
       <div class="flex gap-2 flex-wrap">
-        {#if canEdit && job.status !== 'cancelled'}
-          {#if job.status !== 'completed'}
-            <Button variant="danger" size="small"
-              on:click={() => showCancelConf = true}>
-              Cancel job
-            </Button>
-          {:else}
-            <Button variant="secondary" size="small" on:click={handleReopen}>
-              Re-open
-            </Button>
-          {/if}
+        {#if canEdit}
           <Button variant="danger" size="small"
             on:click={() => showDeleteConf = true}>
             Delete
@@ -368,8 +400,9 @@
             Edit
           </Button>
         {/if}
-        {#if canComplete && job.status !== 'completed' && job.status !== 'cancelled'}
-          <Button variant="primary" size="small" on:click={() => showComplete = true}>
+        {#if canComplete && job.status !== 'completed' && job.status !== 'cancelled' && !store.workflow}
+          <!-- Before the workflow is set up; after, Record completion is one of its moves. -->
+          <Button variant="primary" size="small" on:click={() => { completeTo = null; showComplete = true; }}>
             ✓ Mark complete
           </Button>
         {/if}
@@ -389,19 +422,8 @@
 {/if}
 
 {#if showComplete}
-  <RecordCompletionForm job={job} on:close={() => showComplete = false}
+  <RecordCompletionForm job={job} toStep={completeTo} on:close={() => showComplete = false}
     on:completed={() => { showComplete = false; dispatch('changed'); dispatch('close'); }} />
-{/if}
-
-{#if showCancelConf}
-  <ConfirmDialog
-    title="Cancel job?"
-    message="Mark '{job?.title}' as cancelled. You can re-open it later."
-    confirmLabel="Cancel job"
-    variant="danger"
-    on:confirm={handleCancel}
-    on:cancel={() => showCancelConf = false}
-  />
 {/if}
 
 {#if showDeleteConf}

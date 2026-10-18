@@ -5,6 +5,8 @@
      different things is the one-word-two-objects fault. This is a work list,
      so it is named for what it holds. -->
 <script>
+  import { maintenanceStore } from '../stores/maintenanceStore.js';
+  import { jobStage } from '../utils/maintenanceJobWorkflow.js';
   import { dueSoonDays } from '#lib/utils/dueWindows.js';
   import { permissions }   from '#lib/stores/permissions.js';
   import {
@@ -160,6 +162,7 @@
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
                       <span class="text-sm text-slate-200 font-medium truncate">{job.title}</span>
+                      {#if jobStage(job, $maintenanceStore.wfItems, $maintenanceStore.steps)}<span class="px-1.5 py-0.5 rounded text-xs bg-blue-900/40 text-blue-300 border border-blue-800/50" data-testid="job-stage">{jobStage(job, $maintenanceStore.wfItems, $maintenanceStore.steps)}</span>{/if}
                       {#if res}
                         <span class="px-1.5 py-0.5 rounded text-xs {res.badge}">{res.label}</span>
                       {/if}

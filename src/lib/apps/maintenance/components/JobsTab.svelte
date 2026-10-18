@@ -1,6 +1,8 @@
 <!-- src/lib/apps/maintenance/components/JobsTab.svelte -->
 <!-- Full filterable list of all maintenance jobs. -->
 <script>
+  import { maintenanceStore } from '../stores/maintenanceStore.js';
+  import { jobStage } from '../utils/maintenanceJobWorkflow.js';
   import Button from '#lib/components/common/Button.svelte';
   import { matchesSearch } from '#lib/utils/textSearch.js';
   import { permissions }   from '#lib/stores/permissions.js';
@@ -132,6 +134,7 @@
             <div class="flex items-center gap-2 flex-wrap">
               <span class="text-sm text-slate-200 font-medium">{job.title}</span>
               <span class="px-1.5 py-0.5 rounded text-xs {rag.badge}">{rag.label}</span>
+              {#if jobStage(job, $maintenanceStore.wfItems, $maintenanceStore.steps)}<span class="px-1.5 py-0.5 rounded text-xs bg-blue-900/40 text-blue-300 border border-blue-800/50" data-testid="job-stage">{jobStage(job, $maintenanceStore.wfItems, $maintenanceStore.steps)}</span>{/if}
               {#if res}
                 <span class="px-1.5 py-0.5 rounded text-xs {res.badge}">{res.label}</span>
               {/if}

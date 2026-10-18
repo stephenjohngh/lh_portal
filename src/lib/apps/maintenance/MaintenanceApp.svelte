@@ -16,6 +16,7 @@
      horizon. ⚠ And that is about to matter — 57 of the 80 planned obligations
      are evidenced by a maintenance job, and this table has never held a row. -->
 <script>
+  import { get }              from 'svelte/store';
   import { permissions }      from '#lib/stores/permissions.js';
   import AppGate        from '#lib/components/common/AppGate.svelte';
   import TabBar         from '#lib/components/common/TabBar.svelte';
@@ -75,7 +76,16 @@
 
   // Nothing reads as empty until the jobs have been read: AppGate holds the
   // app back until the permission check and this load have both finished.
-  const loadJobs = () => maintenanceStore.load();
+  // An administrator opening Maintenance sets up the jobs' workflow the first
+  // time (the seed rule, migration 260) and attaches the jobs already there —
+  // never when the workflow could not be READ, which is not the same as absent.
+  const loadJobs = async () => {
+    await maintenanceStore.load();
+    const s = get(maintenanceStore);
+    if (!s.workflow && !s.unavailable?.includes('the jobs’ workflow') && get(permissions).isAdmin) {
+      await maintenanceStore.setUpWorkflow();
+    }
+  };
 </script>
 
 <div class="space-y-6">

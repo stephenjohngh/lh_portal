@@ -62,6 +62,7 @@ import * as worksSchedule      from '#lib/apps/building_assets/utils/worksSchedu
 import * as datasetTemplates   from '#lib/apps/dossier/utils/datasetTemplates.js';
 import * as spaceTypeOptions   from '#lib/apps/building_assets/utils/spaceTypeOptions.js';
 import * as spaceLabelSize     from '#lib/apps/building_assets/utils/spaceLabelSize.js';
+import * as maintenanceJobWf    from '#lib/apps/maintenance/utils/maintenanceJobWorkflow.js';
 import { ISSUE_STATUS }        from '#lib/utils/constants.js';
 import { AVAILABLE_APPS }      from '#lib/apps/apps.js';
 import { RATE_LIMIT_WINDOWS }  from '#lib/utils/policies.js';
@@ -113,6 +114,7 @@ const VALUE_LISTS = {
   'workflow_events.kind':             () => values(workflowModel.EVENT_KINDS),            // migration 250
   'workflow_moves.who':               () => values(workflowModel.MOVE_WHO),               // migration 251
   'workflow_moves.timer_basis':       () => values(workflowModel.TIMER_BASES),            // migration 259
+  'maintenance_jobs.status':          () => values(maintenanceJobWf.MAINTENANCE_JOB_STATUSES), // migration 260
   'workflow_fields.type':             () => values(workflowModel.FIELD_TYPES),            // migration 253
   'parking_requests.holder_type':     () => values(applicationForm.APPLICANT_KINDS),      // migration 247
   'parking_holders.holder_type':      () => values(agreementModel.HOLDER_TYPES),

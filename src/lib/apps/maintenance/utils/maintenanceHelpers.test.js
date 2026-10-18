@@ -28,6 +28,14 @@ describe('jobRag', () => {
     expect(jobRag(job({ status: 'in_progress' }))).toBe('in_progress');
   });
 
+  // Migration 260: a job in a booked or attended stage is in progress — but
+  // still late once its date has passed.
+  it('reads an in-progress job past its date as overdue', () => {
+    expect(jobRag(job({ status: 'in_progress', scheduled_date: '2026-06-14' }))).toBe('overdue');
+    expect(jobRag(job({ status: 'in_progress', scheduled_date: '2026-06-20', hard_expiry_date: '2026-06-10' }))).toBe('overdue');
+    expect(jobRag(job({ status: 'in_progress', scheduled_date: '2026-06-20' }))).toBe('in_progress');
+  });
+
   it('is overdue when the due date is before today', () => {
     expect(jobRag(job({ scheduled_date: '2026-06-14' }))).toBe('overdue');
   });

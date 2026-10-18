@@ -15,8 +15,11 @@
 import { isValidTransition } from '#lib/apps/complaints/utils/complaintLifecycle.js';
 
 /**
- * @typedef {{ name: string, stepsAre: string, steps?: Record<string, string>, moveAllowed?: (from: string, to: string) => boolean, explains: string }} Contract
+ * @typedef {{ name: string, stepsAre?: string, steps?: Record<string, string>, moveAllowed?: (from: string, to: string) => boolean, check?: (def: any) => string|null, subjectDue?: boolean, explains: string }} Contract
  *   steps — the step keys the workflow must have exactly, each with its fixed kind
+ *   check — a rule of the app's own that is not a fixed list (maintenance)
+ *   subjectDue — its items' deadline is the SUBJECT's own date (workflow_subject_due),
+ *                not the steps' — so step deadlines do not date them
  */
 
 /** @type {Readonly<Record<string, Contract>>} */
@@ -36,6 +39,7 @@ export const CONTRACTS = Object.freeze({
     name: 'Compliance action',
     stepsAre: 'the action statuses',
     steps: { open: 'start', in_progress: 'open', answered: 'open', closed: 'done' },
+    subjectDue: true,
     explains: 'Its steps are the action statuses of the compliance obligations register and each has a fixed kind. The names, moves, notes and conditions can be changed; an action’s deadline is its own due date.',
   },
   // Migration 258: works schedules. ⚠ Every Building Assets workflow — this is
@@ -44,7 +48,24 @@ export const CONTRACTS = Object.freeze({
     name: 'Works schedule',
     stepsAre: 'the works schedule statuses',
     steps: { draft: 'start', issued: 'open', completed: 'done', cancelled: 'declined' },
+    subjectDue: true,
     explains: 'Its steps are the works schedule statuses and each has a fixed kind. The names, moves, notes and conditions can be changed; a schedule’s deadline is its expected completion date.',
+  },
+  // Migration 260: maintenance jobs. ⭐ The steps are the administrator's —
+  // a step's KIND is the job's status — so only two rules are fixed.
+  maintenance: {
+    name: 'Maintenance job',
+    subjectDue: true,
+    check: ({ steps, moves }) => {
+      const kindOf = new Map(steps.map((/** @type {any} */ s) => [s.key, s.kind]));
+      if (!steps.some((/** @type {any} */ s) => s.kind === 'done')) {
+        return 'A Maintenance job workflow needs a finished — accepted step: it is where a job is completed.';
+      }
+      const timed = moves.find((/** @type {any} */ m) => kindOf.get(m.to_key) === 'done' && m.timer_days != null && m.timer_days !== '');
+      if (timed) return `The move "${timed.label}" completes a job, so it cannot be made by a timer — a person records the result.`;
+      return null;
+    },
+    explains: 'Its steps are yours: add the stages your contractors work to. A step’s kind sets the job’s status — start is Scheduled, in progress is In progress, finished — accepted is Completed (reached only by recording the result), finished — not accepted is Cancelled. A job’s deadline is its scheduled date, or its hard expiry date when earlier.',
   },
 });
 
@@ -69,6 +90,10 @@ export function contractProblem(appId, { steps, moves }) {
     if (lost) return `The ${c.name} workflow must keep its step "${lost}".`;
     const wrongKind = steps.find((s) => s.kind !== fixed[s.key]);
     if (wrongKind) return `Step "${wrongKind.name}" has a fixed kind in the ${c.name} workflow.`;
+  }
+  if (c.check) {
+    const why = c.check({ steps, moves });
+    if (why) return why;
   }
   if (c.moveAllowed) {
     const bad = moves.find((m) => !c.moveAllowed?.(m.from_key, m.to_key));

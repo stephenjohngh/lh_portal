@@ -24,8 +24,22 @@ import { isJobEvidenced } from '#lib/utils/obligationEvidence.js';
 import { plannedOccurrenceDates } from '../utils/obligationJobScope.js';
 import { storeLoader } from '#lib/utils/storeLoad.js';
 import { currentUserId } from '#lib/utils/currentUser.js';
+import { loadWorkflow, listItems, moveItem, saveWorkflow, assignItem, listAssignees } from '#lib/workflow/workflowApi.js';
+import { ensureNonWorkingDays } from '#lib/workflow/nonWorkingDays.js';
+import { MAINTENANCE_JOB_WORKFLOW_KEY, DEFAULT_MAINTENANCE_JOB_WORKFLOW } from '../utils/maintenanceJobWorkflow.js';
 
 const logger = getLogger('maintenanceStore');
+
+/** No workflow yet: what the state holds until an administrator sets it up. */
+const NO_WORKFLOW = Object.freeze({ workflow: null, steps: [], moves: [], fields: [], wfItems: [], assignees: [] });
+
+/** The jobs' workflow (migration 260): its definition, items and who may hold one. */
+async function readWorkflow() {
+  const wf = await loadWorkflow(MAINTENANCE_JOB_WORKFLOW_KEY);
+  if (!wf) return { ...NO_WORKFLOW };
+  const [wfItems, assignees] = await Promise.all([listItems(wf.workflow.id), listAssignees(wf.workflow.id)]);
+  return { workflow: wf.workflow, steps: wf.steps, moves: wf.moves, fields: wf.fields, wfItems, assignees };
+}
 
 function enrichJob(job) {
   return { ...job, rag: jobRag(job) };
@@ -65,6 +79,8 @@ function createMaintenanceStore() {
     obligations:   [],    // job-evidenced rows from the shared obligation library
     contractors:   [],    // profiles[] where is_contractor=true (for job assignment)
     isContractor:  false, // true when the current user is a contractor
+    // The jobs' workflow (migration 260) — its steps are the stages a job goes through.
+    workflow: null, steps: [], moves: [], fields: [], wfItems: [], assignees: [],
     unavailable:   [],    // what could not be read this load — shown, never silently empty
     loading:       false,
     error:         null,
@@ -92,7 +108,7 @@ function createMaintenanceStore() {
         } catch { /* profile fetch failure is non-fatal */ }
       }
 
-      const [jobs, systems, types, obligations, allDocs, contractors] = await Promise.all([
+      const [jobs, systems, types, obligations, allDocs, contractors, wf] = await Promise.all([
         // No PostgREST embed of the definition any more: maintenance_regime is
         // gone (migration 204) and the obligation library belongs to another
         // app, so it is fetched through its public.js and joined in memory by
@@ -121,9 +137,14 @@ function createMaintenanceStore() {
           filters:   { is_contractor: true },
           orderBy:   'full_name',
         })),
+        readWorkflow().catch((/** @type {any} */ err) => {
+          logger('⚠ could not read the jobs’ workflow:', err?.message ?? err);
+          unavailable.push('the jobs’ workflow');
+          return { ...NO_WORKFLOW };
+        }),
       ]);
 
-      return { jobs: jobs.map(enrichJob), allDocs, systems, types, obligations, contractors, isContractor, unavailable };
+      return { jobs: jobs.map(enrichJob), allDocs, systems, types, obligations, contractors, isContractor, unavailable, ...wf };
     },
     (loaded) => loaded,
     { what: 'maintenance', log: logger });
@@ -319,6 +340,7 @@ function createMaintenanceStore() {
     });
 
     logger('✅ Created job:', job.title);
+    await reloadWorkflowItems();                     // the database joined it to its workflow
     return enriched;
   }
 
@@ -342,6 +364,7 @@ function createMaintenanceStore() {
     });
 
     logger('✅ Updated job:', id);
+    await reloadWorkflowItems();                     // a new date re-dates its item
     return enriched;
   }
 
@@ -358,18 +381,23 @@ function createMaintenanceStore() {
       createNextJob = true,
       nextJobDate   = null,   // hard expiry override (YYYY-MM-DD)
       components    = [],     // per-component results
+      toStep        = null,   // the finished step to reach; null = the one a move from here leads to
     } = payload;
 
-    const updated = await api.update('maintenance_jobs', id, {
-      status:           'completed',
-      completed_date:   completedDate,
-      result,
-      completion_notes: completionNotes  || null,
-      contractor_name:  contractorName   || null,
-      engineer_name:    engineerName     || null,
-      reference_number: referenceNumber  || null,
-      updated_by:       userId,
-    }, true);
+    // The completion and the move into a finished step, in one transaction
+    // (migration 260): the job reaches its Completed step only with a result.
+    await api.rpc('maintenance_job_complete', {
+      p_job:              id,
+      p_completed_date:   completedDate,
+      p_result:           result,
+      p_completion_notes: completionNotes  || null,
+      p_contractor_name:  contractorName   || null,
+      p_engineer_name:    engineerName     || null,
+      p_reference_number: referenceNumber  || null,
+      p_to:               toStep,
+      p_note:             null,
+    });
+    const updated = await api.getById('maintenance_jobs', id);
 
     // Save per-component results if provided
     if (components.length > 0) {
@@ -413,6 +441,7 @@ function createMaintenanceStore() {
       if (nextJob) jobs.push(enrichJob(nextJob));
       return { ...s, jobs: jobs.sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date)) };
     });
+    await reloadWorkflowItems();                     // the job moved, and a spawned one joined
 
     logAudit('update', 'maintenance_job', id, updated.title, {
       appId: 'maintenance', eventCategory: 'maintenance', severity: 'info',
@@ -423,32 +452,62 @@ function createMaintenanceStore() {
     return enrichJob(updated);
   }
 
-  async function cancelJob(id) {
-    const userId  = await currentUserId();
-    const updated = await api.update('maintenance_jobs', id, {
-      status:     'cancelled',
-      updated_by: userId,
-    }, true);
+  // ── The jobs' workflow (migration 260) ─────────────────────────────────────
 
-    update(s => ({ ...s, jobs: s.jobs.map(j => j.id === id ? enrichJob(updated) : j) }));
-
-    logAudit('update', 'maintenance_job', id, updated.title, {
-      appId: 'maintenance', eventCategory: 'maintenance', severity: 'info',
-      afterData: { status: 'cancelled' },
-    });
-    logger('✅ Cancelled job:', id);
+  /** Re-read the workflow's items only (after a move, an assignment, a new job). */
+  async function reloadWorkflowItems() {
+    const wf = get({ subscribe }).workflow;
+    if (!wf) return;
+    const wfItems = await listItems(wf.id);
+    update(s => ({ ...s, wfItems }));
   }
 
-  async function reopenJob(id) {
-    const userId  = await currentUserId();
-    const updated = await api.update('maintenance_jobs', id, {
-      status:         'scheduled',
-      completed_date: null,
-      result:         null,
-      updated_by:     userId,
-    }, true);
-    update(s => ({ ...s, jobs: s.jobs.map(j => j.id === id ? enrichJob(updated) : j) }));
-    logger('✅ Reopened job:', id);
+  /**
+   * Admin, on first opening Maintenance: save the shipped workflow when there
+   * is none (a release never overwrites one already saved), attach the jobs
+   * already there, then read.
+   */
+  async function setUpWorkflow() {
+    await ensureNonWorkingDays();
+    await saveWorkflow(DEFAULT_MAINTENANCE_JOB_WORKFLOW);
+    const attached = await api.rpc('maintenance_job_attach_to_workflow', {});
+    logAudit('create', 'workflow', null, DEFAULT_MAINTENANCE_JOB_WORKFLOW.name, {
+      appId: 'maintenance', eventCategory: 'maintenance', afterData: { attached },
+    });
+    await load();
+  }
+
+  /** A job's workflow item, or null. @param {string} jobId */
+  function itemFor(jobId) {
+    return get({ subscribe }).wfItems.find(i => i.subject_id === jobId) ?? null;
+  }
+
+  /**
+   * Move a job on through its workflow. The database writes the status the
+   * step's kind names (scheduled · in_progress · completed · cancelled) and
+   * refuses a status changed any other way. A move into a finished step is
+   * Record completion's (completeJob), which records the result with it.
+   * @param {string} id @param {string} to @param {string} [note]
+   */
+  async function moveJob(id, to, note = '') {
+    const item = itemFor(id);
+    if (!item) throw new Error('This job is not in its workflow yet — an administrator opening Maintenance sets it up.');
+    await moveItem(item.id, to, note);
+    const job = await api.getById('maintenance_jobs', id);
+    update(s => ({ ...s, jobs: s.jobs.map(j => (j.id === id ? enrichJob(job) : j)) }));
+    logAudit('update', 'maintenance_job', id, job?.title ?? '', {
+      appId: 'maintenance', eventCategory: 'maintenance', severity: 'info',
+      afterData: { step: to, status: job?.status },
+    });
+    await reloadWorkflowItems();
+    return job;
+  }
+
+  /** Give a job to someone, or to nobody. @param {string} itemId @param {string|null} userId */
+  async function assignJob(itemId, userId) {
+    const result = await assignItem(itemId, userId || null);
+    await reloadWorkflowItems();
+    return result;
   }
 
   async function deleteJob(id) {
@@ -548,6 +607,7 @@ function createMaintenanceStore() {
       });
     }
 
+    if (created.length > 0) await reloadWorkflowItems();
     logger('✅ Generated', created.length, 'jobs');
     return created;
   }
@@ -556,7 +616,8 @@ function createMaintenanceStore() {
     subscribe, load,
     loadJobDocuments, uploadDocument, deleteDocument,
     loadJobComponents, saveJobComponents, loadScopeComponents,
-    createJob, updateJob, completeJob, cancelJob, reopenJob, deleteJob,
+    createJob, updateJob, completeJob, deleteJob,
+    setUpWorkflow, reloadWorkflowItems, itemFor, moveJob, assignJob,
     generateJobs,
   };
 }

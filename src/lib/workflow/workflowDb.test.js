@@ -23,6 +23,7 @@ import { spawnSync } from 'node:child_process';
 import { SAVE_CASES } from './workflowSaveCases.test-helper.js';
 import { DEFAULT_COMPLIANCE_ACTION_WORKFLOW as ACTION_WF } from '#lib/apps/compliance/utils/complianceActionWorkflow.js';
 import { DEFAULT_WORKS_SCHEDULE_WORKFLOW as WORKS_WF } from '#lib/apps/building_assets/utils/worksScheduleWorkflow.js';
+import { DEFAULT_MAINTENANCE_JOB_WORKFLOW as JOB_WF } from '#lib/apps/maintenance/utils/maintenanceJobWorkflow.js';
 
 const RUN = process.env.LH_DB_TESTS === 'dev';
 const PSQL = process.platform === 'win32' ? 'C:/Program Files/PostgreSQL/18/bin/psql.exe' : 'psql';
@@ -69,6 +70,21 @@ const worksSave = `perform workflow_save('works_schedule', ${txt(WORKS_WF.name)}
       ${lit(WORKS_WF.steps.map((x, n) => ({ ...x, position: n + 1 })))},
       ${lit(WORKS_WF.moves.map((m, n) => ({ ...m, position: n + 1 })))}, null, null, null, '[]', null);`;
 const worksItem = `(select i.id from workflow_items i join works_schedules w on w.id = i.subject_id where w.title = 'DB test works')`;
+const jobSave = `perform workflow_save('maintenance_job', ${txt(JOB_WF.name)}, 'maintenance', null,
+      ${lit(JOB_WF.steps.map((x, n) => ({ ...x, position: n + 1 })))},
+      ${lit(JOB_WF.moves.map((m, n) => ({ ...m, position: n + 1 })))}, null, null, null, '[]', null);`;
+const jobItem = `(select i.id from workflow_items i join maintenance_jobs j on j.id = i.subject_id where j.title = 'DB test job')`;
+const ADMIN_CLAIMS = `perform set_config('request.jwt.claims', json_build_object('sub', (select id from profiles where is_admin order by created_at limit 1), 'role', 'authenticated')::text, true);
+    perform set_config('request.jwt.claim.sub', (select id::text from profiles where is_admin order by created_at limit 1), true);`;
+/** Act as a non-admin: the job's contractor (true) or someone else (false). */
+const asNonAdmin = (/** @type {boolean} */ contractor) => {
+  const who = `(select p.id from profiles p where not p.is_admin
+      and ${contractor ? '' : 'not '}exists (select 1 from maintenance_jobs j where j.title = 'DB test job' and j.contractor_id = p.id)
+      and not exists (select 1 from app_permissions a where a.user_id = p.id and a.app_id = 'maintenance' and not a.is_read_only)
+      order by p.created_at limit 1)`;
+  return `perform set_config('request.jwt.claims', json_build_object('sub', ${who}, 'role', 'authenticated')::text, true);
+    perform set_config('request.jwt.claim.sub', ${who}::text, true);`;
+};
 const firstAction = `(select i.id from workflow_items i join statutory_register r on r.id = i.subject_id where r.template_key = ${ACT})`;
 
 /** The runtime checks, in order; each sees what the ones before it did. */
@@ -250,6 +266,56 @@ const RUNTIME = [
     if (select action_status from statutory_register where template_key = 'a2') <> 'in_progress'
        or (select step_key from workflow_items i join statutory_register r on r.id = i.subject_id where r.template_key = 'a2') <> 'in_progress'
       then raise exception 'not moved by the nightly run'; end if;`, null],
+  // Migration 260: maintenance jobs — the steps are the administrator's, and a
+  // step's kind is the job's status.
+  ['the shipped Maintenance job workflow saves; a new job joins at its start, named and dated', `
+    ${jobSave}
+    perform maintenance_job_attach_to_workflow();
+    insert into maintenance_jobs (title, scheduled_date, created_by)
+         values ('DB test job', current_date + 30, auth.uid());
+    if (select step_key from workflow_items where id = ${jobItem}) <> 'scheduled' then raise exception 'not at Scheduled'; end if;
+    if (select due_on from workflow_items where id = ${jobItem}) <> current_date + 30 then raise exception 'not dated'; end if;
+    if (select label from workflow_items where id = ${jobItem}) not like 'DB test job · %' then raise exception 'not named'; end if;`, null],
+  ['an earlier hard expiry dates it instead', `
+    update maintenance_jobs set hard_expiry_date = current_date + 10 where title = 'DB test job';
+    if (select due_on from workflow_items where id = ${jobItem}) <> current_date + 10 then raise exception 'not re-dated'; end if;`, null],
+  ['a job’s status changes only through its workflow', `
+    update maintenance_jobs set status = 'cancelled' where title = 'DB test job';`, 'through its workflow'],
+  ['booking it makes it in progress', `
+    perform workflow_move(${jobItem}, 'booked', null);
+    if (select status from maintenance_jobs where title = 'DB test job') <> 'in_progress' then raise exception 'not in progress'; end if;`, null],
+  ['its contractor may move it on, with no editable grant', `
+    update maintenance_jobs set contractor_id = (select p.id from profiles p where not p.is_admin
+        and not exists (select 1 from app_permissions a where a.user_id = p.id and a.app_id = 'maintenance' and not a.is_read_only)
+        order by p.created_at limit 1)
+     where title = 'DB test job';
+    ${asNonAdmin(true)}
+    perform workflow_move(${jobItem}, 'attended', null);
+    ${ADMIN_CLAIMS}
+    if (select step_key from workflow_items where id = ${jobItem}) <> 'attended' then raise exception 'not moved'; end if;`, null],
+  ['someone else without an editable grant may not', `
+    ${asNonAdmin(false)}
+    if exists (select 1 from app_permissions a where a.user_id = auth.uid() and a.app_id = 'maintenance' and not a.is_read_only)
+      then raise exception 'the chosen user holds an editable grant, so this proves nothing'; end if;
+    perform workflow_move(${jobItem}, 'completed', null);`, 'You cannot change this'],
+  ['a job is not completed by a bare move: its result must be recorded', `
+    ${ADMIN_CLAIMS}
+    perform workflow_move(${jobItem}, 'completed', null);`, 'Record the completion first'],
+  ['recording the completion completes it, and ends its deadline', `
+    ${ADMIN_CLAIMS}
+    perform maintenance_job_complete((select id from maintenance_jobs where title = 'DB test job'), current_date, 'pass', 'Done', null, null, 'CERT-1');
+    if (select status from maintenance_jobs where title = 'DB test job') <> 'completed' then raise exception 'not completed'; end if;
+    if (select step_key from workflow_items where id = ${jobItem}) <> 'completed' then raise exception 'not at Completed'; end if;
+    if (select due_on from workflow_items where id = ${jobItem}) is not null then raise exception 'still dated'; end if;`, null],
+  ['re-opening clears the completion', `
+    perform workflow_move(${jobItem}, 'scheduled', 'Certificate was for the wrong system');
+    if (select status from maintenance_jobs where title = 'DB test job') <> 'scheduled'
+       or (select result from maintenance_jobs where title = 'DB test job') is not null then raise exception 'not cleared'; end if;`, null],
+  ['a deleted job takes its item with it', `
+    delete from maintenance_jobs where title = 'DB test job';
+    if exists (select 1 from workflow_items i join workflows w on w.id = i.workflow_id
+                where w.key = 'maintenance_job' and not exists (select 1 from maintenance_jobs j where j.id = i.subject_id))
+      then raise exception 'left behind'; end if;`, null],
 ];
 
 describe.skipIf(!RUN)('workflow manager — the database (dev, rolled back)', () => {

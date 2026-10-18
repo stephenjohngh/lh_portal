@@ -15,7 +15,6 @@ import { daysUntil } from '../../../utils/dates.js';
 export function jobRag(job) {
   if (job.status === 'completed')   return 'completed';
   if (job.status === 'cancelled')   return 'cancelled';
-  if (job.status === 'in_progress') return 'in_progress';
   // Effective due date: use the earlier of scheduled_date and hard_expiry_date (when set).
   // Calendar days in London (dates.js) — it used to count from LOCAL midnight.
   const scheduled = job.scheduled_date;
@@ -23,7 +22,10 @@ export function jobRag(job) {
   const due       = (hard && hard < scheduled) ? hard : scheduled;
 
   const band = dueBandOf(due, dueSoonDays('maintenanceJob'));
+  // ⛔ Overdue wins over in progress (migration 260): a job booked or attended
+  // and still not completed after its date is late, whatever stage it is at.
   if (band === 'overdue')  return 'overdue';
+  if (job.status === 'in_progress') return 'in_progress';
   if (band === 'due_soon') return 'due_soon';
   return 'scheduled';
 }

@@ -10,9 +10,12 @@
   import FormInput     from '#lib/components/common/FormInput.svelte';
   import FormTextarea  from '#lib/components/common/FormTextarea.svelte';
   import Checkbox      from '#lib/components/common/Checkbox.svelte';
+  import { errMessage }  from '#lib/utils/errors.js';
 
   export let job;
   export let show = true;
+  /** The finished step to reach (the move pressed); null = the one a move from where it is leads to. */
+  export let toStep = null;
 
   const dispatch = createEventDispatcher();
 
@@ -91,11 +94,12 @@
         createNextJob:    createNext,
         nextJobDate:      (createNext && useHardDate && hardDate) ? hardDate : null,
         components,
+        toStep,
       });
       dispatch('completed');
       dispatch('close');
     } catch (/** @type {any} */ err) {
-      error = err.message;
+      error = errMessage(err, 'The completion could not be recorded.');
     } finally {
       saving = false;
     }

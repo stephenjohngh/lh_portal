@@ -10,6 +10,7 @@
 import { DEFAULT_COMPLAINT_WORKFLOW as COMPLAINT } from '#lib/apps/complaints/utils/complaintWorkflow.js';
 import { DEFAULT_COMPLIANCE_ACTION_WORKFLOW as ACTION } from '#lib/apps/compliance/utils/complianceActionWorkflow.js';
 import { DEFAULT_WORKS_SCHEDULE_WORKFLOW as WORKS } from '#lib/apps/building_assets/utils/worksScheduleWorkflow.js';
+import { DEFAULT_MAINTENANCE_JOB_WORKFLOW as JOB } from '#lib/apps/maintenance/utils/maintenanceJobWorkflow.js';
 
 /** @typedef {{ name: string, appId: string, steps: any[], moves: any[], fields?: any[], expect: RegExp|null }} SaveCase */
 
@@ -102,4 +103,17 @@ export const SAVE_CASES = [
     expect: /a timer counts calendar or working days/ },
   { name: 'a valid timer saves', appId: 'cases', steps: STEPS(),
     moves: MOVES().map((m, i) => (i === 1 ? { ...m, timer_days: 30, timer_basis: 'working' } : m)), fields: FIELDS(), expect: null },
+  // Maintenance jobs (migration 260): the steps are the administrator's.
+  { name: 'the shipped Maintenance job workflow saves', appId: 'maintenance',
+    steps: JOB.steps.map((x) => ({ ...x })), moves: JOB.moves.map((m) => ({ ...m })), expect: null },
+  { name: 'Maintenance job: stages of a building’s own save', appId: 'maintenance',
+    steps: [...STEPS(), { key: 'quoted', name: 'Quote requested', kind: 'open' }],
+    moves: [...MOVES(), { from_key: 'open', to_key: 'quoted', label: 'Ask for a quote' }, { from_key: 'quoted', to_key: 'done', label: 'Record completion' }],
+    expect: null },
+  { name: 'Maintenance job: no step where a job is completed', appId: 'maintenance',
+    steps: STEPS().filter((x) => x.kind !== 'done'), moves: MOVES().filter((m) => m.to_key !== 'done'),
+    expect: /needs a finished — accepted step/ },
+  { name: 'Maintenance job: a timer that would complete a job', appId: 'maintenance', steps: STEPS(),
+    moves: MOVES().map((m, i) => (i === 0 ? { ...m, timer_days: 10 } : m)),
+    expect: /completes a job, so it cannot be made by a timer/ },
 ];

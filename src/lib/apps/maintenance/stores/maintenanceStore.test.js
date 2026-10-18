@@ -24,7 +24,11 @@ const h = vi.hoisted(() => {
 
   const api = {
     get:        vi.fn((table) => Promise.resolve(tables[table] ?? [])),
-    getById:    vi.fn(() => Promise.resolve(profile)),
+    // A job read back after a completion or a move carries what the database wrote.
+    getById:    vi.fn((table, id) => Promise.resolve(table === 'maintenance_jobs'
+      ? { id, title: 'Job', scheduled_date: '2026-01-01', status: 'completed', result: 'pass', ...updateExtra }
+      : profile)),
+    rpc:        vi.fn(() => Promise.resolve({ step: 'completed', action: null })),
     create:     vi.fn((table, data) => Promise.resolve({ id: `${table}-${Math.random().toString(36).slice(2, 7)}`, ...data })),
     update:     vi.fn((table, id, data) => Promise.resolve({ id, ...updateExtra, ...data })),
     delete:     vi.fn(() => Promise.resolve()),
@@ -49,6 +53,12 @@ const h = vi.hoisted(() => {
     listPlannedObligations: vi.fn(() => Promise.resolve(obligations)),
     deleteStorageObjects: vi.fn(() => Promise.resolve({ deleted: 1, failed: 0, results: [] })),
     deleteDocumentsFor:   vi.fn(() => Promise.resolve(0)),
+    // The jobs' workflow (migration 260): none until a test sets one.
+    wf: { definition: null, items: [] },
+    loadWorkflow: vi.fn(() => Promise.resolve(null)),
+    listItems:    vi.fn(() => Promise.resolve([])),
+    moveItem:     vi.fn(() => Promise.resolve({ step: 'booked' })),
+    assignItem:   vi.fn(() => Promise.resolve({ changed: true })),
   };
 });
 
@@ -62,6 +72,11 @@ vi.mock('#lib/utils/documentApi.js', () => ({
   uploadDocument: vi.fn(), deleteDocument: vi.fn(), deleteDocumentsFor: h.deleteDocumentsFor,
 }));
 vi.mock('#lib/apps/compliance/public.js', () => ({ listPlannedObligations: h.listPlannedObligations }));
+vi.mock('#lib/workflow/workflowApi.js', () => ({
+  loadWorkflow: h.loadWorkflow, listItems: h.listItems, moveItem: h.moveItem, assignItem: h.assignItem,
+  saveWorkflow: vi.fn(() => Promise.resolve()), listAssignees: vi.fn(() => Promise.resolve([])),
+}));
+vi.mock('#lib/workflow/nonWorkingDays.js', () => ({ ensureNonWorkingDays: vi.fn(() => Promise.resolve()) }));
 
 const { maintenanceStore } = await import('./maintenanceStore.js');
 
@@ -115,6 +130,21 @@ describe('createJob', () => {
 });
 
 describe('completeJob', () => {
+  // Migration 260: the completion and the move into a finished step are one
+  // call — the job reaches Completed only with its result recorded.
+  it('records the completion through maintenance_job_complete, never by writing the status', async () => {
+    await maintenanceStore.completeJob('j1', {
+      result: 'fail', completedDate: '2026-02-03', completionNotes: 'n', referenceNumber: 'R1',
+      createNextJob: false, toStep: 'completed',
+    });
+    expect(h.api.rpc).toHaveBeenCalledWith('maintenance_job_complete', expect.objectContaining({
+      p_job: 'j1', p_result: 'fail', p_completed_date: '2026-02-03', p_completion_notes: 'n',
+      p_reference_number: 'R1', p_to: 'completed',
+    }));
+    const statusWrites = h.api.update.mock.calls.filter(c => c[0] === 'maintenance_jobs' && 'status' in c[2]);
+    expect(statusWrites).toEqual([]);
+  });
+
   it('marks the job completed and spawns the next recurrence from the obligation frequency', async () => {
     h.setObligations([{ id: 'reg1', name: 'Service', frequency_days: 30, evidenced_by: 'maintenance_job' }]);
     await maintenanceStore.load();
@@ -132,19 +162,29 @@ describe('completeJob', () => {
     h.setUpdateExtra({});   // no obligation_id on the returned row
     await maintenanceStore.completeJob('j1', { result: 'pass', completedDate: '2026-01-01', createNextJob: true });
     expect(jobCreates()).toHaveLength(0);
-    expect(h.api.update).toHaveBeenCalledWith('maintenance_jobs', 'j1', expect.objectContaining({ status: 'completed', result: 'pass' }), true);
+    expect(h.api.rpc).toHaveBeenCalledWith('maintenance_job_complete', expect.objectContaining({ p_job: 'j1', p_result: 'pass' }));
   });
 });
 
-describe('cancel / reopen / delete', () => {
-  it('cancelJob sets status cancelled', async () => {
-    await maintenanceStore.cancelJob('j1');
-    expect(lastJobUpdate().status).toBe('cancelled');
+describe('moves through the workflow / delete', () => {
+  // Migration 260: cancel, re-open, book… are the workflow's moves. The
+  // database writes the status the step's kind names.
+  it('moveJob makes the move on the job’s item and reads the job back', async () => {
+    h.loadWorkflow.mockResolvedValueOnce({ workflow: { id: 'wf1' }, steps: [], moves: [], fields: [] });
+    h.listItems.mockResolvedValue([{ id: 'it1', subject_id: 'j1', step_key: 'scheduled' }]);
+    h.setTables({ maintenance_jobs: [{ id: 'j1', title: 'X', scheduled_date: '2026-01-01', status: 'scheduled' }] });
+    h.setUpdateExtra({ status: 'cancelled' });
+    await maintenanceStore.load();
+    await maintenanceStore.moveJob('j1', 'cancelled', 'not needed');
+    expect(h.moveItem).toHaveBeenCalledWith('it1', 'cancelled', 'not needed');
+    expect(get(maintenanceStore).jobs[0].status).toBe('cancelled');
+    expect(h.api.update.mock.calls.filter(c => c[0] === 'maintenance_jobs')).toEqual([]);
+    h.listItems.mockResolvedValue([]);
   });
 
-  it('reopenJob resets to scheduled and clears the completion fields', async () => {
-    await maintenanceStore.reopenJob('j1');
-    expect(lastJobUpdate()).toMatchObject({ status: 'scheduled', completed_date: null, result: null });
+  it('moveJob refuses a job that is not in its workflow, saying why', async () => {
+    await maintenanceStore.load();
+    await expect(maintenanceStore.moveJob('nope', 'booked')).rejects.toThrow(/not in its workflow/);
   });
 
   it('deleteJob removes the job and its docs from state and audits', async () => {

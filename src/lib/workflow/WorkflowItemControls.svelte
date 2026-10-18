@@ -18,6 +18,10 @@
        · extraRefusal(move) — the app's own reason a move cannot be made yet
          (s.93's for a complaint, unsaved changes for a case), checked first.
        · confirmMove(move) — { title, message, danger } to ask first, or null.
+       · handOff(move) — true when the app makes this move through its OWN
+         form (a maintenance job's Record completion, which records the
+         result with it); the button then opens that form, and the app moves
+         the item. The reasons above still hold it back first.
        · audit — { appId, entityType, entityId } for its audit lines (the
          reference only — never a name or a value).
      The database makes every check again when the change is made. -->
@@ -56,6 +60,7 @@
   /** @type {() => Promise<any>} */ export let onFieldsSaved = async () => {};
   /** @type {(move: any) => string|null} */ export let extraRefusal = () => null;
   /** @type {(move: any) => ({ title: string, message: string, danger?: boolean } | null)} */ export let confirmMove = () => null;
+  /** @type {(move: any) => boolean} */ export let handOff = () => false;
   /** @type {{ appId: string, entityType: string, entityId: string } | null} */ export let audit = null;
   export let showHistory = true;
   /**
@@ -150,6 +155,7 @@
   $: pendingAsk = pending ? confirmMove(pending) : null;
   function press(/** @type {any} */ m) {
     if (whyNot(m)) return;
+    if (handOff(m)) return;
     if (confirmMove(m)) pending = m; else move(m);
   }
   async function move(/** @type {any} */ m) {
