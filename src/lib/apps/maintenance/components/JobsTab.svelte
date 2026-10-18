@@ -178,7 +178,8 @@
 
 <!-- Job detail panel -->
 {#if selectedJob}
-  <JobDetailPanel job={selectedJob} show={true}
+  <!-- The job as it is NOW (a move in the panel re-reads it), not the row as it was clicked. -->
+  <JobDetailPanel job={jobs.find((j) => j.id === selectedJob.id) ?? selectedJob} show={true}
     on:close={() => selectedJob = null}
     on:changed={() => selectedJob = null} />
 {/if}

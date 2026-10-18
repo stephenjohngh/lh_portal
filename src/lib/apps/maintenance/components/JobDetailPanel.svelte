@@ -58,8 +58,8 @@
     return true;
   };
   async function onWfMove(/** @type {any} */ m, /** @type {string} */ note) {
+    // The panel stays open: the controls say what happened and offer the next move.
     await maintenanceStore.moveJob(job.id, m.to_key, note);
-    dispatch('changed');
   }
   $: wfAudit  = job ? { appId: 'maintenance', entityType: 'maintenance_job', entityId: job.id } : null;
   $: wfRecord = job ? {

@@ -51,11 +51,14 @@
   let selectedJob   = null;
   let completeJob   = null;
 
-  const SECTIONS = [
-    { key: 'overdue',   label: 'Overdue',            jobs: () => overdue,   hdr: 'bg-red-900/20 border-red-800/40',    count: () => overdue.length   },
-    { key: 'dueSoon',   label: `Due within ${dueSoonDays('maintenanceJob')} days`,  jobs: () => dueSoon,   hdr: 'bg-amber-900/20 border-amber-800/40', count: () => dueSoon.length   },
-    { key: 'upcoming',  label: 'Upcoming',            jobs: () => upcoming,  hdr: 'bg-green-900/10 border-green-800/30', count: () => upcoming.length  },
-    { key: 'completed', label: 'Recently completed',  jobs: () => completed, hdr: 'bg-slate-800/40 border-slate-700',    count: () => completed.length },
+  // ⛔ Reactive, holding the lists themselves: a constant of functions was read
+  // once, so a job completed or moved on this tab stayed in its old section
+  // until the page was reloaded (found 2026-10-18, migration 260's test).
+  $: SECTIONS = [
+    { key: 'overdue',   label: 'Overdue',            jobs: overdue,   hdr: 'bg-red-900/20 border-red-800/40'    },
+    { key: 'dueSoon',   label: `Due within ${dueSoonDays('maintenanceJob')} days`,  jobs: dueSoon,   hdr: 'bg-amber-900/20 border-amber-800/40' },
+    { key: 'upcoming',  label: 'Upcoming',            jobs: upcoming,  hdr: 'bg-green-900/10 border-green-800/30' },
+    { key: 'completed', label: 'Recently completed',  jobs: completed, hdr: 'bg-slate-800/40 border-slate-700'    },
   ];
 </script>
 
@@ -125,7 +128,7 @@
   {/if}
 
   {#each SECTIONS as sec}
-    {@const sJobs = sec.jobs()}
+    {@const sJobs = sec.jobs}
     {#if sJobs.length > 0 || sec.key === 'upcoming'}
       <div class="rounded-lg border border-slate-700 overflow-hidden">
 
@@ -137,7 +140,7 @@
         >
           <div class="flex items-center gap-2">
             <span class="text-sm font-semibold text-slate-200">{sec.label}</span>
-            <span class="text-xs text-slate-400">({sec.count()})</span>
+            <span class="text-xs text-slate-400">({sJobs.length})</span>
           </div>
           <span class="text-slate-400 text-sm transition-transform duration-150"
             style="transform: rotate({open[sec.key] ? '180deg' : '0deg'})">▾</span>
@@ -218,7 +221,8 @@
 
 <!-- Job detail -->
 {#if selectedJob}
-  <JobDetailPanel job={selectedJob} show={true}
+  <!-- The job as it is NOW (a move in the panel re-reads it), not the row as it was clicked. -->
+  <JobDetailPanel job={jobs.find((j) => j.id === selectedJob.id) ?? selectedJob} show={true}
     on:close={() => selectedJob = null}
     on:changed={() => selectedJob = null} />
 {/if}

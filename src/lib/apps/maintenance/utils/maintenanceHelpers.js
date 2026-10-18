@@ -22,11 +22,12 @@ export function jobRag(job) {
   const due       = (hard && hard < scheduled) ? hard : scheduled;
 
   const band = dueBandOf(due, dueSoonDays('maintenanceJob'));
-  // ⛔ Overdue wins over in progress (migration 260): a job booked or attended
-  // and still not completed after its date is late, whatever stage it is at.
+  // ⛔ Urgency wins over stage (migration 260): a job booked or attended and
+  // not completed by its date is late, and one due within the window is due
+  // soon, whatever stage it is at — the list shows the stage beside it.
   if (band === 'overdue')  return 'overdue';
-  if (job.status === 'in_progress') return 'in_progress';
   if (band === 'due_soon') return 'due_soon';
+  if (job.status === 'in_progress') return 'in_progress';
   return 'scheduled';
 }
 

@@ -25,15 +25,16 @@ describe('jobRag', () => {
   it('short-circuits on non-scheduled statuses', () => {
     expect(jobRag(job({ status: 'completed' }))).toBe('completed');
     expect(jobRag(job({ status: 'cancelled' }))).toBe('cancelled');
-    expect(jobRag(job({ status: 'in_progress' }))).toBe('in_progress');
+    expect(jobRag(job({ status: 'in_progress', scheduled_date: '2026-09-01' }))).toBe('in_progress');
   });
 
   // Migration 260: a job in a booked or attended stage is in progress — but
   // still late once its date has passed.
-  it('reads an in-progress job past its date as overdue', () => {
+  it('reads an in-progress job by its urgency first: overdue, then due soon', () => {
     expect(jobRag(job({ status: 'in_progress', scheduled_date: '2026-06-14' }))).toBe('overdue');
     expect(jobRag(job({ status: 'in_progress', scheduled_date: '2026-06-20', hard_expiry_date: '2026-06-10' }))).toBe('overdue');
-    expect(jobRag(job({ status: 'in_progress', scheduled_date: '2026-06-20' }))).toBe('in_progress');
+    expect(jobRag(job({ status: 'in_progress', scheduled_date: '2026-06-20' }))).toBe('due_soon');
+    expect(jobRag(job({ status: 'in_progress', scheduled_date: '2026-09-01' }))).toBe('in_progress');
   });
 
   it('is overdue when the due date is before today', () => {
