@@ -24,10 +24,13 @@
   // Main actions stay solid teal (`primary`), so the two still read apart.
   // `danger` is the same shape in red.
   const variantStyles = {
-    primary: 'border-transparent bg-purple-500 hover:bg-purple-600 disabled:bg-purple-700',
-    amber: 'border-transparent bg-amber-600 hover:bg-amber-500 disabled:bg-amber-700', // Actions accent — matches amber-400/500 border colours
-    blue: 'border-transparent bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800',
-    green: 'border-transparent bg-green-600 hover:bg-green-700 disabled:bg-green-800',
+    // ⚠ A filled button DISABLED goes grey like the outline ones (2026-10-18):
+    // a shade darker of its colour read as pressable — a workflow move held
+    // back with its reason looked like the button to press.
+    primary: 'border-transparent bg-purple-500 hover:bg-purple-600 disabled:bg-slate-700 disabled:text-slate-400 disabled:hover:bg-slate-700',
+    amber: 'border-transparent bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-400 disabled:hover:bg-slate-700', // Actions accent — matches amber-400/500 border colours
+    blue: 'border-transparent bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-400 disabled:hover:bg-slate-700',
+    green: 'border-transparent bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-400 disabled:hover:bg-slate-700',
     secondary: 'border-purple-500/70 bg-transparent text-purple-300 hover:bg-purple-500/15 hover:text-purple-200 '
       + 'disabled:border-slate-600 disabled:text-slate-500 disabled:hover:bg-transparent',
     // ⭐ `tertiary` — the small in-line actions ("Clear", "Set all", "Use default",
