@@ -17,7 +17,6 @@
   import { complaintsStore } from './stores/complaintsStore.js';
   import { auth } from '#lib/stores/auth.js';
   import { profiles, profilesStore } from '#lib/stores/profiles.js';
-  import { isMoveEvent } from '#lib/workflow/workflowModel.js';
   import { deadlineBand } from '#lib/workflow/workflowDeadlines.js';
 
   import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
@@ -69,21 +68,7 @@
       .filter(Boolean).join(' · ');
   })();
 
-  // Who made the selected complaint's last MOVE — for a four-eyes move. Read
-  // when a complaint is opened or moved (keyed on its id and step, never the object).
-  let lastMoverId = null;
-  let historyKey = '';
   $: selectedItem = state.selected ? itemFor(state.selected.id) : null;
-  $: if (selectedItem && `${selectedItem.id}:${selectedItem.step_key}:${selectedItem.updated_at}` !== historyKey) {
-    historyKey = `${selectedItem.id}:${selectedItem.step_key}:${selectedItem.updated_at}`;
-    readLastMover(selectedItem.id);
-  }
-  async function readLastMover(/** @type {string} */ itemId) {
-    try {
-      const events = await complaintsStore.history(itemId);
-      lastMoverId = [...events].reverse().find(isMoveEvent)?.by ?? null;
-    } catch { lastMoverId = null; }   // the database makes the same check when the move is made
-  }
 
   // Nothing reads as empty until the first load has finished (AppGate). Before
   // it "No complaints recorded" or "0 open" would be untrue.
@@ -101,10 +86,19 @@
     } catch { /* surfaced in state.error */ }
   };
 
-  async function assign(e) {
+  // The item's controls (#lib/workflow/WorkflowItemControls) show a refusal
+  // themselves, so the store's copy of it is cleared rather than shown twice.
+  async function onAssign(/** @type {string|null} */ userId) {
     const id = state.selected?.id;                 // captured before the await
-    if (!id) return;
-    try { await complaintsStore.assign(id, e.detail, nameById[e.detail] ?? ''); } catch { /* surfaced */ }
+    if (!id) return null;
+    try { return await complaintsStore.assign(id, userId, userId ? nameById[userId] ?? '' : ''); }
+    finally { complaintsStore.clearError(); }
+  }
+  async function onMove(/** @type {any} */ m, /** @type {string} */ note) {
+    const id = state.selected?.id;
+    if (!id) return null;
+    try { return await complaintsStore.transition(id, m.to_key, note); }
+    finally { complaintsStore.clearError(); }
   }
 
   async function openCase(e) {
@@ -123,13 +117,6 @@
     } catch (err) {
       formRef?.fail(errMessage(err));
     }
-  }
-
-  async function transition(e) {
-    const id = state.selected?.id;                 // captured before the await
-    if (!id) return;
-    try { await complaintsStore.transition(id, e.detail.to, e.detail.note); }
-    catch { /* surfaced in state.error */ }
   }
 
   async function saveFields(e) {
@@ -207,16 +194,16 @@
       {canEdit}
       isAdmin={$permissions.isAdmin}
       item={selectedItem}
+      workflow={state.workflow}
       steps={state.steps}
       wfMoves={state.moves}
       {assignees}
       {nameById}
       {me}
-      {lastMoverId}
+      {onMove}
+      {onAssign}
       saving={state.saving}
-      on:assign={assign}
       on:back={back}
-      on:transition={transition}
       on:save={saveFields}
       on:note={addNote}
       on:escalationTold={escalationTold}

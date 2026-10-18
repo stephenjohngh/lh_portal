@@ -9,9 +9,11 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/svelte';
 
 vi.mock('../stores/casesStore.js', () => ({
   casesStore: { subscribe: (/** @type {any} */ f) => { f({}); return () => {}; },
-    history: vi.fn(async () => []), move: vi.fn(), assign: vi.fn(), save: vi.fn(), remove: vi.fn() },
+    history: vi.fn(async () => []), move: vi.fn(async () => ({ step: 'approved' })), assign: vi.fn(), save: vi.fn(), remove: vi.fn() },
 }));
 vi.mock('#lib/supabaseClient.js', () => ({ supabase: {} }));
+vi.mock('#lib/workflow/workflowApi.js', () => ({ itemHistory: async () => [] }));
+vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: vi.fn() }));
 vi.mock('#lib/utils/documentApi.js', () => ({ listDocuments: vi.fn(async () => []), uploadDocument: vi.fn(), deleteDocument: vi.fn(), updateDocument: vi.fn() }));
 vi.mock('#lib/stores/portalSettings.js', () => ({
@@ -36,14 +38,14 @@ describe('CasePanel', () => {
     render(CasePanel, { ...base, c: kase({}) });
     const approve = /** @type {HTMLButtonElement} */ (screen.getByRole('button', { name: 'Approve' }));
     expect(approve.disabled).toBe(true);
-    expect(screen.getByTestId('case-move-refusal').textContent).toBe('Fill in "Where" first.');
+    expect(screen.getByTestId('wf-move-refusal').textContent).toBe('Approve: Fill in "Where" first.');
   });
 
   it('with the field filled, the move is offered', () => {
     render(CasePanel, { ...base, c: kase({ where: 'Riser 3' }) });
     const approve = /** @type {HTMLButtonElement} */ (screen.getByRole('button', { name: 'Approve' }));
     expect(approve.disabled).toBe(false);
-    expect(screen.queryByTestId('case-move-refusal')).toBeNull();
+    expect(screen.queryByTestId('wf-move-refusal')).toBeNull();
   });
 
   it('a move made says the step reached, not only the button pressed', async () => {

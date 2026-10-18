@@ -4,6 +4,7 @@
   import Icon from '#lib/components/icons/Icon.svelte';
   
   export let message = '';
+  /** @type {(() => void) | null} */
   export let onDismiss = null;
   export let variant = 'error'; // 'error' | 'warning' | 'info'
   export let className = '';

@@ -22,7 +22,10 @@ vi.mock('../stores/requestStore.js', () => ({ requestStore: {
   assignees: async () => [{ id: 'me', full_name: 'Pat Smith' }, { id: 'u2', full_name: 'Sam Lee' }],
 } }));
 vi.mock('../stores/parkingStore.js', () => ({ parkingStore: { load: async () => { h.parkingLoads += 1; } } }));
-vi.mock('#lib/workflow/workflowApi.js', () => ({ listEvents: async () => ({ items: [], events: [
+vi.mock('#lib/workflow/workflowApi.js', () => ({
+  // The item's history, read by the shared controls (#lib/workflow/WorkflowItemControls).
+  itemHistory: async () => h.hist ?? [{ id: 1, from_key: null, to_key: 'received', note: 'Received from the online form', at: '2026-10-17T09:00:00Z' }],
+  listEvents: async () => ({ items: [], events: [
   { item_id: 'ia', from_key: null, to_key: 'received', at: '2026-10-17T09:00:00Z' }] }) }));
 vi.mock('#lib/stores/permissions.js', () => ({ permissions: { subscribe: h.perms.subscribe } }));
 vi.mock('#lib/stores/profiles.js', () => ({
@@ -68,8 +71,8 @@ describe('Parking → Applications', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Accept onto the waiting list' }));
     await waitFor(() => expect(h.moved).toEqual([['PKR-2026-000001', 'waiting_list', '']]));
     expect(h.parkingLoads).toBe(1);
-    expect(screen.getByRole('status')).toHaveTextContent('PKR-2026-000001: Accept onto the waiting list — now On the waiting list.');
-    expect(await screen.findByTestId('application-history')).toBeTruthy();
+    expect(await screen.findByRole('status')).toHaveTextContent('PKR-2026-000001: Accept onto the waiting list — now On the waiting list.');
+    expect(await screen.findByTestId('wf-history')).toBeTruthy();
   });
 
   it('a person who cannot edit Parking gets no moves', async () => {
@@ -140,7 +143,7 @@ describe('Parking → Applications', () => {
     h.req.set(state([REQ('a', 'PKR-2026-000001', 'checking', null, 'u2')]));
     render(ApplicationsTab, { canEdit: false });
     await fireEvent.click(await screen.findByText('PKR-2026-000001'));
-    const box = await screen.findByTestId('application-assignee');
+    const box = await screen.findByTestId('wf-with');
     expect(box.textContent).toMatch(/Sam Lee/);
     expect(screen.queryByLabelText('Who it is with')).toBeNull();
   });
@@ -159,10 +162,10 @@ describe('Parking → Applications', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Decline' }).hasAttribute('disabled')).toBe(true));
     expect(screen.getByRole('button', { name: 'Accept onto the waiting list' }).hasAttribute('disabled')).toBe(true);
     expect(screen.getByRole('button', { name: 'Withdrawn' }).hasAttribute('disabled')).toBe(false);   // no condition
-    const why = screen.getAllByTestId('move-refusal').map((p) => p.textContent);
+    const why = screen.getAllByTestId('wf-move-refusal').map((p) => p.textContent);
     expect(why).toEqual(expect.arrayContaining([
-      'Give it to someone first: only the person it is with can do this.',
-      'Someone other than the person who made the last move must do this.']));
+      'Accept onto the waiting list: Give it to someone first: only the person it is with can do this.',
+      'Decline: Someone other than the person who made the last move must do this.']));
   });
 });
 
