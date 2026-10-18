@@ -22,6 +22,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { SAVE_CASES } from './workflowSaveCases.test-helper.js';
 import { DEFAULT_COMPLIANCE_ACTION_WORKFLOW as ACTION_WF } from '#lib/apps/compliance/utils/complianceActionWorkflow.js';
+import { DEFAULT_WORKS_SCHEDULE_WORKFLOW as WORKS_WF } from '#lib/apps/building_assets/utils/worksScheduleWorkflow.js';
 
 const RUN = process.env.LH_DB_TESTS === 'dev';
 const PSQL = process.platform === 'win32' ? 'C:/Program Files/PostgreSQL/18/bin/psql.exe' : 'psql';
@@ -64,6 +65,10 @@ const actionSave = `perform workflow_save('compliance_action', ${txt(ACTION_WF.n
 // An action still OPEN on dev, chosen once (dev's own actions are moved by hand
 // in browser tests, so naming one — A1 was — breaks the run).
 const ACT = `(select template_key from dbtest_action)`;
+const worksSave = `perform workflow_save('works_schedule', ${txt(WORKS_WF.name)}, 'building_assets', null,
+      ${lit(WORKS_WF.steps.map((x, n) => ({ ...x, position: n + 1 })))},
+      ${lit(WORKS_WF.moves.map((m, n) => ({ ...m, position: n + 1 })))}, null, null, null, '[]', null);`;
+const worksItem = `(select i.id from workflow_items i join works_schedules w on w.id = i.subject_id where w.title = 'DB test works')`;
 const firstAction = `(select i.id from workflow_items i join statutory_register r on r.id = i.subject_id where r.template_key = ${ACT})`;
 
 /** The runtime checks, in order; each sees what the ones before it did. */
@@ -162,6 +167,35 @@ const RUNTIME = [
     perform workflow_save('compliance_action', 'x', 'compliance', null,
       '[{"key":"open","name":"Open","kind":"start","position":1},{"key":"closed","name":"Closed","kind":"done","position":2}]',
       '[{"from_key":"open","to_key":"closed","label":"Close","position":1}]', null, null, null, '[]', null);`, 'must keep its step'],
+  // Migration 258: works schedules.
+  ['the shipped Works schedule workflow saves, and the schedules attach to it', `
+    ${worksSave}
+    perform works_schedule_attach_to_workflow();
+    if exists (select 1 from works_schedules w where not exists (select 1 from workflow_items i where i.subject_id = w.id))
+      then raise exception 'a schedule was left out'; end if;`, null],
+  ['a new schedule joins its workflow, dated by its expected completion', `
+    insert into works_schedules (title, reference, expected_completion, created_by, updated_by)
+         values ('DB test works', null, current_date + 20, auth.uid(), auth.uid());
+    if (select due_on from workflow_items where id = ${worksItem}) <> current_date + 20 then raise exception 'not dated'; end if;
+    if (select label from workflow_items where id = ${worksItem}) <> 'DB test works' then raise exception 'not named'; end if;`, null],
+  ['a schedule’s status changes only through its workflow', `
+    update works_schedules set status = 'issued' where title = 'DB test works';`, 'through its workflow'],
+  ['issuing writes the status and the date it was issued', `
+    perform workflow_move(${worksItem}, 'issued', null);
+    if (select status from works_schedules where title = 'DB test works') <> 'issued' or
+       (select issued_at from works_schedules where title = 'DB test works') is null then raise exception 'not issued'; end if;`, null],
+  ['a changed expected completion re-dates it', `
+    update works_schedules set expected_completion = current_date + 40 where title = 'DB test works';
+    if (select due_on from workflow_items where id = ${worksItem}) <> current_date + 40 then raise exception 'not re-dated'; end if;`, null],
+  ['completing stamps the date and ends the deadline', `
+    perform workflow_move(${worksItem}, 'completed', null);
+    if (select completed_at from works_schedules where title = 'DB test works') is null then raise exception 'no date'; end if;
+    if (select due_on from workflow_items where id = ${worksItem}) is not null then raise exception 'still dated'; end if;`, null],
+  ['a deleted schedule takes its item with it', `
+    delete from works_schedules where title = 'DB test works';
+    if exists (select 1 from workflow_items i join workflows w on w.id = i.workflow_id
+                where w.key = 'works_schedule' and not exists (select 1 from works_schedules s where s.id = i.subject_id))
+      then raise exception 'left behind'; end if;`, null],
 ];
 
 describe.skipIf(!RUN)('workflow manager — the database (dev, rolled back)', () => {

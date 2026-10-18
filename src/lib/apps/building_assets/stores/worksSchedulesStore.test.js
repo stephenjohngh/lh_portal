@@ -18,6 +18,21 @@ const h = vi.hoisted(() => ({
     update: vi.fn((t, id, d) => Promise.resolve({ id, ...d })),
     updateMany: vi.fn(() => Promise.resolve([])),
     delete: vi.fn(() => Promise.resolve()),
+    getAll: vi.fn(() => Promise.resolve([{ id: 's1', title: 'Lighting', status: 'draft' }])),
+    getById: vi.fn((t, id) => Promise.resolve({ id, title: 'Lighting', status: 'issued' })),
+    rpc: vi.fn(() => Promise.resolve(0)),
+  },
+  wf: {
+    loadWorkflow: vi.fn(() => Promise.resolve({
+      workflow: { id: 'wf1', name: 'Works schedule' }, fields: [],
+      steps: [{ key: 'draft', kind: 'start' }, { key: 'issued', kind: 'open' }, { key: 'completed', kind: 'done' }],
+      moves: [{ from_key: 'draft', to_key: 'issued' }, { from_key: 'issued', to_key: 'completed' }],
+    })),
+    listItems: vi.fn(() => Promise.resolve([{ id: 'it1', subject_id: 's1', step_key: 'draft' }])),
+    listAssignees: vi.fn(() => Promise.resolve([])),
+    moveItem: vi.fn(() => Promise.resolve({ step: 'issued' })),
+    saveWorkflow: vi.fn(() => Promise.resolve('wf1')),
+    assignItem: vi.fn(() => Promise.resolve({})),
   },
   replaceComponentAttributes: vi.fn(() => Promise.resolve([])),
   logAudit: vi.fn(),
@@ -30,6 +45,8 @@ vi.mock('../public.js', () => ({
   replaceComponentAttributes: h.replaceComponentAttributes,
 }));
 vi.mock('$app/env', () => ({ browser: false, dev: false }));
+vi.mock('#lib/workflow/workflowApi.js', () => h.wf);
+vi.mock('#lib/workflow/nonWorkingDays.js', () => ({ ensureNonWorkingDays: () => Promise.resolve() }));
 
 const { worksSchedulesStore } = await import('./worksSchedulesStore.js');
 
@@ -210,19 +227,26 @@ describe('applyChanges', () => {
   });
 });
 
-describe('issueSchedule / completeSchedule', () => {
-  it('issuing records when it went out', async () => {
-    await worksSchedulesStore.issueSchedule('s1', 'u1');
-    const patch = h.api.update.mock.calls[0][2];
-    expect(patch.status).toBe('issued');
-    expect(patch.issued_at).toEqual(expect.any(String));
+// Migration 258: a schedule moves through its workflow; the database writes
+// the status and its date, and refuses a status set directly.
+describe('moving a schedule through its workflow', () => {
+  beforeEach(async () => { await worksSchedulesStore.loadSchedules(); vi.clearAllMocks(); });
+
+  it('moves its workflow item, then re-reads the schedule the database changed', async () => {
+    await worksSchedulesStore.moveSchedule('s1', 'issued');
+    expect(h.wf.moveItem).toHaveBeenCalledWith('it1', 'issued', '');
+    expect(h.api.getById).toHaveBeenCalledWith('works_schedules', 's1');
+    expect(h.api.update).not.toHaveBeenCalled();            // never the status directly
   });
 
-  it('completing records when the work finished', async () => {
-    await worksSchedulesStore.completeSchedule('s1', 'u1');
-    const patch = h.api.update.mock.calls[0][2];
-    expect(patch.status).toBe('completed');
-    expect(patch.completed_at).toEqual(expect.any(String));
+  it('refuses a schedule that is not in its workflow yet', async () => {
+    await expect(worksSchedulesStore.moveSchedule('nope', 'issued')).rejects.toThrow(/not in its workflow/);
+  });
+
+  it('completes once every line is done — only where its workflow offers the move', async () => {
+    // At draft, the stub workflow has no draft → completed move.
+    expect(await worksSchedulesStore.completeIfDone('s1')).toBe(false);
+    expect(h.wf.moveItem).not.toHaveBeenCalled();
   });
 });
 

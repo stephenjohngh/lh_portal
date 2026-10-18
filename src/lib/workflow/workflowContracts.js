@@ -38,6 +38,14 @@ export const CONTRACTS = Object.freeze({
     steps: { open: 'start', in_progress: 'open', answered: 'open', closed: 'done' },
     explains: 'Its steps are the action statuses of the compliance obligations register and each has a fixed kind. The names, moves, notes and conditions can be changed; an action’s deadline is its own due date.',
   },
+  // Migration 258: works schedules. ⚠ Every Building Assets workflow — this is
+  // the only one today.
+  building_assets: {
+    name: 'Works schedule',
+    stepsAre: 'the works schedule statuses',
+    steps: { draft: 'start', issued: 'open', completed: 'done', cancelled: 'declined' },
+    explains: 'Its steps are the works schedule statuses and each has a fixed kind. The names, moves, notes and conditions can be changed; a schedule’s deadline is its expected completion date.',
+  },
 });
 
 /** The fixed parts of an app's workflows, or null. @param {string} appId */

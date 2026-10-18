@@ -18,6 +18,9 @@ import { getLogger }  from '#lib/utils/logger.js';
 import { replaceComponentAttributes } from '../public.js';
 import { planApply, describeSummary, matchingLines } from '../utils/worksSchedule.js';
 import { storeLoader } from '../../../utils/storeLoad.js';
+import { loadWorkflow, listItems, moveItem, saveWorkflow, assignItem, listAssignees } from '#lib/workflow/workflowApi.js';
+import { ensureNonWorkingDays } from '#lib/workflow/nonWorkingDays.js';
+import { WORKS_SCHEDULE_WORKFLOW_KEY, DEFAULT_WORKS_SCHEDULE_WORKFLOW } from '../utils/worksScheduleWorkflow.js';
 
 const logger = getLogger('worksSchedules');
 
@@ -41,7 +44,9 @@ function createWorksSchedulesStore() {
    *   loadingItems: boolean,
    *   attributes: Record<string, Record<string, any>>,
    *   specs: Record<string, any>[],
-   *   hiddenSpecs: Record<string, any>[]
+   *   hiddenSpecs: Record<string, any>[],
+   *   workflow: any|null, steps: any[], moves: any[], fields: any[], wfItems: any[],
+   *   assignees: Array<{ id: string, full_name: string|null }>
    * }} WorksSchedulesState
    */
   const store = writable(/** @type {WorksSchedulesState} */ ({
@@ -57,6 +62,9 @@ function createWorksSchedulesStore() {
     specs: [],
     /** Wordings withdrawn from the suggestion list. */
     hiddenSpecs: [],
+    // The schedules' workflow (migration 258): its steps, moves, and one item
+    // per schedule — where it is, its deadline, who it is with.
+    workflow: null, steps: [], moves: [], fields: [], wfItems: [], assignees: [],
   }));
 
   const { subscribe, update } = store;
@@ -64,10 +72,79 @@ function createWorksSchedulesStore() {
 
   // ── Schedules ────────────────────────────────────────────────────────────
 
+  /** The schedules' workflow and its items (migration 258); empty until set up. */
+  async function readWorkflow() {
+    const wf = await loadWorkflow(WORKS_SCHEDULE_WORKFLOW_KEY);
+    if (!wf) return { workflow: null, steps: [], moves: [], fields: [], wfItems: [], assignees: [] };
+    const [wfItems, assignees] = await Promise.all([listItems(wf.workflow.id), listAssignees(wf.workflow.id)]);
+    return { workflow: wf.workflow, steps: wf.steps, moves: wf.moves, fields: wf.fields, wfItems, assignees };
+  }
+
   const loadSchedules = storeLoader(update,
-    () => api.getAll('works_schedules', { orderBy: 'created_at', ascending: false }),
-    (schedules) => ({ schedules }),
+    async () => {
+      const [schedules, wf] = await Promise.all([
+        api.getAll('works_schedules', { orderBy: 'created_at', ascending: false }),
+        readWorkflow(),
+      ]);
+      return { schedules, ...wf };
+    },
+    (data) => data,
     { what: 'the works schedules' });
+
+  /** Re-read the workflow's items only (after a move or an assignment). */
+  async function reloadWorkflowItems() {
+    const wf = getState().workflow;
+    if (!wf) return;
+    const wfItems = await listItems(wf.id);
+    update(s => ({ ...s, wfItems }));
+  }
+
+  /**
+   * Admin, on first opening Works: save the shipped workflow when there is
+   * none (a release never overwrites one already saved), attach the
+   * schedules already there, then read.
+   */
+  async function setUpWorkflow() {
+    await ensureNonWorkingDays();
+    await saveWorkflow(DEFAULT_WORKS_SCHEDULE_WORKFLOW);
+    const attached = await api.rpc('works_schedule_attach_to_workflow', {});
+    logAudit('create', 'workflow', null, DEFAULT_WORKS_SCHEDULE_WORKFLOW.name, {
+      appId: 'building_assets', eventCategory: 'building_assets', afterData: { attached },
+    });
+    await loadSchedules();
+  }
+
+  /** A schedule's workflow item, or null. @param {string} scheduleId */
+  function itemFor(scheduleId) {
+    return getState().wfItems.find(i => i.subject_id === scheduleId) ?? null;
+  }
+
+  /**
+   * Move a schedule on, through its workflow (migration 258). The database
+   * writes the status back with its date (issued_at / completed_at) and
+   * refuses a status changed any other way.
+   * @param {string} id @param {string} to @param {string} [note]
+   */
+  async function moveSchedule(id, to, note = '') {
+    const item = itemFor(id);
+    if (!item) throw new Error('This schedule is not in its workflow yet — an administrator opening Works sets it up.');
+    await moveItem(item.id, to, note);
+    const schedule = await api.getById('works_schedules', id);
+    update(s => ({ ...s, schedules: s.schedules.map(x => (x.id === id ? schedule : x)) }));
+    logAudit('update', 'works_schedule', id, schedule?.title ?? '', {
+      appId: 'building_assets', eventCategory: 'building_assets', severity: 'info',
+      afterData: { status: to },
+    });
+    await reloadWorkflowItems();
+    return schedule;
+  }
+
+  /** Give a schedule to someone, or to nobody. @param {string} itemId @param {string|null} userId */
+  async function assignSchedule(itemId, userId) {
+    const result = await assignItem(itemId, userId || null);
+    await reloadWorkflowItems();
+    return result;
+  }
 
   /**
    * Create a schedule from a set of components — normally the filtered list on
@@ -101,6 +178,7 @@ function createWorksSchedulesStore() {
     }
 
     update(s => ({ ...s, schedules: [schedule, ...s.schedules] }));
+    await reloadWorkflowItems();                 // the database made its workflow item
     logAudit('create', 'works_schedule', schedule.id, schedule.title, {
       appId: 'building_assets', eventCategory: 'building_assets', severity: 'info',
       afterData: { purpose: schedule.purpose, items: componentIds?.length ?? 0 },
@@ -118,11 +196,6 @@ function createWorksSchedulesStore() {
       afterData: fields,
     });
     return schedule;
-  }
-
-  /** Issue it — the moment it stops being a draft and becomes a document sent out. */
-  async function issueSchedule(id, userId) {
-    return updateSchedule(id, { status: 'issued', issued_at: new Date().toISOString() }, userId);
   }
 
   async function deleteSchedule(id, title) {
@@ -460,10 +533,19 @@ function createWorksSchedulesStore() {
     return { applied, failed };
   }
 
-  /** Mark the whole schedule done, once its lines have been applied. */
-  async function completeSchedule(id, userId) {
-    return updateSchedule(id,
-      { status: 'completed', completed_at: new Date().toISOString() }, userId);
+  /**
+   * Once every line has been carried out, move the schedule to Completed —
+   * through its workflow, from wherever it is, if its workflow offers that
+   * move. Returns whether it moved.
+   * @param {string} id
+   */
+  async function completeIfDone(id) {
+    const item = itemFor(id);
+    if (!item) return false;
+    const offered = getState().moves.some(m => m.from_key === item.step_key && m.to_key === 'completed');
+    if (!offered) return false;
+    await moveSchedule(id, 'completed', 'Every line carried out and applied to the asset register');
+    return true;
   }
 
   function closeSchedule() {
@@ -472,10 +554,11 @@ function createWorksSchedulesStore() {
 
   return {
     subscribe,
-    loadSchedules, createSchedule, updateSchedule, issueSchedule, deleteSchedule,
+    loadSchedules, createSchedule, updateSchedule, deleteSchedule,
+    setUpWorkflow, reloadWorkflowItems, itemFor, moveSchedule, assignSchedule, completeIfDone,
     loadItems, addItems, updateItem, removeItem, setActionForAll,
     loadSpecs, loadHiddenSpecs, setSpecHidden, renameSpec, applyToMatching,
-    previewApply, applyChanges, completeSchedule, closeSchedule,
+    previewApply, applyChanges, closeSchedule,
     describeSummary,
   };
 }

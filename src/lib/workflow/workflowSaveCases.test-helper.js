@@ -9,6 +9,7 @@
 
 import { DEFAULT_COMPLAINT_WORKFLOW as COMPLAINT } from '#lib/apps/complaints/utils/complaintWorkflow.js';
 import { DEFAULT_COMPLIANCE_ACTION_WORKFLOW as ACTION } from '#lib/apps/compliance/utils/complianceActionWorkflow.js';
+import { DEFAULT_WORKS_SCHEDULE_WORKFLOW as WORKS } from '#lib/apps/building_assets/utils/worksScheduleWorkflow.js';
 
 /** @typedef {{ name: string, appId: string, steps: any[], moves: any[], fields?: any[], expect: RegExp|null }} SaveCase */
 
@@ -80,4 +81,9 @@ export const SAVE_CASES = [
     steps: [...ACTION.steps.map((x) => ({ ...x })), { key: 'parked', name: 'Parked', kind: 'open' }],
     moves: [...ACTION.moves.map((m) => ({ ...m })), { from_key: 'open', to_key: 'parked', label: 'Park' }],
     expect: /Compliance action workflow's steps are the action statuses and are fixed: "parked"/ },
+  { name: 'the shipped Works schedule workflow saves', appId: 'building_assets',
+    steps: WORKS.steps.map((x) => ({ ...x })), moves: WORKS.moves.map((m) => ({ ...m })), expect: null },
+  { name: 'Works schedule: a status of the wrong kind', appId: 'building_assets',
+    steps: WORKS.steps.map((x) => (x.key === 'issued' ? { ...x, kind: 'done' } : { ...x })), moves: WORKS.moves.map((m) => ({ ...m })),
+    expect: /has a fixed kind in the Works schedule workflow/ },
 ];

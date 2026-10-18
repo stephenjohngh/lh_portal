@@ -15,7 +15,7 @@
   import ConfirmDialog    from '#lib/components/common/ConfirmDialog.svelte';
   import LoadingSpinner   from '#lib/components/common/LoadingSpinner.svelte';
   import Badge            from '#lib/components/common/Badge.svelte';
-  import { fmtDate }      from '#lib/utils/dates.js';
+  import { fmtDate, today } from '#lib/utils/dates.js';
   import { buildComponentRef } from '#lib/utils/componentRef.js';
   import { requestDownload } from '#lib/utils/download.js';
 
@@ -31,6 +31,8 @@
   import WorksLineModal         from './WorksLineModal.svelte';
   import WorksSpecsModal        from './WorksSpecsModal.svelte';
   import ComponentPlanPeek      from '../ComponentPlanPeek.svelte';
+  import WorkflowItemControls   from '#lib/workflow/WorkflowItemControls.svelte';
+  import { profiles, profilesStore } from '#lib/stores/profiles.js';
 
 
   let error = '';
@@ -44,6 +46,33 @@
   $: items     = state.items;
   $: openSchedule = openId ? (schedules.find(s => s.id === openId) ?? null) : null;
   $: canEdit   = $permissions.isAdmin;
+
+  // ── The schedule's workflow (migration 258) ───────────────────────────────
+  $: wfItem = openSchedule ? (state.wfItems ?? []).find(i => i.subject_id === openSchedule.id) ?? null : null;
+  $: nameById = Object.fromEntries(($profiles.list ?? []).map(p => [p.id, p.full_name ?? '']));
+  /** Completed only once every line is carried out — the apply step does it by itself then. */
+  $: extraRefusal = (/** @type {any} */ m) => (m.to_key === 'completed' && !progress.complete
+    ? (items.length ? 'Mark every line carried out first.' : 'Add components and carry them out first.')
+    : null);
+  const confirmMove = (/** @type {any} */ m) => (m.to_key === 'issued'
+    ? { title: 'Mark issued?', message: 'Record that this schedule has gone to the contractor. Its lines can still be changed, but the document they hold will not change with them.' }
+    : null);
+  $: wfAudit = openSchedule ? { appId: 'building_assets', entityType: 'works_schedule', entityId: openSchedule.id } : null;
+  $: wfRecord = openSchedule ? {
+    filenameStem: `${openSchedule.reference || openSchedule.title}_${today()}`,
+    subject: () => ({
+      title: `Works schedule ${openSchedule.reference || openSchedule.title}`,
+      facts: [['Title', openSchedule.title], ['Reference', openSchedule.reference || '—'],
+        ['Purpose', purposeLabel(openSchedule.purpose)], ['Contractor', openSchedule.contractor_name || '—'],
+        ['Expected completion', openSchedule.expected_completion ? fmtDate(openSchedule.expected_completion) : 'Not set'],
+        ['Lines', `${items.length} · ${progress.done} carried out`]],
+      sections: [{ heading: 'Notes', text: openSchedule.notes }],
+    }),
+  } : null;
+  async function onWfMove(/** @type {any} */ m, /** @type {string} */ note) {
+    const id = openId;
+    await worksSchedulesStore.moveSchedule(id, m.to_key, note);
+  }
 
   // Type codes for the "replace with" picker, and attribute labels so the apply
   // preview reads "Wattage → 15" rather than a uuid.
@@ -95,6 +124,10 @@
   onMount(async () => {
     try {
       await worksSchedulesStore.loadSchedules();
+      // An administrator opening Works sets up the schedules' workflow the
+      // first time (the seed rule) and attaches the schedules already there.
+      if (!$worksSchedulesStore.workflow && $permissions.isAdmin) await worksSchedulesStore.setUpWorkflow();
+      profilesStore.load();
       // Not awaited into the render path — the suggestion list is a
       // convenience, and the tab must not wait on it.
       worksSchedulesStore.loadSpecs().catch(() => {});
@@ -260,15 +293,6 @@
 
   // ── Issue / export / apply ────────────────────────────────────────────────
 
-  let issuing = false;
-
-  async function issue() {
-    issuing = true;
-    try { await worksSchedulesStore.issueSchedule(openId, $auth.user.id); }
-    catch (err) { error = errMessage(err); }
-    finally { issuing = false; }
-  }
-
   let exporting = false;
 
   async function exportDocument() {
@@ -323,9 +347,10 @@
         ? `${applied} asset${applied === 1 ? '' : 's'} updated; ${failed.length} could not be — ${failed[0].error}`
         : `${applied} asset${applied === 1 ? '' : 's'} updated.`;
 
-      const progress = appliedProgress($worksSchedulesStore.items);
-      if (progress.complete) {
-        await worksSchedulesStore.completeSchedule(openId, $auth.user.id);
+      const done = appliedProgress($worksSchedulesStore.items);
+      if (done.complete) {
+        // Through its workflow (migration 258), from wherever it is.
+        await worksSchedulesStore.completeIfDone(openId);
       }
     } catch (err) { applyRef?.fail(errMessage(err)); }
     finally { applying = false; }
@@ -449,16 +474,6 @@
       </Button>
 
       {#if canEdit}
-        <!-- Only while it IS a draft: "mark issued" on something already issued
-             is not a disabled action, it is a meaningless one. -->
-        {#if openSchedule.status === 'draft'}
-          <Button variant="secondary" size="small" disabled={issuing}
-                  title="Record that this has gone to the contractor"
-                  on:click={issue}>
-            {issuing ? 'Marking…' : 'Mark issued'}
-          </Button>
-        {/if}
-
         <Button variant="primary" size="small" disabled={!items.length}
                 title={items.length
                   ? 'Update the asset records from what was done'
@@ -477,6 +492,23 @@
       {/if}
     </div>
   </div>
+
+  <!-- Where it stands, its deadline (the expected completion), who it is
+       with, and the moves — the shared workflow controls (migration 258). -->
+  {#if state.workflow}
+    <div class="mb-4 p-3 rounded border border-slate-700 bg-slate-800/40" data-testid="works-workflow">
+      {#if wfItem}
+        <WorkflowItemControls item={wfItem} workflow={state.workflow} steps={state.steps} moves={state.moves}
+          fields={state.fields} reference={openSchedule.reference || openSchedule.title} isAdmin={canEdit} {canEdit}
+          me={$auth.user?.id ?? null} assignees={state.assignees} {nameById}
+          onMove={onWfMove} onAssign={(uid) => worksSchedulesStore.assignSchedule(wfItem.id, uid)}
+          {extraRefusal} {confirmMove} audit={wfAudit} record={wfRecord}
+          finishedText="Nothing further happens to a schedule in this state." />
+      {:else}
+        <p class="text-xs text-amber-300">This schedule is not in its workflow. Reload the page; if it stays like this, report it.</p>
+      {/if}
+    </div>
+  {/if}
 
   {#if applyNotice}
     <div class="mb-3 p-3 rounded border border-green-500/40 bg-green-500/10
