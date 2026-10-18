@@ -1,7 +1,7 @@
 // The workflow drawn, and how it is being used (2026-10-17).
 import { describe, it, expect } from 'vitest';
 import { layoutWorkflow } from './workflowLayout.js';
-import { workflowStats } from './workflowStats.js';
+import { workflowStats, simulateDeadlines } from './workflowStats.js';
 import { DEFAULT_APPLICATION_WORKFLOW as WF } from '#lib/apps/parking/utils/applicationWorkflow.js';
 
 const steps = WF.steps.map((s, i) => ({ ...s, position: i + 1 }));
@@ -39,7 +39,7 @@ describe('layoutWorkflow', () => {
 
 describe('workflowStats — how it is being used, from its event log', () => {
   const items = [
-    { id: 'a', step_key: 'checking', due_on: '2026-10-10' },      // overdue
+    { id: 'a', step_key: 'checking', due_on: '2026-10-10', label: 'PKR-A' },      // overdue
     { id: 'b', step_key: 'checking', due_on: '2026-10-30' },
     { id: 'c', step_key: 'waiting_list', due_on: null },
   ];
@@ -68,6 +68,13 @@ describe('workflowStats — how it is being used, from its event log', () => {
     expect(s.offPath).toEqual({ 'received>declined': 1 });
   });
 
+  it('which items are past their deadline, in which step, most late first — never a finished one', () => {
+    const t = workflowStats({ steps, moves: WF.moves, today: '2026-10-17', events,
+      items: [...items, { id: 'd', step_key: 'received', due_on: '2026-10-01', label: 'PKR-D' },
+                        { id: 'e', step_key: 'waiting_list', due_on: '2026-09-01', label: 'PKR-E' }] });
+    expect(t.late.map((l) => [l.label, l.stepKey, l.daysLate])).toEqual([['PKR-D', 'received', 16], ['PKR-A', 'checking', 7]]);
+  });
+
   it('an assignment (migration 250) changes who, not where: it is not a move and does not split a step', () => {
     const withAssign = [...events, { item_id: 'c', kind: 'assign', from_key: 'checking', to_key: 'checking', at: '2026-10-04T09:00:00Z' }];
     const t = workflowStats({ steps, moves: WF.moves, items, events: withAssign, today: '2026-10-17' });
@@ -77,3 +84,40 @@ describe('workflowStats — how it is being used, from its event log', () => {
   });
 });
 
+
+describe('simulateDeadlines — "what if the deadlines were these?"', () => {
+  const S = [
+    { key: 'received', kind: 'start', deadline_days: 5, deadline_basis: 'calendar', deadline_from: 'entered' },
+    { key: 'checking', kind: 'open', deadline_days: '', deadline_basis: 'calendar', deadline_from: 'entered' },
+    { key: 'done', kind: 'done' },
+  ];
+  const items = [
+    { id: 'a', step_key: 'received', due_on: '2026-10-08', started_at: '2026-10-03T09:00:00Z' },   // 3 Oct + 5 = 8 Oct: overdue on the 17th
+    { id: 'b', step_key: 'received', due_on: '2026-10-20', started_at: '2026-10-15T09:00:00Z' },
+    { id: 'c', step_key: 'done', due_on: null, started_at: '2026-09-01T09:00:00Z' },
+  ];
+  const events = [
+    { item_id: 'a', from_key: null, to_key: 'received', at: '2026-10-03T09:00:00Z' },
+    { item_id: 'b', from_key: null, to_key: 'received', at: '2026-10-15T09:00:00Z' },
+  ];
+
+  it('counts the open items overdue now and with the edited deadlines, never a finished one', () => {
+    expect(simulateDeadlines({ steps: S, items, events, today: '2026-10-17' })).toEqual({ open: 2, overdueNow: 1, overdueThen: 1 });
+    const longer = S.map((x) => (x.key === 'received' ? { ...x, deadline_days: 30 } : x));
+    expect(simulateDeadlines({ steps: longer, items, events, today: '2026-10-17' })).toEqual({ open: 2, overdueNow: 1, overdueThen: 0 });
+    const shorter = S.map((x) => (x.key === 'received' ? { ...x, deadline_days: 1 } : x));
+    expect(simulateDeadlines({ steps: shorter, items, events, today: '2026-10-17' })).toMatchObject({ overdueThen: 2 });
+  });
+
+  it('counts working days past the non-working days, as the database does', () => {
+    const working = S.map((x) => (x.key === 'received' ? { ...x, deadline_days: 2, deadline_basis: 'working' } : x));
+    // b reached it Thursday 15 Oct: 2 working days → Monday 19, or Tuesday 20 with a day off on the 19th.
+    expect(simulateDeadlines({ steps: working, items: [items[1]], events, today: '2026-10-20' })).toMatchObject({ overdueThen: 1 });
+    expect(simulateDeadlines({ steps: working, items: [items[1]], events, today: '2026-10-20', nonWorking: ['2026-10-19'] }))
+      .toMatchObject({ overdueThen: 0 });
+  });
+
+  it('has nothing to say where the deadline is the subject’s own date', () => {
+    expect(simulateDeadlines({ steps: S, items, events, today: '2026-10-17', subjectDue: true })).toBeNull();
+  });
+});

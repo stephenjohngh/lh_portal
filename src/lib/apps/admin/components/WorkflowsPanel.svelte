@@ -9,7 +9,7 @@
 <script>
   import { onMount } from 'svelte';
   import { listWorkflows, loadWorkflow, saveWorkflow, listChanges, listEvents, listTimerRuns, runTimers } from '#lib/workflow/workflowApi.js';
-  import { workflowStats } from '#lib/workflow/workflowStats.js';
+  import { workflowStats, simulateDeadlines } from '#lib/workflow/workflowStats.js';
   import WorkflowDiagram from '#lib/workflow/WorkflowDiagram.svelte';
   import { today } from '#lib/utils/dates.js';
   import { definitionOf, definitionChanged, workflowDiff } from '#lib/workflow/workflowModel.js';
@@ -31,6 +31,8 @@
   import Button from '#lib/components/common/Button.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
+  import { workflowFile, workflowFileName, readWorkflowFile, importTarget } from '#lib/workflow/workflowTransfer.js';
+  import { downloadBlob } from '#lib/utils/download.js';
 
   let ready = false;
   let error = '';
@@ -70,6 +72,11 @@
     catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read how the workflow is being used.'); }
   }
   $: stats = showUse && usage ? workflowStats({ steps, moves, items: usage.items, events: usage.events, today: today() }) : null;
+  // "What if": the deadlines in the editor laid over the items as they stand (roadmap §6).
+  $: deadlinesEdited = !!loadedDef && JSON.stringify(steps.map((x) => [x.key, x.deadline_days === '' ? null : Number(x.deadline_days ?? NaN) || null, x.deadline_basis, x.deadline_from]))
+    !== JSON.stringify(loadedDef.steps.map((/** @type {any} */ x) => [x.key, x.deadline_days, x.deadline_basis, x.deadline_from]));
+  $: simulated = stats && current ? simulateDeadlines({ steps, items: usage.items, events: usage.events, today: today(),
+    nonWorking: offDays.map((d) => d.day), subjectDue: !!contractFor(current.app_id)?.subjectDue }) : null;
   let review = { reviewedBy: '', reviewedAgainst: '', note: '' };
 
   /** @type {{ day: string, name: string }[]} */
@@ -142,7 +149,60 @@
       loadedDef = current ? definitionOf({ name: current.name, description: current.description,
         reviewRequired, reviewReason, steps, moves, fields: fieldsOut(fields) }) : null;
       changes = current ? await listChanges(current.id) : [];
+      if (pendingImport && pendingImport.key === key) { const f = pendingImport; pendingImport = null; applyImport(f.definition); }
     } catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read that workflow.'); }
+  }
+
+  // ── Export and import (roadmap §6): a workflow as one file ──
+  /** A file waiting for its workflow to be read into the editor. @type {any} */
+  let pendingImport = null;
+  /** @type {HTMLInputElement|null} */
+  let importInput = null;
+  /** The saved version, as a file — never edits not yet saved. */
+  function exportCurrent() {
+    if (!current || !loadedDef) return;
+    const file = workflowFile(current, loadedDef, new Date().toISOString());
+    downloadBlob(new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' }), workflowFileName(current.key, today()));
+    logAudit('export', 'workflow', current.id, current.name, { appId: 'admin', eventCategory: 'admin' });
+  }
+  /** Put a file's definition in the editor: it is checked and saved like any change. @param {any} def */
+  function applyImport(def) {
+    const had = new Set(steps.map((s) => s.key));
+    const hadFields = new Set(fields.map((f) => f.key));
+    steps = orderedSteps(def.steps.map((/** @type {any} */ s, /** @type {number} */ i) => ({ ...s, position: i + 1 })))
+      .map((s) => ({ ...s, public_name: s.public_name ?? '', deadline_days: s.deadline_days ?? '',
+        deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered', isNew: !had.has(s.key) }));
+    moves = def.moves.map((/** @type {any} */ m) => ({ note_required: false, admin_only: false, action: '', who: 'anyone', four_eyes: false,
+      timer_days: null, timer_basis: 'calendar', ...m, action: m.action ?? '', required_fields: [...(m.required_fields ?? [])] }));
+    fields = (def.fields ?? []).map((/** @type {any} */ f) => ({ ...f, optionsText: (f.options ?? []).join('\n'), help: f.help ?? '',
+      isNew: !hadFields.has(f.key) }));
+    reviewRequired = !!def.review_required;
+    reviewReason = def.review_reason ?? '';
+    saved = 'The file’s steps, moves and fields are in the editor — look them over, then save.';
+  }
+  async function importFile(/** @type {Event} */ e) {
+    const input = /** @type {HTMLInputElement} */ (e.currentTarget);
+    const picked = input.files?.[0];
+    input.value = '';
+    if (!picked) return;
+    error = ''; saved = '';
+    try {
+      const file = readWorkflowFile(await picked.text());
+      const where = importTarget(file, workflows);
+      if ('refused' in where) { error = where.refused; return; }
+      if ('newCases' in where) {
+        const d = file.definition;
+        const id = await saveWorkflow({ key: file.key, name: d.name, appId: 'cases', description: d.description ?? null,
+          steps: d.steps, moves: d.moves, fields: d.fields, reviewRequired: !!d.review_required, reviewReason: d.review_reason ?? null });
+        logAudit('create', 'workflow', id, d.name, { appId: 'admin', eventCategory: 'admin', afterData: { key: file.key, app: 'cases', from: 'file' } });
+        workflows = await listWorkflows();
+        chosenKey = file.key;
+        saved = `“${d.name}” set up from the file.`;
+        return;
+      }
+      if (where.into === loadedKey && current) applyImport(file.definition);
+      else { pendingImport = file; chosenKey = where.into; }
+    } catch (/** @type {any} */ err) { error = errMessage(err, 'That file could not be imported.'); }
   }
 
   $: actions = current ? actionsFor(current.app_id) : [];
@@ -317,6 +377,13 @@
         {#each workflows as w (w.key)}<option value={w.key}>{w.name}{w.app_id === 'cases' ? ' (Cases)' : ''}</option>{/each}
       </select>
     </label>
+    <div class="flex flex-wrap items-center gap-2" data-testid="workflow-transfer">
+      <Button variant="tertiary" size="xs" on:click={exportCurrent} disabled={!current}>⬇ Export as a file</Button>
+      <Button variant="tertiary" size="xs" on:click={() => importInput?.click()}>⬆ Import a file…</Button>
+      <input type="file" accept="application/json,.json" class="hidden" bind:this={importInput} on:change={importFile}
+        aria-label="Workflow file to import" />
+      <span class="text-xs text-slate-500">The saved steps, moves and fields — no items, no names. An imported one is put in the editor to look over and save.</span>
+    </div>
 
     {#if current}
       {#if current.description}<p class="text-sm text-slate-400">{current.description}</p>{/if}
@@ -354,6 +421,12 @@
         </div>
         <WorkflowDiagram {steps} {moves} {stats} title="{current.name} — diagram" />
         {#if stats}<p class="text-xs text-slate-400">{stats.total} in all · {stats.open} open · {stats.overdue} overdue.</p>{/if}
+        {#if simulated && deadlinesEdited}
+          <p class="text-xs text-amber-200" data-testid="workflow-simulated">With the deadlines as they are in the editor,
+            {simulated.overdueThen} of the {simulated.open} open would be overdue today (now {simulated.overdueNow}). Nothing is changed until you save.</p>
+        {:else if stats && current && contractFor(current.app_id)?.subjectDue}
+          <p class="text-xs text-slate-500">Its items are dated by their own date, not by the steps’ deadlines.</p>
+        {/if}
       </div>
 
       <div class="space-y-2">

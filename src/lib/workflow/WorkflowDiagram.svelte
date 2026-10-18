@@ -3,7 +3,8 @@
      moves as arrows labelled with their buttons, and — when `stats` is given
      (workflowStats.js) — how it is being used: how many are in each step now,
      how many of those are overdue, the median days spent there, how often each
-     move has been made, and moves made that the workflow no longer allows.
+     move has been made, moves made that the workflow no longer allows, and the
+     items past their deadline — which step each is stuck in, how late.
      Any app's workflow can be drawn with it: the point of one standard model.
      Plain SVG, laid out by workflowLayout.js; no graph library. -->
 <script>
@@ -23,6 +24,9 @@
   $: stepOf = new Map(steps.map((s) => [s.key, s]));
   $: maxMoves = Math.max(1, ...Object.values(stats?.moveCount ?? {}));
   $: offPath = Object.entries(stats?.offPath ?? {});
+  /** The items past their deadline: the first few by name, then how many more. */
+  const LATE_SHOWN = 8;
+  $: late = stats?.late ?? [];
 
   const FILL = { start: '#134e4a', open: '#1e293b', done: '#14532d', declined: '#4c1d1d' };
   const STROKE = { start: ACCENT, open: '#64748b', done: '#22c55e', declined: '#ef4444' };
@@ -72,6 +76,17 @@
   <p class="mt-1 text-xs text-slate-500">
     Teal: start · grey: in progress · green: accepted · red: not accepted · dashed: a move back · ✎ needs a note · 🔒 admin only · 👤 only the person it is with · 👥 four-eyes · ⚙ runs an action · ⏲ made by itself after a time · ⏱ has a deadline{stats ? ' · thicker arrow: used more · red badge: overdue · “d”: median days spent there' : ''}
   </p>
+  {#if late.length}
+    <div class="mt-1 text-xs text-red-300" data-testid="workflow-diagram-late">
+      <p>Past their deadline ({late.length}):</p>
+      <ul class="ml-4 list-disc">
+        {#each late.slice(0, LATE_SHOWN) as l (l.id)}
+          <li>{l.label ?? 'An item'} — in {stepOf.get(l.stepKey)?.name ?? l.stepKey}, {l.daysLate} {l.daysLate === 1 ? 'day' : 'days'} late</li>
+        {/each}
+      </ul>
+      {#if late.length > LATE_SHOWN}<p class="ml-4">and {late.length - LATE_SHOWN} more.</p>{/if}
+    </div>
+  {/if}
   {#if offPath.length}
     <p class="mt-1 text-xs text-amber-300" data-testid="workflow-diagram-offpath">
       Moves made that the workflow no longer allows: {offPath.map(([k, n]) => `${k.replace('>', ' → ')} (${n})`).join(', ')}.
