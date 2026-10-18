@@ -12,7 +12,8 @@ import { actionsFor } from './workflowActions.js';
 /** @typedef {'start'|'open'|'done'|'declined'} StepKind */
 /** @typedef {{ key: string, name: string, public_name?: string|null, kind: StepKind, position?: number,
  *              deadline_days?: number|null, deadline_basis?: 'calendar'|'working', deadline_from?: 'entered'|'started' }} Step */
-/** @typedef {{ from_key: string, to_key: string, label: string, note_required?: boolean, admin_only?: boolean, action?: string|null, who?: string, four_eyes?: boolean, position?: number }} Move */
+/** @typedef {{ from_key: string, to_key: string, label: string, note_required?: boolean, admin_only?: boolean, action?: string|null, who?: string, four_eyes?: boolean, required_fields?: string[], position?: number }} Move */
+/** @typedef {{ key: string, label: string, type: string, options?: string[], help?: string|null, required_on_create?: boolean, position?: number }} Field */
 
 /** The kinds of step — the database's CHECK list, with the words shown. */
 export const STEP_KINDS = Object.freeze([
@@ -22,6 +23,28 @@ export const STEP_KINDS = Object.freeze([
   { value: 'declined', label: 'Finished — not accepted', explains: 'A finished step: declined, withdrawn or similar.' },
 ]);
 export const STEP_KIND_LABEL = Object.fromEntries(STEP_KINDS.map((k) => [k.value, k.label]));
+
+/**
+ * The kinds of field a Cases process can have (migration 253). The last three
+ * LINK to something in the portal: a component, a space, a portal user.
+ * ⛔ A person is a PORTAL USER (staff, a contractor account) — never a
+ * resident; the resident-data rule.
+ */
+export const FIELD_TYPES = Object.freeze([
+  { value: 'text',      label: 'Short text' },
+  { value: 'long_text', label: 'Long text' },
+  { value: 'date',      label: 'Date' },
+  { value: 'number',    label: 'Number' },
+  { value: 'yes_no',    label: 'Yes / no' },
+  { value: 'choice',    label: 'Choice from a list' },
+  { value: 'component', label: 'A component' },
+  { value: 'space',     label: 'A space' },
+  { value: 'person',    label: 'A portal user' },
+]);
+export const FIELD_TYPE_LABEL = Object.fromEntries(FIELD_TYPES.map((t) => [t.value, t.label]));
+
+/** Is a field's value missing — the database's test (blank text counts as missing). @param {any} v */
+export const fieldMissing = (v) => v == null || String(v).trim() === '';
 
 /**
  * Who may make a move (migration 251): anyone who can edit the app, or only
@@ -37,10 +60,12 @@ export const MOVE_WHO = Object.freeze([
  * conditions (workflow_move(), migration 251), said before anything is
  * pressed. admin_only and the grant are filtered out earlier (movesFrom).
  * @param {Move} m
- * @param {{ userId?: string|null, assignedTo?: string|null, lastMoverId?: string|null }} ctx
- *   lastMoverId — who made the item's last MOVE (an assignment is not one)
+ * @param {{ userId?: string|null, assignedTo?: string|null, lastMoverId?: string|null,
+ *           fields?: Field[], values?: Record<string, any> }} ctx
+ *   lastMoverId — who made the item's last MOVE (an assignment is not one);
+ *   fields / values — a Cases process's fields and the case's values (migration 253)
  */
-export function moveRefusal(m, { userId = null, assignedTo = null, lastMoverId = null } = {}) {
+export function moveRefusal(m, { userId = null, assignedTo = null, lastMoverId = null, fields = [], values = {} } = {}) {
   if ((m.who ?? 'anyone') === 'assignee') {
     if (!assignedTo) return 'Give it to someone first: only the person it is with can do this.';
     if (assignedTo !== userId) return 'Only the person it is with can do this.';
@@ -48,6 +73,11 @@ export function moveRefusal(m, { userId = null, assignedTo = null, lastMoverId =
   if (m.four_eyes && lastMoverId && lastMoverId === userId) {
     return 'Someone other than the person who made the last move must do this.';
   }
+  // The fields this move needs filled (migration 253), in the process's order.
+  const needed = new Set(m.required_fields ?? []);
+  const empty = [...fields].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+    .find((f) => needed.has(f.key) && fieldMissing(values?.[f.key]));
+  if (empty) return `Fill in "${empty.label}" first.`;
   return null;
 }
 
@@ -81,9 +111,9 @@ export function stepKeyFor(/** @type {string} */ name, /** @type {string[]} */ t
 /**
  * The problem with saving this workflow, or null — the same checks as
  * workflow_save(), in the same order, worded for a person.
- * @param {{ steps: Step[], moves: Move[], appId: string }} def
+ * @param {{ steps: Step[], moves: Move[], appId: string, fields?: Field[] }} def
  */
-export function workflowProblem({ steps, moves, appId }) {
+export function workflowProblem({ steps, moves, appId, fields = [] }) {
   const starts = steps.filter((s) => s.kind === 'start');
   if (starts.length !== 1) return `A workflow needs exactly one start step (it has ${starts.length}).`;
   const keys = new Set();
@@ -101,6 +131,16 @@ export function workflowProblem({ steps, moves, appId }) {
     if (keys.has(s.key)) return `Two steps share the key "${s.key}".`;
     keys.add(s.key);
   }
+  // A Cases process's fields (migration 253).
+  const fieldKeys = new Set();
+  for (const f of fields) {
+    if (!/^[a-z][a-z0-9_]{0,40}$/.test(f.key ?? '')) return `A field has a key that cannot be used ("${f.key ?? ''}").`;
+    if (fieldKeys.has(f.key)) return `Two fields share the key "${f.key}".`;
+    fieldKeys.add(f.key);
+    if (!String(f.label ?? '').trim()) return `Every field needs a label ("${f.key}" has none).`;
+    if (!FIELD_TYPES.some((t) => t.value === f.type)) return `The field "${f.label}" has a type that is not offered.`;
+    if (f.type === 'choice' && !(f.options ?? []).some((o) => String(o).trim())) return `The choice field "${f.label}" needs at least one choice.`;
+  }
   const byKey = new Map(steps.map((s) => [s.key, s]));
   const pairs = new Set();
   for (const m of moves) {
@@ -112,6 +152,9 @@ export function workflowProblem({ steps, moves, appId }) {
     pairs.add(pair);
     // A move OUT of a finished step is allowed (migration 252): a reopen. The
     // item is open again and its deadline counted afresh.
+    if ((m.required_fields ?? []).some((k) => !fieldKeys.has(k))) {
+      return `The move "${m.label}" needs a field the process does not have.`;
+    }
     if (!['anyone', 'assignee'].includes(m.who ?? 'anyone')) {
       return `The move "${m.label}": who may make it is anyone who can edit, or only the person it is with.`;
     }
@@ -158,9 +201,9 @@ export function orderedSteps(steps) {
  * A workflow's definition in the shape the database keeps and compares
  * (workflow_definition()): what a save changed is the difference of two.
  * @param {{ name: string, description?: string|null, reviewRequired?: boolean, reviewReason?: string|null,
- *           steps: Step[], moves: Move[] }} w
+ *           steps: Step[], moves: Move[], fields?: Field[] }} w
  */
-export function definitionOf({ name, description = null, reviewRequired = false, reviewReason = null, steps, moves }) {
+export function definitionOf({ name, description = null, reviewRequired = false, reviewReason = null, steps, moves, fields = [] }) {
   const n = (/** @type {any} */ v) => (v === '' || v === undefined ? null : v);
   return {
     name, description: n(description), review_required: !!reviewRequired, review_reason: reviewRequired ? n(reviewReason) : null,
@@ -168,7 +211,10 @@ export function definitionOf({ name, description = null, reviewRequired = false,
       deadline_days: s.deadline_days === '' || s.deadline_days == null ? null : Number(s.deadline_days),
       deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered' })),
     moves: moves.map((m) => ({ from_key: m.from_key, to_key: m.to_key, label: m.label, note_required: !!m.note_required,
-      admin_only: !!m.admin_only, action: n(m.action), who: m.who ?? 'anyone', four_eyes: !!m.four_eyes })),
+      admin_only: !!m.admin_only, action: n(m.action), who: m.who ?? 'anyone', four_eyes: !!m.four_eyes,
+      required_fields: [...(m.required_fields ?? [])] })),
+    fields: fields.map((f) => ({ key: f.key, label: f.label, type: f.type, options: (f.options ?? []).map(String),
+      help: n(f.help), required_on_create: !!f.required_on_create })),
   };
 }
 
@@ -227,5 +273,25 @@ export function workflowDiff(before, after) {
     if ((was.action ?? null) !== (m.action ?? null)) out.push(`Move “${m.label}”: action ${was.action ?? 'none'} → ${m.action ?? 'none'}.`);
   }
   for (const [k, m] of bMoves) if (!aMoves.has(k)) out.push(`Move removed: “${m.label}” (${name(m.from_key)} → ${name(m.to_key)}).`);
+  // Fields (migration 253) — and which a move needs filled.
+  const bFields = new Map((before.fields ?? []).map((/** @type {any} */ f) => [f.key, f]));
+  const aFields = new Map((after.fields ?? []).map((/** @type {any} */ f) => [f.key, f]));
+  const fieldName = (/** @type {string} */ k) => aFields.get(k)?.label ?? bFields.get(k)?.label ?? k;
+  for (const [k, f] of aFields) {
+    const was = bFields.get(k);
+    if (!was) { out.push(`Field added: “${f.label}” (${FIELD_TYPE_LABEL[f.type] ?? f.type}).`); continue; }
+    if (was.label !== f.label) out.push(`Field “${was.label}” renamed “${f.label}”.`);
+    if (was.type !== f.type) out.push(`Field “${f.label}”: ${FIELD_TYPE_LABEL[was.type] ?? was.type} → ${FIELD_TYPE_LABEL[f.type] ?? f.type}.`);
+    if (JSON.stringify(was.options ?? []) !== JSON.stringify(f.options ?? [])) out.push(`Field “${f.label}”: choices now ${(f.options ?? []).join(', ') || 'none'}.`);
+    if (!!was.required_on_create !== !!f.required_on_create) out.push(`Field “${f.label}”: ${f.required_on_create ? 'now needed to open a case' : 'no longer needed to open a case'}.`);
+    if ((was.help ?? null) !== (f.help ?? null)) out.push(`Field “${f.label}”: help text changed.`);
+  }
+  for (const [k, f] of bFields) if (!aFields.has(k)) out.push(`Field removed: “${f.label}” (what cases hold in it is kept).`);
+  for (const [k, m] of aMoves) {
+    const was = bMoves.get(k);
+    if (!was) continue;
+    const a = [...(m.required_fields ?? [])].sort().join(','), b = [...(was.required_fields ?? [])].sort().join(',');
+    if (a !== b) out.push(`Move “${m.label}”: ${a ? `needs ${(m.required_fields ?? []).map(fieldName).join(', ')} filled` : 'needs no fields filled'}.`);
+  }
   return out.length ? out : ['Nothing that is kept changed.'];
 }

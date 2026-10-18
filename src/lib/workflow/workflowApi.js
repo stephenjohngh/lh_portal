@@ -17,11 +17,13 @@ export async function loadWorkflow(key) {
   const rows = await api.get('workflows', { filters: { key }, limit: 1 });
   const workflow = rows[0] ?? null;
   if (!workflow) return null;
-  const [steps, moves] = await Promise.all([
+  const [steps, moves, fields] = await Promise.all([
     api.get('workflow_steps', { filters: { workflow_id: workflow.id }, orderBy: 'position', ascending: true }),
     api.get('workflow_moves', { filters: { workflow_id: workflow.id }, orderBy: 'position', ascending: true }),
+    // A Cases process's fields (migration 253); none for the others.
+    api.get('workflow_fields', { filters: { workflow_id: workflow.id }, orderBy: 'position', ascending: true }),
   ]);
-  return { workflow, steps, moves };
+  return { workflow, steps, moves, fields };
 }
 
 /** Every workflow, for Admin. */
@@ -36,10 +38,12 @@ export function listWorkflows() {
  * @param {{ key: string, name: string, appId: string, description?: string|null,
  *           steps: import('./workflowModel.js').Step[], moves: import('./workflowModel.js').Move[],
  *           reviewRequired?: boolean, reviewReason?: string|null,
- *           review?: { reviewedBy: string, reviewedAgainst: string, note?: string|null } | null }} w
+ *           review?: { reviewedBy: string, reviewedAgainst: string, note?: string|null } | null,
+ *           fields?: import('./workflowModel.js').Field[] }} w
+ *   fields — a Cases process's fields (migration 253); undefined leaves them as they are
  */
 export function saveWorkflow({ key, name, appId, description = null, steps, moves,
-  reviewRequired = undefined, reviewReason = null, review = null }) {
+  reviewRequired = undefined, reviewReason = null, review = null, fields = undefined }) {
   return api.rpc('workflow_save', {
     p_key: key, p_name: name, p_app_id: appId, p_description: description,
     // The review mark (migration 249): undefined keeps it as it is.
@@ -53,7 +57,11 @@ export function saveWorkflow({ key, name, appId, description = null, steps, move
     p_moves: moves.map((m, i) => ({
       from_key: m.from_key, to_key: m.to_key, label: m.label,
       note_required: !!m.note_required, admin_only: !!m.admin_only, action: m.action || null,
-      who: m.who || 'anyone', four_eyes: !!m.four_eyes, position: i + 1,
+      who: m.who || 'anyone', four_eyes: !!m.four_eyes, required_fields: m.required_fields ?? [], position: i + 1,
+    })),
+    p_fields: fields === undefined ? null : fields.map((f, i) => ({
+      key: f.key, label: f.label, type: f.type, options: (f.options ?? []).map(String).filter((o) => o.trim()),
+      help: f.help || null, required_on_create: !!f.required_on_create, position: i + 1,
     })),
   });
 }

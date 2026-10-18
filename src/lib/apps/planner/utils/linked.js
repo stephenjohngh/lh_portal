@@ -62,6 +62,10 @@ export const SOURCES = {
   // complaints/public.js `listComplaintDueDates`. ⛔ A row names the
   // complaint's reference, never the complainant.
   complaint:     { key: 'complaint',     label: 'Complaint',          app: 'Complaints',      appId: 'complaints',      category: 'compliance' },
+  // A case in any Cases process (migration 253) — its workflow step's
+  // deadline, from cases/public.js `listCaseDueDates`. ⛔ A row names the
+  // process and the case's reference, never a title or a field.
+  case:          { key: 'case',          label: 'Case',               app: 'Cases',           appId: 'cases',           category: 'compliance' },
 };
 
 
@@ -357,6 +361,21 @@ export function fromComplaintDue(row) {
 }
 
 /**
+ * A case's deadline. The date is the workflow item's own (Cases' public.js);
+ * the Planner only shows it.
+ * @param {any} row  from cases/public.js `listCaseDueDates`
+ */
+export function fromCaseDue(row) {
+  return linkedOccurrence('case', {
+    id: row?.id,
+    title: row?.title ?? 'Case',
+    date: row?.date,
+    detail: row?.overdue ? 'Past its deadline' : null,
+    overdue: !!row?.overdue,
+  });
+}
+
+/**
  * Everything foreign, in one list.
  *
  * Each source is optional: a portal where somebody has no Golden Thread
@@ -366,7 +385,7 @@ export function fromComplaintDue(row) {
 export function linkedOccurrences({
   jobs = [], meetings = [], actions = [], gtDocuments = [], obligations = [],
   certificates = [], bsrDeadlines = [], complianceReviews = [], riskReviews = [], competences = [],
-  worksDue = [], faults = [], parkingDue = [], complaintDue = [],
+  worksDue = [], faults = [], parkingDue = [], complaintDue = [], caseDue = [],
 } = {}, today = null) {
   return [
     ...jobs.map(fromMaintenanceJob),
@@ -383,6 +402,7 @@ export function linkedOccurrences({
     ...faults.map((f) => fromUnaddressedFault(f, today)),
     ...parkingDue.map(fromParkingDue),
     ...complaintDue.map(fromComplaintDue),
+    ...caseDue.map(fromCaseDue),
   ]
     .filter(Boolean)
     .sort((a, b) => a.date.localeCompare(b.date));

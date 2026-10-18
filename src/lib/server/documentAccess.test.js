@@ -134,7 +134,7 @@ describe('ENTITY_PARENT_TABLE', () => {
     // Kept as an explicit list: a missing one fails closed, which is safe but
     // breaks a working panel, so the set is worth pinning.
     expect(Object.keys(ENTITY_PARENT_TABLE).sort()).toEqual([
-      'component_inspection', 'dossier_pack', 'gt_document', 'info_note',
+      'case', 'component_inspection', 'dossier_pack', 'gt_document', 'info_note',
       'issue', 'maintenance_document', 'mor_case', 'parking_agreement', 'parking_permit_template',
     ]);
   });

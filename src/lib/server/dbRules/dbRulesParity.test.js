@@ -163,9 +163,17 @@ describe('rate limits', () => {
 // App ids are compared one way round on purpose: every app that can be GRANTED
 // must be accepted, or granting it fails. The database also accepts 'settings'
 // — always visible, never granted, a harmless leftover in the CHECK.
+// ⏳ TEMPORARY, like AWAITING_MIGRATION above: an app id its migration (named)
+// has not yet added to the CHECK. Goes once applied and `npm run db:rules` run.
+const APPS_AWAITING_MIGRATION = { cases: '253_generic_cases.sql' };
 describe('app grants', () => {
+  it('an app allowance goes once its migration is applied', () => {
+    const accepted = SNAP.checks['app_permissions.app_id'];
+    expect(Object.keys(APPS_AWAITING_MIGRATION).filter((k) => accepted.includes(k)),
+      'applied — remove it from APPS_AWAITING_MIGRATION').toEqual([]);
+  });
   it('every grantable app is accepted, and the only extra is settings', () => {
-    const grantable = AVAILABLE_APPS.filter((a) => !a.alwaysVisible).map((a) => a.id);
+    const grantable = AVAILABLE_APPS.filter((a) => !a.alwaysVisible && !(a.id in APPS_AWAITING_MIGRATION)).map((a) => a.id);
     const accepted  = SNAP.checks['app_permissions.app_id'];
     expect(grantable.filter((id) => !accepted.includes(id))).toEqual([]);
     expect(accepted.filter((id) => !grantable.includes(id))).toEqual(['settings']);

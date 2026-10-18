@@ -51,6 +51,8 @@ export const ENTITY_PARENT_TABLE = {
   parking_agreement:    'parking_agreements',
   // The permit template's two images (migration 236), gated on the same grant.
   parking_permit_template: 'parking_permit_templates',
+  // A generic case (migration 253), gated on the `cases` grant.
+  case:                 'cases',
 };
 
 /**

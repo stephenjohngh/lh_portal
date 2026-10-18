@@ -62,6 +62,13 @@ describe('who may view a file through the proxy', () => {
     expect(canViewFile(refs, { isAdmin: false, grants: new Set(['parking']) })).toBe(true);
     expect(canViewFile(refs, { isAdmin: true, grants: new Set() })).toBe(true);
   });
+
+  it('holds a case’s document to the Cases grant (migration 253)', () => {
+    const refs = { ...none, library: [{ id: 'd', entity_type: 'case' }] };
+    expect(canViewFile(refs, viewer)).toBe(false);
+    expect(canViewFile(refs, { isAdmin: false, grants: new Set(['cases']) })).toBe(true);
+    expect(canViewFile(refs, { isAdmin: true, grants: new Set() })).toBe(true);
+  });
 });
 
 describe('who may delete a file', () => {

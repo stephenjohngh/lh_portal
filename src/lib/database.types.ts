@@ -375,6 +375,45 @@ export type Database = {
         }
         Relationships: []
       }
+      cases: {
+        Row: {
+          id: string
+          workflow_id: string
+          reference: string
+          title: string
+          description: string | null
+          fields: Json
+          created_at: string
+          created_by: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          workflow_id: string
+          reference?: string
+          title: string
+          description?: string | null
+          fields?: Json
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          workflow_id?: string
+          reference?: string
+          title?: string
+          description?: string | null
+          fields?: Json
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       complaint_actions: {
         Row: {
           id: string
@@ -5616,6 +5655,39 @@ export type Database = {
             }
           ]
       }
+      workflow_fields: {
+        Row: {
+          workflow_id: string
+          key: string
+          label: string
+          type: string
+          options: Json
+          help: string | null
+          required_on_create: boolean
+          position: number
+        }
+        Insert: {
+          workflow_id: string
+          key: string
+          label: string
+          type: string
+          options?: Json
+          help?: string | null
+          required_on_create?: boolean
+          position?: number
+        }
+        Update: {
+          workflow_id?: string
+          key?: string
+          label?: string
+          type?: string
+          options?: Json
+          help?: string | null
+          required_on_create?: boolean
+          position?: number
+        }
+        Relationships: []
+      }
       workflow_items: {
         Row: {
           id: string
@@ -5703,6 +5775,7 @@ export type Database = {
           position: number
           who: string
           four_eyes: boolean
+          required_fields: string[]
         }
         Insert: {
           workflow_id: string
@@ -5715,6 +5788,7 @@ export type Database = {
           position?: number
           who?: string
           four_eyes?: boolean
+          required_fields?: string[]
         }
         Update: {
           workflow_id?: string
@@ -5727,6 +5801,7 @@ export type Database = {
           position?: number
           who?: string
           four_eyes?: boolean
+          required_fields?: string[]
         }
         Relationships: [
             {

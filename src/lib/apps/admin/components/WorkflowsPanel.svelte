@@ -18,7 +18,7 @@
   import Modal from '#lib/components/common/Modal.svelte';
   import FormInput from '#lib/components/common/FormInput.svelte';
   import FormTextarea from '#lib/components/common/FormTextarea.svelte';
-  import { workflowProblem, stepKeyFor, STEP_KINDS, MOVE_WHO, orderedSteps } from '#lib/workflow/workflowModel.js';
+  import { workflowProblem, stepKeyFor, STEP_KINDS, MOVE_WHO, FIELD_TYPES, orderedSteps } from '#lib/workflow/workflowModel.js';
   import { actionsFor } from '#lib/workflow/workflowActions.js';
   import { DEADLINE_BASES, DEADLINE_FROM, describeDeadline } from '#lib/workflow/workflowDeadlines.js';
   import { listNonWorkingDays, ensureNonWorkingDays, addNonWorkingDay, removeNonWorkingDay } from '#lib/workflow/nonWorkingDays.js';
@@ -43,6 +43,10 @@
   let steps = [];
   /** @type {any[]} */
   let moves = [];
+  // A Cases process's fields (migration 253): each with `optionsText`, the
+  // choices one per line, while it is being edited.
+  /** @type {any[]} */
+  let fields = [];
   let loadedKey = '';
   // The review mark (migration 249): a workflow that must not change without a
   // full review. Changing a marked one asks who reviewed it and against what.
@@ -109,26 +113,34 @@
       current = wf?.workflow ?? null;
       steps = orderedSteps(wf?.steps ?? []).map((s) => ({ ...s, deadline_days: s.deadline_days ?? '',
         deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered', isNew: false }));
-      moves = (wf?.moves ?? []).map((m) => ({ ...m }));
+      moves = (wf?.moves ?? []).map((m) => ({ ...m, required_fields: [...(m.required_fields ?? [])] }));
+      fields = (wf?.fields ?? []).map((f) => ({ ...f, optionsText: (f.options ?? []).join('\n'), help: f.help ?? '', isNew: false }));
       reviewRequired = !!current?.review_required;
       reviewReason = current?.review_reason ?? '';
       loadedDef = current ? definitionOf({ name: current.name, description: current.description,
-        reviewRequired, reviewReason, steps, moves }) : null;
+        reviewRequired, reviewReason, steps, moves, fields: fieldsOut(fields) }) : null;
       changes = current ? await listChanges(current.id) : [];
     } catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read that workflow.'); }
   }
 
   $: actions = current ? actionsFor(current.app_id) : [];
+  // A Cases process (migration 253) has fields of its own; other apps' workflows do not.
+  $: isCases = current?.app_id === 'cases';
+  /** The fields as saved: choices from their lines, none on a field that is not a choice. */
+  function fieldsOut(/** @type {any[]} */ list) {
+    return list.map(({ optionsText, isNew, ...f }) => ({ ...f,
+      options: f.type === 'choice' ? String(optionsText ?? '').split('\n').map((o) => o.trim()).filter(Boolean) : [] }));
+  }
   $: problem = current
-    ? workflowProblem({ steps, moves, appId: current.app_id })
+    ? workflowProblem({ steps, moves, appId: current.app_id, fields: fieldsOut(fields) })
       ?? (reviewRequired && !reviewReason.trim() ? 'Say why this workflow needs a full review before it is changed.' : null)
     : null;
   $: changed = !!current && !!loadedDef && definitionChanged(loadedDef,
-    definitionOf({ name: current.name, description: current.description, reviewRequired, reviewReason, steps, moves }));
+    definitionOf({ name: current.name, description: current.description, reviewRequired, reviewReason, steps, moves, fields: fieldsOut(fields) }));
   // Marked when it was read: a change needs the review, including taking the mark off.
   $: needsReview = !!current?.review_required && changed;
   $: pendingDiff = askReview && current && loadedDef
-    ? workflowDiff(loadedDef, definitionOf({ name: current.name, description: current.description, reviewRequired, reviewReason, steps, moves }))
+    ? workflowDiff(loadedDef, definitionOf({ name: current.name, description: current.description, reviewRequired, reviewReason, steps, moves, fields: fieldsOut(fields) }))
     : [];
   $: nameOf = (/** @type {string|null} */ id) => $profiles.list?.find((p) => p.id === id)?.full_name ?? '—';
 
@@ -160,6 +172,54 @@
   }
   function removeMove(/** @type {any} */ m) { moves = moves.filter((x) => x !== m); }
 
+  // ── A Cases process's fields (migration 253) ──
+  function addField() {
+    const key = stepKeyFor('New field', fields.map((f) => f.key));
+    fields = [...fields, { key, label: 'New field', type: 'text', optionsText: '', help: '', required_on_create: false, isNew: true }];
+  }
+  function renameNewField(/** @type {any} */ f) {
+    // A new field's key follows its label until it is saved; a saved one keeps its key (cases hold values under it).
+    if (f.isNew) f.key = stepKeyFor(f.label, fields.filter((x) => x !== f).map((x) => x.key));
+    fields = fields;
+  }
+  function moveField(/** @type {number} */ i, /** @type {number} */ d) {
+    const j = i + d;
+    if (j < 0 || j >= fields.length) return;
+    const next = [...fields];
+    [next[i], next[j]] = [next[j], next[i]];
+    fields = next;
+  }
+  function removeField(/** @type {any} */ f) {
+    fields = fields.filter((x) => x !== f);
+    moves = moves.map((m) => ({ ...m, required_fields: (m.required_fields ?? []).filter((/** @type {string} */ k) => k !== f.key) }));
+  }
+  function toggleNeeded(/** @type {any} */ m, /** @type {string} */ key) {
+    const has = (m.required_fields ?? []).includes(key);
+    m.required_fields = has ? m.required_fields.filter((/** @type {string} */ k) => k !== key) : [...(m.required_fields ?? []), key];
+    moves = moves;
+  }
+
+  // ── A new Cases process ──
+  let newProcessName = '';
+  let creating = false;
+  async function createProcess() {
+    const name = newProcessName.trim();
+    if (!name) return;
+    creating = true; error = ''; saved = '';
+    try {
+      const key = stepKeyFor(`case_${name}`, workflows.map((w) => w.key));
+      const id = await saveWorkflow({ key, name, appId: 'cases', description: null,
+        steps: [{ key: 'open', name: 'Open', kind: 'start' }, { key: 'done', name: 'Done', kind: 'done' }],
+        moves: [{ from_key: 'open', to_key: 'done', label: 'Finish' }], fields: [] });
+      logAudit('create', 'workflow', id, name, { appId: 'admin', eventCategory: 'admin', afterData: { key, app: 'cases' } });
+      workflows = await listWorkflows();
+      newProcessName = '';
+      chosenKey = key;
+      saved = `“${name}” set up — give it its steps, moves and fields, then save.`;
+    } catch (/** @type {any} */ err) { error = errMessage(err, 'The process could not be set up.'); }
+    finally { creating = false; }
+  }
+
   function save() {
     if (!current || problem) return;
     if (needsReview) { review = { reviewedBy: '', reviewedAgainst: '', note: '' }; askReview = true; return; }
@@ -171,7 +231,8 @@
     saving = true; error = ''; saved = '';
     try {
       await saveWorkflow({ key: wf.key, name: wf.name, appId: wf.app_id, description: wf.description,
-        steps: steps.map(({ isNew, ...s }) => s), moves, reviewRequired, reviewReason, review: withReview });
+        steps: steps.map(({ isNew, ...s }) => s), moves, reviewRequired, reviewReason, review: withReview,
+        fields: isCases ? fieldsOut(fields) : undefined });
       askReview = false;
       logAudit('update', 'workflow', wf.id, wf.name, { appId: 'admin', eventCategory: 'admin',
         afterData: { steps: steps.map((s) => s.key), moves: moves.map((m) => `${m.from_key}>${m.to_key}`) } });
@@ -197,10 +258,20 @@
   {:else if workflows.length === 0}
     <p class="text-sm text-slate-400">No workflows yet. Parking's online application sets its own up the first time an
       administrator opens Parking → Applications.</p>
-  {:else}
+  {/if}
+  {#if ready}
+    <div class="flex flex-wrap items-end gap-2 rounded-lg border border-slate-700 p-3" data-testid="new-process">
+      <label class="text-sm text-slate-300">New Cases process
+        <input class="{inputCls} block w-72 mt-1" bind:value={newProcessName} placeholder="e.g. Building-work change control" aria-label="New process name" /></label>
+      <Button variant="secondary" size="small" on:click={createProcess} disabled={creating || !newProcessName.trim()} loading={creating}>+ Set it up</Button>
+      <p class="w-full text-xs text-slate-500">A process people work in the Cases app: its own steps, moves, deadlines and fields, with no code.
+        ⛔ Cases are for building processes; a person field is a portal user, never a resident.</p>
+    </div>
+  {/if}
+  {#if ready && workflows.length}
     <label class="flex items-center gap-2 text-sm text-slate-300">Workflow
       <select bind:value={chosenKey} class={inputCls}>
-        {#each workflows as w (w.key)}<option value={w.key}>{w.name}</option>{/each}
+        {#each workflows as w (w.key)}<option value={w.key}>{w.name}{w.app_id === 'cases' ? ' (Cases)' : ''}</option>{/each}
       </select>
     </label>
 
@@ -269,6 +340,40 @@
         </table></div>
       </div>
 
+      {#if isCases}
+        <div class="space-y-2">
+          <div class="flex items-center justify-between"><p class="text-sm font-semibold text-slate-200">Fields</p>
+            <Button variant="tertiary" size="xs" on:click={addField}>+ Add a field</Button></div>
+          {#if fields.length === 0}<p class="text-xs text-slate-500">No fields yet: a case has a title and a description, and attachments. Add what this process needs to record.</p>{/if}
+          <div class="overflow-x-auto"><table class="w-full text-sm" data-testid="workflow-fields">
+            <thead><tr class="text-left text-xs text-slate-400">
+              <th class="py-1 pr-2 font-medium">Label</th><th class="py-1 pr-2 font-medium">Type</th>
+              <th class="py-1 pr-2 font-medium">Choices (one per line)</th><th class="py-1 pr-2 font-medium">Needed to open</th>
+              <th class="py-1 pr-2 font-medium">Help</th><th class="py-1 pr-2 font-medium">Key</th><th></th></tr></thead>
+            <tbody>
+              {#each fields as f, i (f)}
+                <tr class="border-t border-slate-800 align-top">
+                  <td class="py-1 pr-2"><input class="{inputCls} w-44" bind:value={f.label} on:input={() => renameNewField(f)} aria-label="Field label" /></td>
+                  <td class="py-1 pr-2"><select class={inputCls} bind:value={f.type} on:change={() => (fields = fields)} aria-label="Field type">
+                    {#each FIELD_TYPES as t (t.value)}<option value={t.value}>{t.label}</option>{/each}</select></td>
+                  <td class="py-1 pr-2">{#if f.type === 'choice'}<textarea class="{inputCls} w-44" rows="2" bind:value={f.optionsText}
+                    on:input={() => (fields = fields)} aria-label="Choices"></textarea>{:else}<span class="text-xs text-slate-500">—</span>{/if}</td>
+                  <td class="py-1 pr-2 text-center"><input type="checkbox" bind:checked={f.required_on_create} on:change={() => (fields = fields)} aria-label="Needed to open a case" /></td>
+                  <td class="py-1 pr-2"><input class="{inputCls} w-48" bind:value={f.help} on:input={() => (fields = fields)} placeholder="(optional)" aria-label="Field help" /></td>
+                  <td class="py-1 pr-2 font-mono text-xs text-slate-500">{f.key}</td>
+                  <td class="py-1 whitespace-nowrap">
+                    <Button variant="tertiary" size="xs" on:click={() => moveField(i, -1)} disabled={i === 0}>↑</Button>
+                    <Button variant="tertiary" size="xs" on:click={() => moveField(i, 1)} disabled={i === fields.length - 1}>↓</Button>
+                    <Button variant="danger" size="xs" on:click={() => removeField(f)}>Remove</Button>
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table></div>
+          <p class="text-xs text-slate-500">Removing a field keeps what cases already hold in it; renaming one keeps its key.</p>
+        </div>
+      {/if}
+
       <div class="space-y-2">
         <div class="flex items-center justify-between"><p class="text-sm font-semibold text-slate-200">Moves</p>
           <Button variant="tertiary" size="xs" on:click={addMove}>+ Add a move</Button></div>
@@ -278,7 +383,7 @@
             <th class="py-1 pr-2 font-medium">Button</th><th class="py-1 pr-2 font-medium">Note needed</th>
             <th class="py-1 pr-2 font-medium">Admin only</th><th class="py-1 pr-2 font-medium">Who may</th>
             <th class="py-1 pr-2 font-medium" title="Not the person who made the last move">Four-eyes</th>
-            <th class="py-1 pr-2 font-medium">Action</th><th></th></tr></thead>
+            <th class="py-1 pr-2 font-medium">Action</th>{#if isCases}<th class="py-1 pr-2 font-medium">Fields needed</th>{/if}<th></th></tr></thead>
           <tbody>
             {#each moves as m (m)}
               <tr class="border-t border-slate-800">
@@ -296,6 +401,15 @@
                 <td class="py-1 pr-2"><select class={inputCls} bind:value={m.action} on:change={() => (moves = moves)} aria-label="Action">
                   <option value="">None</option>
                   {#each actions as a (a.key)}<option value={a.key} title={a.explains}>{a.label}</option>{/each}</select></td>
+                {#if isCases}
+                  <td class="py-1 pr-2" data-testid="move-fields-needed">
+                    {#each fields as f (f.key)}
+                      <label class="flex items-center gap-1 text-xs text-slate-300 whitespace-nowrap">
+                        <input type="checkbox" checked={(m.required_fields ?? []).includes(f.key)} on:change={() => toggleNeeded(m, f.key)}
+                          aria-label="{m.label} needs {f.label}" /> {f.label}</label>
+                    {:else}<span class="text-xs text-slate-500">—</span>{/each}
+                  </td>
+                {/if}
                 <td class="py-1"><Button variant="danger" size="xs" on:click={() => removeMove(m)}>Remove</Button></td>
               </tr>
             {/each}

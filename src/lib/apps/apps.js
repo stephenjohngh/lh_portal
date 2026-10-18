@@ -155,6 +155,18 @@ export const AVAILABLE_APPS = [
   },
 
   {
+    // Processes an admin sets up in Admin → Workflows with no code (change
+    // control, concern triage, permits to work). One grant covers every
+    // process; the cases table's RLS is gated on it (migration 253).
+    id: 'cases',
+    name: 'Cases',
+    icon: 'clipboard',
+    alwaysVisible: false,
+    requiresPermission: true,
+    description: 'Building processes set up by an administrator — open a case, move it through its steps'
+  },
+
+  {
     // The basement bays and, from P1, who holds them. Granted per user on
     // Admin → Users; the parking tables' RLS is gated on the same grant,
     // because from P1 they hold the details of people who are not staff.

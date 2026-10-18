@@ -8,12 +8,12 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/svelte';
 import { DEFAULT_APPLICATION_WORKFLOW as WF } from '#lib/apps/parking/utils/applicationWorkflow.js';
 
-const h = vi.hoisted(() => ({ saved: /** @type {any[]} */ ([]), marked: false, changes: /** @type {any[]} */ ([]) }));
+const h = vi.hoisted(() => ({ saved: /** @type {any[]} */ ([]), marked: false, changes: /** @type {any[]} */ ([]), app: 'parking' }));
 vi.mock('#lib/workflow/workflowApi.js', () => ({
-  listWorkflows: async () => [{ id: 'w1', key: WF.key, name: WF.name, app_id: 'parking', description: WF.description }],
-  loadWorkflow: async () => ({ workflow: { id: 'w1', key: WF.key, name: WF.name, app_id: 'parking', description: WF.description,
+  listWorkflows: async () => [{ id: 'w1', key: WF.key, name: WF.name, app_id: h.app, description: WF.description }],
+  loadWorkflow: async () => ({ fields: [], workflow: { id: 'w1', key: WF.key, name: WF.name, app_id: h.app, description: WF.description,
       review_required: h.marked, review_reason: h.marked ? 'Statutory — BSA s.93' : null },
-    steps: WF.steps.map((s, i) => ({ ...s, position: i + 1 })), moves: WF.moves.map((m) => ({ note_required: false, admin_only: false, action: null, ...m })) }),
+    steps: WF.steps.map((s, i) => ({ ...s, position: i + 1 })), moves: WF.moves.map((m) => ({ note_required: false, admin_only: false, action: null, ...m, ...(h.app === 'cases' ? { action: null } : {}) })) }),
   saveWorkflow: async (w) => { h.saved.push(w); return 'w1'; },
   listChanges: async () => h.changes,
   listEvents: async () => ({ items: [{ id: 'i1', step_key: 'checking', due_on: '2000-01-01' }], events: [] }),
@@ -29,7 +29,7 @@ vi.mock('#lib/workflow/nonWorkingDays.js', () => ({
 }));
 
 const WorkflowsPanel = (await import('./WorkflowsPanel.svelte')).default;
-beforeEach(() => { cleanup(); h.saved.length = 0; h.marked = false; h.changes = []; });
+beforeEach(() => { cleanup(); h.saved.length = 0; h.marked = false; h.changes = []; h.app = 'parking'; });
 
 async function opened() {
   render(WorkflowsPanel);
@@ -119,5 +119,22 @@ describe('Admin → Workflows', () => {
     await fireEvent.click(screen.getByLabelText('Show how it is being used'));
     await waitFor(() => expect(diagram.textContent).toMatch(/1 now/));
     expect(screen.getByText(/1 in all · 1 open · 1 overdue/)).toBeTruthy();
+  });
+
+  it('a Cases process has fields: one added, a move made to need it, both saved; other apps have none', async () => {
+    await opened();
+    expect(screen.queryByTestId('workflow-fields')).toBeNull();
+    cleanup();
+    h.app = 'cases';
+    await opened();
+    await fireEvent.click(screen.getByRole('button', { name: '+ Add a field' }));
+    await fireEvent.input(screen.getByLabelText('Field label'), { target: { value: 'Contractor' } });
+    const first = WF.moves[0];
+    await fireEvent.click(screen.getByLabelText(`${first.label} needs Contractor`));
+    expect(screen.queryByTestId('workflow-problem')).toBeNull();
+    await fireEvent.click(screen.getByRole('button', { name: 'Save workflow' }));
+    await waitFor(() => expect(h.saved).toHaveLength(1));
+    expect(h.saved[0].fields).toEqual([expect.objectContaining({ key: 'contractor', label: 'Contractor', type: 'text' })]);
+    expect(h.saved[0].moves.find((m) => m.label === first.label).required_fields).toEqual(['contractor']);
   });
 });

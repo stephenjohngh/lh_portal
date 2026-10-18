@@ -20,7 +20,9 @@ describe('definitionOf — the shape the database keeps', () => {
     expect(d.steps[1].deadline_days).toBe(10);
     expect(d.review_reason).toBeNull();
     expect(d.moves[0]).toEqual({ from_key: 'received', to_key: 'checking', label: 'Start checking', note_required: false, admin_only: false, action: null,
-      who: 'anyone', four_eyes: false });     // migration 251: the database's definition carries both
+      who: 'anyone', four_eyes: false,      // migration 251: the database's definition carries both
+      required_fields: [] });               // migration 253
+    expect(d.fields).toEqual([]);
   });
   it('a re-save with nothing different is not a change; an edit is', () => {
     expect(definitionChanged(def(), def())).toBe(false);

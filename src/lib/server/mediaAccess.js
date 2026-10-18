@@ -149,6 +149,9 @@ export function canViewFile(refs, viewer) {
   const parking = refs.library.some((r) => r.entity_type === 'parking_agreement')
     || refs.media.some((r) => r.entity_type === 'parking_sighting');
   if (parking && !viewer.isAdmin && !viewer.grants.has('parking')) return false;
+  // A generic case's documents (migration 253) follow the Cases grant.
+  const caseDoc = refs.library.some((r) => r.entity_type === 'case');
+  if (caseDoc && !viewer.isAdmin && !viewer.grants.has('cases')) return false;
   return true;
 }
 
