@@ -17,7 +17,7 @@ import { uniqueSlug } from '../utils/categories.js';
 import { listScheduledWork, createJobFromPlanner, listCertificateExpiries } from '#lib/apps/maintenance/public.js';
 import { listMeetings, listOpenActionDeadlines } from '#lib/apps/management/public.js';
 import { listReviewsDue, listRiskReviewsDue, listCompetenceExpiries } from '#lib/apps/golden_thread/public.js';
-import { listObligationDueDates, listComplianceReviewDates, listUnaddressedFaults } from '#lib/apps/compliance/public.js';
+import { listObligationDueDates, listComplianceReviewDates, listUnaddressedFaults, listActionDueDates } from '#lib/apps/compliance/public.js';
 import { listWorksDue } from '#lib/apps/building_assets/public.js';
 import { listParkingDueDates } from '#lib/apps/parking/public.js';
 import { listComplaintDueDates } from '#lib/apps/complaints/public.js';
@@ -129,7 +129,7 @@ function createPlannerStore() {
 
     const [jobs, meetings, actions, gtDocuments, obligations,
            certificates, bsrDeadlines, complianceReviews, riskReviews, competences,
-           worksDue, faults, parkingDue, complaintDue, caseDue] = await Promise.all([
+           worksDue, faults, parkingDue, complaintDue, caseDue, actionDue] = await Promise.all([
       sources.has('maintenance')
         ? listScheduledWork(from, to).catch(fellShort('maintenance jobs')) : [],
       sources.has('meeting')
@@ -155,12 +155,13 @@ function createPlannerStore() {
       read('parking',           'parking dates',          () => listParkingDueDates(to)),
       read('complaint',         'complaint deadlines',    () => listComplaintDueDates(to)),
       read('case',              'case deadlines',         () => listCaseDueDates(to)),
+      read('compliance_action', 'compliance actions',     () => listActionDueDates(to)),
     ]);
 
     const linked = linkedOccurrences({
       jobs, meetings, actions, gtDocuments, obligations,
       certificates, bsrDeadlines, complianceReviews, riskReviews, competences,
-      worksDue, faults, parkingDue, complaintDue, caseDue,
+      worksDue, faults, parkingDue, complaintDue, caseDue, actionDue,
     }, today());
     update(s => ({ ...s, linked, linkedFailures: failures, loadingLinked: false }));
     return linked;

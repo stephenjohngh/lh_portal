@@ -156,6 +156,16 @@ describe('the facets', () => {
     }
   });
 
+  // W3: a status facet appears once the actions are not all in one status,
+  // and filters on the status the row shows as its pill.
+  it('offers a status filter once the actions differ, and it filters', () => {
+    const actions = ofKind(REGISTER_ITEMS, 'action');
+    const mixed = REGISTER_ITEMS.map(i => (i.key === actions[0].key ? { ...i, actionStatus: 'in_progress' } : i));
+    const f = itemFilterFields('action', itemTally(mixed, 'action')).find(x => x.key === 'status');
+    expect(f?.options.map(o => o.value)).toEqual(['open', 'in_progress']);
+    expect(filterItems(mixed, 'action', { status: ['in_progress'] }).map(i => i.key)).toEqual([actions[0].key]);
+  });
+
   it('omits a category nothing sits in', () => {
     const t = { byCategory: { process: 2 }, byPriority: { high: 2 } };
     expect(itemFilterFields('action', t)[0].options.map(o => o.value)).toEqual(['process']);

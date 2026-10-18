@@ -21,6 +21,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { SAVE_CASES } from './workflowSaveCases.test-helper.js';
+import { DEFAULT_COMPLIANCE_ACTION_WORKFLOW as ACTION_WF } from '#lib/apps/compliance/utils/complianceActionWorkflow.js';
 
 const RUN = process.env.LH_DB_TESTS === 'dev';
 const PSQL = process.platform === 'win32' ? 'C:/Program Files/PostgreSQL/18/bin/psql.exe' : 'psql';
@@ -56,6 +57,11 @@ function saveCall(/** @type {any} */ c, /** @type {number} */ i) {
   const moves = c.moves.map((/** @type {any} */ m, /** @type {number} */ n) => ({ ...m, position: n + 1 }));
   return `perform workflow_save('dbtest_${i}', 'DB test ${i}', ${txt(c.appId)}, null, ${lit(steps)}, ${lit(moves)}, null, null, null, ${lit(c.fields ?? [])}, null);`;
 }
+
+const actionSave = `perform workflow_save('compliance_action', ${txt(ACTION_WF.name)}, 'compliance', null,
+      ${lit(ACTION_WF.steps.map((x, n) => ({ ...x, position: n + 1 })))},
+      ${lit(ACTION_WF.moves.map((m, n) => ({ ...m, position: n + 1 })))}, null, null, null, '[]', null);`;
+const firstAction = `(select i.id from workflow_items i join statutory_register r on r.id = i.subject_id where r.template_key = 'a1')`;
 
 /** The runtime checks, in order; each sees what the ones before it did. */
 const RUNTIME = [
@@ -114,6 +120,32 @@ const RUNTIME = [
       select i.due_on into d1 from workflow_items i join cases c on c.id = i.subject_id where c.title = 'U';
       if d1 <= d0 then raise exception 'not re-dated (% then %)', d0, d1; end if;
     end;`, null],
+  // W3 (migration 255): the register's outstanding actions.
+  ['the shipped Compliance action workflow saves, and the actions attach to it', `
+    ${actionSave}
+    perform compliance_action_attach_to_workflow();
+    if (select count(*) from statutory_register r where r.kind = 'action'
+          and not exists (select 1 from workflow_items i where i.subject_id = r.id)) > 0 then raise exception 'an action was left out'; end if;
+    if (select label from workflow_items where id = ${firstAction}) <> 'A1' then raise exception 'not named by its reference'; end if;`, null],
+  ['an action’s status changes only through its workflow', `
+    update statutory_register set action_status = 'closed' where template_key = 'a1';`, 'through its workflow'],
+  ['a move writes the status back', `
+    perform workflow_move(${firstAction}, 'in_progress', null);
+    if (select action_status from statutory_register where template_key = 'a1') <> 'in_progress' then raise exception 'the status did not follow'; end if;`, null],
+  ['owner and due date are set without marking the row edited, kept in the history, and date the item', `
+    perform compliance_action_set_details('a1', 'The duty holder', null, current_date + 10);
+    if (select seed_modified_at from statutory_register where template_key = 'a1') is not null then raise exception 'marked as edited'; end if;
+    if (select due_on from workflow_items where id = ${firstAction}) <> current_date + 10 then raise exception 'not dated'; end if;
+    if not exists (select 1 from workflow_events where item_id = ${firstAction} and kind = 'fields' and note = 'Changed: Owner, Due date')
+      then raise exception 'no history row'; end if;`, null],
+  ['a closed action has no deadline', `
+    perform workflow_move(${firstAction}, 'answered', 'Determined');
+    perform workflow_move(${firstAction}, 'closed', null);
+    if (select due_on from workflow_items where id = ${firstAction}) is not null then raise exception 'still dated'; end if;`, null],
+  ['the action statuses are fixed', `
+    perform workflow_save('compliance_action', 'x', 'compliance', null,
+      '[{"key":"open","name":"Open","kind":"start","position":1},{"key":"closed","name":"Closed","kind":"done","position":2}]',
+      '[{"from_key":"open","to_key":"closed","label":"Close","position":1}]', null, null, null, '[]', null);`, 'must keep its step'],
 ];
 
 describe.skipIf(!RUN)('workflow manager — the database (dev, rolled back)', () => {

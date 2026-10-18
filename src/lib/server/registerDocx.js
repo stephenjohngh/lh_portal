@@ -34,6 +34,8 @@ import {
   run, para, hCell, dCell, makeHeader, makeFooter, pageProps,
 } from './docxHelpers.js';
 import { inlineRuns } from './markdownDocx.js';
+import { fmtDateOnly } from '#lib/utils/dates.js';
+import { ACTION_STATUS_LABEL } from '#lib/apps/compliance/utils/complianceActionWorkflow.js';
 
 const BASIS_LABEL = {
   statute:    'Legislation',
@@ -308,7 +310,10 @@ export function narrativeSection(section, items) {
         run(item.technicalAuthority || 'NOT ASSIGNED',
           item.technicalAuthority ? {} : { color: COLOURS.failRed }),
         run('   Due: ', { bold: true, color: COLOURS.textMuted }),
-        run(item.dueDate || 'NOT ASSIGNED', item.dueDate ? {} : { color: COLOURS.failRed }),
+        run(item.dueDate ? fmtDateOnly(item.dueDate) : 'NOT ASSIGNED', item.dueDate ? {} : { color: COLOURS.failRed }),
+        // W3: where it stands — moved through its workflow in the app.
+        run('   Status: ', { bold: true, color: COLOURS.textMuted }),
+        run(ACTION_STATUS_LABEL[item.actionStatus ?? 'open'] ?? String(item.actionStatus)),
       ], { size: 16 }));
     }
   }

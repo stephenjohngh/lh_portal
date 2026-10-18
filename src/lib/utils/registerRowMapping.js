@@ -94,6 +94,10 @@ export const PROVENANCE_COLUMNS = [
 
 /** Columns the database owns; never written back onto an entry. */
 const DB_ONLY = new Set([
+  // `id` (migration 255) names the row to the workflow manager. It is the
+  // database's, like the provenance: an entry carrying it would write it back
+  // through toRow() and read as a difference from the shipped register.
+  'id',
   'origin', 'seed_modified_at', 'active', 'citation_verified_by',
   'created_at', 'created_by', 'updated_at', 'updated_by',
 ]);

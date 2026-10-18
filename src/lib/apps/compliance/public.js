@@ -30,6 +30,9 @@ import { currentDecisions } from '#lib/utils/statutoryExclusions.js';
 import { templateEntry } from '#lib/utils/statutoryTemplate.js';
 import { listComponentsByStatus, listWorksLinesFor } from '#lib/apps/building_assets/public.js';
 import { correctiveSummary, faultLabel, FAULT_STATUSES } from './utils/correctiveWork.js';
+import { listDeadlines } from '#lib/workflow/workflowApi.js';
+import { COMPLIANCE_ACTION_WORKFLOW_KEY } from './utils/complianceActionWorkflow.js';
+import { today as todayISO } from '#lib/utils/dates.js';
 
 /**
  * Every planned obligation, as rows.
@@ -168,6 +171,31 @@ export async function listUnaddressedFaults() {
  * duty with no plan and a recorded decision reads as a gap too unless somebody
  * hands the reader this.
  */
+/**
+ * The register's outstanding actions for the Planner (W3, migration 255):
+ * each open action with a due date, named by its reference (A1, D12) or its
+ * name — never its owner. The date is the workflow item's own (the action's
+ * due date), never derived again here.
+ *
+ * Bounded at `to` only: an action past its date is overdue and stays in view.
+ * ⛔ Admin-only in the Planner, like every compliance register source.
+ *
+ * @param {string|null} to  YYYY-MM-DD
+ * @returns {Promise<Array<{ id: string, title: string, date: string, overdue: boolean }>>}
+ */
+export async function listActionDueDates(to = null) {
+  const today = todayISO();
+  const deadlines = await listDeadlines(COMPLIANCE_ACTION_WORKFLOW_KEY);
+  return deadlines
+    .filter((d) => !to || d.due_on <= to)
+    .map((d) => ({
+      id: `compliance_action:${d.id}`,
+      title: `Compliance action ${d.label ?? ''} — ${d.step}`.replace(/\s+—/, ' —'),
+      date: d.due_on,
+      overdue: d.due_on < today,
+    }));
+}
+
 export function listStatutoryExclusions() {
   return api.getAll('statutory_exclusions', { orderBy: 'decided_at', ascending: false });
 }

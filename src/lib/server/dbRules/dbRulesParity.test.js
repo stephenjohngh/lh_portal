@@ -56,6 +56,7 @@ import * as waitingListModel   from '#lib/apps/parking/utils/waitingListModel.js
 import * as tariffModel        from '#lib/apps/parking/utils/tariffModel.js';
 import * as results            from '#lib/utils/resultConstants.js';
 import * as registerKinds      from '#lib/utils/registerKinds.js';
+import * as actionWorkflow     from '#lib/apps/compliance/utils/complianceActionWorkflow.js';
 import * as obligationEvidence from '#lib/utils/obligationEvidence.js';
 import * as worksSchedule      from '#lib/apps/building_assets/utils/worksSchedule.js';
 import * as datasetTemplates   from '#lib/apps/dossier/utils/datasetTemplates.js';
@@ -122,6 +123,8 @@ const VALUE_LISTS = {
   'statutory_register.kind':          () => values(registerKinds.REGISTER_KINDS),
   'statutory_register.action_category': () => values(registerKinds.ACTION_CATEGORIES),
   'statutory_register.priority':      () => values(registerKinds.ACTION_PRIORITIES),
+  // W3 (migration 255): an action's status is its workflow step's key.
+  'statutory_register.action_status': () => [...actionWorkflow.ACTION_STATUSES],
   'statutory_obligations.evidenced_by': () => values(obligationEvidence.EVIDENCE_ROUTES),
   'works_schedule_items.action':      () => values(worksSchedule.WORKS_ACTIONS),
   'works_schedules.status':           () => values(worksSchedule.SCHEDULE_STATUS),

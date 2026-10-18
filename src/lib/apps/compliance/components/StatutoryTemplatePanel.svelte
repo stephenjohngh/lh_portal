@@ -21,6 +21,10 @@
   import { dueSoonDays } from '#lib/utils/dueWindows.js';
   import { profiles, profilesStore } from '#lib/stores/profiles.js';
   import { statutoryRegister } from '#lib/stores/statutoryRegister.js';
+  import { complianceActionsStore } from '../stores/complianceActionsStore.js';
+  import { permissions } from '#lib/stores/permissions.js';
+  import { auth } from '#lib/stores/auth.js';
+  import { errMessage } from '#lib/utils/errors.js';
   import RegisterEntryModal from './RegisterEntryModal.svelte';
   import RegisterImportDiff from './RegisterImportDiff.svelte';
   import FormInput from '#lib/components/common/FormInput.svelte';
@@ -94,6 +98,24 @@
   let kind = 'requirement';
   $: kinds = kindTally($statutoryRegister.items);
   $: kindBlurb = REGISTER_KINDS.find(k => k.key === kind)?.blurb ?? '';
+
+  // -- The actions' workflow (W3, migrations 255–256) --------------------------
+  // Read the first time the actions are opened. An administrator opening them
+  // when there is no workflow yet sets up the shipped one and attaches the
+  // actions already in the register — the seed rule, as Complaints does.
+  let actionsOpened = false;
+  let actionsSetUpError = '';
+  $: if (kind === 'action' && !actionsOpened) { actionsOpened = true; openActions(); }
+  async function openActions() {
+    try {
+      await complianceActionsStore.load();
+      if (!$complianceActionsStore.workflow && $permissions.isAdmin) await complianceActionsStore.setUpWorkflow();
+    } catch (/** @type {any} */ err) {
+      actionsSetUpError = errMessage(err, 'Could not set up the actions’ workflow.');
+    }
+  }
+  $: idByKey = Object.fromEntries(Object.entries($statutoryRegister.provenance ?? {})
+    .map(([key, p]) => [key, /** @type {any} */ (p)?.id]).filter(([, id]) => id));
 
   const tally   = basisTally();
 
@@ -508,7 +530,19 @@
           items={$statutoryRegister.items}
           included={sections[KIND_SECTION[kind]]}
           on:include={e => (sections = { ...sections, [KIND_SECTION[kind]]: e.detail })}
+          wf={kind === 'action' ? $complianceActionsStore : null}
+          {idByKey}
+          isAdmin={$permissions.isAdmin}
+          me={$auth.user?.id ?? null}
+          nameById={Object.fromEntries(personName)}
+          onMove={complianceActionsStore.move}
+          onAssign={complianceActionsStore.assign}
+          onSaveDetails={complianceActionsStore.setDetails}
         />
+        {#if kind === 'action' && (actionsSetUpError || $complianceActionsStore.error)}
+          <ErrorDisplay message={actionsSetUpError || $complianceActionsStore.error}
+            onDismiss={() => { actionsSetUpError = ''; complianceActionsStore.clearError(); }} />
+        {/if}
       {:else}
       <p class="blurb">
         Everything a higher-risk residential building in England has to check regularly — from law,

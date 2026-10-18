@@ -8,6 +8,7 @@
 // pattern both copies' messages must match (null: it must save).
 
 import { DEFAULT_COMPLAINT_WORKFLOW as COMPLAINT } from '#lib/apps/complaints/utils/complaintWorkflow.js';
+import { DEFAULT_COMPLIANCE_ACTION_WORKFLOW as ACTION } from '#lib/apps/compliance/utils/complianceActionWorkflow.js';
 
 /** @typedef {{ name: string, appId: string, steps: any[], moves: any[], fields?: any[], expect: RegExp|null }} SaveCase */
 
@@ -73,4 +74,10 @@ export const SAVE_CASES = [
   { name: 'Complaints: a move s.93 does not allow', appId: 'complaints', steps: complaintSteps(),
     moves: [...complaintMoves(), { from_key: 'received', to_key: 'closed', label: 'Close at once' }],
     expect: /not one BSA s\.93 allows/ },
+  { name: 'the shipped Compliance action workflow saves', appId: 'compliance',
+    steps: ACTION.steps.map((x) => ({ ...x })), moves: ACTION.moves.map((m) => ({ ...m })), expect: null },
+  { name: 'Compliance action: a step that is not a status', appId: 'compliance',
+    steps: [...ACTION.steps.map((x) => ({ ...x })), { key: 'parked', name: 'Parked', kind: 'open' }],
+    moves: [...ACTION.moves.map((m) => ({ ...m })), { from_key: 'open', to_key: 'parked', label: 'Park' }],
+    expect: /Compliance action workflow's steps are the action statuses and are fixed: "parked"/ },
 ];

@@ -25,6 +25,10 @@
     filterItems, groupItems, itemTally, itemFilterFields, citableRef,
   } from '../utils/registerItemView.js';
   import { PRIORITY_MARKER, PRIORITY_LABEL } from '#lib/utils/registerKinds.js';
+  import { fmtDateOnly } from '#lib/utils/dates.js';
+  import { deadlineBand } from '#lib/workflow/workflowDeadlines.js';
+  import { ACTION_STATUS_LABEL } from '../utils/complianceActionWorkflow.js';
+  import ActionWorkPanel from './ActionWorkPanel.svelte';
 
   /** @type {'action'|'absence'|'caveat'} */
   export let kind = 'action';
@@ -32,6 +36,20 @@
   export let items = [];
   /** Whether this kind is currently included in the Word file. */
   export let included = true;
+
+  // ── The actions' workflow (W3, migrations 255–256) ──
+  /** complianceActionsStore's state, or null where the kind is not 'action'. @type {any} */ export let wf = null;
+  /** Each register row's id, by key (the workflow item names its row by id). @type {Record<string, string>} */
+  export let idByKey = {};
+  export let isAdmin = false;
+  /** @type {string|null} */ export let me = null;
+  /** @type {Record<string, string>} */ export let nameById = {};
+  /** @type {any} */ export let onMove = null;
+  /** @type {any} */ export let onAssign = null;
+  /** @type {any} */ export let onSaveDetails = null;
+
+  /** The workflow item of an action, or null. @param {any} item */
+  const itemOf = (item) => (wf?.items ?? []).find((/** @type {any} */ i) => i.subject_id === idByKey[item.key]) ?? null;
 
   const dispatch = createEventDispatcher();
 
@@ -60,6 +78,7 @@
     q: search,
     category: [...(filters.category ?? [])],
     priority: [...(filters.priority ?? [])],
+    status:   [...(filters.status ?? [])],
   });
 
   // ⛔ Actions group by WHO MUST ACT and never by priority across categories —
@@ -140,6 +159,15 @@
                 {/if}
                 {#if ref}<span class="ref">{ref}</span>{/if}
                 <span class="nm">{item.name}</span>
+                {#if kind === 'action'}
+                  {@const wi = itemOf(item)}
+                  {@const band = item.actionStatus !== 'closed' ? deadlineBand(item.dueDate) : null}
+                  <span class="status st-{item.actionStatus ?? 'open'}">{ACTION_STATUS_LABEL[item.actionStatus ?? 'open'] ?? item.actionStatus}</span>
+                  {#if item.dueDate && item.actionStatus !== 'closed'}
+                    <span class="due due-{band ?? 'none'}">Due {fmtDateOnly(item.dueDate)}</span>
+                  {/if}
+                  {#if wi?.assigned_to}<span class="with">With {nameById[wi.assigned_to] ?? 'someone'}</span>{/if}
+                {/if}
               </div>
               {#if !open && item.description}
                 <p class="one-line">{item.description}</p>
@@ -172,8 +200,12 @@
                   {#if item.technicalAuthority}{item.technicalAuthority}{:else}<span class="unassigned">NOT ASSIGNED</span>{/if}
                   <span class="dot">·</span>
                   <span class="fact-k">Due:</span>
-                  {#if item.dueDate}{item.dueDate}{:else}<span class="unassigned">NOT ASSIGNED</span>{/if}
+                  {#if item.dueDate}{fmtDateOnly(item.dueDate)}{:else}<span class="unassigned">NOT ASSIGNED</span>{/if}
                 </p>
+                {#if wf && onMove}
+                  <ActionWorkPanel action={item} rowId={idByKey[item.key] ?? null} {wf} {isAdmin} {me} {nameById}
+                    {onMove} {onAssign} {onSaveDetails} />
+                {/if}
               {/if}
             </div>
           {/if}
@@ -245,4 +277,15 @@
   }
   .unassigned { font-weight: 700; color: rgb(252 165 165); letter-spacing: 0.03em; }
   .dot { color: rgb(71 85 105); }
+
+  .status, .due, .with {
+    font-size: 0.62rem; padding: 0.1rem 0.4rem; border-radius: 999px; white-space: nowrap;
+    border: 1px solid rgb(71 85 105 / 0.6); color: rgb(203 213 225);
+  }
+  .st-in_progress { border-color: rgb(56 189 248 / 0.6); color: rgb(125 211 252); }
+  .st-answered    { border-color: rgb(167 139 250 / 0.6); color: rgb(196 181 253); }
+  .st-closed      { border-color: rgb(34 197 94 / 0.5); color: rgb(134 239 172); }
+  .due-overdue { border-color: rgb(239 68 68 / 0.6); color: rgb(252 165 165); }
+  .due-due_soon { border-color: rgb(245 158 11 / 0.6); color: rgb(252 211 77); }
+  .with { color: rgb(148 163 184); }
 </style>

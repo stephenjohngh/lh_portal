@@ -10,9 +10,10 @@
 
 import { DEFAULT_APPLICATION_WORKFLOW } from '#lib/apps/parking/utils/applicationWorkflow.js';
 import { DEFAULT_COMPLAINT_WORKFLOW } from '#lib/apps/complaints/utils/complaintWorkflow.js';
+import { DEFAULT_COMPLIANCE_ACTION_WORKFLOW } from '#lib/apps/compliance/utils/complianceActionWorkflow.js';
 
 /** @type {ReadonlyArray<any>} */
-export const SHIPPED_WORKFLOWS = Object.freeze([DEFAULT_APPLICATION_WORKFLOW, DEFAULT_COMPLAINT_WORKFLOW]);
+export const SHIPPED_WORKFLOWS = Object.freeze([DEFAULT_APPLICATION_WORKFLOW, DEFAULT_COMPLAINT_WORKFLOW, DEFAULT_COMPLIANCE_ACTION_WORKFLOW]);
 
 /** The shipped version of a workflow, or null (a Cases process has none). @param {string} key */
 export function shippedWorkflowFor(key) {

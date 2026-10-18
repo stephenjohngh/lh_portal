@@ -13,9 +13,15 @@
 // a filter with no matching display. Each was found by a person using the
 // screen, never by a check. So: does it reach the page?
 
-import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/svelte';
-import RegisterItemsList from './RegisterItemsList.svelte';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+
+// The actions' work panel (W3) reaches the workflow API; nothing here calls it.
+vi.mock('#lib/workflow/workflowApi.js', () => ({ itemHistory: async () => [], setItemFields: async () => ({}) }));
+vi.mock('#lib/workflow/fieldLinks.js', () => ({ loadLinkOptions: async () => ({ component: [], space: [], person: [] }) }));
+vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: () => {} }));
+vi.mock('#lib/utils/download.js', () => ({ downloadBlob: () => {} }));
+const { default: RegisterItemsList } = await import('./RegisterItemsList.svelte');
+import { render, screen, cleanup, fireEvent } from '@testing-library/svelte';
 import { REGISTER_ITEMS } from '#lib/utils/registerItemsData.js';
 import { ofKind, ACTION_CATEGORIES } from '#lib/utils/registerKinds.js';
 
@@ -75,6 +81,54 @@ describe('an action says who must act, and what is not assigned', () => {
     render(RegisterItemsList, { kind: 'caveat', items: REGISTER_ITEMS });
     await screen.getByText(one.name).click();
     expect(screen.queryAllByText('NOT ASSIGNED')).toHaveLength(0);
+  });
+});
+
+// W3 (migrations 255–256): an action is worked through its workflow.
+describe('an action on its workflow', () => {
+  const one = () => forKind('action')[0];
+  const wfState = (overrides = {}) => ({
+    workflow: { id: 'wf1', name: 'Compliance action', app_id: 'compliance' },
+    steps: [{ key: 'open', name: 'Open', kind: 'start' }, { key: 'in_progress', name: 'In progress', kind: 'open' },
+      { key: 'answered', name: 'Answered', kind: 'open' }, { key: 'closed', name: 'Closed', kind: 'done' }],
+    moves: [{ from_key: 'open', to_key: 'in_progress', label: 'Start' }],
+    fields: [], assignees: [],
+    items: [{ id: 'it1', subject_id: 'row1', step_key: 'open', due_on: null, assigned_to: 'u2' }],
+    ...overrides,
+  });
+  const props = (extra = {}) => ({
+    kind: 'action', items: REGISTER_ITEMS, wf: wfState(), idByKey: { [one().key]: 'row1' },
+    isAdmin: true, me: 'u1', nameById: { u2: 'Robert' },
+    onMove: async () => ({}), onAssign: async () => ({}), onSaveDetails: async () => ({ changed: true }),
+    ...extra,
+  });
+
+  it('shows each action’s status, and who it is with, on the row', () => {
+    render(RegisterItemsList, props());
+    expect(screen.getAllByText('Open').length).toBe(forKind('action').length);
+    expect(screen.getByText('With Robert')).toBeInTheDocument();
+  });
+
+  it('opens on the owner, technical authority and due date, and the workflow’s moves', async () => {
+    render(RegisterItemsList, props());
+    await screen.getByText(one().name).click();
+    expect(screen.getByTestId('action-work')).toBeInTheDocument();
+    expect(screen.getByLabelText('Owner')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Start/ })).toBeInTheDocument();
+  });
+
+  it('holds the moves back while owner or due date is changed and unsaved', async () => {
+    render(RegisterItemsList, props());
+    await screen.getByText(one().name).click();
+    const owner = /** @type {HTMLInputElement} */ (screen.getByLabelText('Owner'));
+    await fireEvent.input(owner, { target: { value: 'The duty holder' } });
+    expect(await screen.findByText(/Save the owner and due date first/)).toBeInTheDocument();
+  });
+
+  it('shows no work panel without the workflow’s state (the other kinds)', async () => {
+    render(RegisterItemsList, { kind: 'action', items: REGISTER_ITEMS });
+    await screen.getByText(one().name).click();
+    expect(screen.queryByTestId('action-work')).toBeNull();
   });
 });
 

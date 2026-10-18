@@ -18,6 +18,7 @@ import {
   ACTION_CATEGORIES, ACTION_CATEGORY_LABEL, ACTION_PRIORITIES,
   PRIORITY_LABEL, priorityRank, ofKind,
 } from '#lib/utils/registerKinds.js';
+import { ACTION_STATUSES, ACTION_STATUS_LABEL } from './complianceActionWorkflow.js';
 import { matchesSearch } from '#lib/utils/textSearch.js';
 
 const text = v => String(v ?? '').toLowerCase();
@@ -111,11 +112,15 @@ export function itemTally(items, kind) {
   const byCategory = {};
   /** @type {Record<string, number>} */
   const byPriority = {};
+  /** @type {Record<string, number>} */
+  const byStatus = {};
   for (const item of rows) {
     if (item.category) byCategory[item.category] = (byCategory[item.category] ?? 0) + 1;
     if (item.priority) byPriority[item.priority] = (byPriority[item.priority] ?? 0) + 1;
+    const st = item.actionStatus ?? 'open';
+    byStatus[st] = (byStatus[st] ?? 0) + 1;
   }
-  return { total: rows.length, byCategory, byPriority };
+  return { total: rows.length, byCategory, byPriority, byStatus };
 }
 
 /**
@@ -123,7 +128,7 @@ export function itemTally(items, kind) {
  * neither, and are short enough to read without filtering.
  *
  * @param {string} kind
- * @param {{byCategory: Record<string, number>, byPriority: Record<string, number>}} tally
+ * @param {{byCategory: Record<string, number>, byPriority: Record<string, number>, byStatus?: Record<string, number>}} tally
  */
 export function itemFilterFields(kind, tally) {
   if (kind !== 'action') return [];
@@ -146,6 +151,16 @@ export function itemFilterFields(kind, tally) {
           label: `${p.marker} ${p.label} (${tally.byPriority[p.key]})`,
           short: PRIORITY_LABEL[p.key],
         })) },
+    // W3: where each action stands (its workflow step, migration 255) — on
+    // the row as its status pill. Only once the actions differ: while every one
+    // is open, a one-option filter is furniture.
+    ...(Object.keys(tally.byStatus ?? {}).length > 1 ? [
+      { key: 'status', label: 'Status', placeholder: 'Any', noun: 'statuses',
+        minWidth: '140px', fixedWidth: true,
+        options: ACTION_STATUSES
+          .filter(k => tally.byStatus?.[k])
+          .map(k => ({ value: k, label: `${ACTION_STATUS_LABEL[k]} (${tally.byStatus?.[k]})`, short: ACTION_STATUS_LABEL[k] })) },
+    ] : []),
   ];
 }
 

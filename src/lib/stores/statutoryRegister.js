@@ -248,6 +248,7 @@ function createStatutoryRegisterStore() {
       const provenance = Object.fromEntries(rows.map(r => [r.template_key, {
         origin: r.origin, seedModifiedAt: r.seed_modified_at,
         citationVerifiedBy: r.citation_verified_by,
+        id: r.id,                          // an action's workflow item names it (migration 255)
       }]));
       adopt(rows.map(fromRow), 'database', { loaded: true, provenance });
       logger('✅ loaded', rows.length, 'entries from the database');

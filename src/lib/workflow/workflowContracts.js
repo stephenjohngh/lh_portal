@@ -15,19 +15,28 @@
 import { isValidTransition } from '#lib/apps/complaints/utils/complaintLifecycle.js';
 
 /**
- * @typedef {{ steps?: Record<string, string>, moveAllowed?: (from: string, to: string) => boolean, explains: string }} Contract
+ * @typedef {{ name: string, stepsAre: string, steps?: Record<string, string>, moveAllowed?: (from: string, to: string) => boolean, explains: string }} Contract
  *   steps — the step keys the workflow must have exactly, each with its fixed kind
  */
 
 /** @type {Readonly<Record<string, Contract>>} */
 export const CONTRACTS = Object.freeze({
   complaints: {
+    name: 'Complaints',
+    stepsAre: 'the complaint statuses (BSA s.93)',
     steps: {
       received: 'start', acknowledged: 'open', investigating: 'open', responded: 'open',
       closed: 'done', escalated_to_bsr: 'done', withdrawn: 'declined',
     },
     moveAllowed: isValidTransition,
     explains: 'Its steps are the complaint statuses (BSA s.93) and each has a fixed kind; a move must be one s.93 allows. The names, deadlines, conditions and fields can be changed.',
+  },
+  // W3 (migration 255): the register's outstanding actions.
+  compliance: {
+    name: 'Compliance action',
+    stepsAre: 'the action statuses',
+    steps: { open: 'start', in_progress: 'open', answered: 'open', closed: 'done' },
+    explains: 'Its steps are the action statuses of the compliance obligations register and each has a fixed kind. The names, moves, notes and conditions can be changed; an action’s deadline is its own due date.',
   },
 });
 
@@ -47,11 +56,11 @@ export function contractProblem(appId, { steps, moves }) {
   if (c.steps) {
     const fixed = c.steps;
     const extra = steps.find((s) => !(s.key in fixed));
-    if (extra) return `The Complaints workflow's steps are the complaint statuses (BSA s.93) and are fixed: "${extra.key}" is not one.`;
+    if (extra) return `The ${c.name} workflow's steps are ${c.stepsAre} and are fixed: "${extra.key}" is not one.`;
     const lost = Object.keys(fixed).find((k) => !steps.some((s) => s.key === k));
-    if (lost) return `The Complaints workflow must keep its step "${lost}".`;
+    if (lost) return `The ${c.name} workflow must keep its step "${lost}".`;
     const wrongKind = steps.find((s) => s.kind !== fixed[s.key]);
-    if (wrongKind) return `Step "${wrongKind.name}" has a fixed kind in the Complaints workflow.`;
+    if (wrongKind) return `Step "${wrongKind.name}" has a fixed kind in the ${c.name} workflow.`;
   }
   if (c.moveAllowed) {
     const bad = moves.find((m) => !c.moveAllowed?.(m.from_key, m.to_key));
