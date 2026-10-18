@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema25.csv
+// Source: docs/ops/supabase_lhportal_schema26.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -5693,8 +5693,6 @@ export type Database = {
       }
       workflow_moves: {
         Row: {
-          four_eyes: boolean
-          who: string
           workflow_id: string
           from_key: string
           to_key: string
@@ -5703,10 +5701,10 @@ export type Database = {
           admin_only: boolean
           action: string | null
           position: number
+          who: string
+          four_eyes: boolean
         }
         Insert: {
-          four_eyes?: boolean
-          who?: string
           workflow_id: string
           from_key: string
           to_key: string
@@ -5715,10 +5713,10 @@ export type Database = {
           admin_only?: boolean
           action?: string | null
           position?: number
+          who?: string
+          four_eyes?: boolean
         }
         Update: {
-          four_eyes?: boolean
-          who?: string
           workflow_id?: string
           from_key?: string
           to_key?: string
@@ -5727,6 +5725,8 @@ export type Database = {
           admin_only?: boolean
           action?: string | null
           position?: number
+          who?: string
+          four_eyes?: boolean
         }
         Relationships: [
             {

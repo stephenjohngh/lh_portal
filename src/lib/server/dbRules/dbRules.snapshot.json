@@ -83,6 +83,10 @@
             "smaller",
             "smallest"
         ],
+        "workflow_moves.who": [
+            "anyone",
+            "assignee"
+        ],
         "audit_logs.severity": [
             "critical",
             "error",
