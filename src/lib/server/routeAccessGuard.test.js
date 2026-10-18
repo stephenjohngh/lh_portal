@@ -31,6 +31,7 @@ const PUBLIC = {
   'mor/status/[reference]':         'the public case lookup — needs the per-case verification code',
   'parking/apply':                  'the public parking application form — same-origin check, rate limit, a hidden bot field, checked again on the server',
   'parking/apply/status':           'the public application lookup — needs the reference AND its code; returns the step name only',
+  'status':                         'the public status lookup (migration 261) — needs the reference AND its code; answers only for a process an admin switched on, with the step’s public name only',
   'pack/[token]/file/[documentId]': "a published pack's file — the unguessable token is the permission",
   'pack/[token]/unlock':            "a published pack's passphrase — rate-limited",
   'media/file/[fileId]':            'the file proxy — checks its own signed media-session cookie',

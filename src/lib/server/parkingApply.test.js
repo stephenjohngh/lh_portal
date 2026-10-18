@@ -56,7 +56,7 @@ describe('the public parking application, server side', () => {
     expect(h.rpc).toEqual([]);
     h.rpcResult = { data: { reference: 'PKR-2026-000007', stage: 'Being checked', kind: 'open', received: 'r', updated: 'u' }, error: null };
     const s = await applicationStatus('PKR-2026-000007', 'r7p-qk2');
-    expect(h.rpc[0]).toEqual(['parking_request_status', { p_reference: 'PKR-2026-000007', p_code: 'R7PQK2' }]);
+    expect(h.rpc[0]).toEqual(['workflow_public_status', { p_reference: 'PKR-2026-000007', p_code: 'R7PQK2' }]);   // the one public answer (261)
     expect(s).toEqual({ reference: 'PKR-2026-000007', stage: 'Being checked', finished: false, received: 'r', updated: 'u' });
   });
 });

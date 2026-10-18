@@ -41,6 +41,7 @@
   import { downloadBlob } from '#lib/utils/download.js';
   import { fmtDateTime, fmtDate, fmtGenerated, today } from '#lib/utils/dates.js';
   import { errMessage } from '#lib/utils/errors.js';
+  import { formatVerificationCode } from '#lib/utils/caseVerificationCode.js';
   import { logAudit } from '#lib/utils/auditLogger.js';
 
   /** The item (null until its workflow is set up). @type {any} */ export let item = null;
@@ -255,6 +256,11 @@
     {#if timed && timerOn && !finished}
       <p class="text-xs text-slate-400" data-testid="wf-timer">⏲ <strong>{timed.label}</strong> happens by itself on {fmtDate(timerOn)}
         — after {timerWords(timed)} here — unless it is moved before then.</p>
+    {/if}
+    {#if workflow?.public_status && item?.public_code && canEdit}
+      <p class="text-xs text-slate-400" data-testid="wf-public-code">🌐 Public status: whoever has reference
+        <span class="font-mono text-slate-200">{reference}</span> and code
+        <span class="font-mono text-slate-200">{formatVerificationCode(item.public_code)}</span> can see its step at <span class="font-mono">/status</span>.</p>
     {/if}
     {#if !finished}
       <div class="flex items-center gap-2 flex-wrap" data-testid="wf-with">

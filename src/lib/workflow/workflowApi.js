@@ -177,3 +177,16 @@ export function listTimerRuns(count = 5) {
 export function runTimers() {
   return api.rpc('workflow_run_timers', {});
 }
+
+/**
+ * Switch a workflow's public status page on or off (migration 261, admin).
+ * A workflow marked for review needs the review recorded, as a save does.
+ * @param {string} key @param {boolean} on
+ * @param {{ reviewedBy: string, reviewedAgainst: string, note?: string|null } | null} [review]
+ */
+export function setPublicStatus(key, on, review = null) {
+  return api.rpc('workflow_set_public', {
+    p_key: key, p_on: !!on,
+    p_review: review ? { reviewed_by: review.reviewedBy, reviewed_against: review.reviewedAgainst, note: review.note ?? null } : null,
+  });
+}

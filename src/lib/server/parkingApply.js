@@ -5,17 +5,18 @@
 // business names, whether applications are open) and saving one. ⛔ The page
 // has no login, so everything is read and written here with the service role,
 // and through the database functions made for it: parking_request_submit()
-// (which starts the item in its workflow) and parking_request_status() (which
-// returns the step's public name only).
+// (which starts the item in its workflow) and, for the status page, the one
+// public status answer (publicStatus.js, migration 261).
 
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$app/env/public';
 import * as env from '$app/env/private';
 import { getIdentity } from '#lib/server/identity.js';
 import { serverWording } from '#lib/server/wording.js';
-import { generateVerificationCode, formatVerificationCode, normalizeVerificationCode } from '#lib/utils/caseVerificationCode.js';
+import { generateVerificationCode, formatVerificationCode } from '#lib/utils/caseVerificationCode.js';
 import { applicationProblems, applicationRow } from '#lib/apps/parking/utils/applicationForm.js';
 import { APPLICATION_WORKFLOW_KEY } from '#lib/apps/parking/utils/applicationWorkflow.js';
+import { publicStatus } from '#lib/server/publicStatus.js';
 
 /** @type {any} */
 let svc = null;
@@ -71,14 +72,11 @@ export async function submitApplication(body) {
  * @param {string} reference @param {string} code
  */
 export async function applicationStatus(reference, code) {
-  const clean = normalizeVerificationCode(String(code ?? ''));
-  if (!clean || !/^[A-Z]{2,6}-\d{4}-\d{6}$/.test(String(reference ?? '').trim().toUpperCase())) return null;
-  const { data, error } = await db().rpc('parking_request_status', { p_reference: reference, p_code: clean });
-  if (error) throw new Error(error.message);
-  if (!data) return null;
-  return {
-    reference: data.reference, stage: data.stage,
-    finished: data.kind === 'done' || data.kind === 'declined',
-    received: data.received, updated: data.updated,
-  };
+  // ⭐ Through the one public status answer (migration 261): it answers only
+  // while the application workflow's public status page is switched on in
+  // Admin → Workflows, and in the step's public words.
+  const status = await publicStatus(reference, code);
+  if (!status) return null;
+  const { process, ...rest } = status;
+  return rest;
 }

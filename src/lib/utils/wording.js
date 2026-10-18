@@ -174,6 +174,14 @@ If you notice anything that you think could pose a risk to the safety of the bui
       + 'Only the staff who manage parking can see them. If your application does not go ahead, your details are deleted after a short time; '
       + 'if it does, they are kept with your parking records. You can ask {business} to show you, correct or delete what it holds about you.',
   },
+  {
+    key: 'publicStatusIntro', area: 'Workflows',
+    label: 'Introduction on the public status page',
+    governs: 'Shown at the top of /status, where someone with a reference and its code sees which step their item is at — for the processes switched on in Admin → Workflows.',
+    tokens: ['building'],
+    default: 'If you have been given a reference and a code for something {building} is dealing with — an application, a complaint or a request — '
+      + 'enter them here to see where it has got to. Nothing about you is shown.',
+  },
 ]);
 
 const BY_KEY = new Map(DEFS.map((d) => [d.key, d]));

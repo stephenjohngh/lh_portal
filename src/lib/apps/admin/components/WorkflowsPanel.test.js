@@ -9,11 +9,13 @@ import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/sv
 import { DEFAULT_APPLICATION_WORKFLOW as WF } from '#lib/apps/parking/utils/applicationWorkflow.js';
 
 const h = vi.hoisted(() => ({ saved: /** @type {any[]} */ ([]), marked: false, changes: /** @type {any[]} */ ([]), app: 'parking', renamed: false,
-  timerRuns: /** @type {any[]} */ ([]), ran: 0 }));
+  timerRuns: /** @type {any[]} */ ([]), ran: 0, publicOn: false, switched: /** @type {any[]} */ ([]) }));
+vi.mock('#lib/utils/download.js', () => ({ downloadBlob: () => {} }));
 vi.mock('#lib/workflow/workflowApi.js', () => ({
+  setPublicStatus: async (key, on, review) => { h.switched.push({ key, on, review }); return { changed: true }; },
   listWorkflows: async () => [{ id: 'w1', key: WF.key, name: WF.name, app_id: h.app, description: WF.description }],
   loadWorkflow: async () => ({ fields: [], workflow: { id: 'w1', key: WF.key, name: WF.name, app_id: h.app, description: WF.description,
-      updated_at: '2026-10-18T08:00:00Z',
+      updated_at: '2026-10-18T08:00:00Z', public_status: h.publicOn,
       review_required: h.marked, review_reason: h.marked ? 'Statutory — BSA s.93' : null },
     steps: WF.steps.map((s, i) => ({ ...s, position: i + 1, ...(h.renamed && i === 0 ? { name: 'Arrived' } : {}) })), moves: WF.moves.map((m) => ({ note_required: false, admin_only: false, action: null, ...m, ...(h.app !== 'parking' ? { action: null } : {}) })) }),
   saveWorkflow: async (w) => { h.saved.push(w); return 'w1'; },
@@ -33,7 +35,7 @@ vi.mock('#lib/workflow/nonWorkingDays.js', () => ({
 }));
 
 const WorkflowsPanel = (await import('./WorkflowsPanel.svelte')).default;
-beforeEach(() => { cleanup(); h.saved.length = 0; h.marked = false; h.changes = []; h.app = 'parking'; h.renamed = false; h.timerRuns = []; h.ran = 0; });
+beforeEach(() => { cleanup(); h.saved.length = 0; h.marked = false; h.changes = []; h.app = 'parking'; h.renamed = false; h.timerRuns = []; h.ran = 0; h.publicOn = false; h.switched = []; });
 
 async function opened() {
   render(WorkflowsPanel);
@@ -188,5 +190,32 @@ describe('Admin → Workflows', () => {
     expect(screen.getByTestId('workflow-contract').textContent).toMatch(/complaint statuses/);
     // The mock's steps are Parking's, which break Complaints' fixed parts: the save says why.
     expect((await screen.findByTestId('workflow-problem')).textContent).toMatch(/are fixed/);
+  });
+
+  // Migration 261: the public status page, off unless switched on.
+  it('the public status page is off, says what the public would see, and is switched on by the button', async () => {
+    await opened();
+    const box = await screen.findByTestId('workflow-public');
+    expect(box.textContent).toMatch(/Public status page — off/);
+    expect(box.textContent).toContain('“Being checked”');
+    await fireEvent.click(screen.getByRole('button', { name: 'Switch the public page on' }));
+    await waitFor(() => expect(h.switched).toEqual([{ key: WF.key, on: true, review: null }]));
+  });
+
+  it('a workflow marked for review asks who reviewed it before switching', async () => {
+    h.marked = true;
+    await opened();
+    const btn = await screen.findByRole('button', { name: 'Switch the public page on' });
+    expect(btn.hasAttribute('disabled')).toBe(true);
+    await fireEvent.input(screen.getByLabelText('Public status: reviewed by'), { target: { value: 'A Person' } });
+    await fireEvent.input(screen.getByLabelText('Public status: reviewed against'), { target: { value: 'BSA s.93' } });
+    await fireEvent.click(btn);
+    await waitFor(() => expect(h.switched[0]).toMatchObject({ on: true, review: { reviewedBy: 'A Person', reviewedAgainst: 'BSA s.93' } }));
+  });
+
+  it('a process named by titles has no public page to switch', async () => {
+    h.app = 'maintenance';
+    await opened();
+    expect(screen.queryByTestId('workflow-public')).toBeNull();
   });
 });

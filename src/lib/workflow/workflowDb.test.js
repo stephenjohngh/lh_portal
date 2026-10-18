@@ -311,7 +311,41 @@ const RUNTIME = [
     perform workflow_move(${jobItem}, 'scheduled', 'Certificate was for the wrong system');
     if (select status from maintenance_jobs where title = 'DB test job') <> 'scheduled'
        or (select result from maintenance_jobs where title = 'DB test job') is not null then raise exception 'not cleared'; end if;`, null],
+  // Migration 261: the public status page — off unless switched on.
+  ['every item has a public code; the public cannot look one up while its process is off', `
+    ${ADMIN_CLAIMS}
+    perform case_open((select id from workflows where key = 'dbtest_case'), 'PUBLIC', null, '{"contractor":"ACME"}');
+    if (select public_code from workflow_items i join cases c on c.id = i.subject_id where c.title = 'PUBLIC') !~ '^[A-HJKMNP-Z2-9]{6}$'
+      then raise exception 'no code'; end if;
+    if workflow_public_status((select i.label from workflow_items i join cases c on c.id = i.subject_id where c.title = 'PUBLIC'),
+                              (select i.public_code from workflow_items i join cases c on c.id = i.subject_id where c.title = 'PUBLIC')) is not null
+      then raise exception 'answered while switched off'; end if;`, null],
+  ['switched on, the right pair sees the step in the public\u2019s words, and a wrong code sees nothing', `
+    perform workflow_set_public('dbtest_case', true, null);
+    declare r jsonb; ref text; code text; begin
+      select i.label, i.public_code into ref, code from workflow_items i join cases c on c.id = i.subject_id where c.title = 'PUBLIC';
+      r := workflow_public_status(lower(ref), substr(code, 1, 3) || '-' || substr(code, 4));
+      if r is null or r->>'stage' <> 'Received' or r->>'process' <> 'DB test case' then raise exception 'wrong answer: %', r; end if;
+      if workflow_public_status(ref, 'ZZZZZZ') is not null then raise exception 'a wrong code was answered'; end if;
+    end;
+    if not exists (select 1 from workflow_changes c join workflows w on w.id = c.workflow_id
+                    where w.key = 'dbtest_case' and (c.after->>'public_status')::boolean and not (c.before->>'public_status')::boolean)
+      then raise exception 'not in the history'; end if;`, null],
+  ['switched off again, it answers nothing', `
+    perform workflow_set_public('dbtest_case', false, null);
+    if workflow_public_status((select i.label from workflow_items i join cases c on c.id = i.subject_id where c.title = 'PUBLIC'),
+                              (select i.public_code from workflow_items i join cases c on c.id = i.subject_id where c.title = 'PUBLIC')) is not null
+      then raise exception 'still answering'; end if;`, null],
+  ['a process named by titles cannot be switched on', `
+    perform workflow_set_public('maintenance_job', true, null);`, 'not named by a reference'],
+  ['a workflow marked for review needs the review recorded to switch it', `
+    if not (select review_required from workflows where key = 'complaint') then raise exception 'complaint not marked on dev — proves nothing'; end if;
+    perform workflow_set_public('complaint', true, null);`, 'needs a full review'],
+  ['a non-admin cannot switch it', `
+    ${asNonAdmin(false)}
+    perform workflow_set_public('dbtest_case', true, null);`, 'Only an administrator'],
   ['a deleted job takes its item with it', `
+    ${ADMIN_CLAIMS}
     delete from maintenance_jobs where title = 'DB test job';
     if exists (select 1 from workflow_items i join workflows w on w.id = i.workflow_id
                 where w.key = 'maintenance_job' and not exists (select 1 from maintenance_jobs j where j.id = i.subject_id))

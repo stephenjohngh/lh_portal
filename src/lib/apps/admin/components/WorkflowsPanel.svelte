@@ -8,7 +8,8 @@
      workflowProblem() below and refuses to remove a step something is in. -->
 <script>
   import { onMount } from 'svelte';
-  import { listWorkflows, loadWorkflow, saveWorkflow, listChanges, listEvents, listTimerRuns, runTimers } from '#lib/workflow/workflowApi.js';
+  import { listWorkflows, loadWorkflow, saveWorkflow, listChanges, listEvents, listTimerRuns, runTimers, setPublicStatus } from '#lib/workflow/workflowApi.js';
+  import { PUBLIC_STATUS_APPS, publicStageName } from '#lib/workflow/workflowModel.js';
   import { workflowStats, simulateDeadlines } from '#lib/workflow/workflowStats.js';
   import WorkflowDiagram from '#lib/workflow/WorkflowDiagram.svelte';
   import { today } from '#lib/utils/dates.js';
@@ -152,6 +153,26 @@
       if (pendingImport && pendingImport.key === key) { const f = pendingImport; pendingImport = null; applyImport(f.definition); }
     } catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read that workflow.'); }
   }
+
+  // ── The public status page (migration 261): off unless switched on ──
+  $: publicAllowed = !!current && PUBLIC_STATUS_APPS.includes(current.app_id);
+  let publicReview = { reviewedBy: '', reviewedAgainst: '', note: '' };
+  let switchingPublic = false;
+  async function switchPublic(/** @type {boolean} */ on) {
+    const wf = current;
+    if (!wf) return;
+    switchingPublic = true; error = ''; saved = '';
+    try {
+      await setPublicStatus(wf.key, on, wf.review_required ? publicReview : null);
+      logAudit('update', 'workflow', wf.id, wf.name, { appId: 'admin', eventCategory: 'admin', afterData: { public_status: on } });
+      saved = on ? 'Public status page switched on.' : 'Public status page switched off.';
+      publicReview = { reviewedBy: '', reviewedAgainst: '', note: '' };
+      workflows = await listWorkflows();
+      loadedKey = '';                         // read it back
+    } catch (/** @type {any} */ err) { error = errMessage(err, 'That could not be changed.'); }
+    finally { switchingPublic = false; }
+  }
+  $: publicReviewMissing = !!current?.review_required && (!publicReview.reviewedBy.trim() || !publicReview.reviewedAgainst.trim());
 
   // ── Export and import (roadmap §6): a workflow as one file ──
   /** A file waiting for its workflow to be read into the editor. @type {any} */
@@ -405,6 +426,36 @@
       {#if contract}
         <p class="text-xs text-slate-400 rounded border border-slate-700 p-2" data-testid="workflow-contract">🔒 {contract.explains}</p>
       {/if}
+
+      {#if publicAllowed}
+        <div class="rounded-lg border p-3 space-y-2 {current.public_status ? 'border-teal-600/60 bg-teal-900/20' : 'border-slate-700'}" data-testid="workflow-public">
+          <p class="text-sm text-slate-200 font-semibold">Public status page — {current.public_status ? 'ON' : 'off'}</p>
+          <p class="text-xs text-slate-400">
+            {#if current.public_status}
+              Anyone with an item’s reference and its code can see, at <span class="font-mono">/status</span>, which step it is at and when it was
+              received and last changed — nothing else: no name, note, field or deadline. Staff see each item’s code with its controls, to give
+              to the person it concerns.
+            {:else}
+              Switched off: nobody outside the portal can look these up. Switched on, anyone with an item’s reference and its code could see,
+              at <span class="font-mono">/status</span>, which step it is at and when it was received and last changed — nothing else.
+            {/if}
+          </p>
+          <p class="text-xs text-slate-400">What they would see at each step (the step’s “name the public sees”, or a word for its kind):
+            {#each steps as st, i (st.key)}<span class="text-slate-200">{st.name}</span> → “{publicStageName(st)}”{i < steps.length - 1 ? ' · ' : ''}{/each}</p>
+          {#if current.review_required}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <input class="{inputCls}" bind:value={publicReview.reviewedBy} placeholder="Reviewed by" aria-label="Public status: reviewed by" />
+              <input class="{inputCls}" bind:value={publicReview.reviewedAgainst} placeholder="Reviewed against" aria-label="Public status: reviewed against" />
+            </div>
+          {/if}
+          <Button variant={current.public_status ? 'danger' : 'secondary'} size="small" loading={switchingPublic}
+            disabled={switchingPublic || publicReviewMissing || changed}
+            on:click={() => switchPublic(!current.public_status)}>
+            {current.public_status ? 'Switch the public page off' : 'Switch the public page on'}
+          </Button>
+          {#if changed}<p class="text-xs text-amber-300">Save or undo the changes in the editor first.</p>{/if}
+        </div>
+      {/if}
       {#if shippedDiff.length}
         <details class="text-xs text-slate-400 rounded border border-slate-700 p-2" data-testid="workflow-shipped">
           <summary class="cursor-pointer text-slate-300">Differs from the version that ships with the portal ({shippedDiff.length})</summary>
@@ -434,14 +485,14 @@
           <Button variant="tertiary" size="xs" on:click={addStep}>+ Add a step</Button></div>
         <div class="overflow-x-auto"><table class="w-full text-sm" data-testid="workflow-steps">
           <thead><tr class="text-left text-xs text-slate-400">
-            <th class="py-1 pr-2 font-medium">Name (staff see)</th><th class="py-1 pr-2 font-medium">Name the applicant sees</th>
+            <th class="py-1 pr-2 font-medium">Name (staff see)</th><th class="py-1 pr-2 font-medium">Name the public sees</th>
             <th class="py-1 pr-2 font-medium">Kind</th><th class="py-1 pr-2 font-medium">Deadline</th>
             <th class="py-1 pr-2 font-medium">Key</th><th></th></tr></thead>
           <tbody>
             {#each steps as st, i (st)}
               <tr class="border-t border-slate-800">
                 <td class="py-1 pr-2"><input class="{inputCls} w-44" bind:value={st.name} on:input={() => renameNew(st)} aria-label="Step name" /></td>
-                <td class="py-1 pr-2"><input class="{inputCls} w-56" bind:value={st.public_name} placeholder="(same as staff)" aria-label="Name the applicant sees" /></td>
+                <td class="py-1 pr-2"><input class="{inputCls} w-56" bind:value={st.public_name} placeholder="“{publicStageName({ kind: st.kind })}”" aria-label="Name the public sees" /></td>
                 <td class="py-1 pr-2"><select class={inputCls} bind:value={st.kind} on:change={() => (steps = steps)} aria-label="Kind"
                   disabled={!!fixedKind(st)} title={fixedKind(st) ? 'Fixed by the app' : ''}>
                   {#each STEP_KINDS as k}<option value={k.value} title={k.explains}>{k.label}</option>{/each}</select></td>

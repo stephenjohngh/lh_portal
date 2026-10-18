@@ -57,6 +57,23 @@ export const MOVE_WHO = Object.freeze([
   { value: 'assignee', label: 'Only the person it is with' },
 ]);
 
+/**
+ * The apps whose items the PUBLIC can look up (migration 261,
+ * workflow_public_allowed): their items are named by a reference somebody
+ * outside holds — PKR-…, CMP-…, CAS-…. An action (A1), a works schedule or a
+ * job (named by its title) is not.
+ */
+export const PUBLIC_STATUS_APPS = Object.freeze(['parking', 'complaints', 'cases']);
+
+/** The word the public sees for a step with no public name of its own — the database's own (workflow_public_status). */
+export const PUBLIC_KIND_WORD = Object.freeze({ start: 'Received', open: 'Being dealt with', done: 'Finished', declined: 'Closed' });
+
+/** What the public status page says for a step. @param {{ public_name?: string|null, kind: string }} step */
+export function publicStageName(step) {
+  const own = String(step.public_name ?? '').trim();
+  return own || PUBLIC_KIND_WORD[/** @type {keyof typeof PUBLIC_KIND_WORD} */ (step.kind)] || 'Closed';
+}
+
 /** How a timer counts its days — held to workflow_moves' CHECK by dbRulesParity.test.js. */
 export const TIMER_BASES = ['calendar', 'working'];
 
@@ -278,6 +295,11 @@ export function workflowDiff(before, after) {
     ? `${s.deadline_days} ${s.deadline_basis === 'working' ? 'working' : 'calendar'} days from ${s.deadline_from === 'started' ? 'the start' : 'reaching it'}`
     : 'none');
   if (before.name !== after.name) out.push(`Renamed “${before.name}” → “${after.name}”.`);
+  // The public status page (migration 261), switched on or off on its own.
+  if (!!before.public_status !== !!after.public_status) {
+    out.push(after.public_status ? 'Public status page switched on: anyone with an item’s reference and code can see its step at /status.'
+      : 'Public status page switched off.');
+  }
   if (before.review_required !== after.review_required) {
     out.push(after.review_required ? `Marked as needing a full review: ${after.review_reason}.` : 'Review mark removed.');
   } else if (after.review_required && before.review_reason !== after.review_reason) {

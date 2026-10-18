@@ -5737,6 +5737,7 @@ export type Database = {
           updated_by: string | null
           due_on: string | null
           label: string | null
+          public_code: string | null
           assigned_to: string | null
           fields: Json
           started_at: string
@@ -5751,6 +5752,7 @@ export type Database = {
           updated_by?: string | null
           due_on?: string | null
           label?: string | null
+          public_code?: string | null
           assigned_to?: string | null
           fields?: Json
           started_at?: string
@@ -5765,6 +5767,7 @@ export type Database = {
           updated_by?: string | null
           due_on?: string | null
           label?: string | null
+          public_code?: string | null
           assigned_to?: string | null
           fields?: Json
           started_at?: string
@@ -5970,6 +5973,7 @@ export type Database = {
           updated_by: string | null
           review_required: boolean
           review_reason: string | null
+          public_status: boolean
         }
         Insert: {
           id?: string
@@ -5981,6 +5985,7 @@ export type Database = {
           updated_by?: string | null
           review_required?: boolean
           review_reason?: string | null
+          public_status?: boolean
         }
         Update: {
           id?: string
@@ -5992,6 +5997,7 @@ export type Database = {
           updated_by?: string | null
           review_required?: boolean
           review_reason?: string | null
+          public_status?: boolean
         }
         Relationships: [
             {
