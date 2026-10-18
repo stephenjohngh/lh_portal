@@ -61,7 +61,10 @@ function saveCall(/** @type {any} */ c, /** @type {number} */ i) {
 const actionSave = `perform workflow_save('compliance_action', ${txt(ACTION_WF.name)}, 'compliance', null,
       ${lit(ACTION_WF.steps.map((x, n) => ({ ...x, position: n + 1 })))},
       ${lit(ACTION_WF.moves.map((m, n) => ({ ...m, position: n + 1 })))}, null, null, null, '[]', null);`;
-const firstAction = `(select i.id from workflow_items i join statutory_register r on r.id = i.subject_id where r.template_key = 'a1')`;
+// An action still OPEN on dev, chosen once (dev's own actions are moved by hand
+// in browser tests, so naming one — A1 was — breaks the run).
+const ACT = `(select template_key from dbtest_action)`;
+const firstAction = `(select i.id from workflow_items i join statutory_register r on r.id = i.subject_id where r.template_key = ${ACT})`;
 
 /** The runtime checks, in order; each sees what the ones before it did. */
 const RUNTIME = [
@@ -126,15 +129,18 @@ const RUNTIME = [
     perform compliance_action_attach_to_workflow();
     if (select count(*) from statutory_register r where r.kind = 'action'
           and not exists (select 1 from workflow_items i where i.subject_id = r.id)) > 0 then raise exception 'an action was left out'; end if;
-    if (select label from workflow_items where id = ${firstAction}) <> 'A1' then raise exception 'not named by its reference'; end if;`, null],
+    create temp table dbtest_action on commit drop as
+      select template_key from statutory_register where kind = 'action' and action_status = 'open'
+       and template_key ~ '^[adh][0-9]+$' order by template_key limit 1;
+    if (select label from workflow_items where id = ${firstAction}) <> upper(${ACT}) then raise exception 'not named by its reference'; end if;`, null],
   ['an action’s status changes only through its workflow', `
-    update statutory_register set action_status = 'closed' where template_key = 'a1';`, 'through its workflow'],
+    update statutory_register set action_status = 'closed' where template_key = ${ACT};`, 'through its workflow'],
   ['a move writes the status back', `
     perform workflow_move(${firstAction}, 'in_progress', null);
-    if (select action_status from statutory_register where template_key = 'a1') <> 'in_progress' then raise exception 'the status did not follow'; end if;`, null],
+    if (select action_status from statutory_register where template_key = ${ACT}) <> 'in_progress' then raise exception 'the status did not follow'; end if;`, null],
   ['owner and due date are set without marking the row edited, kept in the history, and date the item', `
-    perform compliance_action_set_details('a1', 'The duty holder', null, current_date + 10);
-    if (select seed_modified_at from statutory_register where template_key = 'a1') is not null then raise exception 'marked as edited'; end if;
+    perform compliance_action_set_details(${ACT}, 'The duty holder', null, current_date + 10);
+    if (select seed_modified_at from statutory_register where template_key = ${ACT}) is not null then raise exception 'marked as edited'; end if;
     if (select due_on from workflow_items where id = ${firstAction}) <> current_date + 10 then raise exception 'not dated'; end if;
     if not exists (select 1 from workflow_events where item_id = ${firstAction} and kind = 'fields' and note = 'Changed: Owner, Due date')
       then raise exception 'no history row'; end if;`, null],
@@ -142,6 +148,16 @@ const RUNTIME = [
     perform workflow_move(${firstAction}, 'answered', 'Determined');
     perform workflow_move(${firstAction}, 'closed', null);
     if (select due_on from workflow_items where id = ${firstAction}) is not null then raise exception 'still dated'; end if;`, null],
+  // W4 (migration 257): a requirement's completion action links to an action.
+  ['a requirement links its completion action to an action', `
+    update statutory_register set completion_action_key = 'a4' where template_key = 'acrow_prop_check';
+    set constraints all immediate;`, null],
+  ['…and not to another requirement', `
+    update statutory_register set completion_action_key = 'crack_monitoring' where template_key = 'acrow_prop_check';
+    set constraints all immediate;`, 'must be one of the register.s outstanding actions'],
+  ['…and an action cannot have one', `
+    update statutory_register set completion_action_key = 'a4' where template_key = 'a1';
+    set constraints all immediate;`, 'Only a compliance obligation can have a completion action'],
   ['the action statuses are fixed', `
     perform workflow_save('compliance_action', 'x', 'compliance', null,
       '[{"key":"open","name":"Open","kind":"start","position":1},{"key":"closed","name":"Closed","kind":"done","position":2}]',

@@ -18,7 +18,8 @@
   } from '#lib/utils/statutoryTemplate.js';
   import { reviewState } from '#lib/utils/statutoryExclusions.js';
   import { frequencyLabel } from '#lib/utils/inspectionSchedule.js';
-  import { fmtDate } from '#lib/utils/dates.js';
+  import { fmtDate, fmtDateOnly } from '#lib/utils/dates.js';
+  import { ACTION_STATUS_LABEL } from '../utils/complianceActionWorkflow.js';
   import {
     REGISTER_STATUS_LABEL, REGISTER_STATUS_CLASS, dutyHolderRole, DUTY_HOLDER_ROLE_LABEL, rowFacetSummary,
   } from '../utils/registerFilter.js';
@@ -46,6 +47,8 @@
   export let candidates = [];
   /** @type {string | null} Who recorded the decision. */
   export let decidedByName = null;
+  /** The action its completion action links to (W4, `completionActionOf`), or null. @type {any} */
+  export let completion = null;
 
   const dispatch = createEventDispatcher();
 
@@ -233,12 +236,31 @@
           </p>
           <p class="incomplete-action">
             <span class="applies-k">Completion action:</span>
-            {#if entry.completionAction}
-              {entry.completionAction}
+            {#if completion}
+              <!-- W4 (migration 257): the linked action, with what is ITS — owner,
+                   due date, status — read from the action, never copied here. -->
+              <span data-testid="completion-link">
+                <Button variant="tertiary" size="xs"
+                  on:click={(ev) => { ev.stopPropagation(); dispatch('showAction', completion.key); }}>
+                  {completion.ref ?? completion.key} — {completion.name} →</Button></span>
+              <span class="completion-facts">
+                Owner: {#if completion.owner}{completion.owner}{:else}<span class="not-assigned">NOT ASSIGNED</span>{/if}
+                · Due: {#if completion.dueDate}{fmtDateOnly(completion.dueDate)}{:else}<span class="not-assigned">NOT ASSIGNED</span>{/if}
+                · {ACTION_STATUS_LABEL[completion.status] ?? completion.status}
+              </span>
             {:else}
               <span class="not-assigned">NOT ASSIGNED</span>
             {/if}
           </p>
+          {#if completion?.closed}
+            <!-- The flag does not come off by itself: closing the action says the
+                 work is done, and whether the measure is now a usable control is
+                 a judgement about this row. -->
+            <p class="completion-closed" data-testid="completion-closed">
+              Its completion action is closed. If this measure is now a usable control, edit the row and
+              clear <em>Operationally incomplete</em>.
+            </p>
+          {/if}
         </div>
       {/if}
 
@@ -339,6 +361,8 @@
   }
   .incomplete-h { font-weight: 700; color: rgb(252 165 165); }
   .incomplete-action { margin-top: 0.1rem; }
+  .completion-facts { display: block; font-size: 0.74rem; color: rgb(148 163 184); margin-top: 0.15rem; }
+  .completion-closed { font-size: 0.74rem; color: rgb(252 211 77); margin-top: 0.3rem; }
   .not-assigned { font-weight: 700; color: rgb(252 165 165); letter-spacing: 0.03em; }
   .cite-ok { font-size: 0.75rem; color: rgb(134 239 172); line-height: 1.45; }
   .cite-ok a { color: rgb(134 239 172); text-decoration: underline; }

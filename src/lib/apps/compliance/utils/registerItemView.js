@@ -20,6 +20,7 @@ import {
 } from '#lib/utils/registerKinds.js';
 import { ACTION_STATUSES, ACTION_STATUS_LABEL } from './complianceActionWorkflow.js';
 import { matchesSearch } from '#lib/utils/textSearch.js';
+import { fmtDateOnly } from '#lib/utils/dates.js';
 
 const text = v => String(v ?? '').toLowerCase();
 
@@ -200,3 +201,55 @@ export const KIND_SECTION = {
   absence: 'absences',
   caveat: 'caveats',
 };
+
+// ── W4: a requirement's completion action (migration 257) ───────────────────
+// An operationally-incomplete requirement links to the action in this register
+// that closes it (`completionActionKey`). These are the ONE reading of that
+// link, used by the row, the action's own panel and both exports — so the
+// screen and the document cannot disagree about who owns it or when it is due.
+
+/**
+ * The action a requirement's completion action links to, or null.
+ * ⚠ A key that names no action reads as null — NOT ASSIGNED — rather than as
+ * something assigned: a dangling link must never look like an owner.
+ * @param {any} entry  a requirement
+ * @param {any[]} items  every row the register holds
+ * @returns {null | { key: string, ref: string|null, name: string, owner: string|null,
+ *   technicalAuthority: string|null, dueDate: string|null, status: string, closed: boolean }}
+ */
+export function completionActionOf(entry, items) {
+  const key = entry?.completionActionKey;
+  if (!key) return null;
+  const a = (items ?? []).find(i => i.key === key && i.kind === 'action');
+  if (!a) return null;
+  const status = a.actionStatus ?? 'open';
+  return {
+    key: a.key, ref: citableRef(a), name: a.name,
+    owner: a.owner ?? null, technicalAuthority: a.technicalAuthority ?? null,
+    dueDate: a.dueDate ?? null, status, closed: status === 'closed',
+  };
+}
+
+/**
+ * The completion action in words, as the documents print it, or null when
+ * there is none (they print NOT ASSIGNED).
+ * @param {any} entry @param {any[]} items
+ */
+export function completionActionText(entry, items) {
+  const a = completionActionOf(entry, items);
+  if (!a) return null;
+  return [
+    `${a.ref ?? a.key} — ${a.name}`,
+    `Owner: ${a.owner || 'NOT ASSIGNED'}`,
+    `Due: ${a.dueDate ? fmtDateOnly(a.dueDate) : 'NOT ASSIGNED'}`,
+    ACTION_STATUS_LABEL[a.status] ?? a.status,
+  ].join(' · ');
+}
+
+/**
+ * The requirements an action closes — the other side of the link.
+ * @param {string} actionKey @param {any[]} entries  the requirements
+ */
+export function requirementsClosedBy(actionKey, entries) {
+  return (entries ?? []).filter(e => e.completionActionKey === actionKey);
+}

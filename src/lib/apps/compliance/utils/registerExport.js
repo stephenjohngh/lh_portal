@@ -16,6 +16,7 @@
 
 import { REGISTER_COLUMNS, PROVENANCE_COLUMNS, toField } from '#lib/utils/registerRowMapping.js';
 import { REGISTER_STATUS_LABEL } from './registerFilter.js';
+import { citableRef } from './registerItemView.js';
 
 /**
  * Human headers for the register's own fields.
@@ -51,7 +52,7 @@ const HEADERS = {
   suggested_scope:            'What it covers (proposed)',
   scope_note:                 'What it covers (note)',
   operationally_incomplete:   'Operationally incomplete',
-  completion_action:          'Completion action',
+  completion_action_key:      'Completion action',
   assurance_only:             'Assurance only',
   reviewer_note:              'Reviewer note',
   handling_note:              'Handling note',
@@ -119,6 +120,11 @@ export function buildRegisterSheet(rows, provenanceOf = () => ({})) {
       if (key === 'origin') return cell(prov.origin ?? 'seed');
       if (key === 'seed_modified_at') return cell(prov.seedModifiedAt);
       if (key === 'citation_verified_by') return cell(prov.citationVerifiedBy);
+      // W4: the linked action as it is cited (A4), not its internal key.
+      if (key === 'completion_action_key') {
+        const k = entry.completionActionKey;
+        return cell(k ? (citableRef({ key: k }) ?? k) : null);
+      }
       return cell(entry[toField(key)]);
     });
   });

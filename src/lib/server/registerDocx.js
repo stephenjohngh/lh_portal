@@ -215,7 +215,7 @@ export function extractTable(rows) {
     ],
   });
 
-  const body = (rows ?? []).map(({ entry, statusLabel }, i) => {
+  const body = (rows ?? []).map(({ entry, statusLabel, completion }, i) => {
     // Reference and applies-when ride under the name — see EXTRACT_COLS.
     const nameLines = [entry.name];
     if (entry.statutoryRef) nameLines.push(entry.statutoryRef);
@@ -227,7 +227,9 @@ export function extractTable(rows) {
     if (entry.operationallyIncomplete) {
       nameLines.push(
         'OPERATIONALLY INCOMPLETE — an interim measure against an open finding. '
-        + `Completion action: ${entry.completionAction || 'NOT ASSIGNED'}`,
+        // W4: the linked action in words, resolved by the caller
+        // (`completionActionText`) — the same reading the screen uses.
+        + `Completion action: ${completion || 'NOT ASSIGNED'}`,
       );
     }
 

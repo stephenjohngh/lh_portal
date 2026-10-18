@@ -27,7 +27,7 @@ const displayDuty = STATUTORY_TEMPLATE.find((e) => e.key === DISPLAY_DUTY_KEY);
 /** Render a row and record every event it sends, by name. */
 function row(props) {
   const sent = [];
-  const events = Object.fromEntries(['toggle', 'showDisplayRegister', 'link', 'apply', 'decide', 'edit', 'withdraw']
+  const events = Object.fromEntries(['toggle', 'showDisplayRegister', 'link', 'apply', 'decide', 'edit', 'withdraw', 'showAction']
     .map((name) => [name, (e) => sent.push([name, e.detail])]));
   render(RegisterRow, { props: { status: 'not_covered', ...props }, events });
   return sent;
@@ -79,5 +79,36 @@ describe('RegisterRow', () => {
   it('carries the id the panel scrolls to', () => {
     row({ entry: anEntry });
     expect(document.getElementById(`reg-row-${anEntry.key}`)).not.toBeNull();
+  });
+
+  // W4 (migration 257): an interim measure's completion action is a link.
+  describe('the completion action', () => {
+    const interim = STATUTORY_TEMPLATE.find((e) => e.operationallyIncomplete);
+    const linked = { key: 'a4', ref: 'A4', name: 'Close the interim measures', owner: 'The duty holder',
+                     technicalAuthority: null, dueDate: '2026-10-21', status: 'in_progress', closed: false };
+
+    it('names the action with its owner, due date and status, and goes to it', async () => {
+      const sent = row({ entry: interim, open: true, completion: linked });
+      expect(screen.getByText(/A4 — Close the interim measures/)).toBeTruthy();
+      expect(screen.getByText(/The duty holder/)).toBeTruthy();
+      expect(screen.getByText(/21 Oct 2026/)).toBeTruthy();
+      await fireEvent.click(screen.getByRole('button', { name: /A4 — Close the interim measures/ }));
+      expect(sent).toContainEqual(['showAction', 'a4']);
+    });
+
+    it('says NOT ASSIGNED where nothing is linked', () => {
+      row({ entry: interim, open: true, completion: null });
+      expect(screen.getByText('NOT ASSIGNED')).toBeTruthy();
+    });
+
+    it('prompts clearing the flag once the action is closed — and only then', () => {
+      row({ entry: interim, open: true, completion: { ...linked, status: 'closed', closed: true } });
+      expect(screen.getByTestId('completion-closed')).toBeTruthy();
+    });
+
+    it('says nothing about clearing it while the action is open', () => {
+      row({ entry: interim, open: true, completion: linked });
+      expect(screen.queryByTestId('completion-closed')).toBeNull();
+    });
   });
 });

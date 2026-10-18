@@ -58,7 +58,7 @@ export const REGISTER_COLUMNS = [
   'competency_required', 'evidence_required', 'retention_basis',
   'retention_period_months',
   'suggested_scope', 'scope_note',
-  'operationally_incomplete', 'completion_action', 'assurance_only',
+  'operationally_incomplete', 'completion_action_key', 'assurance_only',
   'reviewer_note', 'handling_note',
   'superseded_on', 'superseded_by', 'superseded_note',
   'citation_verified_on', 'citation_verified_against',

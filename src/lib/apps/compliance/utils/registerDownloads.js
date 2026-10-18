@@ -31,6 +31,7 @@ import { requestDownload } from '#lib/utils/download.js';
 import { describeFilters } from '#lib/components/common/filterSummary.js';
 import { buildRegisterSheet, STATUS_FILL } from './registerExport.js';
 import { REGISTER_STATUS_LABEL } from './registerFilter.js';
+import { completionActionText } from './registerItemView.js';
 import { fmtGenerated, today } from '#lib/utils/dates.js';
 
 /**
@@ -114,6 +115,8 @@ export async function downloadRegisterDocx(params) {
       rows: rows.map(({ entry, status }) => ({
         entry,
         statusLabel: REGISTER_STATUS_LABEL[status] ?? status,
+        // W4: the completion action in words, from the action itself.
+        completion: entry.operationallyIncomplete ? completionActionText(entry, items.actions ?? []) : null,
       })),
     },
   });

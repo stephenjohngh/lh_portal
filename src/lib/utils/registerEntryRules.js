@@ -28,7 +28,7 @@ const KEY_SHAPE = /^[a-z][a-z0-9_]{2,59}$/;
  * Problems with an entry, most structural first. Empty means it is well-formed.
  *
  * @param {Object} entry                a register entry (camelCase)
- * @param {{existingKeys?: Set<string>, isNew?: boolean}} [ctx]
+ * @param {{existingKeys?: Set<string>, isNew?: boolean, actionKeys?: Set<string>}} [ctx]
  * @returns {{field: string, problem: string}[]}
  */
 export function validateRegisterEntry(entry, ctx = {}) {
@@ -88,6 +88,13 @@ export function validateRegisterEntry(entry, ctx = {}) {
   // ⚠ And it must not exceed the period it stands for.
   if (Number(e.maxIntervalDays) > 0 && Number(e.frequencyDays) > Number(e.maxIntervalDays)) {
     fail('frequencyDays', 'The planned frequency is looser than this row’s own maximum interval.');
+  }
+
+  // ── W4: the completion action is a link (migration 257) ────────────────────
+  // ⛔ To an action in this register, or nothing. A key naming no action would
+  // read as assigned in the store and NOT ASSIGNED everywhere else.
+  if (!blank(e.completionActionKey) && ctx.actionKeys && !ctx.actionKeys.has(e.completionActionKey)) {
+    fail('completionActionKey', 'Choose one of the register’s outstanding actions, or none.');
   }
 
   return out;

@@ -36,7 +36,7 @@
   } from '../utils/registerFilter.js';
   import { downloadRegisterXlsx, downloadRegisterDocx } from '../utils/registerDownloads.js';
   import { ofKind, kindTally, REGISTER_KINDS } from '#lib/utils/registerKinds.js';
-  import { inAuthorOrder, KIND_SECTION } from '../utils/registerItemView.js';
+  import { inAuthorOrder, KIND_SECTION, completionActionOf } from '../utils/registerItemView.js';
   import RegisterItemsList from './RegisterItemsList.svelte';
   import RegisterRow from './RegisterRow.svelte';
   import Button from '#lib/components/common/Button.svelte';
@@ -113,6 +113,13 @@
     } catch (/** @type {any} */ err) {
       actionsSetUpError = errMessage(err, 'Could not set up the actions’ workflow.');
     }
+  }
+  // W4: a requirement's completion action → that action, opened, on its tab.
+  /** @type {string|null} */
+  let actionFocusKey = null;
+  function showAction(/** @type {string} */ key) {
+    kind = 'action';
+    actionFocusKey = key;
   }
   $: idByKey = Object.fromEntries(Object.entries($statutoryRegister.provenance ?? {})
     .map(([key, p]) => [key, /** @type {any} */ (p)?.id]).filter(([, id]) => id));
@@ -531,6 +538,8 @@
           included={sections[KIND_SECTION[kind]]}
           on:include={e => (sections = { ...sections, [KIND_SECTION[kind]]: e.detail })}
           wf={kind === 'action' ? $complianceActionsStore : null}
+          focusKey={kind === 'action' ? actionFocusKey : null}
+          requirements={REG}
           {idByKey}
           isAdmin={$permissions.isAdmin}
           me={$auth.user?.id ?? null}
@@ -853,6 +862,8 @@
                 provenance={provenanceOf(entry.key)}
                 candidates={suggestions.get(entry.key) ?? []}
                 decidedByName={decision ? personName.get(decision.decided_by) ?? null : null}
+                completion={entry.operationallyIncomplete ? completionActionOf(entry, $statutoryRegister.items) : null}
+                on:showAction={(e) => showAction(e.detail)}
                 on:toggle={(e) => toggleRow(e.detail)}
                 on:showDisplayRegister
                 on:link={(e) => link(e.detail.obligationId, e.detail.key)}
@@ -926,6 +937,7 @@
   <RegisterEntryModal
     entry={editing}
     provenance={editing ? provenanceOf(editing.key) : {}}
+    actions={ofKind($statutoryRegister.items, 'action')}
     saving={savingEntry}
     on:save={saveEntry}
     on:verify={verifyCitation}

@@ -132,6 +132,26 @@ describe('an action on its workflow', () => {
   });
 });
 
+// W4: the other side of the completion action link, and a link landing here.
+describe('an action the interim measures link to', () => {
+  it('lists the interim measures it closes when opened', async () => {
+    const reqs = [{ key: 'r1', name: 'Interim measure one', completionActionKey: 'a4' },
+                  { key: 'r2', name: 'Interim measure two', completionActionKey: 'a4' }];
+    const a4 = forKind('action').find(a => a.key === 'a4');
+    render(RegisterItemsList, { kind: 'action', items: REGISTER_ITEMS, requirements: reqs });
+    await screen.getByText(a4.name).click();
+    expect(screen.getByTestId('action-closes').textContent).toMatch(/Closes 2 interim measures:.*Interim measure one · Interim measure two/);
+  });
+
+  it('opens the action another row asked to see', () => {
+    const a4 = forKind('action').find(a => a.key === 'a4');
+    render(RegisterItemsList, { kind: 'action', items: REGISTER_ITEMS, focusKey: 'a4' });
+    // Opened: its NOT ASSIGNED line shows without a click.
+    expect(screen.getAllByText('NOT ASSIGNED').length).toBe(3);
+    expect(screen.getByText(a4.name)).toBeInTheDocument();
+  });
+});
+
 describe('the filter bar appears only where it earns its place', () => {
   it('offers Who must act and Priority on the actions', () => {
     render(RegisterItemsList, { kind: 'action', items: REGISTER_ITEMS });

@@ -228,7 +228,7 @@ function entry(e) {
     // A row that is not yet a usable control — an interim mitigation with no
     // escalation threshold and no end condition, say. TRUE renders a visible
     // "Completion action" line in the outward-facing statement, and that line
-    // says NOT ASSIGNED until `completionAction` is filled in.
+    // says NOT ASSIGNED until `completionActionKey` links an action.
     //
     // The point of the pair is that a warning written in prose reads the same
     // on the day it is written and two years later, whereas an unassigned
@@ -236,8 +236,14 @@ function entry(e) {
     // `operationallyIncomplete` to tidy the output; clear it by assigning the
     // action and populating the fields the row says it lacks.
     operationallyIncomplete: false,
-    /** @type {string|null} Action id, owner, technical authority, due date, interim risk owner, status. */
-    completionAction: null,
+    // W4 (migration 257): the KEY of the action in this register that closes
+    // this row — a link, not text. The row then shows and prints that action's
+    // owner, due date and status, which since migration 255 are real fields.
+    // ⚠ All nine interim measures ship linked to A4 ("assign and technically
+    // close the nine conditional and interim measures"); a building that adds
+    // a more specific action points the row at it in the editor.
+    /** @type {string|null} */
+    completionActionKey: null,
     competencyRequired: null,
     retentionPeriodMonths: 36,
     trigger: null,
@@ -3784,6 +3790,7 @@ export const REGISTER = [
     statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
+    completionActionKey: 'a4',
     reviewerNote: 'Also specify: the acceptable position and tolerance, what counts as prohibited movement or damage, what triggers immediate isolation or evacuation, whether every finding goes to a structural engineer, whether photographs are date-stamped, and how long the props may remain before a permanent repair decision is forced. ⛔ OPERATIONALLY INCOMPLETE — this row is not yet a complete control. §5 sets out, once, the seven things every row in this group still lacks and why a frequent check standing beside an open defect is not assurance. The Completion action line below is the one that has to change.',
     name: 'Temporary structural support — position and integrity check',
     description:
@@ -3812,6 +3819,7 @@ export const REGISTER = [
     statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
+    completionActionKey: 'a4',
     reviewerNote: 'Also specify: the crack-width measurement method, the reference datum, the measurement tolerance, the corrosion progression criteria and the trigger values. ⚠ A monthly visual comparison is not a monitoring regime unless it is tied to the structural engineer’s specification — a photograph that shows change with no stated trigger value leaves the decision to whoever is looking. ⛔ OPERATIONALLY INCOMPLETE — this row is not yet a complete control. §5 sets out, once, the seven things every row in this group still lacks and why a frequent check standing beside an open defect is not assurance. The Completion action line below is the one that has to change.',
     name: 'Structural defect — visual comparison check',
     description:
@@ -3839,6 +3847,7 @@ export const REGISTER = [
     statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
+    completionActionKey: 'a4',
     reviewerNote: 'Also specify: the reading method, the datum, and the trigger value at which a reading escalates rather than simply being recorded. ⛔ OPERATIONALLY INCOMPLETE — this row is not yet a complete control. §5 sets out, once, the seven things every row in this group still lacks and why a frequent check standing beside an open defect is not assurance. The Completion action line below is the one that has to change.',
     name: 'Structural movement — instrumented monitoring',
     description:
@@ -3865,6 +3874,7 @@ export const REGISTER = [
     statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
+    completionActionKey: 'a4',
     reviewerNote: 'Also specify: what the interim measures are protecting against, and the condition on which they end. ⛔ OPERATIONALLY INCOMPLETE — this row is not yet a complete control. §5 sets out, once, the seven things every row in this group still lacks and why a frequent check standing beside an open defect is not assurance. The Completion action line below is the one that has to change.',
     name: 'Structural engineer — review of interim measures',
     description:
@@ -3891,6 +3901,7 @@ export const REGISTER = [
     statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
+    completionActionKey: 'a4',
     name: 'Stair core — walk-around',
     description: 'Walk the stair core end to end, looking for anything that compromises the protected route.',
     group: 'building_specific',
@@ -3917,6 +3928,7 @@ export const REGISTER = [
     statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
+    completionActionKey: 'a4',
     name: 'Lobby-to-stair doors — visual check',
     description: 'Visual check of the doors protecting the stair core, between the quarterly full door rounds.',
     group: 'building_specific',
@@ -3939,6 +3951,7 @@ export const REGISTER = [
     statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
+    completionActionKey: 'a4',
     name: 'Stair lighting — check',
     description: 'Check normal and emergency lighting in the stair core is working.',
     group: 'building_specific',
@@ -3959,6 +3972,7 @@ export const REGISTER = [
     statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
+    completionActionKey: 'a4',
     reviewerNote: '⚠ This row ages an open action; it does not close one. It must be tied to the specific open finding: the action owner, the original finding, the survey required, its due date, the interim mitigation relied on meanwhile, the decision-maker, the target completion date, the residual risk accepted, and what follows if the survey slips. A monthly ageing log is not a mitigation for a coverage gap that is safety-critical. ⛔ OPERATIONALLY INCOMPLETE — this row is not yet a complete control. §5 sets out, once, the seven things every row in this group still lacks and why a frequent check standing beside an open defect is not assurance. The Completion action line below is the one that has to change.',
     name: 'Fire alarm coverage — gap monitoring',
     description: 'Review the open action to establish fire alarm coverage, and age it.',
@@ -3983,6 +3997,7 @@ export const REGISTER = [
     statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
+    completionActionKey: 'a4',
     reviewerNote: '⚠ Same as the coverage row: this is an ageing log over an open finding, not a substitute for the survey. Tie it to the action, its owner and its date. ⛔ OPERATIONALLY INCOMPLETE — this row is not yet a complete control. §5 sets out, once, the seven things every row in this group still lacks and why a frequent check standing beside an open defect is not assurance. The Completion action line below is the one that has to change.',
     name: 'Fire alarm audibility — per-floor spot check',
     description: 'Spot-check audibility on each floor during the alarm test.',

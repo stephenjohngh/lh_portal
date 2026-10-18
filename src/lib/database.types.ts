@@ -5210,7 +5210,7 @@ export type Database = {
           suggested_scope: Json | null
           scope_note: string | null
           operationally_incomplete: boolean
-          completion_action: string | null
+          completion_action_key: string | null
           assurance_only: string | null
           reviewer_note: string | null
           superseded_on: string | null
@@ -5266,7 +5266,7 @@ export type Database = {
           suggested_scope?: Json | null
           scope_note?: string | null
           operationally_incomplete?: boolean
-          completion_action?: string | null
+          completion_action_key?: string | null
           assurance_only?: string | null
           reviewer_note?: string | null
           superseded_on?: string | null
@@ -5322,7 +5322,7 @@ export type Database = {
           suggested_scope?: Json | null
           scope_note?: string | null
           operationally_incomplete?: boolean
-          completion_action?: string | null
+          completion_action_key?: string | null
           assurance_only?: string | null
           reviewer_note?: string | null
           superseded_on?: string | null

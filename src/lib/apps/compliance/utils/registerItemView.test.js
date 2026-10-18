@@ -15,7 +15,9 @@ import {
 import {
   filterItems, groupByCategory, groupItems, inAuthorOrder,
   itemTally, itemFilterFields, citableRef, KIND_SECTION,
+  completionActionOf, completionActionText, requirementsClosedBy,
 } from './registerItemView.js';
+import { REGISTER as SEED_REQUIREMENTS } from '#lib/utils/statutoryRegisterData.js';
 // ⚠ A server module, imported HERE only. The screen must not pull `docx` into
 // the client bundle — but the one thing worth cross-checking is that the screen
 // and the document agree about what the optional sections are.
@@ -222,5 +224,47 @@ describe('groupByCategory on its own', () => {
     expect(groupByCategory([])).toEqual([]);
     expect(groupByCategory(undefined)).toEqual([]);
     expect(inAuthorOrder(undefined)).toEqual([]);
+  });
+});
+
+// W4 (migration 257): a requirement's completion action is a link to an action.
+describe('the completion action link', () => {
+  const incomplete = SEED_REQUIREMENTS.filter(e => e.operationallyIncomplete);
+
+  it('ships every interim measure linked to an action that exists', () => {
+    expect(incomplete.length).toBeGreaterThan(0);
+    for (const e of incomplete) expect(completionActionOf(e, REGISTER_ITEMS), e.key).not.toBeNull();
+  });
+
+  it('reads the owner, due date and status from the action, never from the requirement', () => {
+    const items = REGISTER_ITEMS.map(i => (i.key === 'a4'
+      ? { ...i, owner: 'The duty holder', dueDate: '2026-10-21', actionStatus: 'in_progress' } : i));
+    const e = { ...incomplete[0], completionActionKey: 'a4' };
+    expect(completionActionOf(e, items)).toMatchObject({ ref: 'A4', owner: 'The duty holder', dueDate: '2026-10-21', closed: false });
+    expect(completionActionText(e, items)).toBe(
+      `A4 — ${items.find(i => i.key === 'a4').name} · Owner: The duty holder · Due: 21 Oct 2026 · In progress`);
+  });
+
+  it('says NOT ASSIGNED for what the action has not got', () => {
+    const e = { ...incomplete[0], completionActionKey: 'a4' };
+    expect(completionActionText(e, REGISTER_ITEMS)).toMatch(/Owner: NOT ASSIGNED · Due: NOT ASSIGNED · Open$/);
+  });
+
+  // ⛔ A dangling key must never read as assigned.
+  it('treats a key naming no action — or a requirement — as no link', () => {
+    expect(completionActionOf({ completionActionKey: 'a999' }, REGISTER_ITEMS)).toBeNull();
+    const all = [...SEED_REQUIREMENTS.map(r => ({ ...r, kind: 'requirement' })), ...REGISTER_ITEMS];
+    expect(completionActionOf({ completionActionKey: SEED_REQUIREMENTS[0].key }, all)).toBeNull();
+    expect(completionActionText({ completionActionKey: null }, REGISTER_ITEMS)).toBeNull();
+  });
+
+  it('knows a closed action', () => {
+    const items = REGISTER_ITEMS.map(i => (i.key === 'a4' ? { ...i, actionStatus: 'closed' } : i));
+    expect(completionActionOf({ completionActionKey: 'a4' }, items)?.closed).toBe(true);
+  });
+
+  it('finds the requirements an action closes — the other side of the link', () => {
+    expect(requirementsClosedBy('a4', SEED_REQUIREMENTS).map(r => r.key)).toEqual(incomplete.map(r => r.key));
+    expect(requirementsClosedBy('a1', SEED_REQUIREMENTS)).toEqual([]);
   });
 });

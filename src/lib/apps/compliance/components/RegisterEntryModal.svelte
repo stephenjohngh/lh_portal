@@ -35,12 +35,15 @@
   } from '#lib/utils/statutoryTemplate.js';
   import { EVIDENCE_ROUTE_LABEL } from '#lib/utils/obligationEvidence.js';
   import { problemsByField, suggestKey } from '#lib/utils/registerEntryRules.js';
+  import { citableRef } from '../utils/registerItemView.js';
 
   /** @type {Object|null} null = adding a new requirement */
   export let entry = null;
   /** @type {{origin?: string, seedModifiedAt?: string|null, citationVerifiedBy?: string|null}} */
   export let provenance = {};
   export let saving = false;
+  /** The register's outstanding actions, for the completion action link (W4). @type {any[]} */
+  export let actions = [];
 
   const dispatch = createEventDispatcher();
 
@@ -62,7 +65,7 @@
     responsibleParty: '', statutoryDutyHolder: '', competencyRequired: null,
     evidenceRequired: '', retentionBasis: null, retentionPeriodMonths: 36,
     handlingNote: '', reviewerNote: null,
-    operationallyIncomplete: false, completionAction: null,
+    operationallyIncomplete: false, completionActionKey: null,
     ...(entry ?? {}),
   };
 
@@ -72,7 +75,12 @@
   $: if (isNew && !keyTouched && e.name) e.key = suggestKey(e.name);
 
   let attempted = false;
-  $: problems = problemsByField(e, { isNew });
+  $: actionKeys = new Set(actions.map(a => a.key));
+  $: problems = problemsByField(e, { isNew, actionKeys });
+  $: actionOptions = [
+    { value: '', label: 'None — prints NOT ASSIGNED' },
+    ...actions.map(a => ({ value: a.key, label: `${citableRef(a) ?? a.key} — ${a.name}` })),
+  ];
   $: blocking = Object.keys(problems).length > 0;
   const show = (f) => (attempted ? problems[f] ?? '' : '');
 
@@ -307,8 +315,13 @@
       <div class="sec-body">
         <Checkbox bind:checked={e.operationallyIncomplete}
           label="Operationally incomplete — an interim measure that is not yet a usable control" />
-        <FormTextarea label="Completion action" bind:value={e.completionAction} rows={2}
-          helpText="Who will close this, by when, and who decides. ⚠ Left empty it prints NOT ASSIGNED, on purpose, so it stays visible until somebody fills it in." />
+        <!-- W4 (migration 257): a link to the action that closes this row. Its
+             owner, due date and status are the action's, set on the action. -->
+        <FormSelect label="Completion action" options={actionOptions} placeholder=""
+          value={e.completionActionKey ?? ''}
+          on:change={(ev) => (e.completionActionKey = /** @type {HTMLSelectElement} */ (ev.target).value || null)}
+          error={show('completionActionKey')}
+          helpText="The outstanding action that closes this row — its owner, due date and status show here and print in the statement. ⚠ None prints NOT ASSIGNED, on purpose, so it stays visible." />
       </div>
     {/if}
 

@@ -220,10 +220,19 @@ describe('the columns', () => {
     expect(text).toMatch(/Completion action:/);
   });
 
-  it('says NOT ASSIGNED where no completion action has been set', () => {
-    const entry = { ...STATUTORY_TEMPLATE[0], operationallyIncomplete: true, completionAction: null };
-    const text = textOf(extractTable([{ entry, statusLabel: 'Not covered' }])).join('\n');
-    expect(text).toMatch(/NOT ASSIGNED/);
+  it('says NOT ASSIGNED where no completion action is linked', () => {
+    const entry = { ...STATUTORY_TEMPLATE[0], operationallyIncomplete: true, completionActionKey: null };
+    const text = textOf(extractTable([{ entry, statusLabel: 'Not covered', completion: null }])).join('\n');
+    expect(text).toMatch(/Completion action: NOT ASSIGNED/);
+  });
+
+  // W4: the linked action as the caller resolved it — the same words the
+  // screen reads from the action (`completionActionText`).
+  it('prints the linked action, with its owner, due date and status', () => {
+    const entry = { ...STATUTORY_TEMPLATE[0], operationallyIncomplete: true, completionActionKey: 'a4' };
+    const completion = 'A4 — Close them · Owner: The duty holder · Due: 21 Oct 2026 · In progress';
+    const text = textOf(extractTable([{ entry, statusLabel: 'Not covered', completion }])).join('\n');
+    expect(text).toContain(`Completion action: ${completion}`);
   });
 
   it('never leaves a duty holder cell blank', () => {

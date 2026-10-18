@@ -353,7 +353,8 @@ function createStatutoryRegisterStore() {
    * @param {boolean} isNew
    */
   function assertWellFormed(entry, isNew) {
-    const problems = validateRegisterEntry(entry, { existingKeys: entryKeys(), isNew });
+    const actionKeys = new Set(get({ subscribe }).items.filter(i => i.kind === 'action').map(i => i.key));
+    const problems = validateRegisterEntry(entry, { existingKeys: entryKeys(), isNew, actionKeys });
     if (problems.length) {
       throw new Error(problems.map(p => `${p.field}: ${p.problem}`).join('\n'));
     }

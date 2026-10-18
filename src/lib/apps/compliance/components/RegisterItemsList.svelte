@@ -19,10 +19,10 @@
   keeps finding. The two lists look alike and are computed apart.
 -->
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, tick } from 'svelte';
   import FilterBar from '#lib/components/common/FilterBar.svelte';
   import {
-    filterItems, groupItems, itemTally, itemFilterFields, citableRef,
+    filterItems, groupItems, itemTally, itemFilterFields, citableRef, requirementsClosedBy,
   } from '../utils/registerItemView.js';
   import { PRIORITY_MARKER, PRIORITY_LABEL } from '#lib/utils/registerKinds.js';
   import { fmtDateOnly } from '#lib/utils/dates.js';
@@ -47,6 +47,19 @@
   /** @type {any} */ export let onMove = null;
   /** @type {any} */ export let onAssign = null;
   /** @type {any} */ export let onSaveDetails = null;
+  /** W4: an action another row asked to see — opened and scrolled to. A primitive. @type {string|null} */
+  export let focusKey = null;
+  /** The requirements, for the other side of the completion action link. @type {any[]} */
+  export let requirements = [];
+
+  let focusedFor = null;
+  $: if (focusKey && focusKey !== focusedFor) { focusedFor = focusKey; focusOn(focusKey); }
+  async function focusOn(/** @type {string} */ key) {
+    search = ''; filters = {};
+    expanded = new Set([...expanded, key]);
+    await tick();
+    document.getElementById(`register-item-${key}`)?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+  }
 
   /** The workflow item of an action, or null. @param {any} item */
   const itemOf = (item) => (wf?.items ?? []).find((/** @type {any} */ i) => i.subject_id === idByKey[item.key]) ?? null;
@@ -63,7 +76,9 @@
   let shownFor = null;
   $: if (kind !== shownFor) {
     shownFor = kind;
-    search = ''; filters = {}; expanded = new Set();
+    // ⚠ Keeps an action another row asked to see (W4) — this reset runs when
+    // the list first draws, which may be after that request.
+    search = ''; filters = {}; expanded = focusKey ? new Set([focusKey]) : new Set();
   }
 
   function toggle(key) {
@@ -146,7 +161,7 @@
       {#each group.items as item (item.key)}
         {@const open = expanded.has(item.key)}
         {@const ref = citableRef(item)}
-        <div class="row" class:expanded={open}>
+        <div class="row" class:expanded={open} id="register-item-{item.key}">
           <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
           <div class="row-head" on:click={() => toggle(item.key)}>
             <span class="chev" class:open>▸</span>
@@ -183,6 +198,15 @@
               {/if}
               {#if item.unblocks}
                 <p class="fact"><span class="fact-k">Unblocks:</span> {item.unblocks}</p>
+              {/if}
+              {#if kind === 'action'}
+                {@const closes = requirementsClosedBy(item.key, requirements)}
+                {#if closes.length}
+                  <!-- W4: the other side of the link — the interim measures this
+                       action is the completion action of. -->
+                  <p class="fact" data-testid="action-closes"><span class="fact-k">Closes {closes.length === 1 ? 'the interim measure' : `${closes.length} interim measures`}:</span>
+                    {closes.map(r => r.name).join(' · ')}</p>
+                {/if}
               {/if}
 
               <!-- ⛔ PRINTED EVEN WHEN EMPTY, and that is the whole point. These
