@@ -10,7 +10,7 @@ const h = vi.hoisted(() => {
   const makeStore = (init) => { let v = init; const subs = new Set();
     return { subscribe: (r) => { r(v); subs.add(r); return () => subs.delete(r); }, set: (n) => { v = n; subs.forEach((r) => r(v)); }, get: () => v }; };
   return { req: makeStore({}), perms: makeStore({ isAdmin: false, canModify: true }), moved: /** @type {any[]} */ ([]),
-    parkingLoads: 0, setUp: 0, action: /** @type {string|null} */ (null) };
+    parkingLoads: 0, setUp: 0, action: /** @type {string|null} */ (null), assigned: /** @type {any[]} */ ([]) };
 });
 vi.mock('../stores/requestStore.js', () => ({ requestStore: {
   subscribe: h.req.subscribe,
@@ -18,13 +18,15 @@ vi.mock('../stores/requestStore.js', () => ({ requestStore: {
   setUpWorkflow: async () => { h.setUp += 1; },
   history: async () => [{ id: 1, from_key: null, to_key: 'received', note: 'Received from the online form', at: '2026-10-17T09:00:00Z' }],
   move: async (r, to, note) => { h.moved.push([r.reference, to, note]); return { step: to, action: h.action }; },
+  assign: async (r, uid) => { h.assigned.push([r.reference, uid]); return { assigned_to: uid, changed: true }; },
+  assignees: async () => [{ id: 'me', full_name: 'Pat Smith' }, { id: 'u2', full_name: 'Sam Lee' }],
 } }));
 vi.mock('../stores/parkingStore.js', () => ({ parkingStore: { load: async () => { h.parkingLoads += 1; } } }));
 vi.mock('#lib/workflow/workflowApi.js', () => ({ listEvents: async () => ({ items: [], events: [
   { item_id: 'ia', from_key: null, to_key: 'received', at: '2026-10-17T09:00:00Z' }] }) }));
 vi.mock('#lib/stores/permissions.js', () => ({ permissions: { subscribe: h.perms.subscribe } }));
 vi.mock('#lib/stores/profiles.js', () => ({
-  profiles: { subscribe: (r) => { r({ loaded: true, list: [{ id: 'me', full_name: 'Pat Smith' }] }); return () => {}; } },
+  profiles: { subscribe: (r) => { r({ loaded: true, list: [{ id: 'me', full_name: 'Pat Smith' }, { id: 'u2', full_name: 'Sam Lee' }] }); return () => {}; } },
   profilesStore: { load: async () => [] },
 }));
 vi.mock('#lib/stores/auth.js', () => ({ auth: { subscribe: (r) => { r({ user: { id: 'me', email: 'pat@x.co' } }); return () => {}; } } }));
@@ -34,14 +36,14 @@ vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: (...a) => { dl.audits.pu
 
 const ApplicationsTab = (await import('./ApplicationsTab.svelte')).default;
 
-const REQ = (id, ref, step, due_on = null) => ({ request: { id, reference: ref, display_name: `Person ${id}`, email: `${id}@x.co`, holder_type: 'leaseholder',
-  wanted_size: 'Car', received_at: '2026-10-17T09:00:00Z', privacy_notice_text: 'notice' }, item: { id: `i${id}`, subject_id: id, step_key: step, due_on } });
+const REQ = (id, ref, step, due_on = null, assigned_to = null) => ({ request: { id, reference: ref, display_name: `Person ${id}`, email: `${id}@x.co`, holder_type: 'leaseholder',
+  wanted_size: 'Car', received_at: '2026-10-17T09:00:00Z', privacy_notice_text: 'notice' }, item: { id: `i${id}`, subject_id: id, step_key: step, due_on, assigned_to } });
 function state(list) {
   return { workflow: { id: 'w1' }, steps: WF.steps, moves: WF.moves, requests: list.map((x) => x.request), items: list.map((x) => x.item),
     loading: false, loaded: true, error: null };
 }
 
-beforeEach(() => { cleanup(); h.moved.length = 0; h.parkingLoads = 0; h.setUp = 0; h.action = null; h.perms.set({ isAdmin: false, canModify: true }); });
+beforeEach(() => { cleanup(); h.assigned.length = 0; h.moved.length = 0; h.parkingLoads = 0; h.setUp = 0; h.action = null; h.perms.set({ isAdmin: false, canModify: true }); });
 
 describe('Parking → Applications', () => {
   it('lists the open applications with their step; finished ones are behind the filter', async () => {
@@ -114,4 +116,31 @@ describe('Parking → Applications', () => {
     expect(dl.audits[0].slice(0, 4)).toEqual(['export', 'parking_request', 'a', 'PKR-2026-000001']);
     expect(JSON.stringify(dl.audits[0])).not.toMatch(/a@x\.co|Person a/);
   }, 20000);
+
+  it('shows who each open application is with; the choice gives it to someone; "with me" filters to mine', async () => {
+    h.req.set(state([REQ('a', 'PKR-2026-000001', 'checking', null, 'u2'), REQ('b', 'PKR-2026-000002', 'received', null, 'me')]));
+    render(ApplicationsTab, { canEdit: true });
+    const withCells = await screen.findAllByTestId('application-with');
+    expect(withCells.map((c) => c.textContent?.trim())).toEqual(['Sam Lee', 'Pat Smith']);
+    await fireEvent.change(screen.getByLabelText('Which applications'), { target: { value: 'mine' } });
+    await waitFor(() => expect(screen.getByTestId('application-list').textContent).not.toMatch(/PKR-2026-000001/));
+    expect(screen.getByTestId('application-list').textContent).toMatch(/PKR-2026-000002/);
+    await fireEvent.change(screen.getByLabelText('Which applications'), { target: { value: 'open' } });
+    await fireEvent.click(await screen.findByText('PKR-2026-000001'));
+    await fireEvent.click(await screen.findByRole('button', { name: 'Take it' }));
+    await waitFor(() => expect(h.assigned).toEqual([['PKR-2026-000001', 'me']]));
+    await fireEvent.change(screen.getByLabelText('Who it is with'), { target: { value: '' } });
+    await waitFor(() => expect(h.assigned).toEqual([['PKR-2026-000001', 'me'], ['PKR-2026-000001', null]]));
+  });
+
+  it('someone who cannot edit Parking sees who it is with, with no choice', async () => {
+    h.perms.set({ isAdmin: false, canModify: false });
+    h.req.set(state([REQ('a', 'PKR-2026-000001', 'checking', null, 'u2')]));
+    render(ApplicationsTab, { canEdit: false });
+    await fireEvent.click(await screen.findByText('PKR-2026-000001'));
+    const box = await screen.findByTestId('application-assignee');
+    expect(box.textContent).toMatch(/Sam Lee/);
+    expect(screen.queryByLabelText('Who it is with')).toBeNull();
+  });
 });
+

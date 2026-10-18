@@ -9,7 +9,8 @@
 import { Document, Packer, Paragraph, Table, TableRow, TextRun, HeadingLevel, TableLayoutType, WidthType } from 'docx';
 import { run, para, hCell, dCell, makeHeader, makeFooter, DOC_STYLES, pageProps, CONTENT_W, COLOURS } from './docxHelpers.js';
 
-// Moves table: when · from → to · by · note (with action and time waited).
+// History table: when · what happened (a move, with the time waited, or an
+// assignment) · by · note (with the action run).
 const MOVE_COLS = [1700, 2900, 1900, CONTENT_W - 1700 - 2900 - 1900];
 const FACT_COLS = [2400, CONTENT_W - 2400];
 
@@ -51,6 +52,7 @@ export async function buildItemRecord(model, { generatedAt, generatedBy, filenam
     ['Step', model.now.kind ? `${model.now.step} (${model.now.kind})` : model.now.step],
     ['In this step since', model.now.since],
   ]);
+  if (!model.now.finished) nowRows.push(['With', model.now.with || 'No one']);
   if (model.now.due) nowRows.push(['Deadline', model.now.due]);
   content.push(factTable(nowRows));
 
@@ -71,11 +73,13 @@ export async function buildItemRecord(model, { generatedAt, generatedBy, filenam
       layout: TableLayoutType.FIXED,
       rows: [
         new TableRow({ tableHeader: true, children: [
-          hCell('When', MOVE_COLS[0]), hCell('Move', MOVE_COLS[1]), hCell('By', MOVE_COLS[2]), hCell('Note', MOVE_COLS[3]),
+          hCell('When', MOVE_COLS[0]), hCell('What happened', MOVE_COLS[1]), hCell('By', MOVE_COLS[2]), hCell('Note', MOVE_COLS[3]),
         ] }),
         ...model.moves.map((m, i) => new TableRow({ cantSplit: true, children: [
           dCell(m.at, MOVE_COLS[0], { alt: i % 2 === 1 }),
-          dCell([m.from ? `${m.from} → ${m.to}` : `Started: ${m.to}`, m.waited ? `after ${m.waited} in ${m.from}` : ''].filter(Boolean).join('\n'), MOVE_COLS[1], { alt: i % 2 === 1 }),
+          dCell(m.kind === 'assign' ? m.assigned
+            : [m.from ? `${m.from} → ${m.to}` : `Started: ${m.to}`, m.waited ? `after ${m.waited} in ${m.from}` : ''].filter(Boolean).join('\n'),
+            MOVE_COLS[1], { alt: i % 2 === 1 }),
           dCell(m.by, MOVE_COLS[2], { alt: i % 2 === 1 }),
           dCell([m.note, m.action ? `Action run: ${m.action}` : ''].filter(Boolean).join('\n') || '—', MOVE_COLS[3], { alt: i % 2 === 1 }),
         ] })),

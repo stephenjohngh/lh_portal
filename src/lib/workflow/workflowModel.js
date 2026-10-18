@@ -23,6 +23,19 @@ export const STEP_KINDS = Object.freeze([
 ]);
 export const STEP_KIND_LABEL = Object.fromEntries(STEP_KINDS.map((k) => [k.value, k.label]));
 
+/**
+ * What a history row records (migration 250): a MOVE between steps, or an
+ * ASSIGN — who the item is with changed, the step did not. ⚠ Anything that
+ * counts moves (the diagram's figures, how long an item sat in a step) reads
+ * moves only; a row from before 250 has no kind and is a move.
+ */
+export const EVENT_KINDS = Object.freeze([
+  { value: 'move',   label: 'Moved' },
+  { value: 'assign', label: 'Assigned' },
+]);
+/** @param {{ kind?: string|null }} e */
+export const isMoveEvent = (e) => (e.kind ?? 'move') === 'move';
+
 /** Is a step of this kind finished (nothing moves on from it)? @param {string} kind */
 export function isFinished(kind) {
   return kind === 'done' || kind === 'declined';

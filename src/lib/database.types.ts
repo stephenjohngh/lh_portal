@@ -5557,6 +5557,8 @@ export type Database = {
       }
       workflow_events: {
         Row: {
+          assigned_to: string | null
+          kind: string
           id: number
           item_id: string
           from_key: string | null
@@ -5567,6 +5569,8 @@ export type Database = {
           by: string | null
         }
         Insert: {
+          assigned_to?: string | null
+          kind?: string
           id?: number
           item_id: string
           from_key?: string | null
@@ -5577,6 +5581,8 @@ export type Database = {
           by?: string | null
         }
         Update: {
+          assigned_to?: string | null
+          kind?: string
           id?: number
           item_id?: string
           from_key?: string | null
@@ -5605,6 +5611,7 @@ export type Database = {
       }
       workflow_items: {
         Row: {
+          assigned_to: string | null
           id: string
           workflow_id: string
           subject_id: string
@@ -5616,6 +5623,7 @@ export type Database = {
           label: string | null
         }
         Insert: {
+          assigned_to?: string | null
           id?: string
           workflow_id: string
           subject_id: string
@@ -5627,6 +5635,7 @@ export type Database = {
           label?: string | null
         }
         Update: {
+          assigned_to?: string | null
           id?: string
           workflow_id?: string
           subject_id?: string

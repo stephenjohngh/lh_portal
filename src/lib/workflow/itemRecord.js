@@ -15,7 +15,7 @@
 //   · a step's deadline AT THE TIME is not stored — only the item's deadline
 //     now is shown, never a judgement of whether an earlier step was in time.
 
-import { STEP_KIND_LABEL, isFinished } from './workflowModel.js';
+import { STEP_KIND_LABEL, isFinished, isMoveEvent } from './workflowModel.js';
 import { actionLabel } from './workflowActions.js';
 import { describeDeadline, deadlineWords } from './workflowDeadlines.js';
 import { calendarDate, daysBetween, fmtDate, fmtDateTime } from '#lib/utils/dates.js';
@@ -24,6 +24,11 @@ import { calendarDate, daysBetween, fmtDate, fmtDateTime } from '#lib/utils/date
 export function whoMade(/** @type {string|null|undefined} */ by, /** @type {Record<string,string>} */ people = {}) {
   if (!by) return 'Not a signed-in user (e.g. the online form)';
   return people[by] || 'A user no longer listed';
+}
+
+/** An assignment in words. @param {string|null|undefined} to @param {Record<string,string>} people */
+export function assignWords(to, people = {}) {
+  return to ? `Given to ${people[to] || 'a user no longer listed'}` : 'No longer with anyone';
 }
 
 /**
@@ -45,8 +50,8 @@ export function timeBetween(fromIso, toIso) {
  * @param {{
  *   workflow: { name: string, review_required?: boolean, review_reason?: string|null },
  *   steps: Array<{ key: string, name: string, kind: string, deadline_days?: number|null, deadline_basis?: string, deadline_from?: string }>,
- *   item: { label?: string|null, step_key: string, due_on?: string|null, created_at: string },
- *   events: Array<{ id?: number, from_key: string|null, to_key: string, note: string|null, action: string|null, at: string, by: string|null }>,
+ *   item: { label?: string|null, step_key: string, due_on?: string|null, created_at: string, assigned_to?: string|null },
+ *   events: Array<{ id?: number, kind?: string|null, from_key: string|null, to_key: string, assigned_to?: string|null, note: string|null, action: string|null, at: string, by: string|null }>,
  *   subject: { title: string, facts: Array<[string, string|null|undefined]>, sections?: Array<{ heading: string, text: string|null|undefined }> },
  *   people?: Record<string, string>,
  *   todayISO?: string,
@@ -57,25 +62,37 @@ export function itemRecordModel({ workflow, steps, item, events, subject, people
   const stepName = (/** @type {string} */ key) => byKey.get(key)?.name ?? `${key} (a step no longer in the workflow)`;
   const ordered = [...events].sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : (a.id ?? 0) - (b.id ?? 0)));
 
-  const moves = ordered.map((e, i) => ({
-    at: fmtDateTime(e.at),
-    from: e.from_key ? stepName(e.from_key) : '',
-    to: stepName(e.to_key),
-    by: whoMade(e.by, people),
-    note: e.note ?? '',
-    action: e.action ? actionLabel(e.action) : '',
-    // How long the item sat in the step this move LEFT (none for the first).
-    waited: i > 0 ? timeBetween(ordered[i - 1].at, e.at) : '',
-  }));
+  // How long the item sat in the step a move LEFT: since the move before it —
+  // an assignment in between changes who, not where, so it does not count.
+  /** @type {string|null} */
+  let lastMoveAt = null;
+  const moves = ordered.map((e) => {
+    const isMove = isMoveEvent(e);
+    const row = {
+      kind: isMove ? 'move' : 'assign',
+      at: fmtDateTime(e.at),
+      from: isMove && e.from_key ? stepName(e.from_key) : '',
+      to: isMove ? stepName(e.to_key) : '',
+      assigned: isMove ? '' : assignWords(e.assigned_to, people),
+      by: whoMade(e.by, people),
+      note: e.note ?? '',
+      action: e.action ? actionLabel(e.action) : '',
+      waited: isMove && lastMoveAt ? timeBetween(lastMoveAt, e.at) : '',
+    };
+    if (isMove) lastMoveAt = e.at;
+    return row;
+  });
 
   const step = byKey.get(item.step_key);
   const finished = isFinished(step?.kind ?? '');
-  const entered = ordered.length ? ordered[ordered.length - 1].at : item.created_at;
+  const lastMove = [...ordered].reverse().find(isMoveEvent);
+  const entered = lastMove ? lastMove.at : item.created_at;
   const now = {
     step: stepName(item.step_key),
     kind: step ? STEP_KIND_LABEL[step.kind] ?? step.kind : '',
     since: fmtDateTime(entered),
     finished,
+    with: item.assigned_to ? (people[item.assigned_to] || 'A user no longer listed') : '',
     due: !finished && item.due_on
       ? `${deadlineWords(item.due_on, todayISO)} — ${fmtDate(item.due_on)} (${describeDeadline(step ?? {})})`
       : '',
@@ -84,7 +101,7 @@ export function itemRecordModel({ workflow, steps, item, events, subject, people
   const notes = [
     'Step names are as the workflow names them today; the moves themselves are as recorded when they were made.',
   ];
-  if (ordered.some((e) => (e.from_key && !byKey.has(e.from_key)) || !byKey.has(e.to_key))) {
+  if (ordered.filter(isMoveEvent).some((e) => (e.from_key && !byKey.has(e.from_key)) || !byKey.has(e.to_key))) {
     notes.push('A step marked “no longer in the workflow” has since been removed from it.');
   }
   if (!ordered.length) notes.push('No moves are recorded for this item.');

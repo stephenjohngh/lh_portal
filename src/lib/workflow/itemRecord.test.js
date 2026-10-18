@@ -81,4 +81,23 @@ describe('buildItemRecord — the Word file', () => {
     }
     expect(text).not.toMatch(/undefined|null|\[object Object\]/);
   });
+
+  it('an assignment shows who it was given to, and the time in a step runs from the last MOVE', () => {
+    const withAssign = [
+      ev(1, null, 'received', '2026-10-01T09:00:00Z'),
+      { ...ev(2, 'received', 'received', '2026-10-02T09:00:00Z', 'u1', 'Taking this'), kind: 'assign', assigned_to: 'u1' },
+      ev(3, 'received', 'checking', '2026-10-04T09:00:00Z', 'u1'),
+      { ...ev(4, 'checking', 'checking', '2026-10-05T09:00:00Z', 'u1'), kind: 'assign', assigned_to: null },
+    ];
+    const r = itemRecordModel({ ...base, events: withAssign, item: { step_key: 'checking', assigned_to: null, created_at: '2026-10-01T09:00:00Z' } });
+    expect(r.moves.map((x) => x.kind)).toEqual(['move', 'assign', 'move', 'assign']);
+    expect(r.moves[1]).toMatchObject({ assigned: 'Given to Pat Smith', note: 'Taking this', to: '', waited: '' });
+    expect(r.moves[2].waited).toBe('3 days');                // from the move on the 1st, not the assignment on the 2nd
+    expect(r.moves[3].assigned).toBe('No longer with anyone');
+    expect(r.now.since).toMatch(/4 Oct 2026/);               // since the last move, not the last assignment
+    expect(r.now.with).toBe('');
+    const w = itemRecordModel({ ...base, events: withAssign.slice(0, 3), item: { step_key: 'checking', assigned_to: 'u1', created_at: '2026-10-01T09:00:00Z' } });
+    expect(w.now.with).toBe('Pat Smith');
+  });
 });
+

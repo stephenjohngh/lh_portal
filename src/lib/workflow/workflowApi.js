@@ -95,6 +95,26 @@ export async function listDeadlines(workflowKey) {
     .map((i) => ({ id: i.id, label: i.label, due_on: i.due_on, step: name.get(i.step_key) ?? i.step_key, workflow: wf.workflow.name }));
 }
 
+/**
+ * Give an item to someone, or to nobody (null) — migration 250. The database
+ * checks the caller may edit the workflow's app and that the person could work
+ * the item; the change is kept in the item's history.
+ * @param {string} itemId @param {string|null} userId @param {string} [note]
+ * @returns {Promise<{ assigned_to: string|null, changed: boolean }>}
+ */
+export function assignItem(itemId, userId, note = '') {
+  return api.rpc('workflow_assign', { p_item: itemId, p_to: userId, p_note: note || null });
+}
+
+/**
+ * Who may be given a workflow's items: administrators and holders of its
+ * app's editable grant.
+ * @param {string} workflowId @returns {Promise<Array<{ id: string, full_name: string|null }>>}
+ */
+export async function listAssignees(workflowId) {
+  return (await api.rpc('workflow_assignees', { p_workflow: workflowId })) ?? [];
+}
+
 /** A workflow's change history, newest first (admin). @param {string} workflowId */
 export function listChanges(workflowId) {
   return api.getAll('workflow_changes', { filters: { workflow_id: workflowId }, orderBy: 'changed_at', ascending: false });

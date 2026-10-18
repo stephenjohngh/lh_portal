@@ -67,4 +67,13 @@ describe('workflowStats — how it is being used, from its event log', () => {
     expect(s.moveCount['received>checking']).toBe(3);
     expect(s.offPath).toEqual({ 'received>declined': 1 });
   });
+
+  it('an assignment (migration 250) changes who, not where: it is not a move and does not split a step', () => {
+    const withAssign = [...events, { item_id: 'c', kind: 'assign', from_key: 'checking', to_key: 'checking', at: '2026-10-04T09:00:00Z' }];
+    const t = workflowStats({ steps, moves: WF.moves, items, events: withAssign, today: '2026-10-17' });
+    expect(t.step.checking.medianDays).toBe(6);
+    expect(t.offPath).toEqual({ 'received>declined': 1 });
+    expect(t.moveCount['checking>checking']).toBeUndefined();
+  });
 });
+

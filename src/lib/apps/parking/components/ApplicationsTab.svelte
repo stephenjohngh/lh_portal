@@ -12,7 +12,7 @@
   import { requestStore } from '../stores/requestStore.js';
   import { parkingStore } from '../stores/parkingStore.js';
   import { permissions } from '#lib/stores/permissions.js';
-  import { movesFrom, orderedSteps, isFinished, STEP_KIND_LABEL } from '#lib/workflow/workflowModel.js';
+  import { movesFrom, orderedSteps, isFinished, isMoveEvent, STEP_KIND_LABEL } from '#lib/workflow/workflowModel.js';
   import { actionLabel } from '#lib/workflow/workflowActions.js';
   import { deadlineBand, deadlineWords, describeDeadline } from '#lib/workflow/workflowDeadlines.js';
   import { workflowStats } from '#lib/workflow/workflowStats.js';
@@ -27,7 +27,7 @@
   import Button from '#lib/components/common/Button.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
-  import { itemRecordModel } from '#lib/workflow/itemRecord.js';
+  import { itemRecordModel, assignWords } from '#lib/workflow/itemRecord.js';
   import { profiles, profilesStore } from '#lib/stores/profiles.js';
   import { auth } from '#lib/stores/auth.js';
   import { logAudit } from '#lib/utils/auditLogger.js';
@@ -49,13 +49,26 @@
   let moving = '';
   let done = '';
 
+  // Who an application is with (migration 250): the people it may be given to,
+  // and everyone's names for showing who it is with (a person may since have
+  // lost the grant and still be named on an application).
+  /** @type {Array<{ id: string, full_name: string|null }>} */
+  let assignees = [];
+
   onMount(async () => {
     try {
       await requestStore.load();
       if (!$requestStore.workflow && $permissions.isAdmin) await requestStore.setUpWorkflow();
+      const [list] = await Promise.all([requestStore.assignees(), profilesStore.load()]);
+      assignees = list;
     } catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read the applications.'); }
     finally { ready = true; }
   });
+
+  $: nameById = Object.fromEntries(/** @type {Array<{ id: string, full_name: string|null }>} */ ($profiles.list)
+    .map((p) => [p.id, p.full_name || 'A user with no name set']));
+  $: withName = (/** @type {string|null|undefined} */ uid) => (uid ? nameById[uid] || 'A user no longer listed' : '');
+  $: me = $auth.user?.id ?? null;
 
   $: s = $requestStore;
   $: stepByKey = new Map(s.steps.map((st) => [st.key, st]));
@@ -64,6 +77,7 @@
   $: rows = s.requests
     .filter((r) => {
       const k = stepOf(r.id)?.kind ?? '';
+      if (show === 'mine') return !isFinished(k) && !!me && itemFor(r.id)?.assigned_to === me;
       return show === '' || (show === 'open' ? !isFinished(k) : isFinished(k));
     })
     .filter((r) => matchesSearch([r.reference, r.display_name, r.company_name, r.email, r.wanted_size], q));
@@ -113,6 +127,23 @@
     } catch (/** @type {any} */ err) {
       error = errMessage(err, 'That could not be done.');
     } finally { moving = ''; }
+  }
+
+  let assigning = false;
+  let assignNonce = 0;                                // redraws the choice when a change is refused
+  /** @param {string|null} userId */
+  async function assignTo(userId) {
+    const request = selected;                         // captured before the await
+    if (!request) return;
+    assigning = true; error = ''; done = '';
+    try {
+      const result = await requestStore.assign(request, userId);
+      if (result?.changed) done = `${request.reference}: ${userId ? `now with ${withName(userId)}` : 'now with no one'}.`;
+      historyFor = null;                              // re-read the history
+    } catch (/** @type {any} */ err) {
+      error = errMessage(err, 'That could not be done.');
+      assignNonce += 1;                               // put the choice back to what it is
+    } finally { assigning = false; }
   }
 
   const sizeLabel = (/** @type {string} */ v) => (v === ANY_SIZE ? 'Any size' : v);
@@ -189,6 +220,7 @@
         class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-64" />
       <select bind:value={show} aria-label="Which applications" class="px-2 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200">
         <option value="open">Open</option>
+        <option value="mine">Open — with me</option>
         <option value="finished">Finished</option>
         <option value="">All</option>
       </select>
@@ -204,7 +236,7 @@
             <thead><tr class="border-b border-slate-700 text-left text-xs text-slate-400">
               <th class="py-2 pr-3 font-medium">Received</th><th class="py-2 pr-3 font-medium">Reference</th>
               <th class="py-2 pr-3 font-medium">Applicant</th><th class="py-2 pr-3 font-medium">Wants</th>
-              <th class="py-2 pr-3 font-medium">Step</th><th class="py-2 font-medium">Due</th></tr></thead>
+              <th class="py-2 pr-3 font-medium">Step</th><th class="py-2 pr-3 font-medium">With</th><th class="py-2 font-medium">Due</th></tr></thead>
             <tbody>
               {#each rows as r (r.id)}
                 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
@@ -215,6 +247,7 @@
                   <td class="py-2 pr-3 text-slate-200">{r.display_name}{#if r.company_name}<span class="block text-xs text-slate-500">{r.company_name}</span>{/if}</td>
                   <td class="py-2 pr-3 text-slate-300">{sizeLabel(r.wanted_size)}</td>
                   <td class="py-2 pr-3 text-xs text-slate-300">{stepOf(r.id)?.name ?? '—'}</td>
+                  <td class="py-2 pr-3 text-xs text-slate-300" data-testid="application-with">{isFinished(stepOf(r.id)?.kind ?? '') ? '' : withName(itemFor(r.id)?.assigned_to)}</td>
                   <td class="py-2 text-xs whitespace-nowrap {BAND_CLS[deadlineBand(dueOf(r.id)) ?? 'ok']}" data-testid="application-due">
                     {dueOf(r.id) ? deadlineWords(dueOf(r.id)) : ''}</td>
                 </tr>
@@ -242,6 +275,30 @@
           {#if dueOf(selected.id)}
             <p class="{BAND_CLS[deadlineBand(dueOf(selected.id)) ?? 'ok']}">{deadlineWords(dueOf(selected.id))} — {fmtDate(dueOf(selected.id))}
               <span class="block text-xs text-slate-500">{describeDeadline(selectedStep ?? {})}.</span></p>
+          {/if}
+
+          {#if selectedStep && !isFinished(selectedStep.kind)}
+            <div class="flex items-center gap-2" data-testid="application-assignee">
+              <span class="text-slate-400">With:</span>
+              {#if canEdit}
+                {#key assignNonce}
+                <select class="px-2 py-1 text-sm bg-slate-900 border border-slate-600 rounded text-slate-200"
+                  aria-label="Who it is with" value={itemFor(selected.id)?.assigned_to ?? ''} disabled={assigning}
+                  on:change={(e) => assignTo(/** @type {HTMLSelectElement} */ (e.currentTarget).value || null)}>
+                  <option value="">No one</option>
+                  {#each assignees as p (p.id)}<option value={p.id}>{p.full_name || 'A user with no name set'}{p.id === me ? ' (me)' : ''}</option>{/each}
+                  {#if itemFor(selected.id)?.assigned_to && !assignees.some((p) => p.id === itemFor(selected.id)?.assigned_to)}
+                    <option value={itemFor(selected.id)?.assigned_to}>{withName(itemFor(selected.id)?.assigned_to)} (can no longer work these)</option>
+                  {/if}
+                </select>
+                {/key}
+                {#if me && itemFor(selected.id)?.assigned_to !== me && assignees.some((p) => p.id === me)}
+                  <Button variant="tertiary" size="xs" disabled={assigning} on:click={() => assignTo(me)}>Take it</Button>
+                {/if}
+              {:else}
+                <span class="text-slate-100">{withName(itemFor(selected.id)?.assigned_to) || 'No one'}</span>
+              {/if}
+            </div>
           {/if}
 
           <dl class="grid grid-cols-[7rem_1fr] gap-x-2 gap-y-1">
@@ -286,7 +343,9 @@
               <p class="text-xs text-slate-400 mb-1">History</p>
               <ul class="space-y-1 text-xs" data-testid="application-history">
                 {#each history as e (e.id)}
-                  <li><span class="text-slate-400">{fmtDateTime(e.at)}</span> · {e.from_key ? `${nameOf(e.from_key)} → ` : ''}{nameOf(e.to_key)}
+                  <li><span class="text-slate-400">{fmtDateTime(e.at)}</span> ·
+                    {#if isMoveEvent(e)}{e.from_key ? `${nameOf(e.from_key)} → ` : ''}{nameOf(e.to_key)}{:else}{assignWords(e.assigned_to, nameById)}{/if}
+                    {#if e.by}<span class="text-slate-500"> · {withName(e.by)}</span>{/if}
                     {#if e.note}<span class="block text-slate-300 whitespace-pre-line">{e.note}</span>{/if}</li>
                 {/each}
               </ul>

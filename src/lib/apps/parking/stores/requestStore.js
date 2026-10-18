@@ -11,7 +11,7 @@ import { writable, get } from 'svelte/store';
 import { api } from '#lib/utils/api.js';
 import { logAudit } from '#lib/utils/auditLogger.js';
 import { storeLoader } from '#lib/utils/storeLoad.js';
-import { loadWorkflow, listItems, itemHistory, moveItem, saveWorkflow } from '#lib/workflow/workflowApi.js';
+import { loadWorkflow, listItems, itemHistory, moveItem, saveWorkflow, assignItem, listAssignees } from '#lib/workflow/workflowApi.js';
 import { APPLICATION_WORKFLOW_KEY, DEFAULT_APPLICATION_WORKFLOW } from '../utils/applicationWorkflow.js';
 import { ensureNonWorkingDays } from '#lib/workflow/nonWorkingDays.js';
 
@@ -72,7 +72,31 @@ function createRequestStore() {
     return result;
   }
 
-  return { subscribe, load, setUpWorkflow, history, move };
+  /**
+   * Give an application to someone, or to nobody (migration 250). The audit
+   * line names the reference only — the person given it is staff, but the
+   * Parking rule keeps names out of the log.
+   * @param {ParkingRequest} request @param {string|null} userId @param {string} [note]
+   */
+  async function assign(request, userId, note = '') {
+    const item = state().items.find((i) => i.subject_id === request.id);
+    if (!item) throw new Error('This application is not in the workflow.');
+    const reference = request.reference;                    // captured before the await
+    const result = await assignItem(item.id, userId, note);
+    if (result?.changed) {
+      logAudit('update', 'parking_request', request.id, `Application ${reference} — ${userId ? 'assigned' : 'unassigned'}`, AUDIT);
+    }
+    await load();
+    return result;
+  }
+
+  /** Who the applications may be given to. */
+  function assignees() {
+    const wf = state().workflow;
+    return wf ? listAssignees(wf.id) : Promise.resolve([]);
+  }
+
+  return { subscribe, load, setUpWorkflow, history, move, assign, assignees };
 }
 
 export const requestStore = createRequestStore();

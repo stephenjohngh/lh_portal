@@ -11,6 +11,7 @@
 //             conformance, since a workflow can be changed after use
 
 import { daysBetween, calendarDate } from '#lib/utils/dates.js';
+import { isMoveEvent } from './workflowModel.js';
 
 /** A move's London calendar date — days in a step are counted in the building's time. */
 const dayOf = (/** @type {string} */ iso) => /** @type {string} */ (calendarDate(iso));
@@ -26,7 +27,7 @@ function median(xs) {
 /**
  * @param {{ steps: Array<{ key: string, kind: string }>, moves: Array<{ from_key: string, to_key: string }>,
  *           items: Array<{ id: string, step_key: string, due_on?: string|null }>,
- *           events: Array<{ item_id: string, from_key: string|null, to_key: string, at: string }>,
+ *           events: Array<{ item_id: string, kind?: string|null, from_key: string|null, to_key: string, at: string }>,
  *           today: string }} w
  */
 export function workflowStats({ steps, moves, items, events, today }) {
@@ -42,7 +43,8 @@ export function workflowStats({ steps, moves, items, events, today }) {
   // Each item's history in order: when it entered each step and when it left.
   /** @type {Map<string, any[]>} */
   const byItem = new Map();
-  for (const e of [...events].sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0))) {
+  // Moves only: an assignment (migration 250) changes who, not where.
+  for (const e of events.filter(isMoveEvent).sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0))) {
     if (!byItem.has(e.item_id)) byItem.set(e.item_id, []);
     /** @type {any[]} */ (byItem.get(e.item_id)).push(e);
   }
