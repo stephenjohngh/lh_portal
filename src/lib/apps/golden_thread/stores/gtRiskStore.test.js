@@ -26,6 +26,16 @@ vi.mock('#lib/supabaseClient.js', () => ({ supabase: { auth: { getSession } } })
 vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit }));
 vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 vi.mock('#lib/apps/golden_thread/public.js', () => pub);
+const wfApi = vi.hoisted(() => ({
+  loadWorkflow: vi.fn(async () => null),
+  listItems: vi.fn(async () => []),
+  saveWorkflow: vi.fn(),
+  itemHistory: vi.fn(async () => []),
+  moveItem: vi.fn(async () => ({ step: 'x' })),
+  assignItem: vi.fn(),
+  listAssignees: vi.fn(async () => []),
+}));
+vi.mock('#lib/workflow/workflowApi.js', () => wfApi);
 
 import { gtRiskStore } from './gtRiskStore.js';
 
@@ -90,20 +100,27 @@ describe('gtRiskStore.createRisk', () => {
   });
 });
 
-describe('gtRiskStore.transitionRisk', () => {
-  it('rejects an invalid transition without writing', async () => {
-    const res = await gtRiskStore.transitionRisk({ id: 'r1', status: 'identified', reference: 'RISK-0001' }, 'monitored');
-    expect(res.success).toBe(false);
-    expect(res.error).toMatch(/Invalid risk status transition/);
+// Migration 264: a risk moves through the shared workflow manager; the store
+// never writes gt_risks.status itself (the database's one UPDATE is chained).
+describe('gtRiskStore.moveRisk — through the workflow', () => {
+  it('moves the item with its note and never writes the status', async () => {
+    wfApi.loadWorkflow.mockResolvedValueOnce({ workflow: { id: 'wf' }, steps: [], moves: [], fields: [] });
+    wfApi.listItems.mockResolvedValueOnce([{ id: 'item-r', subject_id: 'r1', step_key: 'monitored' }]);
+    pub.listRisks.mockResolvedValueOnce([{ id: 'r1', reference: 'RISK-0001', status: 'monitored' }]);
+    await gtRiskStore.load();
+    pub.getRisk.mockResolvedValueOnce({ id: 'r1', reference: 'RISK-0001', status: 'closed' });
+    const res = await gtRiskStore.moveRisk({ id: 'r1', reference: 'RISK-0001', status: 'monitored' }, 'closed', 'eliminated');
+    expect(res.success).toBe(true);
+    expect(wfApi.moveItem).toHaveBeenCalledWith('item-r', 'closed', 'eliminated');
     expect(pub.updateRisk).not.toHaveBeenCalled();
   });
 
-  it('applies a valid transition', async () => {
-    pub.updateRisk.mockResolvedValueOnce({ id: 'r1', reference: 'RISK-0001', status: 'assessed' });
-    pub.listRisks.mockResolvedValueOnce([]);
-    pub.listAllRiskLinks.mockResolvedValueOnce([]);
-    const res = await gtRiskStore.transitionRisk({ id: 'r1', status: 'identified', reference: 'RISK-0001' }, 'assessed');
-    expect(res.success).toBe(true);
-    expect(pub.updateRisk).toHaveBeenCalledWith('r1', expect.objectContaining({ status: 'assessed' }), 'user-1');
+  it('refuses, writing nothing, while the risk is not in its workflow', async () => {
+    pub.listRisks.mockResolvedValueOnce([{ id: 'r2', status: 'identified' }]);
+    await gtRiskStore.load();
+    const res = await gtRiskStore.moveRisk({ id: 'r2', status: 'identified' }, 'assessed');
+    expect(res.success).toBe(false);
+    expect(wfApi.moveItem).not.toHaveBeenCalled();
+    expect(pub.updateRisk).not.toHaveBeenCalled();
   });
 });

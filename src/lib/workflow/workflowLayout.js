@@ -153,21 +153,36 @@ export function layoutWorkflow(steps, moves) {
     // side facing the other end): joined at its bottom, the arc would run up
     // through the box below — Closed above Reclassified, BSR report above three.
     const end = (/** @type {any} */ n, /** @type {number} */ otherX) => {
-      if (n.row === lastRow.get(n.col)) return { x: n.x + n.w / 2, y: n.y + n.h, cx: n.x + n.w / 2 };
+      if (n.row === lastRow.get(n.col)) return { x: n.x + n.w / 2, y: n.y + n.h, cx: n.x + n.w / 2, cy: drop };
       const left = otherX <= n.x + n.w / 2;
       const x = left ? n.x : n.x + n.w;
-      return { x, y: n.y + n.h / 2, cx: x + (left ? -1 : 1) * colGap / 2 };
+      const y = n.y + n.h / 2;
+      // ⚠ Its control point goes as far BELOW the arc's floor as the side is
+      // above it: a cubic turns its corner early, so without that it rises
+      // through the bottom box of the column beside — Identified → Closed ran
+      // through Monitored on the Golden Thread risk diagram (2026-10-19).
+      return { x, y, cx: x + (left ? -1 : 1) * colGap / 2, cy: drop + (drop - y) * 0.75 };
     };
     const p = end(a, b.x + b.w / 2), q = end(b, a.x + a.w / 2);
     const x1 = p.x, y1 = p.y, x2 = q.x, y2 = q.y;
-    const [mx, my] = curveMidpoint([x1, y1], [p.cx, drop], [q.cx, drop], [x2, y2]);
+    const [mx, my] = curveMidpoint([x1, y1], [p.cx, p.cy], [q.cx, q.cy], [x2, y2]);
     // Below the arc's lowest point, so the line stays visible above the label;
     // a wrapped label's later lines go downwards.
     return { from: m.from_key, to: m.to_key, label: m.label ?? '', back: b.col < a.col, lines,
-      path: `M ${x1} ${y1} C ${p.cx} ${drop}, ${q.cx} ${drop}, ${x2} ${y2}`, labelX: mx, labelY: my + 11, labelTop: my + 11 };
+      path: `M ${x1} ${y1} C ${p.cx} ${p.cy}, ${q.cx} ${q.cy}, ${x2} ${y2}`, labelX: mx, labelY: my + 11, labelTop: my + 11 };
   });
 
   const width = pad * 2 + usedCols.length * boxW + Math.max(0, usedCols.length - 1) * colGap;
-  const height = pad * 2 + bodyH + (backs ? backDrop * backs + backs * LABEL.lineH + 8 : 0);
+  // Tall enough for the lowest arc and the lowest label under it.
+  let bottom = pad + bodyH;
+  for (const e of edges) {
+    const n = e.path.match(/-?\d+(\.\d+)?/g)?.map(Number) ?? [];
+    for (let i = 1; i < 20; i += 1) {
+      const t = i / 20, u = 1 - t;
+      bottom = Math.max(bottom, u ** 3 * n[1] + 3 * u * u * t * n[3] + 3 * u * t * t * n[5] + t ** 3 * n[7]);
+    }
+    bottom = Math.max(bottom, e.labelTop + (e.lines.length - 1) * LABEL.lineH + 4);
+  }
+  const height = Math.ceil(bottom + pad);
   return { nodes: [...nodes.values()], edges, width, height };
 }

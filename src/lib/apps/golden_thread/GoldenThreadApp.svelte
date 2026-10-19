@@ -9,6 +9,7 @@
 <script>
   import { errMessage } from '#lib/utils/errors.js';
   import { permissions } from '#lib/stores/permissions.js';
+  import { gtRiskStore } from '#lib/apps/golden_thread/stores/gtRiskStore.js';
   import AppGate from '#lib/components/common/AppGate.svelte';
   import TabBar  from '#lib/components/common/TabBar.svelte';
   import { gtStore }     from '#lib/apps/golden_thread/stores/gtStore.js';
@@ -191,6 +192,16 @@
   const loadRegister = async () => {
     await gtStore.load();
     await gtStore.loadCompleteness();
+    // An administrator opening Golden Thread sets up its two workflows (264)
+    // the first time. A failure is shown; the register still opens.
+    if ($permissions.isAdmin) {
+      try {
+        if (!$gtStore.workflow) await gtStore.setUpWorkflow();
+        await gtRiskStore.ensureWorkflow();
+      } catch (/** @type {any} */ e) {
+        gtStore.reportError(`The Golden Thread workflows could not be set up: ${errMessage(e)}`);
+      }
+    }
   };
 
   async function selectTab(tab) {

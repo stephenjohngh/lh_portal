@@ -15,10 +15,12 @@ import { DEFAULT_WORKS_SCHEDULE_WORKFLOW } from '#lib/apps/building_assets/utils
 import { DEFAULT_MAINTENANCE_JOB_WORKFLOW } from '#lib/apps/maintenance/utils/maintenanceJobWorkflow.js';
 import { DEFAULT_WAITING_LIST_WORKFLOW } from '#lib/apps/parking/utils/waitingListWorkflow.js';
 import { DEFAULT_MOR_WORKFLOW } from '#lib/apps/mor/utils/morWorkflow.js';
+import { DEFAULT_GT_DOCUMENT_WORKFLOW, DEFAULT_GT_RISK_WORKFLOW } from '#lib/apps/golden_thread/utils/gtWorkflow.js';
 
 /** @type {ReadonlyArray<any>} */
 export const SHIPPED_WORKFLOWS = Object.freeze([DEFAULT_APPLICATION_WORKFLOW, DEFAULT_COMPLAINT_WORKFLOW, DEFAULT_COMPLIANCE_ACTION_WORKFLOW, DEFAULT_WORKS_SCHEDULE_WORKFLOW,
-  DEFAULT_MAINTENANCE_JOB_WORKFLOW, DEFAULT_WAITING_LIST_WORKFLOW, DEFAULT_MOR_WORKFLOW]);
+  DEFAULT_MAINTENANCE_JOB_WORKFLOW, DEFAULT_WAITING_LIST_WORKFLOW, DEFAULT_MOR_WORKFLOW,
+  DEFAULT_GT_DOCUMENT_WORKFLOW, DEFAULT_GT_RISK_WORKFLOW]);
 
 /** The shipped version of a workflow, or null (a Cases process has none). @param {string} key */
 export function shippedWorkflowFor(key) {

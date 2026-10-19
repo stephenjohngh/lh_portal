@@ -14,6 +14,8 @@
 
 import { isValidTransition } from '#lib/apps/complaints/utils/complaintLifecycle.js';
 import { isValidTransition as morTransitionAllowed } from '#lib/apps/mor/utils/morHelpers.js';
+import { isValidTransition as gtDocumentMoveAllowed } from '#lib/apps/golden_thread/utils/gtLifecycle.js';
+import { isValidRiskTransition } from '#lib/apps/golden_thread/utils/gtRiskLifecycle.js';
 
 /**
  * @typedef {{ name: string, stepsAre?: string, steps?: Record<string, string>, moveAllowed?: (from: string, to: string) => boolean, moveRule?: string, check?: (def: any) => string|null, subjectDue?: boolean, explains: string }} Contract
@@ -109,7 +111,42 @@ export const KEY_CONTRACTS = Object.freeze({
     subjectDue: true,
     explains: 'Its steps are the waiting-list statuses and each has a fixed kind; a move must be one the waiting list allows. An offer’s deadline is its own expiry date, so “Back to the queue” can happen by itself after it. The names, notes and conditions can be changed. Going back to the queue before the expiry date is recorded as declined, after it as lapsed.',
   },
+  // Migration 264: Golden Thread (BSA 2022 s.88). ⛔ The hash-chained audit is
+  // untouched — a move is one UPDATE of the row, chained as always.
+  gt_document: {
+    name: 'Golden Thread document',
+    stepsAre: 'the document statuses (BSA s.88)',
+    steps: { draft: 'start', under_review: 'open', current: 'done', superseded: 'done', returned_to_author: 'declined', withdrawn: 'declined' },
+    moveAllowed: gtDocumentMoveAllowed,
+    moveRule: 'a Golden Thread document can make',
+    check: ({ moves }) => {
+      const sup = moves.find((/** @type {any} */ m) => m.from_key === 'current' && m.to_key === 'superseded');
+      if (!sup) return 'The Golden Thread document workflow must keep its move from Current to Superseded: accepting a successor makes it.';
+      if (sup.admin_only || sup.four_eyes || (sup.who && sup.who !== 'anyone') || sup.required_fields?.length) {
+        return `The move "${sup.label}" is made by accepting a successor, so it cannot carry conditions of its own.`;
+      }
+      const other = moves.find((/** @type {any} */ m) => m.to_key === 'superseded' && m.from_key !== 'current');
+      if (other) return `The move "${other.label}" cannot lead to Superseded: a document is superseded only from Current, by accepting the document that replaces it.`;
+      return gtNoTimer(moves);
+    },
+    explains: 'Its steps are the document statuses (BSA s.88) and each has a fixed kind; a move must be one the register allows and none may be made by a timer. Current → Superseded is made only by accepting the document that replaces it, in the same transaction, so it is kept and carries no conditions. Every move is one change to the document, recorded in the hash-chained audit as before. The names, notes and conditions of the other moves can be changed.',
+  },
+  gt_risk: {
+    name: 'Golden Thread risk',
+    stepsAre: 'the risk statuses',
+    steps: { identified: 'start', assessed: 'open', controlled: 'open', monitored: 'open', closed: 'done', superseded: 'declined' },
+    moveAllowed: isValidRiskTransition,
+    moveRule: 'a Golden Thread risk can make',
+    check: ({ moves }) => gtNoTimer(moves),
+    explains: 'Its steps are the risk statuses and each has a fixed kind; a move must be one the risk register allows, and none may be made by a timer. Every move is one change to the risk, recorded in the hash-chained audit as before. The names, notes, deadlines and conditions can be changed; a note on Close or Supersede is kept as the reason.',
+  },
 });
+
+/** Golden Thread (264): a person makes every change — the audit chain names who. @param {any[]} moves */
+function gtNoTimer(moves) {
+  const timed = moves.find((m) => m.timer_days != null && m.timer_days !== '');
+  return timed ? `The move "${timed.label}" cannot be made by a timer: every Golden Thread change is recorded in the audit chain against the person who made it.` : null;
+}
 
 /** The moves a waiting-list place can make — the lifecycle trigger's (224, 229). */
 const WAITING_LIST_MOVES = new Set(['waiting>offered', 'waiting>withdrawn', 'offered>waiting',

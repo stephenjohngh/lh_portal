@@ -13,6 +13,7 @@ import { DEFAULT_WORKS_SCHEDULE_WORKFLOW as WORKS } from '#lib/apps/building_ass
 import { DEFAULT_MAINTENANCE_JOB_WORKFLOW as JOB } from '#lib/apps/maintenance/utils/maintenanceJobWorkflow.js';
 import { DEFAULT_WAITING_LIST_WORKFLOW as WAITING } from '#lib/apps/parking/utils/waitingListWorkflow.js';
 import { DEFAULT_MOR_WORKFLOW as MOR } from '#lib/apps/mor/utils/morWorkflow.js';
+import { DEFAULT_GT_DOCUMENT_WORKFLOW as GTD, DEFAULT_GT_RISK_WORKFLOW as GTR } from '#lib/apps/golden_thread/utils/gtWorkflow.js';
 
 /** @typedef {{ name: string, appId: string, key?: string, steps: any[], moves: any[], fields?: any[], expect: RegExp|null }} SaveCase */
 
@@ -33,6 +34,10 @@ const WL = { appId: 'parking', key: WAITING.key };
 const complaintMoves = () => COMPLAINT.moves.map((m) => ({ ...m }));
 const morSteps = () => MOR.steps.map((s) => ({ ...s }));
 const morMoves = () => MOR.moves.map((m) => ({ ...m }));
+const gtdSteps = () => GTD.steps.map((s) => ({ ...s }));
+const gtdMoves = () => GTD.moves.map((m) => ({ ...m }));
+const gtrSteps = () => GTR.steps.map((s) => ({ ...s }));
+const gtrMoves = () => GTR.moves.map((m) => ({ ...m }));
 
 /** @type {SaveCase[]} */
 export const SAVE_CASES = [
@@ -150,4 +155,32 @@ export const SAVE_CASES = [
   { name: 'MOR: a timer', appId: 'mor', steps: morSteps(),
     moves: morMoves().map((m) => (m.from_key === 'submitted' ? { ...m, timer_days: 5 } : m)),
     expect: /a person decides every step of an MOR case/ },
+  // Migration 264: Golden Thread (BSA s.88). ⛔ The audit chain names who made
+  // every change, so no timer; a document is superseded only by its successor.
+  { name: 'the shipped Golden Thread document workflow saves', appId: 'golden_thread', key: 'gt_document',
+    steps: gtdSteps(), moves: gtdMoves(), expect: null },
+  { name: 'the shipped Golden Thread risk workflow saves', appId: 'golden_thread', key: 'gt_risk',
+    steps: gtrSteps(), moves: gtrMoves(), expect: null },
+  { name: 'GT document: a step that is not a status', appId: 'golden_thread', key: 'gt_document',
+    steps: [...gtdSteps(), { key: 'approved', name: 'Approved', kind: 'open' }],
+    moves: [...gtdMoves(), { from_key: 'under_review', to_key: 'approved', label: 'Approve' }], expect: /are fixed: "approved" is not one/ },
+  { name: 'GT document: a status of the wrong kind', appId: 'golden_thread', key: 'gt_document',
+    steps: gtdSteps().map((x) => (x.key === 'withdrawn' ? { ...x, kind: 'done' } : x)), moves: gtdMoves(),
+    expect: /has a fixed kind in the Golden Thread document workflow/ },
+  { name: 'GT document: a move the register does not allow', appId: 'golden_thread', key: 'gt_document', steps: gtdSteps(),
+    moves: [...gtdMoves(), { from_key: 'draft', to_key: 'current', label: 'Make current at once' }], expect: /not one a Golden Thread document can make/ },
+  { name: 'GT document: another move into Superseded', appId: 'golden_thread', key: 'gt_document', steps: gtdSteps(),
+    moves: [...gtdMoves(), { from_key: 'withdrawn', to_key: 'superseded', label: 'Supersede' }], expect: /not one a Golden Thread document can make|superseded only from Current/ },
+  { name: 'GT document: the supersede move removed', appId: 'golden_thread', key: 'gt_document', steps: gtdSteps(),
+    moves: gtdMoves().filter((m) => m.to_key !== 'superseded'), expect: /must keep its move from Current to Superseded|cannot be reached from the start/ },
+  { name: 'GT document: a condition on the supersede move', appId: 'golden_thread', key: 'gt_document', steps: gtdSteps(),
+    moves: gtdMoves().map((m) => (m.to_key === 'superseded' ? { ...m, four_eyes: true } : m)), expect: /cannot carry conditions of its own/ },
+  { name: 'GT document: a timer', appId: 'golden_thread', key: 'gt_document', steps: gtdSteps(),
+    moves: gtdMoves().map((m) => (m.from_key === 'draft' && m.to_key === 'under_review' ? { ...m, timer_days: 5 } : m)),
+    expect: /audit chain against the person/ },
+  { name: 'GT risk: a move the register does not allow', appId: 'golden_thread', key: 'gt_risk', steps: gtrSteps(),
+    moves: [...gtrMoves(), { from_key: 'identified', to_key: 'monitored', label: 'Monitor at once' }], expect: /not one a Golden Thread risk can make/ },
+  { name: 'GT risk: a timer', appId: 'golden_thread', key: 'gt_risk', steps: gtrSteps(),
+    moves: gtrMoves().map((m) => (m.from_key === 'monitored' && m.to_key === 'assessed' ? { ...m, timer_days: 365 } : m)),
+    expect: /audit chain against the person/ },
 ];

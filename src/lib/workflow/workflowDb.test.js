@@ -26,6 +26,7 @@ import { DEFAULT_WORKS_SCHEDULE_WORKFLOW as WORKS_WF } from '#lib/apps/building_
 import { DEFAULT_MAINTENANCE_JOB_WORKFLOW as JOB_WF } from '#lib/apps/maintenance/utils/maintenanceJobWorkflow.js';
 import { DEFAULT_WAITING_LIST_WORKFLOW as WL_WF } from '#lib/apps/parking/utils/waitingListWorkflow.js';
 import { DEFAULT_MOR_WORKFLOW as MOR_WF } from '#lib/apps/mor/utils/morWorkflow.js';
+import { DEFAULT_GT_DOCUMENT_WORKFLOW as GTD_WF, DEFAULT_GT_RISK_WORKFLOW as GTR_WF } from '#lib/apps/golden_thread/utils/gtWorkflow.js';
 
 const RUN = process.env.LH_DB_TESTS === 'dev';
 const PSQL = process.platform === 'win32' ? 'C:/Program Files/PostgreSQL/18/bin/psql.exe' : 'psql';
@@ -103,6 +104,25 @@ const morItem = `(select id from workflow_items where subject_id = ${morCase})`;
 const morStatus = `(select status from mor_cases where id = ${morCase})`;
 /** Someone other than the administrator — the proposer of a decision. */
 const OTHER = `(select id from profiles where not is_admin order by created_at limit 1)`;
+const gtSave = (/** @type {any} */ wf) => `perform workflow_save(${txt(wf.key)}, ${txt(wf.name)}, 'golden_thread', null,
+      ${lit(wf.steps.map((/** @type {any} */ x, /** @type {number} */ n) => ({ ...x, position: n + 1 })))},
+      ${lit(wf.moves.map((/** @type {any} */ m, /** @type {number} */ n) => ({ ...m, position: n + 1 })))}, true, ${txt(wf.reviewReason)}, null, '[]', null);`;
+const gtDoc = (/** @type {string} */ title) => `(select id from gt_documents where title = ${txt(title)})`;
+const gtItem = (/** @type {string} */ title) => `(select id from workflow_items where subject_id = ${gtDoc(title)})`;
+const gtRisk = `(select id from gt_risks where title = 'DB test risk')`;
+const gtRiskItem = `(select id from workflow_items where subject_id = ${gtRisk})`;
+// ⛔ The hash chain, recomputed the way gt_write_audit() builds it: every row's
+// hash covers the row before it. A move must leave it verifying.
+const GT_CHAIN_OK = `
+    if exists (
+      select 1 from (
+        select a.*, lag(a.curr_hash) over (order by a.seq) as before_hash from gt_audit a
+      ) r
+      where r.prev_hash is distinct from r.before_hash
+         or r.curr_hash <> encode(sha256(convert_to(
+              coalesce(r.prev_hash, '') || r.action || r.target_table || r.target_id::text
+              || coalesce(r.before_data::text, '') || coalesce(r.after_data::text, '') || r.occurred_at::text, 'UTF8')), 'hex'))
+    then raise exception 'the audit chain does not verify'; end if;`;
 const firstAction = `(select i.id from workflow_items i join statutory_register r on r.id = i.subject_id where r.template_key = ${ACT})`;
 
 /** The runtime checks, in order; each sees what the ones before it did. */
@@ -519,6 +539,77 @@ const RUNTIME = [
     perform workflow_move(${morItem}, 'reopened', 'Cracking has returned');
     if not exists (select 1 from mor_timeline_entries where case_id = ${morCase} and entry_type = 'reopened' and content = 'Cracking has returned')
       then raise exception 'not on the timeline'; end if;`, null],
+  // ── Golden Thread (264): moves through the workflow; the hash chain untouched ─
+  ['the Golden Thread workflows save; a new document and risk join them, named by reference', `
+    ${ADMIN_CLAIMS}
+    if not exists (select 1 from workflows where key = 'gt_document') then ${gtSave(GTD_WF)} end if;
+    if not exists (select 1 from workflows where key = 'gt_risk') then ${gtSave(GTR_WF)} end if;
+    perform gt_attach_to_workflow('gt_document');
+    perform gt_attach_to_workflow('gt_risk');
+    insert into gt_documents (schedule1_category, document_type, title, created_by)
+         values ((select code from gt_schedule1_categories order by code limit 1), 'Strategy', 'DB test GT v1', auth.uid());
+    insert into gt_risks (title, created_by) values ('DB test risk', auth.uid());
+    if (select step_key from workflow_items where id = ${gtItem('DB test GT v1')}) <> 'draft' then raise exception 'document not at Draft'; end if;
+    if (select label from workflow_items where id = ${gtItem('DB test GT v1')}) <> (select reference from gt_documents where id = ${gtDoc('DB test GT v1')})
+      then raise exception 'not named by its reference'; end if;
+    if (select step_key from workflow_items where id = ${gtRiskItem}) <> 'identified' then raise exception 'risk not at Identified'; end if;`, null],
+  ['a document’s status changes only through its workflow', `
+    update gt_documents set status = 'under_review' where id = ${gtDoc('DB test GT v1')};`, 'through its Golden Thread workflow'],
+  ['a move is ONE audit row, against the person who made it, and the chain verifies', `
+    declare before_n int := (select count(*) from gt_audit where target_id = ${gtDoc('DB test GT v1')});
+    begin
+      perform workflow_move(${gtItem('DB test GT v1')}, 'under_review', null);
+      if (select count(*) from gt_audit where target_id = ${gtDoc('DB test GT v1')}) <> before_n + 1 then raise exception 'not one audit row'; end if;
+      if (select after_data->>'status' from gt_audit where target_id = ${gtDoc('DB test GT v1')} order by seq desc limit 1) <> 'under_review'
+        then raise exception 'the audit row does not hold the move'; end if;
+      if (select actor from gt_audit where target_id = ${gtDoc('DB test GT v1')} order by seq desc limit 1) is distinct from auth.uid()
+        then raise exception 'the audit row does not name who moved it'; end if;
+      ${GT_CHAIN_OK}
+    end;`, null],
+  ['accepting makes it current with its dates, in the chain', `
+    perform workflow_move(${gtItem('DB test GT v1')}, 'current', null);
+    if (select status from gt_documents where id = ${gtDoc('DB test GT v1')}) <> 'current'
+       or (select effective_from from gt_documents where id = ${gtDoc('DB test GT v1')}) is null then raise exception 'not current'; end if;
+    ${GT_CHAIN_OK}`, null],
+  ['accepting a successor supersedes the prior in the same move — each its own chained row', `
+    declare before_n int := (select count(*) from gt_audit);
+    begin
+      insert into gt_documents (schedule1_category, document_type, title, supersedes, created_by)
+           values ((select code from gt_schedule1_categories order by code limit 1), 'Strategy', 'DB test GT v2', ${gtDoc('DB test GT v1')}, auth.uid());
+      perform workflow_move(${gtItem('DB test GT v2')}, 'under_review', null);
+      perform workflow_move(${gtItem('DB test GT v2')}, 'current', null);
+      if (select status from gt_documents where id = ${gtDoc('DB test GT v1')}) <> 'superseded'
+         or (select superseded_by from gt_documents where id = ${gtDoc('DB test GT v1')}) <> ${gtDoc('DB test GT v2')}
+         or (select effective_to from gt_documents where id = ${gtDoc('DB test GT v1')}) is null then raise exception 'prior not superseded'; end if;
+      if (select step_key from workflow_items where id = ${gtItem('DB test GT v1')}) <> 'superseded' then raise exception 'prior item did not follow'; end if;
+      if not exists (select 1 from workflow_events where item_id = ${gtItem('DB test GT v1')} and note like 'Superseded by %')
+        then raise exception 'no history entry'; end if;
+      -- insert + submit + accept + supersede: four rows, nothing more or less.
+      if (select count(*) from gt_audit) <> before_n + 4 then raise exception 'unexpected audit rows: %', (select count(*) from gt_audit) - before_n; end if;
+      ${GT_CHAIN_OK}
+    end;`, null],
+  ['returning to the author needs a reason, and keeps it', `
+    insert into gt_documents (schedule1_category, document_type, title, created_by)
+         values ((select code from gt_schedule1_categories order by code limit 1), 'Strategy', 'DB test GT r', auth.uid());
+    perform workflow_move(${gtItem('DB test GT r')}, 'under_review', null);
+    begin perform workflow_move(${gtItem('DB test GT r')}, 'returned_to_author', null); raise exception 'accepted without a note';
+    exception when others then if sqlerrm not like '%note%' then raise; end if; end;
+    perform workflow_move(${gtItem('DB test GT r')}, 'returned_to_author', 'Wrong revision');
+    if (select supersession_reason from gt_documents where id = ${gtDoc('DB test GT r')}) <> 'Wrong revision' then raise exception 'reason not kept'; end if;
+    ${GT_CHAIN_OK}`, null],
+  ['withdrawing a current document closes its window', `
+    perform workflow_move(${gtItem('DB test GT v2')}, 'withdrawn', 'Issued in error');
+    if (select effective_to from gt_documents where id = ${gtDoc('DB test GT v2')}) is null
+       or (select supersession_reason from gt_documents where id = ${gtDoc('DB test GT v2')}) <> 'Issued in error' then raise exception 'window not closed'; end if;`, null],
+  ['closing a risk keeps its reason, in the chain', `
+    perform workflow_move(${gtRiskItem}, 'closed', 'Eliminated by works');
+    if (select status from gt_risks where id = ${gtRisk}) <> 'closed'
+       or (select closure_reason from gt_risks where id = ${gtRisk}) <> 'Eliminated by works' then raise exception 'not closed'; end if;
+    ${GT_CHAIN_OK}`, null],
+  ['a risk’s status changes only through its workflow', `
+    update gt_risks set status = 'monitored' where id = ${gtRisk};`, 'through its Golden Thread workflow'],
+  ['Golden Thread has no public status page', `
+    perform workflow_set_public('gt_document', true, null);`, 'not named by a reference'],
   ['MOR keeps its own reporter status page, not the shared one', `
     perform workflow_set_public('mor_case', true, null);`, 'not named by a reference'],
   ['a deleted MOR case takes its item with it', `

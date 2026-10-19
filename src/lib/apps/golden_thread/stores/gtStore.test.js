@@ -36,6 +36,16 @@ vi.mock('#lib/supabaseClient.js', () => ({ supabase: { auth: { getSession } } })
 vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit }));
 vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 vi.mock('#lib/apps/golden_thread/public.js', () => pub);
+const wfApi = vi.hoisted(() => ({
+  loadWorkflow: vi.fn(async () => null),
+  listItems: vi.fn(async () => []),
+  saveWorkflow: vi.fn(),
+  itemHistory: vi.fn(async () => []),
+  moveItem: vi.fn(async () => ({ step: 'x' })),
+  assignItem: vi.fn(),
+  listAssignees: vi.fn(async () => []),
+}));
+vi.mock('#lib/workflow/workflowApi.js', () => wfApi);
 const { registerDocument } = pub;
 
 import { gtStore } from './gtStore.js';
@@ -67,57 +77,53 @@ describe('gtStore.createDraft', () => {
   });
 });
 
-describe('gtStore.accept — supersession rule', () => {
-  it('sets the accepted doc current and marks the prior superseded', async () => {
-    // Accepted doc supersedes prior; carries a 365-day review cycle.
-    const accepted = { id: 'new', title: 'V2', status: 'under_review', supersedes: 'old', review_cycle_days: 365 };
-    const prior    = { id: 'old', title: 'V1', status: 'current' };
-    api.getById.mockImplementation(async (_t, id) => (id === 'new' ? accepted : prior));
-    api.update.mockImplementation(async (_t, id, data) => ({ id, ...data }));
+// Migration 264: a document moves through the shared workflow manager. The
+// database makes the change (one UPDATE of the row, so gt_audit chains it as
+// before) — ⛔ the store must never write gt_documents.status itself.
+describe('gtStore.moveDocument — through the workflow', () => {
+  /** Load a register with one document in the workflow at `step`. */
+  async function withItem(step) {
+    wfApi.loadWorkflow.mockResolvedValueOnce({ workflow: { id: 'wf' }, steps: [], moves: [], fields: [] });
+    wfApi.listItems.mockResolvedValueOnce([{ id: 'item-1', subject_id: 'd', step_key: step }]);
+    api.getAll.mockResolvedValueOnce([{ id: 'd', reference: 'GT-000001', status: step }]);
+    await gtStore.load();
+  }
 
-    const res = await gtStore.accept('new');
+  it('moves the item, never writes the status, and audits the move', async () => {
+    await withItem('under_review');
+    api.getById.mockResolvedValueOnce({ id: 'd', reference: 'GT-000001', status: 'current' });
+    const res = await gtStore.moveDocument('d', 'current');
     expect(res.success).toBe(true);
-
-    // First update: new → current with effective_from + computed review_due
-    const acceptCall = api.update.mock.calls.find((c) => c[1] === 'new');
-    expect(acceptCall[2].status).toBe('current');
-    expect(acceptCall[2].effective_from).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(acceptCall[2].review_due).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-
-    // Second update: prior → superseded, effective_to set, superseded_by = new
-    const priorCall = api.update.mock.calls.find((c) => c[1] === 'old');
-    expect(priorCall[2]).toMatchObject({ status: 'superseded', superseded_by: 'new' });
-    expect(priorCall[2].effective_to).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(wfApi.moveItem).toHaveBeenCalledWith('item-1', 'current', '');
+    expect(api.update).not.toHaveBeenCalled();
+    expect(logAudit).toHaveBeenCalledWith('update', 'gt_document', 'd', 'GT-000001',
+      expect.objectContaining({ afterData: { from: 'under_review', to: 'current' } }));
   });
 
-  it('rejects an invalid transition before touching the DB', async () => {
-    api.getById.mockResolvedValueOnce({ id: 'd', title: 'X', status: 'draft' }); // draft can't go straight to current
-    const res = await gtStore.accept('d');
-    expect(res.success).toBe(false);
-    expect(res.error).toMatch(/Invalid GT status transition/);
+  it('carries the note — the reason a document is returned or withdrawn', async () => {
+    await withItem('current');
+    api.getById.mockResolvedValueOnce({ id: 'd', status: 'withdrawn' });
+    await gtStore.moveDocument('d', 'withdrawn', 'wrong file');
+    expect(wfApi.moveItem).toHaveBeenCalledWith('item-1', 'withdrawn', 'wrong file');
     expect(api.update).not.toHaveBeenCalled();
   });
-});
 
-describe('gtStore.withdraw', () => {
-  it('stamps effective_to when withdrawing a current doc (S3 — time-travel fix)', async () => {
-    api.getById.mockResolvedValueOnce({ id: 'd', title: 'X', status: 'current', effective_from: '2026-01-01', effective_to: null });
-    api.update.mockImplementation(async (_t, id, data) => ({ id, ...data }));
-    const res = await gtStore.withdraw('d', 'wrong file');
-    expect(res.success).toBe(true);
-    const call = api.update.mock.calls.find((c) => c[1] === 'd');
-    expect(call[2]).toMatchObject({ status: 'withdrawn', supersession_reason: 'wrong file' });
-    expect(call[2].effective_to).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  it('refuses, writing nothing, while the document is not in its workflow', async () => {
+    api.getAll.mockResolvedValueOnce([{ id: 'x', status: 'draft' }]);
+    await gtStore.load();
+    const res = await gtStore.moveDocument('x', 'under_review');
+    expect(res.success).toBe(false);
+    expect(res.error).toMatch(/not in its workflow/);
+    expect(wfApi.moveItem).not.toHaveBeenCalled();
+    expect(api.update).not.toHaveBeenCalled();
   });
 
-  it('does not stamp effective_to on a draft (no open window)', async () => {
-    api.getById.mockResolvedValueOnce({ id: 'd2', title: 'Y', status: 'draft', effective_from: null, effective_to: null });
-    api.update.mockImplementation(async (_t, id, data) => ({ id, ...data }));
-    const res = await gtStore.withdraw('d2', 'orphan draft');   // draft→withdrawn legal since mig 149
-    expect(res.success).toBe(true);
-    const call = api.update.mock.calls.find((c) => c[1] === 'd2');
-    expect(call[2].status).toBe('withdrawn');
-    expect(call[2].effective_to).toBeUndefined();
+  it('a refused move shows the database\'s reason and changes nothing', async () => {
+    await withItem('draft');
+    wfApi.moveItem.mockRejectedValueOnce(new Error('Only an administrator can do that.'));
+    const res = await gtStore.moveDocument('d', 'withdrawn', 'mistake');
+    expect(res).toEqual({ success: false, error: 'Only an administrator can do that.' });
+    expect(api.update).not.toHaveBeenCalled();
   });
 });
 

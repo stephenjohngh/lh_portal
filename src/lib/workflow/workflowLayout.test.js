@@ -77,3 +77,20 @@ describe('workflow layout — labels sit on their own move', () => {
     }
   });
 });
+
+describe('workflow layout — the diagram holds everything it draws', () => {
+  it('no arc or label of a shipped workflow falls below the diagram', () => {
+    for (const wf of SHIPPED_WORKFLOWS) {
+      const { edges, height } = layoutWorkflow(wf.steps.map((s, i) => ({ ...s, position: i + 1 })), wf.moves);
+      for (const e of edges) {
+        const n = e.path.match(/-?\d+(\.\d+)?/g)?.map(Number) ?? [];
+        for (let i = 0; i <= 50; i += 1) {
+          const t = i / 50, u = 1 - t;
+          const y = u ** 3 * n[1] + 3 * u * u * t * n[3] + 3 * u * t * t * n[5] + t ** 3 * n[7];
+          expect(y, `${wf.name}: ${e.from} → ${e.to}`).toBeLessThanOrEqual(height);
+        }
+        expect(e.labelTop + (e.lines.length - 1) * 11, `${wf.name}: label of ${e.from} → ${e.to}`).toBeLessThanOrEqual(height);
+      }
+    }
+  });
+});

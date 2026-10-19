@@ -6,13 +6,20 @@
 // resolved by batch-reading the linked operational records (MOR, inspections,
 // maintenance, documents, actions) — degrades gracefully if a source is
 // unavailable, so the register still loads.
+//
+// ⭐ Since migration 264 a risk MOVES through the shared workflow manager
+// ('gt_risk', seeded from utils/gtWorkflow.js): its step is its status, and
+// workflow_move() makes the change — one UPDATE of the row, so the
+// hash-chained audit records it exactly as before. A note on Close or
+// Supersede is kept as the closure or supersession reason.
 
 import { writable } from 'svelte/store';
 import { api } from '#lib/utils/api.js';
 import { logAudit } from '#lib/utils/auditLogger.js';
 import { getLogger } from '#lib/utils/logger.js';
-import { makeRun } from './gtStoreHelpers.js';
-import { isValidRiskTransition } from '#lib/apps/golden_thread/utils/gtRiskLifecycle.js';
+import { makeRun, readGtWorkflow, setUpGtWorkflow } from './gtStoreHelpers.js';
+import { itemHistory, moveItem, assignItem, listAssignees } from '#lib/workflow/workflowApi.js';
+import { DEFAULT_GT_RISK_WORKFLOW, GT_RISK_WORKFLOW_KEY } from '#lib/apps/golden_thread/utils/gtWorkflow.js';
 import { riskAlertSignals } from '#lib/apps/golden_thread/utils/gtRiskScoring.js';
 import {
   listRisks, getRisk, createRisk, updateRisk,
@@ -31,6 +38,12 @@ function createGtRiskStore() {
     // ⛔ The live signals could not be worked out, so no risk shows an
     // escalation it may have. Said on screen rather than read as "none".
     alertsUnavailable: false,
+    // The risk workflow (264) and its items: where each risk is, and who has it.
+    workflow:     /** @type {any|null} */ (null),
+    steps:        /** @type {any[]} */ ([]),
+    moves:        /** @type {any[]} */ ([]),
+    fields:       /** @type {any[]} */ ([]),
+    items:        /** @type {any[]} */ ([]),
     loading:      false,
     saving:       false,
     error:        '',
@@ -84,7 +97,7 @@ function createGtRiskStore() {
   /** Load the full register + all links, and compute per-risk live alerts. */
   const load = storeLoader(update,
     async () => {
-      const [risks, links] = await Promise.all([listRisks(), listAllRiskLinks()]);
+      const [risks, links, wf] = await Promise.all([listRisks(), listAllRiskLinks(), readGtWorkflow(GT_RISK_WORKFLOW_KEY)]);
       let alertsByRisk = {};
       let alertsUnavailable = false;
       try {
@@ -95,9 +108,9 @@ function createGtRiskStore() {
         alertsUnavailable = true;
         logger('⚠ alert computation failed:', err?.message);
       }
-      return { risks, alertsByRisk, alertsUnavailable };
+      return { risks, alertsByRisk, alertsUnavailable, ...wf };
     },
-    ({ risks, alertsByRisk, alertsUnavailable }) => ({ risks, alertsByRisk, alertsUnavailable }),
+    (data) => data,
     { what: 'the risk register', clearError: '', log: logger });
 
   /** Load one risk into selectedRisk + its links. */
@@ -139,21 +152,72 @@ function createGtRiskStore() {
     });
   }
 
-  /** Drive a lifecycle transition, guarded client-side by the same table the DB enforces. */
-  async function transitionRisk(risk, toStatus, extra = {}) {
-    return run(async (userId) => {
-      if (!isValidRiskTransition(risk.status, toStatus)) {
-        throw new Error(`Invalid risk status transition: ${risk.status} → ${toStatus}`);
-      }
-      const updated = await updateRisk(risk.id, { status: toStatus, ...extra }, userId);
+  /** Re-read only the workflow's items (after a move or an assignment). */
+  async function reloadItems() {
+    const wf = await readGtWorkflow(GT_RISK_WORKFLOW_KEY);
+    update((s) => ({ ...s, ...wf }));
+  }
+
+  /** Admin: save the shipped risk workflow when there is none, attach the register, then read. */
+  async function setUpWorkflow() {
+    await setUpGtWorkflow(DEFAULT_GT_RISK_WORKFLOW);
+    logAudit('create', 'workflow', null, DEFAULT_GT_RISK_WORKFLOW.name, { appId: 'golden_thread', eventCategory: 'golden_thread' });
+    await load();
+  }
+
+  /** Admin, on opening Golden Thread: set the risk workflow up if there is none. */
+  async function ensureWorkflow() {
+    const wf = await readGtWorkflow(GT_RISK_WORKFLOW_KEY);
+    if (!wf.workflow) await setUpWorkflow();
+  }
+
+  /** @param {string} riskId */
+  function itemFor(riskId) {
+    let item = null;
+    update((s) => { item = s.items.find((i) => i.subject_id === riskId) ?? null; return s; });
+    if (!item) throw new Error('This risk is not in its workflow yet — an administrator opening Golden Thread sets it up.');
+    return /** @type {any} */ (item);
+  }
+
+  /**
+   * Move a risk on through its workflow. The database sets the status (and the
+   * reason, from the note, on Close or Supersede) — one UPDATE, chained in gt_audit.
+   * @param {any} risk @param {string} to @param {string} [note]
+   */
+  async function moveRisk(risk, to, note = '') {
+    return run(async () => {
+      const item = itemFor(risk.id);
+      const from = item.step_key;
+      await moveItem(item.id, to, note);
       logAudit('update', 'gt_risk', risk.id, risk.reference, {
-        appId: 'golden_thread', eventCategory: 'golden_thread', severity: 'info',
-        afterData: { from: risk.status, to: toStatus, ...extra },
+        appId: 'golden_thread', eventCategory: 'golden_thread', severity: 'info', afterData: { from, to },
       });
+      const updated = await getRisk(risk.id);
       update((s) => ({ ...s, selectedRisk: s.selectedRisk?.id === risk.id ? updated : s.selectedRisk }));
       await load();
       return { risk: updated };
     });
+  }
+
+  /** Give a risk to someone, or to nobody — the workflow's assignee. */
+  async function assign(riskId, userId) {
+    return run(async () => {
+      const result = await assignItem(itemFor(riskId).id, userId || null);
+      await reloadItems();
+      return { changed: !!result?.changed };
+    });
+  }
+
+  /** Who a risk may be given to. */
+  function assignees() {
+    let wf = null;
+    update((s) => { wf = s.workflow; return s; });
+    return wf ? listAssignees(/** @type {any} */ (wf).id) : Promise.resolve([]);
+  }
+
+  /** One item's history (for the printable record). @param {string} itemId */
+  function history(itemId) {
+    return itemHistory(itemId);
   }
 
   async function addLink(riskId, link) {
@@ -180,7 +244,13 @@ function createGtRiskStore() {
     loadRiskLinks,
     createRisk: createRiskEntry,
     saveRisk,
-    transitionRisk,
+    setUpWorkflow,
+    ensureWorkflow,
+    reloadItems,
+    moveRisk,
+    assign,
+    assignees,
+    history,
     addLink,
     removeLink,
     clearError,

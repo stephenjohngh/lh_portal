@@ -30,6 +30,8 @@ export const WORKFLOW_TABS = Object.freeze({
   complaint: null,          // the whole Complaints app — Open and All both list them
   maintenance_job: null,    // Due work and All Jobs both show jobs
   mor_case: null,           // the whole MOR app — its dashboard and case list both
+  gt_document: 'Register',
+  gt_risk: 'Risks',
 });
 
 /** @param {string|null|undefined} appId */

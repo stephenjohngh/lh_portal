@@ -39,3 +39,24 @@ export function makeRun(update, logger) {
     }
   };
 }
+
+// ── The workflow manager (migration 264) ─────────────────────────────────────
+// A document or risk moves through its workflow: workflow_move() checks the
+// move, then changes the row with ONE ordinary UPDATE — so gt_write_audit()
+// chains it exactly as before, against the person who made the move.
+
+import { api } from '#lib/utils/api.js';
+import { loadWorkflow, listItems, saveWorkflow } from '#lib/workflow/workflowApi.js';
+
+/** A Golden Thread workflow and its items; empty until it is set up. @param {string} key */
+export async function readGtWorkflow(key) {
+  const wf = await loadWorkflow(key);
+  if (!wf) return { workflow: null, steps: [], moves: [], fields: [], items: [] };
+  return { ...wf, items: await listItems(wf.workflow.id) };
+}
+
+/** Admin: save a shipped Golden Thread workflow and attach what was registered before it. @param {any} seed */
+export async function setUpGtWorkflow(seed) {
+  await saveWorkflow(seed);
+  await api.rpc('gt_attach_to_workflow', { p_key: seed.key });
+}

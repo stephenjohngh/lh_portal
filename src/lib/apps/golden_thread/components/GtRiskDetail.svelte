@@ -1,12 +1,18 @@
 <!-- src/lib/apps/golden_thread/components/GtRiskDetail.svelte -->
-<!-- Risk detail: scoring, live rating, typed links, lifecycle actions, metadata.
+<!-- Risk detail: scoring, live rating, typed links, its workflow (migration
+     264: the shared WorkflowItemControls — a move is one UPDATE of the row, so
+     the hash-chained audit records it as before), metadata.
      Calls gtRiskStore directly (like GtDocumentDetail → gtStore). Add-link
      supports a MOR-case / GT-document picker and a raw id for other targets. -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { gtRiskStore } from '#lib/apps/golden_thread/stores/gtRiskStore.js';
   import { permissions } from '#lib/stores/permissions.js';
-  import { nextRiskStates, RISK_STATUS_LABELS, RISK_STATUS_BADGE } from '#lib/apps/golden_thread/utils/gtRiskLifecycle.js';
+  import { RISK_STATUS_LABELS, RISK_STATUS_BADGE } from '#lib/apps/golden_thread/utils/gtRiskLifecycle.js';
+  import { auth } from '#lib/stores/auth.js';
+  import { profiles, profilesStore } from '#lib/stores/profiles.js';
+  import { onMount } from 'svelte';
+  import WorkflowItemControls from '#lib/workflow/WorkflowItemControls.svelte';
   import {
     RISK_DOMAIN_LABELS, effectiveScore, scoreBand, liveRating, ALERT_LABELS,
   } from '#lib/apps/golden_thread/utils/gtRiskScoring.js';
@@ -15,12 +21,11 @@
   import Badge         from '#lib/components/common/Badge.svelte';
   import Button        from '#lib/components/common/Button.svelte';
   import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
-  import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
   import Modal         from '#lib/components/common/Modal.svelte';
   import FormInput     from '#lib/components/common/FormInput.svelte';
   import FormSelect    from '#lib/components/common/FormSelect.svelte';
   import FormTextarea  from '#lib/components/common/FormTextarea.svelte';
-  import { fmtDate }   from '#lib/utils/dates.js';
+  import { fmtDate, today } from '#lib/utils/dates.js';
 
   export let risk;
   export let links = [];
@@ -37,21 +42,43 @@
   $: baseBand = scoreBand(effective);
   $: live = liveRating(risk, signals);
 
-  // -- Lifecycle actions ------------------------------------------------------
-  const REASON_STATES = { closed: 'closure_reason', superseded: 'supersession_reason' };
-  $: actions = nextRiskStates(risk.status);
-  /** @type {string|null} */
-  let pending = null;
-  let reasonText = '';
-  $: needsReason = pending != null && pending in REASON_STATES;
-
-  function requestAction(to) { pending = to; reasonText = ''; }
-  async function confirmAction() {
-    const to = pending;
-    const extra = to && to in REASON_STATES ? { [REASON_STATES[to]]: reasonText.trim() || null } : {};
-    const r = await gtRiskStore.transitionRisk(risk, to, extra);
-    if (r.success) { pending = null; reasonText = ''; dispatch('changed'); }
+  // -- Its workflow (migration 264) -------------------------------------------
+  onMount(() => { profilesStore.load(); });
+  $: wf       = $gtRiskStore.workflow;
+  $: wfItem   = risk?.id ? ($gtRiskStore.items ?? []).find((i) => i.subject_id === risk.id) ?? null : null;
+  $: me       = $auth.user?.id ?? null;
+  $: nameById = Object.fromEntries(($profiles.list ?? []).map((p) => [p.id, p.full_name ?? '']));
+  let assigneeList = [];
+  let assigneesFor = null;
+  $: if (wf?.id && wf.id !== assigneesFor) {
+    assigneesFor = wf.id;
+    gtRiskStore.assignees().then((l) => { assigneeList = l; }, () => { assigneeList = []; });
   }
+  /** A store result as the controls expect it: a throw carries the reason. */
+  function orThrow(/** @type {any} */ r) {
+    if (r?.success) return r;
+    gtRiskStore.clearError();
+    throw new Error(r?.error || 'That could not be done.');
+  }
+  async function onWfMove(/** @type {any} */ m, /** @type {string} */ note) {
+    orThrow(await gtRiskStore.moveRisk(risk, m.to_key, note));
+    dispatch('changed');
+  }
+  async function onWfAssign(/** @type {string|null} */ uid) {
+    orThrow(await gtRiskStore.assign(risk.id, uid));
+  }
+  $: wfAudit = risk ? { appId: 'golden_thread', entityType: 'gt_risk', entityId: risk.id } : null;
+  $: wfRecord = risk ? {
+    filenameStem: `GT_${risk.reference}_${today()}`,
+    subject: () => ({
+      title: `Golden Thread risk — ${risk.reference}`,
+      facts: [['Title', risk.title], ['Domain', RISK_DOMAIN_LABELS[risk.domain] ?? risk.domain],
+        ['Inherent score', String(inherent ?? '—')], ['Effective score', String(effective ?? '—')],
+        ['Review due', risk.review_due ? fmtDate(risk.review_due) : '—']],
+      sections: [{ heading: 'Description', text: risk.description }, { heading: 'Closure reason', text: risk.closure_reason },
+        { heading: 'Supersession reason', text: risk.supersession_reason }],
+    }),
+  } : null;
 
   // -- Links ------------------------------------------------------------------
   // The database's own lists, held to it by dbRulesParity.test.js.
@@ -127,16 +154,15 @@
     </div>
   {/if}
 
-  <!-- Lifecycle actions -->
-  {#if actions.length}
-    <div class="flex flex-wrap gap-2">
-      {#each actions as to}
-        <ProtectedButton action="modify" variant={to === 'closed' || to === 'superseded' ? 'danger' : 'blue'} size="small"
-          disabled={saving} on:click={() => requestAction(to)}>
-          → {RISK_STATUS_LABELS[to] ?? to}
-        </ProtectedButton>
-      {/each}
-    </div>
+  <!-- Its workflow (264): moves, who has it, history -->
+  {#if !wfItem}
+    <p class="text-xs text-slate-500">This risk is not in its workflow yet — an administrator opening Golden Thread sets it up.</p>
+  {:else}
+    <WorkflowItemControls item={wfItem} workflow={wf} steps={$gtRiskStore.steps} moves={$gtRiskStore.moves}
+      fields={$gtRiskStore.fields} reference={risk.reference} isAdmin={$permissions.isAdmin} {canEdit} {me}
+      assignees={assigneeList} {nameById}
+      onMove={onWfMove} onAssign={onWfAssign} audit={wfAudit} record={wfRecord}
+      finishedText={risk.status === 'closed' ? 'The risk is closed. It can be reopened to monitoring.' : 'Nothing further happens to this risk.'} />
   {/if}
 
   <!-- Scoring -->
@@ -201,25 +227,3 @@
     </div>
   </div>
 </Modal>
-
-<!-- Lifecycle confirm / reason -->
-{#if needsReason}
-  <Modal show={true} title={`${RISK_STATUS_LABELS[pending]} risk`} size="small" on:close={() => (pending = null)}>
-    <div class="space-y-3">
-      <FormTextarea label="Reason" bind:value={reasonText} rows={3} placeholder="Why is this risk {pending}?" />
-      <div class="flex justify-end gap-2">
-        <Button variant="secondary" on:click={() => (pending = null)}>Cancel</Button>
-        <Button variant="danger" loading={saving} disabled={saving} on:click={confirmAction}>{RISK_STATUS_LABELS[pending]}</Button>
-      </div>
-    </div>
-  </Modal>
-{:else}
-  <ConfirmDialog
-    show={pending != null}
-    title={pending ? `Move to ${RISK_STATUS_LABELS[pending]}` : ''}
-    message={pending ? `Change status to "${RISK_STATUS_LABELS[pending]}" for ${risk.reference}?` : ''}
-    processing={saving}
-    on:confirm={confirmAction}
-    on:cancel={() => (pending = null)}
-  />
-{/if}

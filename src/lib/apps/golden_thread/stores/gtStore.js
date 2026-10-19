@@ -7,17 +7,20 @@
 // authority — these methods stay in lockstep with gtLifecycle.js, which mirrors
 // the SQL transition validator.
 //
-// Build status: register load + completeness + lifecycle transitions implemented
-// (steps 4–5). Ingest (createDraft) is producer-side — see golden_thread/public.js
+// ⭐ Since migration 264 a document MOVES through the shared workflow manager
+// ('gt_document', seeded from utils/gtWorkflow.js): its step is its status, and
+// workflow_move() makes the change — one UPDATE of the row, so the hash-chained
+// audit records it exactly as it did when this store wrote the row itself.
+// Accepting a successor supersedes the prior in the same transaction (R4 gone). Ingest (createDraft) is producer-side — see golden_thread/public.js
 // registerDocument (step 3).
 
-import { today as todayLondon, addDaysISO } from '../../../utils/dates.js';
 import { writable }  from 'svelte/store';
 import { api }       from '#lib/utils/api.js';
 import { logAudit }  from '#lib/utils/auditLogger.js';
 import { getLogger } from '#lib/utils/logger.js';
-import { isValidTransition } from '#lib/apps/golden_thread/utils/gtLifecycle.js';
-import { makeRun } from './gtStoreHelpers.js';
+import { makeRun, readGtWorkflow, setUpGtWorkflow } from './gtStoreHelpers.js';
+import { itemHistory, moveItem, assignItem, listAssignees } from '#lib/workflow/workflowApi.js';
+import { DEFAULT_GT_DOCUMENT_WORKFLOW, GT_DOCUMENT_WORKFLOW_KEY } from '#lib/apps/golden_thread/utils/gtWorkflow.js';
 import {
   scheduleOneCompleteness, registerDocument,
   listCitations, listDocumentLinks, cite, removeLink,
@@ -28,17 +31,6 @@ import {
 import { storeLoader } from '../../../utils/storeLoad.js';
 
 const logger = getLogger('gtStore');
-
-/** Today as an ISO date string (YYYY-MM-DD), en-GB-safe (no locale parsing). */
-function todayISO() {
-  return todayLondon();
-}
-
-/** effective_from + cycleDays, as an ISO date string; null when no cycle set. */
-function reviewDueFrom(effectiveFromISO, cycleDays) {
-  if (!cycleDays) return null;
-  return addDaysISO(effectiveFromISO, cycleDays);
-}
 
 function createGtStore() {
   const { subscribe, update } = writable({
@@ -51,39 +43,18 @@ function createGtStore() {
     safetyCaseNotifications: /** @type {any[]} */ ([]), // gt_safety_case_notifications (EXT-13.R2)
     links:            /** @type {{ outgoing: any[], incoming: any[] }} */ ({ outgoing: [], incoming: [] }),
     auditHistory:     /** @type {any[]} */ ([]),   // gt_audit rows for the selected document (admin-readable)
+    // The document workflow (264) and its items: where each document is, and who has it.
+    workflow:         /** @type {any|null} */ (null),
+    steps:            /** @type {any[]} */ ([]),
+    moves:            /** @type {any[]} */ ([]),
+    fields:           /** @type {any[]} */ ([]),
+    items:            /** @type {any[]} */ ([]),
     loading:          false,
     saving:           false,
     error:            ''
   });
 
   // ── Internal helpers ────────────────────────────────────────────────────────
-
-  /**
-   * Apply a status transition to a document, guarded client-side by the same
-   * table the DB enforces. Returns the updated row.
-   * @param {object} doc      the current document row (must hold .id and .status)
-   * @param {string} toStatus
-   * @param {object} extra    additional columns to write alongside the status
-   * @param {string} userId
-   * @param {string} auditAction
-   */
-  async function transition(doc, toStatus, extra, userId, auditAction) {
-    if (!isValidTransition(doc.status, toStatus)) {
-      throw new Error(`Invalid GT status transition: ${doc.status} → ${toStatus}`);
-    }
-    const updated = await api.update('gt_documents', doc.id, {
-      status: toStatus,
-      updated_by: userId,
-      ...extra
-    }, true);
-    logAudit(auditAction, 'gt_document', doc.id, doc.title, {
-      appId: 'golden_thread',
-      eventCategory: 'golden_thread',
-      severity: 'info',
-      afterData: { from: doc.status, to: toStatus, ...extra }
-    });
-    return updated;
-  }
 
   /** Splice an updated/created document into the in-memory list. */
   function spliceDoc(row) {
@@ -101,9 +72,36 @@ function createGtStore() {
 
   /** Load the full register (all statuses), newest first. */
   const load = storeLoader(update,
-    () => api.getAll('gt_documents', { orderBy: 'created_at', ascending: false }),
-    (documents) => ({ documents }),
+    async () => {
+      const [documents, wf] = await Promise.all([
+        api.getAll('gt_documents', { orderBy: 'created_at', ascending: false }),
+        readGtWorkflow(GT_DOCUMENT_WORKFLOW_KEY),
+      ]);
+      return { documents, ...wf };
+    },
+    (data) => data,
     { what: 'the Golden Thread register', clearError: '' });
+
+  /** Re-read only the workflow's items (after a move or an assignment). */
+  async function reloadItems() {
+    const wf = await readGtWorkflow(GT_DOCUMENT_WORKFLOW_KEY);
+    update((s) => ({ ...s, ...wf }));
+  }
+
+  /** Admin: save the shipped document workflow when there is none, attach the register, then read. */
+  async function setUpWorkflow() {
+    await setUpGtWorkflow(DEFAULT_GT_DOCUMENT_WORKFLOW);
+    logAudit('create', 'workflow', null, DEFAULT_GT_DOCUMENT_WORKFLOW.name, { appId: 'golden_thread', eventCategory: 'golden_thread' });
+    await load();
+  }
+
+  /** @param {string} docId */
+  function itemFor(docId) {
+    let item = null;
+    update((s) => { item = s.items.find((i) => i.subject_id === docId) ?? null; return s; });
+    if (!item) throw new Error('This document is not in its workflow yet — an administrator opening Golden Thread sets it up.');
+    return /** @type {any} */ (item);
+  }
 
   /** Load one document into selectedDocument. */
   async function loadDocument(id) {
@@ -328,91 +326,57 @@ function createGtStore() {
     });
   }
 
-  // ── Lifecycle mutators (admin/editor-gated in the UI) ────────────────────────
-
-  /** draft → under_review */
-  async function submitForReview(id) {
-    return run(async (userId) => {
-      const doc = await api.getById('gt_documents', id);
-      const row = await transition(doc, 'under_review', { reviewer_id: null }, userId, 'submit_for_review');
-      spliceDoc(row);
-    });
-  }
+  // ── Moves (the workflow's — 264) ─────────────────────────────────────────
 
   /**
-   * under_review → current. Applies the supersession rule in the store (§3): set
-   * the accepted doc current with effective_from=today and a computed review_due;
-   * if it supersedes a prior, mark the prior superseded (effective_to=today,
-   * superseded_by=this). Two updates — the trigger validates each.
-   *
-   * KNOWN LIMITATION (R4): the two updates are not atomic. If the second fails,
-   * both versions are briefly 'current' until the prior is re-superseded (rerun
-   * accept’s tail or fix manually). Low-volume register + single-operator use
-   * makes this acceptable for MVP; the durable fix is a SECURITY INVOKER RPC
-   * doing both updates in one transaction.
+   * Move a document on through its workflow. The database sets the status and
+   * its dates (accepting: effective from today and the next review; a
+   * successor supersedes its prior in the same transaction; withdrawing closes
+   * the effective window) — each one UPDATE of a row, chained in gt_audit.
+   * @param {string} docId @param {string} to @param {string} [note]
    */
-  async function accept(id) {
-    return run(async (userId) => {
-      const doc = await api.getById('gt_documents', id);
-      const today = todayISO();
-      const row = await transition(doc, 'current', {
-        effective_from: today,
-        review_due: reviewDueFrom(today, doc.review_cycle_days)
-      }, userId, 'accept');
+  async function moveDocument(docId, to, note = '') {
+    return run(async () => {
+      const item = itemFor(docId);
+      const from = item.step_key;
+      await moveItem(item.id, to, note);
+      let reference = '';
+      update((s) => { reference = s.documents.find((d) => d.id === docId)?.reference ?? ''; return s; });
+      logAudit('update', 'gt_document', docId, reference, {
+        appId: 'golden_thread', eventCategory: 'golden_thread', severity: 'info', afterData: { from, to },
+      });
+      // The document, and — when accepting superseded another — the one it replaced.
+      const row = await api.getById('gt_documents', docId);
       spliceDoc(row);
-
-      if (doc.supersedes) {
-        const prior = await api.getById('gt_documents', doc.supersedes);
-        const priorRow = await transition(prior, 'superseded', {
-          effective_to: today,
-          superseded_by: doc.id
-        }, userId, 'superseded_by_acceptance');
-        spliceDoc(priorRow);
-      }
+      if (to === 'current' && row?.supersedes) spliceDoc(await api.getById('gt_documents', row.supersedes));
+      await reloadItems();
     });
   }
 
-  /** under_review → returned_to_author (terminal; author makes a new draft) */
-  async function returnToAuthor(id, reason) {
-    return run(async (userId) => {
-      const doc = await api.getById('gt_documents', id);
-      const row = await transition(doc, 'returned_to_author',
-        { supersession_reason: reason ?? null }, userId, 'return_to_author');
-      spliceDoc(row);
+  /** Give a document to someone, or to nobody — the workflow's assignee. */
+  async function assign(docId, userId) {
+    return run(async () => {
+      const result = await assignItem(itemFor(docId).id, userId || null);
+      await reloadItems();
+      return { changed: !!result?.changed };
     });
   }
 
-  /**
-   * current → withdrawn, or draft → withdrawn (admin only — also enforced by the
-   * DB trigger; migration 149 added the draft exit for mistaken/orphan drafts).
-   * Stamps effective_to so time-travel stops treating the document as current
-   * from today (S3 fix — without it a withdrawn doc looked current forever).
-   */
-  async function withdraw(id, reason) {
-    return run(async (userId) => {
-      const doc = await api.getById('gt_documents', id);
-      const row = await transition(doc, 'withdrawn', {
-        supersession_reason: reason ?? null,
-        // Only close the effective window if one was open (drafts have neither).
-        ...(doc.effective_from && !doc.effective_to ? { effective_to: todayISO() } : {})
-      }, userId, 'withdraw');
-      spliceDoc(row);
-    });
+  /** Who a document may be given to. */
+  function assignees() {
+    let wf = null;
+    update((s) => { wf = s.workflow; return s; });
+    return wf ? listAssignees(/** @type {any} */ (wf).id) : Promise.resolve([]);
   }
 
-  /** superseded → current (reactivation) */
-  async function reactivate(id) {
-    return run(async (userId) => {
-      const doc = await api.getById('gt_documents', id);
-      const today = todayISO();
-      const row = await transition(doc, 'current', {
-        effective_from: today,
-        effective_to: null,
-        superseded_by: null,
-        review_due: reviewDueFrom(today, doc.review_cycle_days)
-      }, userId, 'reactivate');
-      spliceDoc(row);
-    });
+  /** One item's history (for the printable record). @param {string} itemId */
+  function history(itemId) {
+    return itemHistory(itemId);
+  }
+
+  /** Show a failure the screen met (e.g. setting the workflow up). @param {string} message */
+  function reportError(message) {
+    update((s) => ({ ...s, error: message }));
   }
 
   /**
@@ -451,11 +415,13 @@ function createGtStore() {
     addLink,
     removeDocumentLink,
     createDraft,
-    submitForReview,
-    accept,
-    returnToAuthor,
-    withdraw,
-    reactivate,
+    setUpWorkflow,
+    reloadItems,
+    moveDocument,
+    assign,
+    assignees,
+    history,
+    reportError,
     clearError
   };
 }

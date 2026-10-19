@@ -2,23 +2,26 @@
 <!--
   Golden Thread document detail + lifecycle actions (build step 4). Shows the
   register metadata, the attached file (via the shared document_library viewer),
-  the supersession references, and the lifecycle actions valid from the current
-  status. Actions are gated twice: by permission (ProtectedButton) and by the
-  transition table (nextStates) — which mirrors the DB trigger, so the UI only
-  ever offers transitions the database will accept.
+  the supersession references, and — since migration 264 — the shared
+  WorkflowItemControls: its step, who it is with, the moves from it (each held
+  back with its reason) and the history. ⛔ A move is one UPDATE of the row,
+  so the hash-chained audit records it exactly as before.
 -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { gtStore } from '#lib/apps/golden_thread/stores/gtStore.js';
   import { permissions } from '#lib/stores/permissions.js';
-  import { nextStates, GT_STATUS_LABELS, GT_STATUS_BADGE } from '#lib/apps/golden_thread/utils/gtLifecycle.js';
+  import { GT_STATUS_LABELS, GT_STATUS_BADGE } from '#lib/apps/golden_thread/utils/gtLifecycle.js';
+  import { auth } from '#lib/stores/auth.js';
+  import { profiles, profilesStore } from '#lib/stores/profiles.js';
+  import { onMount } from 'svelte';
+  import WorkflowItemControls from '#lib/workflow/WorkflowItemControls.svelte';
   import { LINK_TARGET_TYPES, LINK_RELATIONS, REVIEW_BAND_LABEL, REVIEW_BAND_BADGE } from '#lib/apps/golden_thread/utils/gtConstants.js';
   import { reviewBand, daysToReview } from '#lib/apps/golden_thread/utils/gtReview.js';
   import { listCases as listMorCases, morCaseLabel } from '#lib/apps/mor/public.js';
   import Badge           from '#lib/components/common/Badge.svelte';
   import Button          from '#lib/components/common/Button.svelte';
   import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
-  import ConfirmDialog   from '#lib/components/common/ConfirmDialog.svelte';
   import Modal           from '#lib/components/common/Modal.svelte';
   import FormInput       from '#lib/components/common/FormInput.svelte';
   import FormSelect      from '#lib/components/common/FormSelect.svelte';
@@ -124,59 +127,61 @@
     gtStore.removeDocumentLink(linkId, doc.id);
   }
 
-  // Action config per *target* status. nextStates() gives the valid targets for
-  // the current status; 'superseded' is excluded because you never supersede a
-  // document directly — you accept a successor draft, which supersedes the prior.
-  const ACTION = {
-    under_review:       { label: 'Submit for review', variant: 'primary',  requireAdmin: false, reason: false },
-    current:            { label: 'Accept — make current', variant: 'green', requireAdmin: false, reason: false },
-    reactivate:         { label: 'Reactivate', variant: 'blue',             requireAdmin: false, reason: false },
-    returned_to_author: { label: 'Return to author', variant: 'amber',      requireAdmin: false, reason: true },
-    withdrawn:          { label: 'Withdraw', variant: 'danger',             requireAdmin: true,  reason: true }
+  // ── Its workflow (migration 264) ──────────────────────────────────────────
+  onMount(() => { profilesStore.load(); });
+  $: wf       = $gtStore.workflow;
+  $: wfItem   = doc?.id ? ($gtStore.items ?? []).find((i) => i.subject_id === doc.id) ?? null : null;
+  $: me       = $auth.user?.id ?? null;
+  $: canEdit  = $permissions.isAdmin || $permissions.canModify;
+  $: nameById = Object.fromEntries(($profiles.list ?? []).map((p) => [p.id, p.full_name ?? '']));
+  let assigneeList = [];
+  let assigneesFor = null;
+  $: if (wf?.id && wf.id !== assigneesFor) {
+    assigneesFor = wf.id;
+    gtStore.assignees().then((l) => { assigneeList = l; }, () => { assigneeList = []; });
+  }
+
+  /** A store result as the controls expect it: a throw carries the reason. */
+  function orThrow(/** @type {any} */ r) {
+    if (r?.success) return r;
+    gtStore.clearError();            // the controls show the reason beside the move
+    throw new Error(r?.error || 'That could not be done.');
+  }
+  async function onWfMove(/** @type {any} */ m, /** @type {string} */ note) {
+    orThrow(await gtStore.moveDocument(doc.id, m.to_key, note));
+    dispatch('changed');
+  }
+  async function onWfAssign(/** @type {string|null} */ uid) {
+    orThrow(await gtStore.assign(doc.id, uid));
+  }
+
+  /** Superseding is never pressed: accepting the successor makes it (264). */
+  const extraRefusal = (/** @type {any} */ m) => (m.from_key === 'current' && m.to_key === 'superseded'
+    ? 'Register the version that replaces it and accept it: that supersedes this one.'
+    : null);
+
+  /** Accepting is the one move that changes another document too. */
+  const confirmMove = (/** @type {any} */ m) => {
+    if (m.to_key === 'current' && m.from_key === 'under_review') {
+      return { title: 'Accept — make current?', message: doc.supersedes
+        ? 'This document becomes current from today, and the version it replaces is superseded. Both are recorded in the audit chain against your name.'
+        : 'This document becomes current from today. It is recorded in the audit chain against your name.' };
+    }
+    return null;
   };
 
-  // Build the action list. From 'superseded', target 'current' means reactivation
-  // (different label/handler) — disambiguate with a synthetic key.
-  $: actions = nextStates(doc?.status)
-    .filter((t) => t !== 'superseded')
-    .map((t) => {
-      const key = t === 'current' && doc.status === 'superseded' ? 'reactivate' : t;
-      return { target: t, key, ...ACTION[key] };
-    });
-
-  /** @type {{ target: string, key: string, label: string, requireAdmin: boolean, reason: boolean } | null} */
-  let pending = null;
-  let reasonText = '';
-
-  function requestAction(a) {
-    pending = a;
-    reasonText = '';
-  }
-  function cancel() {
-    pending = null;
-    reasonText = '';
-  }
-
-  async function confirm() {
-    if (!pending) return;
-    const { target, reason } = pending;
-    let r;
-    if (target === 'under_review')            r = await gtStore.submitForReview(doc.id);
-    else if (pending.key === 'reactivate')    r = await gtStore.reactivate(doc.id);
-    else if (target === 'current')            r = await gtStore.accept(doc.id);
-    else if (target === 'returned_to_author') r = await gtStore.returnToAuthor(doc.id, reasonText.trim());
-    else if (target === 'withdrawn')          r = await gtStore.withdraw(doc.id, reasonText.trim());
-
-    if (r?.success) {
-      pending = null;
-      reasonText = '';
-      dispatch('changed');
-    }
-  }
-
-  // Reason actions confirm via the Modal; the rest via ConfirmDialog.
-  $: reasonPending = !!pending && pending.reason;
-  $: simplePending = !!pending && !pending.reason;
+  $: wfAudit = doc ? { appId: 'golden_thread', entityType: 'gt_document', entityId: doc.id } : null;
+  $: wfRecord = doc ? {
+    filenameStem: `GT_${doc.reference}_${today()}`,
+    subject: () => ({
+      title: `Golden Thread document — ${doc.reference}`,
+      facts: [['Title', doc.title], ['Schedule-1 category', doc.schedule1_category], ['Document type', doc.document_type],
+        ['Effective from', doc.effective_from ? fmtDate(doc.effective_from) : '—'],
+        ['Effective to', doc.effective_to ? fmtDate(doc.effective_to) : '—'],
+        ['Review due', doc.review_due ? fmtDate(doc.review_due) : '—']],
+      sections: [{ heading: 'Summary', text: doc.summary }, { heading: 'Reason (returned or withdrawn)', text: doc.supersession_reason }],
+    }),
+  } : null;
 </script>
 
 <div class="space-y-5">
@@ -195,21 +200,16 @@
     </Badge>
   </div>
 
-  <!-- Lifecycle actions -->
-  {#if actions.length}
-    <div class="flex flex-wrap gap-2">
-      {#each actions as a (a.key)}
-        <ProtectedButton
-          action="modify"
-          requireAdmin={a.requireAdmin}
-          variant={a.variant}
-          disabled={saving}
-          on:click={() => requestAction(a)}
-        >{a.label}</ProtectedButton>
-      {/each}
-    </div>
+  <!-- Its workflow (264): moves, who has it, history -->
+  {#if !wfItem}
+    <p class="text-xs text-slate-500">This document is not in its workflow yet — an administrator opening Golden Thread sets it up.</p>
   {:else}
-    <p class="text-xs text-slate-500">No lifecycle actions available from this status.</p>
+    <WorkflowItemControls item={wfItem} workflow={wf} steps={$gtStore.steps} moves={$gtStore.moves}
+      fields={$gtStore.fields} reference={doc.reference} isAdmin={$permissions.isAdmin} {canEdit} {me}
+      assignees={assigneeList} {nameById}
+      onMove={onWfMove} onAssign={onWfAssign}
+      {extraRefusal} {confirmMove} audit={wfAudit} record={wfRecord}
+      finishedText={doc.status === 'current' ? 'This document is current. It is superseded by accepting the version that replaces it.' : 'Nothing further happens to this document.'} />
   {/if}
 
   <!-- Metadata grid -->
@@ -368,33 +368,6 @@
     <div class="flex justify-end gap-2">
       <Button variant="secondary" disabled={saving} on:click={() => (showAddLink = false)}>Cancel</Button>
       <Button variant="primary" loading={saving} disabled={saving} on:click={addLink}>Add</Button>
-    </div>
-  </div>
-</Modal>
-
-<!-- Simple confirm (no reason) -->
-<ConfirmDialog
-  show={simplePending}
-  title={pending?.label ?? 'Confirm'}
-  message={`${pending?.label ?? 'Proceed'} for "${doc.title}"?`}
-  confirmText={pending?.label ?? 'Confirm'}
-  danger={pending?.variant === 'danger'}
-  processing={saving}
-  on:confirm={confirm}
-  on:cancel={cancel}
-/>
-
-<!-- Reason-bearing confirm (return to author / withdraw) -->
-<Modal show={reasonPending} title={pending?.label ?? ''} size="small" on:close={cancel}>
-  <div class="space-y-4">
-    <FormTextarea label="Reason" bind:value={reasonText} rows={3} required
-      placeholder="Why are you {pending?.label?.toLowerCase()}?" />
-    <div class="flex justify-end gap-2">
-      <Button variant="secondary" disabled={saving} on:click={cancel}>Cancel</Button>
-      <Button variant={pending?.variant === 'danger' ? 'danger' : 'primary'}
-        loading={saving} disabled={saving || !reasonText.trim()} on:click={confirm}>
-        {pending?.label}
-      </Button>
     </div>
   </div>
 </Modal>
