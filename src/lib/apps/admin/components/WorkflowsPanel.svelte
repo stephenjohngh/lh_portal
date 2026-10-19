@@ -7,6 +7,7 @@
      Saved whole, through workflow_save(), which makes the same checks as
      workflowProblem() below and refuses to remove a step something is in. -->
 <script>
+  import { workflowLabel, sortByLabel } from '#lib/workflow/workflowNaming.js';
   import { onMount } from 'svelte';
   import { listWorkflows, loadWorkflow, saveWorkflow, listChanges, listEvents, listTimerRuns, runTimers, setPublicStatus } from '#lib/workflow/workflowApi.js';
   import { publicStatusAllowed, publicStageName } from '#lib/workflow/workflowModel.js';
@@ -395,7 +396,7 @@
   {#if ready && workflows.length}
     <label class="flex items-center gap-2 text-sm text-slate-300">Workflow
       <select bind:value={chosenKey} class={inputCls}>
-        {#each workflows as w (w.key)}<option value={w.key}>{w.name}{w.app_id === 'cases' ? ' (Cases)' : ''}</option>{/each}
+        {#each sortByLabel(workflows) as w (w.key)}<option value={w.key}>{workflowLabel(w)}</option>{/each}
       </select>
     </label>
     <div class="flex flex-wrap items-center gap-2" data-testid="workflow-transfer">
@@ -470,7 +471,7 @@
           <label class="flex items-center gap-2 text-xs text-slate-300">
             <input type="checkbox" bind:checked={showUse} /> Show how it is being used</label>
         </div>
-        <WorkflowDiagram {steps} {moves} {stats} title="{current.name} — diagram" />
+        <WorkflowDiagram {steps} {moves} {stats} title="{workflowLabel(current)} — diagram" />
         {#if stats}<p class="text-xs text-slate-400">{stats.total} in all · {stats.open} open · {stats.overdue} overdue.</p>{/if}
         {#if simulated && deadlinesEdited}
           <p class="text-xs text-amber-200" data-testid="workflow-simulated">With the deadlines as they are in the editor,

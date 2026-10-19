@@ -9,7 +9,7 @@ import { DEFAULT_APPLICATION_WORKFLOW as WF } from '../utils/applicationWorkflow
 const h = vi.hoisted(() => {
   const makeStore = (init) => { let v = init; const subs = new Set();
     return { subscribe: (r) => { r(v); subs.add(r); return () => subs.delete(r); }, set: (n) => { v = n; subs.forEach((r) => r(v)); }, get: () => v }; };
-  return { req: makeStore({}), perms: makeStore({ isAdmin: false, canModify: true }), moved: /** @type {any[]} */ ([]),
+  return { req: makeStore({}), park: makeStore({ applications: [], bays: [] }), wl: makeStore({ items: [], steps: [] }), perms: makeStore({ isAdmin: false, canModify: true }), moved: /** @type {any[]} */ ([]),
     parkingLoads: 0, setUp: 0, action: /** @type {string|null} */ (null), assigned: /** @type {any[]} */ ([]), hist: /** @type {any[]|null} */ (null) };
 });
 vi.mock('../stores/requestStore.js', () => ({ requestStore: {
@@ -21,7 +21,8 @@ vi.mock('../stores/requestStore.js', () => ({ requestStore: {
   assign: async (r, uid) => { h.assigned.push([r.reference, uid]); return { assigned_to: uid, changed: true }; },
   assignees: async () => [{ id: 'me', full_name: 'Pat Smith' }, { id: 'u2', full_name: 'Sam Lee' }],
 } }));
-vi.mock('../stores/parkingStore.js', () => ({ parkingStore: { load: async () => { h.parkingLoads += 1; } } }));
+vi.mock('../stores/parkingStore.js', () => ({ parkingStore: { subscribe: h.park.subscribe, load: async () => { h.parkingLoads += 1; } } }));
+vi.mock('../stores/waitingListStore.js', () => ({ waitingListStore: { subscribe: h.wl.subscribe, load: async () => {} } }));
 vi.mock('#lib/workflow/workflowApi.js', () => ({
   setItemFields: async () => ({ fields: {}, changed: true }),
   // The item's history, read by the shared controls (#lib/workflow/WorkflowItemControls).
@@ -48,9 +49,33 @@ function state(list) {
     loading: false, loaded: true, error: null };
 }
 
-beforeEach(() => { cleanup(); h.hist = null; h.assigned.length = 0; h.moved.length = 0; h.parkingLoads = 0; h.setUp = 0; h.action = null; h.perms.set({ isAdmin: false, canModify: true }); });
+beforeEach(() => { cleanup(); h.park.set({ applications: [], bays: [] }); h.wl.set({ items: [], steps: [] }); h.hist = null; h.assigned.length = 0; h.moved.length = 0; h.parkingLoads = 0; h.setUp = 0; h.action = null; h.perms.set({ isAdmin: false, canModify: true }); });
 
 describe('Parking → Applications', () => {
+  it('an accepted application says where its waiting-list place stands, and opens that place', async () => {
+    const accepted = REQ('a', 'PKR-2026-000001', 'waiting_list');
+    accepted.request.application_id = 'p1';
+    h.req.set(state([accepted]));
+    h.park.set({ bays: [{ bay_id: 'b3', ref: 'U/PK/3' }], applications: [
+      { id: 'p1', status: 'offered', wanted_size: 'Car', joined_on: '2026-10-17', offered_bay_id: 'b3', offer_expires_on: '2026-10-29' }] });
+    h.wl.set({ items: [{ subject_id: 'p1', step_key: 'offered' }], steps: [{ key: 'offered', name: 'Offered a bay' }] });
+    const shown = vi.fn();
+    render(ApplicationsTab, { props: { canEdit: true, focusId: 'a' }, events: { showWaitingList: (/** @type {any} */ e) => shown(e.detail) } });
+    const link = await screen.findByTestId('linked-place');
+    expect(link.textContent).toMatch(/Offered a bay — U\/PK\/3, open until 29 Oct 2026/);
+    await fireEvent.click(screen.getByRole('button', { name: /Open this place on the waiting list/ }));
+    expect(shown).toHaveBeenCalledWith('p1');
+  });
+
+  it('a place since removed says so, and offers no link', async () => {
+    const accepted = REQ('a', 'PKR-2026-000001', 'waiting_list');
+    accepted.request.application_id = 'gone';
+    h.req.set(state([accepted]));
+    render(ApplicationsTab, { canEdit: true, focusId: 'a' });
+    expect((await screen.findByTestId('linked-place')).textContent).toMatch(/since been removed/);
+    expect(screen.queryByRole('button', { name: /Open this place/ })).toBeNull();
+  });
+
   it('lists the open applications with their step; finished ones are behind the filter', async () => {
     h.req.set(state([REQ('a', 'PKR-2026-000001', 'received'), REQ('b', 'PKR-2026-000002', 'declined')]));
     render(ApplicationsTab, { canEdit: true });

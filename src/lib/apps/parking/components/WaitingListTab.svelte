@@ -11,6 +11,7 @@
   import { onMount, createEventDispatcher } from 'svelte';
   import { parkingStore } from '../stores/parkingStore.js';
   import { waitingListStore } from '../stores/waitingListStore.js';
+  import { requestStore } from '../stores/requestStore.js';
   import {
     queue, positionOf, validateApplication, validateOffer, bayOfferProblem, offerLapsed, nextFor, agreementForOffer,
     defaultExpiry, ANY_SIZE, APPLICATION_STATUS_LABEL, OPEN,
@@ -33,6 +34,8 @@
   import HolderFields   from './HolderFields.svelte';
 
   export let canEdit = false;
+  /** A place to open when the tab opens (from an application's link). @type {string|null} */
+  export let focusId = null;
 
   const dispatch = createEventDispatcher();
   const today = todayISO();
@@ -47,6 +50,10 @@
       if (!$waitingListStore.workflow && $permissions.isAdmin) await waitingListStore.setUpWorkflow();
       const [list] = await Promise.all([waitingListStore.assignees(), profilesStore.load()]);
       assignees = list;
+      if (focusId) { selectedId = focusId; show = 'all'; }
+      // The online application each place came from, if any — read alone, so a
+      // failure costs only the link, never the list.
+      requestStore.load().catch((/** @type {any} */ err) => { requestReadError = errMessage(err, 'Could not read which online application each place came from.'); });
     } catch (/** @type {any} */ err) { error = errMessage(err, 'Could not set up the waiting list’s workflow.'); }
     finally { ready = true; }
   });
@@ -63,6 +70,7 @@
   let busy = false;
   /** @type {string|null} */
   let selectedId = null;
+  let requestReadError = '';
 
   $: holderName = (id) => {
     const h = s.holders.find(x => x.id === id);
@@ -196,6 +204,9 @@
   };
   const onAssign = (/** @type {string|null} */ userId) => (selected ? waitingListStore.assign(selected.id, userId) : Promise.resolve(null));
   $: audit = selected ? { appId: 'parking', entityType: 'parking_application', entityId: selected.id } : null;
+  // The online application a place came from (parking_requests.application_id):
+  // the two workflows stay separate and are linked both ways.
+  $: requestOf = (/** @type {string} */ id) => $requestStore.requests.find((r) => r.application_id === id) ?? null;
   $: record = selected ? {
     filenameStem: `waiting-list-place_${today}`,
     subject: () => ({
@@ -208,6 +219,7 @@
         ['Status', APPLICATION_STATUS_LABEL[selected.status]],
         ['Offers declined', String(selected.offers_declined ?? 0)],
         ['Notes', selected.notes],
+        ['From online application', requestOf(selected.id)?.reference ?? ''],
       ],
       sections: [],
     }),
@@ -348,7 +360,13 @@
             {/if}
             {#if selected.offers_declined}<dt class="text-slate-400">Declined</dt><dd class="text-slate-100">{selected.offers_declined} offer{selected.offers_declined === 1 ? '' : 's'}</dd>{/if}
             {#if selected.notes}<dt class="text-slate-400">Notes</dt><dd class="text-slate-100 whitespace-pre-line">{selected.notes}</dd>{/if}
+            {#if requestOf(selected.id)}
+              <dt class="text-slate-400">Application</dt>
+              <dd class="text-slate-100" data-testid="linked-application"><span class="font-mono">{requestOf(selected.id)?.reference}</span>
+                <Button variant="tertiary" size="xs" on:click={() => dispatch('showApplication', requestOf(selected.id)?.id)}>Open it →</Button></dd>
+            {/if}
           </dl>
+          {#if requestReadError}<p class="text-xs text-amber-300">{requestReadError}</p>{/if}
 
           {#if offering === selected.id}
             <div class="rounded-lg border border-slate-600 p-3 space-y-2" data-testid="offer-form">

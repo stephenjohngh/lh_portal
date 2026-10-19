@@ -140,3 +140,19 @@ export function offerBlocks(bay, holderId, applications) {
   }
   return null;
 }
+
+/**
+ * Where an online application's waiting-list place stands now, in words — for
+ * the application's panel and its printable record (2026-10-19: the two
+ * workflows stay separate and are linked; the application follows its place).
+ * A place may since have been removed by the retention run.
+ * @param {any|null} place  the parking_applications row, or null
+ * @param {{ stepName?: string|null, position?: number|null, bayRef?: string|null, fmtDate: (d: any) => string }} opts
+ */
+export function placeStanding(place, { stepName = null, position = null, bayRef = null, fmtDate }) {
+  if (!place) return 'Its waiting-list place has since been removed.';
+  const step = stepName || APPLICATION_STATUS_LABEL[place.status] || place.status;
+  if (place.status === 'waiting') return position ? `${step} · place ${position} in the queue` : step;
+  if (place.status === 'offered') return `${step} — ${bayRef ?? 'a bay'}, open until ${fmtDate(place.offer_expires_on)}`;
+  return step;
+}

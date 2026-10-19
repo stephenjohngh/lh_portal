@@ -64,6 +64,10 @@
     { key: 'sightings',  label: 'Unauthorised parking' },
   ];
   let tab = 'bays';
+  // An application and its waiting-list place link to each other: the place or
+  // application to open when the other tab is shown. Cleared by the tab bar.
+  /** @type {string|null} */ let waitingFocus = null;
+  /** @type {string|null} */ let applicationFocus = null;
   // Set by the Registration Lookup: the permit to find on Road Permits. `at` makes the
   // same permit looked up twice still count as a new request.
   let permitQuery = { text: '', at: 0 };
@@ -170,16 +174,16 @@
     {#if state.error}<ErrorDisplay message={state.error} />{/if}
     {#if acceptError}<ErrorDisplay message={acceptError} />{/if}
 
-    <TabBar tabs={TABS} active={tab} on:select={(e) => tab = e.detail} />
+    <TabBar tabs={TABS} active={tab} on:select={(e) => { tab = e.detail; waitingFocus = null; applicationFocus = null; }} />
 
     {#if tab === 'agreements'}
       <AgreementsTab {canEdit} bind:selectedId={selectedAgreementId} on:showBay={showBay} />
     {:else if tab === 'holders'}
       <HoldersTab {canEdit} on:showAgreement={showAgreement} />
     {:else if tab === 'applications'}
-      <ApplicationsTab {canEdit} on:showWaitingList={() => (tab = 'waiting')} />
+      <ApplicationsTab {canEdit} focusId={applicationFocus} on:showWaitingList={(e) => { waitingFocus = e.detail ?? null; tab = 'waiting'; }} />
     {:else if tab === 'waiting'}
-      <WaitingListTab {canEdit} on:accept={acceptOffer} />
+      <WaitingListTab {canEdit} focusId={waitingFocus} on:accept={acceptOffer} on:showApplication={(e) => { applicationFocus = e.detail ?? null; tab = 'applications'; }} />
     {:else if tab === 'permits'}
       <PermitsTab {canEdit} query={permitQuery} />
     {:else if tab === 'sightings'}

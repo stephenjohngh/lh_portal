@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   queue, positionOf, nextFor, validateApplication, validateOffer, bayOfferProblem,
-  offerLapsed, offerBlocks, defaultExpiry, ANY_SIZE,
+  offerLapsed, offerBlocks, defaultExpiry, ANY_SIZE, placeStanding, APPLICATION_STATUS_LABEL,
 } from './waitingListModel.js';
 
 const app = (id, wanted_size, joined_on, over = {}) =>
@@ -103,5 +103,23 @@ describe('an offer whose agreement is already made', () => {
     expect(agreementForOffer(app, ags)?.id).toBe('z');
     expect(agreementForOffer(app, ags.slice(0, 2))).toBeNull();
     expect(agreementForOffer({ ...app, status: 'waiting' }, ags)).toBeNull();
+  });
+});
+
+describe('placeStanding — the application follows its place', () => {
+  const fmt = (d) => `D(${d})`;
+  it('says the place is gone rather than nothing', () => {
+    expect(placeStanding(null, { fmtDate: fmt })).toMatch(/removed/);
+  });
+  it('waiting: the step and the place in the queue', () => {
+    expect(placeStanding({ status: 'waiting' }, { stepName: 'Waiting', position: 3, fmtDate: fmt })).toBe('Waiting · place 3 in the queue');
+  });
+  it('offered: the bay and when the offer ends', () => {
+    expect(placeStanding({ status: 'offered', offer_expires_on: '2026-10-29' }, { stepName: 'Offered a bay', bayRef: 'U/PK/3', fmtDate: fmt }))
+      .toBe('Offered a bay — U/PK/3, open until D(2026-10-29)');
+  });
+  it('finished: the step alone, falling back to the status label', () => {
+    expect(placeStanding({ status: 'allocated' }, { stepName: 'Allocated', fmtDate: fmt })).toBe('Allocated');
+    expect(placeStanding({ status: 'withdrawn' }, { fmtDate: fmt })).toBe(APPLICATION_STATUS_LABEL.withdrawn);
   });
 });

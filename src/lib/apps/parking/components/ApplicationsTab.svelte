@@ -20,8 +20,9 @@
   import WorkflowDiagram from '#lib/workflow/WorkflowDiagram.svelte';
   import { today } from '#lib/utils/dates.js';
   import { HOLDER_TYPE_LABEL } from '../utils/agreementModel.js';
-  import { ANY_SIZE } from '../utils/waitingListModel.js';
-  import { fmtDateTime } from '#lib/utils/dates.js';
+  import { ANY_SIZE, placeStanding, positionOf } from '../utils/waitingListModel.js';
+  import { waitingListStore } from '../stores/waitingListStore.js';
+  import { fmtDateTime, fmtDate } from '#lib/utils/dates.js';
   import { errMessage } from '#lib/utils/errors.js';
   import { matchesSearch } from '#lib/utils/textSearch.js';
   import Button from '#lib/components/common/Button.svelte';
@@ -31,6 +32,8 @@
   import { auth } from '#lib/stores/auth.js';
 
   export let canEdit = false;
+  /** An application to open when the tab opens (from a waiting-list place's link). @type {string|null} */
+  export let focusId = null;
   const dispatch = createEventDispatcher();
 
   let ready = false;
@@ -50,8 +53,9 @@
     try {
       await requestStore.load();
       if (!$requestStore.workflow && $permissions.isAdmin) await requestStore.setUpWorkflow();
-      const [list] = await Promise.all([requestStore.assignees(), profilesStore.load()]);
+      const [list] = await Promise.all([requestStore.assignees(), profilesStore.load(), waitingListStore.load()]);
       assignees = list;
+      if (focusId) { selectedId = focusId; show = ''; }
     } catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read the applications.'); }
     finally { ready = true; }
   });
@@ -105,6 +109,17 @@
 
   const sizeLabel = (/** @type {string} */ v) => (v === ANY_SIZE ? 'Any size' : v);
 
+  // ── The place an accepted application became (the two workflows stay
+  // separate and are linked: parking_requests.application_id). ──
+  $: placeOf = (/** @type {string|null} */ id) => (id ? $parkingStore.applications.find((a) => a.id === id) ?? null : null);
+  $: standingOf = (/** @type {string} */ id) => {
+    const place = placeOf(id);
+    const item = place ? $waitingListStore.items.find((i) => i.subject_id === place.id) : null;
+    const stepName = item ? $waitingListStore.steps.find((st) => st.key === item.step_key)?.name ?? null : null;
+    const bayRef = place?.offered_bay_id ? $parkingStore.bays.find((b) => b.bay_id === place.offered_bay_id)?.ref ?? null : null;
+    return placeStanding(place, { stepName, position: place ? positionOf(place, $parkingStore.applications) : null, bayRef, fmtDate });
+  };
+
   // The record of one application — what it is, where it stands, every move
   // and who made it — as a Word file (the shared controls build it).
   $: audit = selected ? { appId: 'parking', entityType: 'parking_request', entityId: selected.id } : null;
@@ -124,7 +139,7 @@
         ['Address for letters', selected.correspondence_address],
         ['Size wanted', sizeLabel(selected.wanted_size)],
         ['Their notes', selected.notes],
-        ['On the waiting list', selected.application_id ? 'Yes' : ''],
+        ['On the waiting list', selected.application_id ? standingOf(selected.application_id) : ''],
       ],
       sections: [{ heading: 'Privacy notice they agreed to', text: selected.privacy_notice_text }],
     }),
@@ -218,8 +233,13 @@
               <p class="mt-1 whitespace-pre-line">{selected.privacy_notice_text}</p>
             </details>
             {#if selected.application_id}
-              <p class="text-green-300">On the waiting list.
-                <Button variant="tertiary" size="xs" on:click={() => dispatch('showWaitingList')}>Open the waiting list</Button></p>
+              <div class="rounded-md border border-slate-700 p-2" data-testid="linked-place">
+                <p class="text-slate-400 text-xs">On the waiting list</p>
+                <p class="text-slate-100">{standingOf(selected.application_id)}</p>
+                {#if placeOf(selected.application_id)}
+                  <Button variant="tertiary" size="xs" on:click={() => dispatch('showWaitingList', selected.application_id)}>Open this place on the waiting list →</Button>
+                {/if}
+              </div>
             {/if}
           </WorkflowItemControls>
         </aside>
