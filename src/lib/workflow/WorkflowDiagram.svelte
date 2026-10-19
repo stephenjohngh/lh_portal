@@ -10,6 +10,7 @@
 <script>
   import { layoutWorkflow } from './workflowLayout.js';
   import { describeDeadline } from './workflowDeadlines.js';
+  import { timerPhrase } from './workflowModel.js';
   import { ACCENT } from '#lib/theme.js';
 
   /** @type {Array<{ key: string, name: string, kind: string, position?: number, deadline_days?: number|string|null, deadline_basis?: string, deadline_from?: string }>} */
@@ -46,7 +47,7 @@
       {@const mv = moves.find((m) => m.from_key === e.from && m.to_key === e.to)}
       <path d={e.path} fill="none" stroke={e.back ? '#64748b' : '#94a3b8'} stroke-dasharray={e.back ? '5 4' : ''}
         stroke-width={stats ? 1.2 + (3 * used) / maxMoves : 1.5} marker-end="url(#wf-arrow)">
-        <title>{e.label}{mv?.note_required ? ' — needs a note' : ''}{mv?.admin_only ? ' — admin only' : ''}{mv?.who === 'assignee' ? ' — only the person it is with' : ''}{mv?.four_eyes ? ' — four-eyes: not the person who made the last move' : ''}{mv?.action ? ' — runs an action' : ''}{mv?.timer_days ? ` — by itself after ${mv.timer_days} ${mv.timer_basis === 'working' ? 'working ' : ''}days` : ''}{stats ? ` — made ${used} time${used === 1 ? '' : 's'}` : ''}</title>
+        <title>{e.label}{mv?.note_required ? ' — needs a note' : ''}{mv?.admin_only ? ' — admin only' : ''}{mv?.who === 'assignee' ? ' — only the person it is with' : ''}{mv?.four_eyes ? ' — four-eyes: not the person who made the last move' : ''}{mv?.action ? ' — runs an action' : ''}{mv?.timer_days ? ` — by itself ${timerPhrase(mv)}` : ''}{stats ? ` — made ${used} time${used === 1 ? '' : 's'}` : ''}</title>
       </path>
       <text x={e.labelX} y={e.labelY} text-anchor="middle" font-size="10" fill="#cbd5e1" class="select-none"
         stroke="#0f172a" stroke-width="3" paint-order="stroke">

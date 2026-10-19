@@ -65,6 +65,14 @@ export const MOVE_WHO = Object.freeze([
  */
 export const PUBLIC_STATUS_APPS = Object.freeze(['parking', 'complaints', 'cases']);
 
+/** Workflows of those apps whose items carry no such reference (migration 262): a waiting-list place. */
+export const NOT_PUBLIC_KEYS = Object.freeze(['parking_waiting_list']);
+
+/** Can this workflow's public status page be switched on? @param {string} appId @param {string} key */
+export function publicStatusAllowed(appId, key) {
+  return PUBLIC_STATUS_APPS.includes(appId) && !NOT_PUBLIC_KEYS.includes(key);
+}
+
 /** The word the public sees for a step with no public name of its own — the database's own (workflow_public_status). */
 export const PUBLIC_KIND_WORD = Object.freeze({ start: 'Received', open: 'Being dealt with', done: 'Finished', declined: 'Closed' });
 
@@ -75,7 +83,10 @@ export function publicStageName(step) {
 }
 
 /** How a timer counts its days — held to workflow_moves' CHECK by dbRulesParity.test.js. */
-export const TIMER_BASES = ['calendar', 'working'];
+export const TIMER_BASES = ['calendar', 'working', 'deadline'];
+
+/** How a timer counts, in words for the editor. 'deadline' (migration 262) counts days after the item's deadline. */
+export const TIMER_BASIS_LABEL = Object.freeze({ calendar: 'days in its step', working: 'working days in its step', deadline: 'days after its deadline' });
 
 /**
  * Why THIS person cannot make this move now, or null — the database's own
@@ -135,9 +146,9 @@ export function stepKeyFor(/** @type {string} */ name, /** @type {string[]} */ t
 /**
  * The problem with saving this workflow, or null — the same checks as
  * workflow_save(), in the same order, worded for a person.
- * @param {{ steps: Step[], moves: Move[], appId: string, fields?: Field[] }} def
+ * @param {{ steps: Step[], moves: Move[], appId: string, key?: string, fields?: Field[] }} def
  */
-export function workflowProblem({ steps, moves, appId, fields = [] }) {
+export function workflowProblem({ steps, moves, appId, key = '', fields = [] }) {
   const starts = steps.filter((s) => s.kind === 'start');
   if (starts.length !== 1) return `A workflow needs exactly one start step (it has ${starts.length}).`;
   const keys = new Set();
@@ -193,7 +204,7 @@ export function workflowProblem({ steps, moves, appId, fields = [] }) {
       if (isFinished(byKey.get(m.from_key)?.kind)) return `The move "${m.label}" leaves a finished step, so it cannot be made by a timer.`;
     }
     if (!TIMER_BASES.includes(m.timer_basis ?? 'calendar')) {
-      return `The move "${m.label}": a timer counts calendar or working days.`;
+      return `The move "${m.label}": a timer counts calendar or working days in its step, or days after its deadline.`;
     }
     if (m.action) {
       if (!actionsFor(appId).some((a) => a.key === m.action)) return `The action "${m.action}" is not one this app offers.`;
@@ -225,7 +236,7 @@ export function workflowProblem({ steps, moves, appId, fields = [] }) {
   const lost = steps.find((s) => !reached.has(s.key));
   if (lost) return `Step "${lost.key}" cannot be reached from the start.`;
   // What the owning app needs the workflow to keep (254).
-  return contractProblem(appId, { steps, moves });
+  return contractProblem(appId, { steps, moves }, key);
 }
 
 /**
@@ -257,6 +268,11 @@ export function orderedSteps(steps) {
 export function timerWords(m) {
   const n = Number(m.timer_days);
   return `${n} ${m.timer_basis === 'working' ? 'working ' : ''}day${n === 1 ? '' : 's'}`;
+}
+
+/** When a timed move happens, in words: "after 30 working days in its step", "1 day after its deadline". @param {{ timer_days?: any, timer_basis?: string }} m */
+export function timerPhrase(m) {
+  return m.timer_basis === 'deadline' ? `${timerWords(m)} after its deadline` : `after ${timerWords(m)} in its step`;
 }
 
 export function definitionOf({ name, description = null, reviewRequired = false, reviewReason = null, steps, moves, fields = [] }) {
@@ -325,7 +341,7 @@ export function workflowDiff(before, after) {
     const where = `${name(m.from_key)} → ${name(m.to_key)}`;
     if (!was) {
       const extras = [m.note_required && 'needs a note', m.admin_only && 'admin only', (m.who ?? 'anyone') === 'assignee' && 'only the person it is with',
-        m.four_eyes && 'four-eyes', m.action && `action ${m.action}`, m.timer_days && `by itself after ${timerWords(m)}`,
+        m.four_eyes && 'four-eyes', m.action && `action ${m.action}`, m.timer_days && `by itself ${timerPhrase(m)}`,
         (m.required_fields ?? []).length && `needs ${(m.required_fields ?? []).map((/** @type {string} */ k) => after.fields?.find((/** @type {any} */ f) => f.key === k)?.label ?? k).join(', ')} filled`].filter(Boolean);
       out.push(`Move added: “${m.label}” (${where})${extras.length ? ` — ${extras.join('; ')}` : ''}.`);
       continue;
@@ -341,7 +357,7 @@ export function workflowDiff(before, after) {
     }
     if ((was.action ?? null) !== (m.action ?? null)) out.push(`Move “${m.label}”: action ${was.action ?? 'none'} → ${m.action ?? 'none'}.`);
     if ((was.timer_days ?? null) !== (m.timer_days ?? null) || (was.timer_days && (was.timer_basis ?? 'calendar') !== (m.timer_basis ?? 'calendar'))) {
-      out.push(`Move “${m.label}”: ${m.timer_days ? `now made by itself after ${timerWords(m)} in its step` : 'no longer made by itself'}.`);
+      out.push(`Move “${m.label}”: ${m.timer_days ? `now made by itself ${timerPhrase(m)}` : 'no longer made by itself'}.`);
     }
   }
   for (const [k, m] of bMoves) if (!aMoves.has(k)) out.push(`Move removed: “${m.label}” (${name(m.from_key)} → ${name(m.to_key)}).`);

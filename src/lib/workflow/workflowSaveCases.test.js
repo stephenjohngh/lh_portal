@@ -10,7 +10,7 @@ describe('workflowProblem — the shared save cases', () => {
   it('has cases to run', () => expect(SAVE_CASES.length).toBeGreaterThan(15));
   for (const c of SAVE_CASES) {
     it(c.name, () => {
-      const problem = workflowProblem({ steps: c.steps, moves: c.moves, appId: c.appId, fields: c.fields ?? [] });
+      const problem = workflowProblem({ steps: c.steps, moves: c.moves, appId: c.appId, key: c.key, fields: c.fields ?? [] });
       if (c.expect) expect(problem).toMatch(c.expect);
       else expect(problem).toBeNull();
     });

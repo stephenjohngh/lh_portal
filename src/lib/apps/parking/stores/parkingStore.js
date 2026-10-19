@@ -29,6 +29,8 @@ import { validateApplication, validateOffer, offerBlocks } from '../utils/waitin
 import { validateTariff, tariffRow, tariffFor, matchesTariff, reopenedBy } from '../utils/tariffModel.js';
 import { storeLoader } from '#lib/utils/storeLoad.js';
 import { queueLookupAudit } from './parkingQueue.js';
+import { waitingListStore } from './waitingListStore.js';
+import { fmtDate } from '#lib/utils/dates.js';
 
 const logger = getLogger('Parking');
 const AUDIT = { appId: 'parking', eventCategory: 'parking' };
@@ -440,14 +442,30 @@ function createParkingStore() {
       ...app, notes: String(notes ?? '').trim() || null, created_by: userId, updated_by: userId,
     }, true);
     update(st => ({ ...st, applications: [...st.applications, saved] }));
+    await waitingListStore.load();               // the place joined its workflow (migration 262)
     logAudit('create', 'parking_application', saved.id, 'waiting list',
       { ...AUDIT, afterData: { wanted_size, joined_on } });
     return saved;
   }
 
   /**
+   * Re-read one place after the database moved it (its status, the offer's
+   * fields, the outcome), and the workflow's items with it.
+   * @param {string} appId
+   */
+  async function rereadApplication(appId) {
+    const saved = await api.getById('parking_applications', appId);
+    patchApplication(saved);
+    await waitingListStore.load();               // keeps its own error; never throws
+    return saved;
+  }
+
+  /**
    * Offer a bay to a waiting application. The bay is held for them until the
-   * offer is accepted, declined or lapses; one open offer per bay.
+   * offer is accepted, goes back to the queue, or is withdrawn; one open offer
+   * per bay. The bay, the dates and the move are made together
+   * (parking_offer_bay(), migration 262); its expiry is the place's deadline,
+   * and the day after it the workflow's timer puts it back in the queue.
    */
   async function makeOffer(appId, spaceId, { made_on, expires_on }) {
     const s = state();
@@ -455,52 +473,52 @@ function createParkingStore() {
     const bay = s.bays.find(b => b.space_id === spaceId);
     const problem = validateOffer(app, bay, s.agreements, s.applications, { made_on, expires_on });
     if (problem) throw new Error(problem);
-    const userId = requireUserId();
+    requireUserId();
+    const bayRef = bay.ref;                                   // captured before the await
     const bayRow = await ensureBayRow(spaceId);
-    const saved = await api.update('parking_applications', appId, {
-      status: 'offered', offered_bay_id: bayRow.id, offer_made_on: made_on, offer_expires_on: expires_on,
-      last_offer_outcome: null, updated_by: userId,
-    }, true);
-    patchApplication(saved);
+    await api.rpc('parking_offer_bay', {
+      p_application: appId, p_bay: bayRow.id, p_made_on: made_on, p_expires_on: expires_on,
+      p_note: `${bayRef}, open until ${fmtDate(expires_on)}`,
+    });
+    const saved = await rereadApplication(appId);
     logAudit('update', 'parking_application', appId, 'waiting list',
-      { ...AUDIT, eventAction: 'offer_made', afterData: { bay: bay.ref, expires_on } });
+      { ...AUDIT, eventAction: 'offer_made', afterData: { bay: bayRef, expires_on } });
     return saved;
   }
 
   /**
-   * The offer did not become an agreement: declined, or lapsed. First come,
-   * first served: the application goes back to the queue KEEPING ITS PLACE.
+   * The offer did not become an agreement. First come, first served: the
+   * application goes back to the queue KEEPING ITS PLACE. The database records
+   * it as declined before the offer's expiry date and lapsed after it.
+   * @param {string} appId @param {string} [note]
    */
-  async function returnToQueue(appId, outcome) {
-    if (outcome !== 'declined' && outcome !== 'lapsed') throw new Error('Say whether the offer was declined or lapsed.');
+  async function returnToQueue(appId, note = '') {
     const app = state().applications.find(a => a.id === appId);
     if (app?.status !== 'offered') throw new Error('There is no open offer on that application.');
-    const userId = requireUserId();
-    const saved = await api.update('parking_applications', appId,
-      { status: 'waiting', last_offer_outcome: outcome, updated_by: userId }, true);
-    patchApplication(saved);
-    logAudit('update', 'parking_application', appId, 'waiting list', { ...AUDIT, eventAction: `offer_${outcome}` });
+    await api.rpc('parking_application_move', { p_application: appId, p_to: 'waiting', p_note: note || null });
+    const saved = await rereadApplication(appId);
+    logAudit('update', 'parking_application', appId, 'waiting list',
+      { ...AUDIT, eventAction: `offer_${saved.last_offer_outcome ?? 'returned'}` });
     return saved;
   }
 
-  /** The offer was accepted and the agreement made. */
+  /** The offer was accepted and the agreement made: both recorded, and the place moved, together. */
   async function markAllocated(appId, agreementId) {
-    const userId = requireUserId();
-    const saved = await api.update('parking_applications', appId,
-      { status: 'allocated', agreement_id: agreementId, updated_by: userId }, true);
-    patchApplication(saved);
+    requireUserId();
+    await api.rpc('parking_application_allocate', { p_application: appId, p_agreement: agreementId });
+    const saved = await rereadApplication(appId);
     logAudit('update', 'parking_application', appId, 'waiting list', { ...AUDIT, eventAction: 'offer_accepted' });
     return saved;
   }
 
-  async function withdrawApplication(appId) {
+  /** @param {string} appId @param {string} [note] */
+  async function withdrawApplication(appId, note = '') {
     const app = state().applications.find(a => a.id === appId);
     if (!app || (app.status !== 'waiting' && app.status !== 'offered')) {
       throw new Error('Only an open application can be withdrawn.');
     }
-    const userId = requireUserId();
-    const saved = await api.update('parking_applications', appId, { status: 'withdrawn', updated_by: userId }, true);
-    patchApplication(saved);
+    await api.rpc('parking_application_move', { p_application: appId, p_to: 'withdrawn', p_note: note || null });
+    const saved = await rereadApplication(appId);
     logAudit('update', 'parking_application', appId, 'waiting list', { ...AUDIT, eventAction: 'withdrawn' });
     return saved;
   }
@@ -540,6 +558,7 @@ function createParkingStore() {
       applications,
     }));
     remerge();
+    if (reopens) await waitingListStore.load();   // the offer's place moved back in its workflow
     logAudit('delete', 'parking_agreement', id, current.reference, { ...AUDIT });
   }
 

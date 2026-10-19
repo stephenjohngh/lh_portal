@@ -24,6 +24,7 @@ import { SAVE_CASES } from './workflowSaveCases.test-helper.js';
 import { DEFAULT_COMPLIANCE_ACTION_WORKFLOW as ACTION_WF } from '#lib/apps/compliance/utils/complianceActionWorkflow.js';
 import { DEFAULT_WORKS_SCHEDULE_WORKFLOW as WORKS_WF } from '#lib/apps/building_assets/utils/worksScheduleWorkflow.js';
 import { DEFAULT_MAINTENANCE_JOB_WORKFLOW as JOB_WF } from '#lib/apps/maintenance/utils/maintenanceJobWorkflow.js';
+import { DEFAULT_WAITING_LIST_WORKFLOW as WL_WF } from '#lib/apps/parking/utils/waitingListWorkflow.js';
 
 const RUN = process.env.LH_DB_TESTS === 'dev';
 const PSQL = process.platform === 'win32' ? 'C:/Program Files/PostgreSQL/18/bin/psql.exe' : 'psql';
@@ -57,7 +58,7 @@ end $t$;`;
 function saveCall(/** @type {any} */ c, /** @type {number} */ i) {
   const steps = c.steps.map((/** @type {any} */ s, /** @type {number} */ n) => ({ ...s, position: n + 1 }));
   const moves = c.moves.map((/** @type {any} */ m, /** @type {number} */ n) => ({ ...m, position: n + 1 }));
-  return `perform workflow_save('dbtest_${i}', 'DB test ${i}', ${txt(c.appId)}, null, ${lit(steps)}, ${lit(moves)}, null, null, null, ${lit(c.fields ?? [])}, null);`;
+  return `perform workflow_save(${txt(c.key ?? `dbtest_${i}`)}, 'DB test ${i}', ${txt(c.appId)}, null, ${lit(steps)}, ${lit(moves)}, null, null, null, ${lit(c.fields ?? [])}, null);`;
 }
 
 const actionSave = `perform workflow_save('compliance_action', ${txt(ACTION_WF.name)}, 'compliance', null,
@@ -85,6 +86,14 @@ const asNonAdmin = (/** @type {boolean} */ contractor) => {
   return `perform set_config('request.jwt.claims', json_build_object('sub', ${who}, 'role', 'authenticated')::text, true);
     perform set_config('request.jwt.claim.sub', ${who}::text, true);`;
 };
+const wlSave = `perform workflow_save('parking_waiting_list', ${txt(WL_WF.name)}, 'parking', null,
+      ${lit(WL_WF.steps.map((x, n) => ({ ...x, position: n + 1 })))},
+      ${lit(WL_WF.moves.map((m, n) => ({ ...m, position: n + 1 })))}, null, null, null, '[]', null);`;
+const wlApp = `(select a.id from parking_applications a join parking_holders h on h.id = a.holder_id where h.display_name = 'DB test holder')`;
+const wlItem = `(select id from workflow_items where subject_id = ${wlApp})`;
+const wlBay = `(select id from dbtest_bay)`;
+const NOBODY = `perform set_config('request.jwt.claims', '{}', true);
+    perform set_config('request.jwt.claim.sub', '', true);`;
 const firstAction = `(select i.id from workflow_items i join statutory_register r on r.id = i.subject_id where r.template_key = ${ACT})`;
 
 /** The runtime checks, in order; each sees what the ones before it did. */
@@ -344,6 +353,83 @@ const RUNTIME = [
   ['a non-admin cannot switch it', `
     ${asNonAdmin(false)}
     perform workflow_set_public('dbtest_case', true, null);`, 'Only an administrator'],
+  // Migration 262: the Parking waiting list — a timer counted from the deadline.
+  ['the shipped Waiting list place workflow saves; a new place joins at Waiting, named without the person', `
+    ${ADMIN_CLAIMS}
+    ${wlSave}
+    perform parking_waiting_list_attach_to_workflow();
+    create temp table dbtest_bay on commit drop as
+      with b as (insert into parking_bays (space_id, tenure, in_service)
+                 select s.id, 'licensable', true from spaces s
+                  where s.kind = 'slot' and not exists (select 1 from parking_bays x where x.space_id = s.id)
+                  order by s.id limit 1 returning id) select id from b;
+    if (select count(*) from dbtest_bay) <> 1 then raise exception 'dev has no bay without a Parking row to test with'; end if;
+    insert into parking_holders (display_name, holder_type, email) values ('DB test holder', 'leaseholder', 'dbtest@example.com');
+    insert into parking_applications (holder_id, wanted_size, joined_on, created_by)
+         values ((select id from parking_holders where display_name = 'DB test holder'), 'any', current_date - 10, auth.uid());
+    if (select step_key from workflow_items where id = ${wlItem}) <> 'waiting' then raise exception 'not at Waiting'; end if;
+    if (select label from workflow_items where id = ${wlItem}) not like 'Waiting list · any size · joined %'
+       or (select label from workflow_items where id = ${wlItem}) like '%DB test holder%' then raise exception 'wrongly named'; end if;`, null],
+  ['a place\u2019s status changes only through its workflow', `
+    update parking_applications set status = 'withdrawn' where id = ${wlApp};`, 'through its workflow'],
+  ['a bare move to Offered is refused: it needs the bay and its dates', `
+    perform workflow_move(${wlItem}, 'offered', null);`, 'Make the offer with Offer a bay'],
+  ['offering a bay offers it, and its deadline is the expiry date', `
+    perform parking_offer_bay(${wlApp}, ${wlBay}, current_date, current_date + 14, 'DB test offer');
+    if (select status from parking_applications where id = ${wlApp}) <> 'offered'
+       or (select step_key from workflow_items where id = ${wlItem}) <> 'offered' then raise exception 'not offered'; end if;
+    if (select due_on from workflow_items where id = ${wlItem}) <> current_date + 14 then raise exception 'not dated by its expiry'; end if;
+    if workflow_timer_due(${wlItem}) <> current_date + 15 then raise exception 'the timer is not the day after: %', workflow_timer_due(${wlItem}); end if;`, null],
+  ['the nightly run leaves an offer that has not expired', `
+    ${NOBODY}
+    perform workflow_run_timers();
+    ${ADMIN_CLAIMS}
+    if (select status from parking_applications where id = ${wlApp}) <> 'offered' then raise exception 'moved early'; end if;`, null],
+  ['once it has expired, the nightly run puts it back in the queue as lapsed, keeping its place', `
+    update parking_applications set offer_made_on = current_date - 16, offer_expires_on = current_date - 2 where id = ${wlApp};
+    ${NOBODY}
+    perform workflow_run_timers();
+    ${ADMIN_CLAIMS}
+    if (select status from parking_applications where id = ${wlApp}) <> 'waiting'
+       or (select last_offer_outcome from parking_applications where id = ${wlApp}) <> 'lapsed'
+       or (select joined_on from parking_applications where id = ${wlApp}) <> current_date - 10
+       or (select offers_declined from parking_applications where id = ${wlApp}) <> 0 then raise exception 'not lapsed as it should be'; end if;
+    if (select step_key from workflow_items where id = ${wlItem}) <> 'waiting'
+       or (select due_on from workflow_items where id = ${wlItem}) is not null then raise exception 'its item did not follow'; end if;
+    if not exists (select 1 from workflow_events where item_id = ${wlItem} and by is null and note like 'Automatic — 1 day after its deadline%')
+      then raise exception 'the move is not recorded as automatic'; end if;`, null],
+  ['returned by a person before it expires, it is declined', `
+    perform parking_offer_bay(${wlApp}, ${wlBay}, current_date, current_date + 14, null);
+    perform parking_application_move(${wlApp}, 'waiting', 'They have a space elsewhere');
+    if (select last_offer_outcome from parking_applications where id = ${wlApp}) <> 'declined'
+       or (select offers_declined from parking_applications where id = ${wlApp}) <> 1 then raise exception 'not declined'; end if;`, null],
+  ['accepting needs the agreement made for that bay and person', `
+    perform parking_offer_bay(${wlApp}, ${wlBay}, current_date, current_date + 14, null);
+    perform parking_application_allocate(${wlApp}, (select id from parking_agreements where bay_id <> ${wlBay} order by created_at limit 1));`,
+    'not for the bay and the person'],
+  ['with its agreement, it is allocated', `
+    perform parking_offer_bay(${wlApp}, ${wlBay}, current_date, current_date + 14, null);   -- the check before was rolled back
+    insert into parking_agreements (bay_id, holder_id, basis, starts_on, created_by)
+         values (${wlBay}, (select id from parking_holders where display_name = 'DB test holder'), 'licence', current_date, auth.uid());
+    perform parking_application_allocate(${wlApp}, (select id from parking_agreements where bay_id = ${wlBay}));
+    if (select status from parking_applications where id = ${wlApp}) <> 'allocated'
+       or (select step_key from workflow_items where id = ${wlItem}) <> 'allocated' then raise exception 'not allocated'; end if;`, null],
+  ['a person cannot reopen the offer', `
+    perform workflow_move(${wlItem}, 'offered', null);`, 'Delete the draft agreement'],
+  ['deleting the draft reopens it, through its workflow', `
+    delete from parking_agreements where bay_id = ${wlBay};
+    if (select status from parking_applications where id = ${wlApp}) <> 'offered'
+       or (select step_key from workflow_items where id = ${wlItem}) <> 'offered' then raise exception 'not reopened'; end if;
+    if not exists (select 1 from workflow_events where item_id = ${wlItem} and to_key = 'offered' and note like 'Its draft agreement was deleted%')
+      then raise exception 'not in its history'; end if;`, null],
+  ['a waiting-list place can never answer the public', `
+    perform workflow_set_public('parking_waiting_list', true, null);`, 'not named by a reference'],
+  ['a deleted place takes its item with it', `
+    perform parking_application_move(${wlApp}, 'withdrawn', null);
+    delete from parking_applications where id = ${wlApp};
+    if exists (select 1 from workflow_items i join workflows w on w.id = i.workflow_id
+                where w.key = 'parking_waiting_list' and not exists (select 1 from parking_applications a where a.id = i.subject_id))
+      then raise exception 'left behind'; end if;`, null],
   ['a deleted job takes its item with it', `
     ${ADMIN_CLAIMS}
     delete from maintenance_jobs where title = 'DB test job';

@@ -15,7 +15,7 @@
 import { isValidTransition } from '#lib/apps/complaints/utils/complaintLifecycle.js';
 
 /**
- * @typedef {{ name: string, stepsAre?: string, steps?: Record<string, string>, moveAllowed?: (from: string, to: string) => boolean, check?: (def: any) => string|null, subjectDue?: boolean, explains: string }} Contract
+ * @typedef {{ name: string, stepsAre?: string, steps?: Record<string, string>, moveAllowed?: (from: string, to: string) => boolean, moveRule?: string, check?: (def: any) => string|null, subjectDue?: boolean, explains: string }} Contract
  *   steps — the step keys the workflow must have exactly, each with its fixed kind
  *   check — a rule of the app's own that is not a fixed list (maintenance)
  *   subjectDue — its items' deadline is the SUBJECT's own date (workflow_subject_due),
@@ -69,18 +69,45 @@ export const CONTRACTS = Object.freeze({
   },
 });
 
-/** The fixed parts of an app's workflows, or null. @param {string} appId */
-export function contractFor(appId) {
-  return CONTRACTS[appId] ?? null;
+/**
+ * A workflow's own rules where its app has more than one workflow (migration
+ * 262, workflow_key_problem()): Parking's online application has none of its
+ * own; its waiting list does. Checked instead of the app's.
+ * @type {Readonly<Record<string, Contract>>}
+ */
+export const KEY_CONTRACTS = Object.freeze({
+  parking_waiting_list: {
+    name: 'Waiting list place',
+    stepsAre: 'the waiting-list statuses',
+    steps: { waiting: 'start', offered: 'open', allocated: 'done', withdrawn: 'declined' },
+    moveAllowed: (from, to) => WAITING_LIST_MOVES.has(`${from}>${to}`),
+    moveRule: 'a waiting-list place can make',
+    check: ({ steps, moves }) => {
+      const timed = moves.find((/** @type {any} */ m) => ['offered', 'allocated'].includes(m.to_key) && m.timer_days != null && m.timer_days !== '');
+      return timed ? `The move "${timed.label}" needs a bay or an agreement a person chooses, so it cannot be made by a timer.` : null;
+    },
+    subjectDue: true,
+    explains: 'Its steps are the waiting-list statuses and each has a fixed kind; a move must be one the waiting list allows. An offer’s deadline is its own expiry date, so “Back to the queue” can happen by itself after it. The names, notes and conditions can be changed. Going back to the queue before the expiry date is recorded as declined, after it as lapsed.',
+  },
+});
+
+/** The moves a waiting-list place can make — the lifecycle trigger's (224, 229). */
+const WAITING_LIST_MOVES = new Set(['waiting>offered', 'waiting>withdrawn', 'offered>waiting',
+  'offered>allocated', 'offered>withdrawn', 'allocated>offered']);
+
+/** The fixed parts of a workflow — its own, else its app's — or null. @param {string} appId @param {string} [key] */
+export function contractFor(appId, key = '') {
+  return KEY_CONTRACTS[key] ?? CONTRACTS[appId] ?? null;
 }
 
 /**
  * Why this workflow would break its app, or null — the database's own words.
  * @param {string} appId
  * @param {{ steps: Array<{ key: string, name: string, kind: string }>, moves: Array<{ from_key: string, to_key: string }> }} def
+ * @param {string} [key]  the workflow's key — a workflow with its own rules (KEY_CONTRACTS) is checked by them
  */
-export function contractProblem(appId, { steps, moves }) {
-  const c = contractFor(appId);
+export function contractProblem(appId, { steps, moves }, key = '') {
+  const c = contractFor(appId, key);
   if (!c) return null;
   if (c.steps) {
     const fixed = c.steps;
@@ -97,7 +124,7 @@ export function contractProblem(appId, { steps, moves }) {
   }
   if (c.moveAllowed) {
     const bad = moves.find((m) => !c.moveAllowed?.(m.from_key, m.to_key));
-    if (bad) return `A move from "${bad.from_key}" to "${bad.to_key}" is not one BSA s.93 allows a complaint to make.`;
+    if (bad) return `A move from "${bad.from_key}" to "${bad.to_key}" is not one ${c.moveRule ?? 'BSA s.93 allows a complaint to make'}.`;
   }
   return null;
 }

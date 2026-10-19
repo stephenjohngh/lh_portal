@@ -31,7 +31,7 @@
   import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import FieldInput from './FieldInput.svelte';
-  import { movesFrom, moveRefusal, isFinished, isMoveEvent, STEP_KIND_LABEL, timerWords } from './workflowModel.js';
+  import { movesFrom, moveRefusal, isFinished, isMoveEvent, STEP_KIND_LABEL, timerPhrase } from './workflowModel.js';
   import { deadlineBand, deadlineWords, describeDeadline } from './workflowDeadlines.js';
   import { actionLabel } from './workflowActions.js';
   import { itemRecordModel, assignWords } from './itemRecord.js';
@@ -255,7 +255,7 @@
     {/if}
     {#if timed && timerOn && !finished}
       <p class="text-xs text-slate-400" data-testid="wf-timer">⏲ <strong>{timed.label}</strong> happens by itself on {fmtDate(timerOn)}
-        — after {timerWords(timed)} here — unless it is moved before then.</p>
+        — {timerPhrase(timed)} — unless it is moved before then.</p>
     {/if}
     {#if workflow?.public_status && item?.public_code && canEdit}
       <p class="text-xs text-slate-400" data-testid="wf-public-code">🌐 Public status: whoever has reference

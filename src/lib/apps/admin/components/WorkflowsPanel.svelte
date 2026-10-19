@@ -9,7 +9,7 @@
 <script>
   import { onMount } from 'svelte';
   import { listWorkflows, loadWorkflow, saveWorkflow, listChanges, listEvents, listTimerRuns, runTimers, setPublicStatus } from '#lib/workflow/workflowApi.js';
-  import { PUBLIC_STATUS_APPS, publicStageName } from '#lib/workflow/workflowModel.js';
+  import { publicStatusAllowed, publicStageName } from '#lib/workflow/workflowModel.js';
   import { workflowStats, simulateDeadlines } from '#lib/workflow/workflowStats.js';
   import WorkflowDiagram from '#lib/workflow/WorkflowDiagram.svelte';
   import { today } from '#lib/utils/dates.js';
@@ -77,7 +77,7 @@
   $: deadlinesEdited = !!loadedDef && JSON.stringify(steps.map((x) => [x.key, x.deadline_days === '' ? null : Number(x.deadline_days ?? NaN) || null, x.deadline_basis, x.deadline_from]))
     !== JSON.stringify(loadedDef.steps.map((/** @type {any} */ x) => [x.key, x.deadline_days, x.deadline_basis, x.deadline_from]));
   $: simulated = stats && current ? simulateDeadlines({ steps, items: usage.items, events: usage.events, today: today(),
-    nonWorking: offDays.map((d) => d.day), subjectDue: !!contractFor(current.app_id)?.subjectDue }) : null;
+    nonWorking: offDays.map((d) => d.day), subjectDue: !!contractFor(current.app_id, current.key)?.subjectDue }) : null;
   let review = { reviewedBy: '', reviewedAgainst: '', note: '' };
 
   /** @type {{ day: string, name: string }[]} */
@@ -155,7 +155,7 @@
   }
 
   // ── The public status page (migration 261): off unless switched on ──
-  $: publicAllowed = !!current && PUBLIC_STATUS_APPS.includes(current.app_id);
+  $: publicAllowed = !!current && publicStatusAllowed(current.app_id, current.key);
   let publicReview = { reviewedBy: '', reviewedAgainst: '', note: '' };
   let switchingPublic = false;
   async function switchPublic(/** @type {boolean} */ on) {
@@ -231,7 +231,7 @@
   $: isCases = current?.app_id === 'cases';
   // What the owning app needs the workflow to keep (migration 254): shown, and
   // the fixed kinds cannot be changed here; the save checks the rest.
-  $: contract = current ? contractFor(current.app_id) : null;
+  $: contract = current ? contractFor(current.app_id, current.key) : null;
   $: fixedKind = (/** @type {any} */ st) => contract?.steps?.[st.key] ?? null;
   // The shipped version, when there is one: how this building's differs.
   $: shipped = current ? shippedWorkflowFor(current.key) : null;
@@ -256,7 +256,7 @@
       options: f.type === 'choice' ? String(optionsText ?? '').split('\n').map((o) => o.trim()).filter(Boolean) : [] }));
   }
   $: problem = current
-    ? workflowProblem({ steps, moves, appId: current.app_id, fields: fieldsOut(fields) })
+    ? workflowProblem({ steps, moves, appId: current.app_id, key: current.key, fields: fieldsOut(fields) })
       ?? (reviewRequired && !reviewReason.trim() ? 'Say why this workflow needs a full review before it is changed.' : null)
     : null;
   $: changed = !!current && !!loadedDef && definitionChanged(loadedDef,
@@ -475,7 +475,7 @@
         {#if simulated && deadlinesEdited}
           <p class="text-xs text-amber-200" data-testid="workflow-simulated">With the deadlines as they are in the editor,
             {simulated.overdueThen} of the {simulated.open} open would be overdue today (now {simulated.overdueNow}). Nothing is changed until you save.</p>
-        {:else if stats && current && contractFor(current.app_id)?.subjectDue}
+        {:else if stats && current && contractFor(current.app_id, current.key)?.subjectDue}
           <p class="text-xs text-slate-500">Its items are dated by their own date, not by the steps’ deadlines.</p>
         {/if}
       </div>
@@ -589,13 +589,15 @@
                   {:else}<span class="text-xs text-slate-500">—</span>{/each}
                 </td>
                 <!-- Timers (migration 259): the move the system makes, overnight,
-                     once an item has sat this long in the step. -->
+                     once an item has sat this long in the step — or (262) this
+                     many days after its deadline has passed. -->
                 <td class="py-1 pr-2 whitespace-nowrap" data-testid="move-timer">
                   <input type="number" min="1" max="365" class="{inputCls} w-16" bind:value={m.timer_days} on:input={() => (moves = moves)}
                     aria-label="{m.label}: made by itself after (days)" placeholder="—" />
                   {#if m.timer_days}
                     <select class={inputCls} bind:value={m.timer_basis} on:change={() => (moves = moves)} aria-label="{m.label}: timer counts">
-                      <option value="calendar">days</option><option value="working">working days</option></select>
+                      <option value="calendar">days in its step</option><option value="working">working days in its step</option>
+                      <option value="deadline">days after its deadline</option></select>
                   {/if}
                 </td>
                 <td class="py-1"><Button variant="danger" size="xs" on:click={() => removeMove(m)}>Remove</Button></td>
@@ -681,7 +683,8 @@
       <Button variant="secondary" size="xs" loading={runningTimers} disabled={runningTimers} on:click={runTimersNow}>Run timers now</Button>
     </div>
     <p class="text-xs text-slate-400">A move set to happen <em>by itself after</em> a number of days is made every night, at about
-      03:15 (UTC), for each item that has been in its step that long — recorded as “Automatic” with no person's name.
+      03:15 (UTC), for each item that has been in its step that long — or, for a timer counted
+      <em>after its deadline</em>, once its deadline is that many days past — recorded as “Automatic” with no person's name.
       Nothing is deleted.</p>
     {#if timerRuns.length}
       <ul class="text-xs text-slate-300 space-y-1">

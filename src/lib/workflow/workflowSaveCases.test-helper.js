@@ -11,8 +11,9 @@ import { DEFAULT_COMPLAINT_WORKFLOW as COMPLAINT } from '#lib/apps/complaints/ut
 import { DEFAULT_COMPLIANCE_ACTION_WORKFLOW as ACTION } from '#lib/apps/compliance/utils/complianceActionWorkflow.js';
 import { DEFAULT_WORKS_SCHEDULE_WORKFLOW as WORKS } from '#lib/apps/building_assets/utils/worksScheduleWorkflow.js';
 import { DEFAULT_MAINTENANCE_JOB_WORKFLOW as JOB } from '#lib/apps/maintenance/utils/maintenanceJobWorkflow.js';
+import { DEFAULT_WAITING_LIST_WORKFLOW as WAITING } from '#lib/apps/parking/utils/waitingListWorkflow.js';
 
-/** @typedef {{ name: string, appId: string, steps: any[], moves: any[], fields?: any[], expect: RegExp|null }} SaveCase */
+/** @typedef {{ name: string, appId: string, key?: string, steps: any[], moves: any[], fields?: any[], expect: RegExp|null }} SaveCase */
 
 const STEPS = () => [
   { key: 'open', name: 'Open', kind: 'start' },
@@ -25,6 +26,9 @@ const MOVES = () => [
 ];
 const FIELDS = () => [{ key: 'where', label: 'Where', type: 'text' }];
 const complaintSteps = () => COMPLAINT.steps.map((s) => ({ ...s }));
+const waitingSteps = () => WAITING.steps.map((s) => ({ ...s }));
+const waitingMoves = () => WAITING.moves.map((m) => ({ ...m }));
+const WL = { appId: 'parking', key: WAITING.key };
 const complaintMoves = () => COMPLAINT.moves.map((m) => ({ ...m }));
 
 /** @type {SaveCase[]} */
@@ -116,4 +120,18 @@ export const SAVE_CASES = [
   { name: 'Maintenance job: a timer that would complete a job', appId: 'maintenance', steps: STEPS(),
     moves: MOVES().map((m, i) => (i === 0 ? { ...m, timer_days: 10 } : m)),
     expect: /completes a job, so it cannot be made by a timer/ },
+  // Migration 262: a timer counted after the item's deadline, and the waiting
+  // list's own rules — by its KEY, since Parking has another workflow.
+  { name: 'a timer after the deadline saves', appId: 'cases', steps: STEPS(),
+    moves: MOVES().map((m, i) => (i === 1 ? { ...m, timer_days: 2, timer_basis: 'deadline' } : m)), fields: FIELDS(), expect: null },
+  { name: 'the shipped Waiting list place workflow saves', ...WL, steps: waitingSteps(), moves: waitingMoves(), expect: null },
+  { name: 'Waiting list place: a step the list does not have', ...WL,
+    steps: [...waitingSteps(), { key: 'held', name: 'Held', kind: 'open' }],
+    moves: [...waitingMoves(), { from_key: 'waiting', to_key: 'held', label: 'Hold' }], expect: /are fixed: "held" is not one/ },
+  { name: 'Waiting list place: a move the list cannot make', ...WL, steps: waitingSteps(),
+    moves: [...waitingMoves(), { from_key: 'waiting', to_key: 'allocated', label: 'Straight in' }], expect: /not one a waiting-list place can make/ },
+  { name: 'Waiting list place: a timer that would make an offer', ...WL, steps: waitingSteps(),
+    moves: waitingMoves().map((m) => (m.from_key === 'waiting' && m.to_key === 'offered' ? { ...m, timer_days: 3 } : m)),
+    expect: /needs a bay or an agreement a person chooses/ },
+  { name: 'Parking’s online application is not held to the waiting list’s steps', appId: 'parking', steps: STEPS(), moves: MOVES(), expect: null },
 ];

@@ -6,13 +6,14 @@ import { get } from 'svelte/store';
 const h = vi.hoisted(() => ({
   api: {
     get: vi.fn(), getAll: vi.fn(), upsert: vi.fn(),
-    create: vi.fn(), update: vi.fn(), delete: vi.fn(), rpc: vi.fn(),
+    create: vi.fn(), update: vi.fn(), delete: vi.fn(), rpc: vi.fn(), getById: vi.fn(),
   },
   listParkingBaySpaces: vi.fn(),
   logAudit: vi.fn(),
   queueLookupAudit: vi.fn(async () => {}),
   postJson: vi.fn(),
   deleteDocumentsFor: vi.fn(() => Promise.resolve(0)),
+  waitingListLoad: vi.fn(async () => {}),
   auth: { subscribe(fn) { fn({ user: { id: 'u1' } }); return () => {}; } },
 }));
 
@@ -24,6 +25,7 @@ vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 vi.mock('#lib/apps/building_assets/public.js', () => ({ listParkingBaySpaces: h.listParkingBaySpaces }));
 vi.mock('#lib/utils/request.js', () => ({ postJson: h.postJson }));
 vi.mock('#lib/utils/documentApi.js', () => ({ deleteDocumentsFor: h.deleteDocumentsFor }));
+vi.mock('./waitingListStore.js', () => ({ waitingListStore: { load: h.waitingListLoad } }));
 
 const { parkingStore } = await import('./parkingStore.js');
 
@@ -235,21 +237,28 @@ describe('the waiting list', () => {
     expect(h.api.create).not.toHaveBeenCalled();
   });
 
-  it('makes an offer on the bay row, and a declined offer goes back to the queue with its reason', async () => {
+  // Migration 262: a place moves through its workflow, in the database — the
+  // bay and dates and the move together — never by a status written from here.
+  it('makes an offer on the bay row through the database, and returns it to the queue the same way', async () => {
     tables.parking_bays = [{ id: 'b1', space_id: 's22', tenure: 'licensable' }];
     tables.parking_applications = [waiting];
     await parkingStore.load();
+    const offered = { ...waiting, status: 'offered', offered_bay_id: 'b1', offer_expires_on: '2026-10-10' };
+    h.api.getById.mockResolvedValue(offered);
     await parkingStore.makeOffer('w1', 's22', { made_on: '2026-09-26', expires_on: '2026-10-10' });
-    expect(h.api.update).toHaveBeenLastCalledWith('parking_applications', 'w1', expect.objectContaining({
-      status: 'offered', offered_bay_id: 'b1', offer_expires_on: '2026-10-10' }), true);
+    expect(h.api.rpc).toHaveBeenLastCalledWith('parking_offer_bay', expect.objectContaining({
+      p_application: 'w1', p_bay: 'b1', p_made_on: '2026-09-26', p_expires_on: '2026-10-10' }));
+    expect(get(parkingStore).applications[0].status).toBe('offered');
+    expect(h.waitingListLoad).toHaveBeenCalled();
 
-    tables.parking_applications = [{ ...waiting, status: 'offered', offered_bay_id: 'b1', offer_expires_on: '2026-10-10' }];
-    await parkingStore.load();
-    await parkingStore.returnToQueue('w1', 'declined');
-    const patch = h.api.update.mock.calls.at(-1)[2];
-    expect(patch).toMatchObject({ status: 'waiting', last_offer_outcome: 'declined' });
-    // It never sends a joined date: the place in the queue is not the app's to move.
-    expect(patch).not.toHaveProperty('joined_on');
+    h.api.getById.mockResolvedValue({ ...waiting, last_offer_outcome: 'declined' });
+    await parkingStore.returnToQueue('w1', 'They have a space elsewhere');
+    expect(h.api.rpc).toHaveBeenLastCalledWith('parking_application_move',
+      { p_application: 'w1', p_to: 'waiting', p_note: 'They have a space elsewhere' });
+    // Nothing writes a status or a joined date from here.
+    expect(h.api.update.mock.calls.filter(c => c[0] === 'parking_applications')).toEqual([]);
+    expect(h.logAudit).toHaveBeenLastCalledWith('update', 'parking_application', 'w1', 'waiting list',
+      expect.objectContaining({ eventAction: 'offer_declined' }));
   });
 
   it('refuses an offer of the wrong size before writing anything', async () => {
@@ -258,7 +267,7 @@ describe('the waiting list', () => {
     await parkingStore.load();
     await expect(parkingStore.makeOffer('w1', 's22', { made_on: '2026-09-26', expires_on: '2026-10-10' }))
       .rejects.toThrow(/they want Bicycle/);
-    expect(h.api.update).not.toHaveBeenCalled();
+    expect(h.api.rpc).not.toHaveBeenCalled();
   });
 });
 
