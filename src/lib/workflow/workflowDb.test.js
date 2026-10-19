@@ -60,7 +60,11 @@ end $t$;`;
 function saveCall(/** @type {any} */ c, /** @type {number} */ i) {
   const steps = c.steps.map((/** @type {any} */ s, /** @type {number} */ n) => ({ ...s, position: n + 1 }));
   const moves = c.moves.map((/** @type {any} */ m, /** @type {number} */ n) => ({ ...m, position: n + 1 }));
-  return `perform workflow_save(${txt(c.key ?? `dbtest_${i}`)}, 'DB test ${i}', ${txt(c.appId)}, null, ${lit(steps)}, ${lit(moves)}, null, null, null, ${lit(c.fields ?? [])}, null);`;
+  // A case naming a real workflow (one with its own rules, e.g. gt_document)
+  // saves over it once it is set up — and a workflow marked for review needs
+  // the review recorded, so such a case carries one.
+  const review = c.key ? lit({ reviewed_by: 'DB test', reviewed_against: 'DB test' }) : 'null';
+  return `perform workflow_save(${txt(c.key ?? `dbtest_${i}`)}, 'DB test ${i}', ${txt(c.appId)}, null, ${lit(steps)}, ${lit(moves)}, null, null, ${review}, ${lit(c.fields ?? [])}, null);`;
 }
 
 const actionSave = `perform workflow_save('compliance_action', ${txt(ACTION_WF.name)}, 'compliance', null,
