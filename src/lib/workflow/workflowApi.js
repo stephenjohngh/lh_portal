@@ -190,3 +190,46 @@ export function setPublicStatus(key, on, review = null) {
     p_review: review ? { reviewed_by: review.reviewedBy, reviewed_against: review.reviewedAgainst, note: review.note ?? null } : null,
   });
 }
+
+/**
+ * Retire a Cases process — no new cases; those it has stay and can be finished —
+ * or bring it back (migration 265, admin). A marked one needs the review.
+ * @param {string} key @param {boolean} retire
+ * @param {{ reviewedBy: string, reviewedAgainst: string, note?: string|null } | null} [review]
+ */
+export function retireWorkflow(key, retire, review = null) {
+  return api.rpc('workflow_retire', { p_key: key, p_retire: !!retire, p_review: reviewArg(review) });
+}
+
+/**
+ * Delete a Cases process with no cases (migration 265, admin). Its change
+ * history is kept, ending "Deleted". A marked one needs the review.
+ * @param {string} key
+ * @param {{ reviewedBy: string, reviewedAgainst: string, note?: string|null } | null} [review]
+ */
+export function deleteWorkflow(key, review = null) {
+  return api.rpc('workflow_delete', { p_key: key, p_review: reviewArg(review) });
+}
+
+/** @param {{ reviewedBy: string, reviewedAgainst: string, note?: string|null } | null} review */
+function reviewArg(review) {
+  return review ? { reviewed_by: review.reviewedBy, reviewed_against: review.reviewedAgainst, note: review.note ?? null } : null;
+}
+
+/**
+ * The deleted processes, newest first, each with its kept change history
+ * (admin) — the rows whose workflow is gone (migration 265).
+ * @returns {Promise<Array<{ key: string, name: string, deletedAt: string, changes: any[] }>>}
+ */
+export async function listDeletedWorkflows() {
+  const deletions = await api.getAll('workflow_changes', { filters: { event: 'deleted' }, orderBy: 'changed_at', ascending: false });
+  const out = [];
+  for (const d of deletions) {
+    const rows = await api.getAll('workflow_changes', { filters: { workflow_key: d.workflow_key }, orderBy: 'changed_at', ascending: false });
+    // A later process may reuse the key: only rows whose workflow is gone, up to this deletion.
+    const changes = rows.filter((r) => r.workflow_id == null && r.changed_at <= d.changed_at
+      && !deletions.some((o) => o !== d && o.workflow_key === d.workflow_key && o.changed_at < d.changed_at && r.changed_at <= o.changed_at));
+    out.push({ key: d.workflow_key, name: d.workflow_name ?? d.workflow_key, deletedAt: d.changed_at, changes });
+  }
+  return out;
+}

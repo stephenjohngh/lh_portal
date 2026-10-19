@@ -129,6 +129,10 @@ const GT_CHAIN_OK = `
     then raise exception 'the audit chain does not verify'; end if;`;
 const firstAction = `(select i.id from workflow_items i join statutory_register r on r.id = i.subject_id where r.template_key = ${ACT})`;
 
+const lifeSave = `perform workflow_save('dbtest_life', 'DB test life', 'cases', null,
+      '[{"key":"open","name":"Open","kind":"start","position":1},{"key":"done","name":"Done","kind":"done","position":2}]'::jsonb,
+      '[{"from_key":"open","to_key":"done","label":"Finish","position":1}]'::jsonb, null, null, null, '[]', null);`;
+const lifeId = `(select id from workflows where key = 'dbtest_life')`;
 /** The runtime checks, in order; each sees what the ones before it did. */
 const RUNTIME = [
   ['set up a Cases process with a needed field and a field a move needs', `
@@ -166,6 +170,41 @@ const RUNTIME = [
     delete from cases where title = 'T';
     if exists (select 1 from workflow_items i where i.workflow_id = (select id from workflows where key = 'dbtest_case')) then
       raise exception 'the item was left behind'; end if;`, null],
+  // ── Retiring and deleting a Cases process (265) ─────────────────────────────
+  ['a process is retired, and keeps the cases it has', `
+    ${lifeSave}
+    perform case_open(${lifeId}, 'L1', null, '{}');
+    perform workflow_retire('dbtest_life', true, null);
+    if (select retired_at from workflows where key = 'dbtest_life') is null then raise exception 'not retired'; end if;
+    if not exists (select 1 from cases where title = 'L1') then raise exception 'its case went'; end if;
+    if not exists (select 1 from workflow_changes where workflow_key = 'dbtest_life' and event = 'retired') then raise exception 'not in its history'; end if;`, null],
+  ['…and a new case in it is refused', `
+    perform case_open(${lifeId}, 'L2', null, '{}');`, 'retired: no new cases'],
+  ['a retired process’s case can still be finished', `
+    perform workflow_move((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'L1'), 'done', null);`, null],
+  ['a process with cases cannot be deleted', `
+    perform workflow_delete('dbtest_life', null);`, 'has 1 case'],
+  ['brought back, it opens cases again', `
+    perform workflow_retire('dbtest_life', false, null);
+    perform case_open(${lifeId}, 'L2', null, '{}');
+    if not exists (select 1 from workflow_changes where workflow_key = 'dbtest_life' and event = 'brought_back') then raise exception 'not in its history'; end if;`, null],
+  ['a marked process needs the review to be retired or deleted', `
+    perform workflow_save('dbtest_life', 'DB test life', 'cases', null,
+      (select jsonb_agg(jsonb_build_object('key', key, 'name', name, 'kind', kind, 'position', position)) from workflow_steps where workflow_id = ${lifeId}),
+      '[{"from_key":"open","to_key":"done","label":"Finish","position":1}]'::jsonb, true, 'A test reason', null, '[]', null);
+    perform workflow_retire('dbtest_life', true, null);`, 'needs a full review'],
+  ['deleting an empty process keeps its history, ending Deleted', `
+    delete from cases where workflow_id = ${lifeId};
+    perform workflow_delete('dbtest_life', '{"reviewed_by":"DB test","reviewed_against":"DB test"}');
+    if exists (select 1 from workflows where key = 'dbtest_life') then raise exception 'not deleted'; end if;
+    if exists (select 1 from workflow_changes where workflow_key = 'dbtest_life' and workflow_id is not null) then raise exception 'history still linked'; end if;
+    if (select count(*) from workflow_changes where workflow_key = 'dbtest_life') < 4 then raise exception 'history lost'; end if;
+    if not exists (select 1 from workflow_changes where workflow_key = 'dbtest_life' and event = 'deleted'
+                    and reviewed_by = 'DB test' and before is not null and after is null) then raise exception 'no deletion entry'; end if;`, null],
+  ['an app’s own workflow cannot be retired', `
+    perform workflow_retire('complaint', true, '{"reviewed_by":"x","reviewed_against":"y"}');`, 'Only a Cases process'],
+  ['…or deleted', `
+    perform workflow_delete('complaint', '{"reviewed_by":"x","reviewed_against":"y"}');`, 'Only a Cases process'],
   ['a complaint’s clock runs from when it was received', `
     insert into complaint_cases (subject, description, received_at, created_by, updated_by)
          values ('DB test', 'x', now() - interval '3 days', auth.uid(), auth.uid());

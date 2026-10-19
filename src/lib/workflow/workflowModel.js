@@ -121,6 +121,17 @@ export function moveRefusal(m, { userId = null, assignedTo = null, lastMoverId =
  * counts moves (the diagram's figures, how long an item sat in a step) reads
  * moves only; a row from before 250 has no kind and is a move.
  */
+/**
+ * What a change-history row records when it is not a definition change
+ * (migration 265, workflow_changes.event): a Cases process retired, brought
+ * back, or deleted. The database's CHECK holds the same values.
+ */
+export const CHANGE_EVENTS = Object.freeze([
+  { value: 'retired',      label: 'Retired: no new cases.' },
+  { value: 'brought_back', label: 'Brought back: cases can be opened again.' },
+  { value: 'deleted',      label: 'Deleted.' },
+]);
+
 export const EVENT_KINDS = Object.freeze([
   { value: 'move',   label: 'Moved' },
   { value: 'assign', label: 'Assigned' },

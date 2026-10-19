@@ -5575,17 +5575,23 @@ export type Database = {
       }
       workflow_changes: {
         Row: {
+          event: string | null
+          workflow_key: string | null
+          workflow_name: string | null
           id: number
-          workflow_id: string
+          workflow_id: string | null
           changed_at: string
           changed_by: string | null
           before: Json | null
-          after: Json
+          after: Json | null
           reviewed_by: string | null
           reviewed_against: string | null
           review_note: string | null
         }
         Insert: {
+          event?: string | null
+          workflow_key?: string | null
+          workflow_name?: string | null
           id?: number
           workflow_id: string
           changed_at?: string
@@ -5597,6 +5603,9 @@ export type Database = {
           review_note?: string | null
         }
         Update: {
+          event?: string | null
+          workflow_key?: string | null
+          workflow_name?: string | null
           id?: number
           workflow_id?: string
           changed_at?: string
@@ -5964,6 +5973,8 @@ export type Database = {
       }
       workflows: {
         Row: {
+          retired_at: string | null
+          retired_by: string | null
           id: string
           key: string
           name: string
@@ -5976,6 +5987,8 @@ export type Database = {
           public_status: boolean
         }
         Insert: {
+          retired_at?: string | null
+          retired_by?: string | null
           id?: string
           key: string
           name: string
@@ -5988,6 +6001,8 @@ export type Database = {
           public_status?: boolean
         }
         Update: {
+          retired_at?: string | null
+          retired_by?: string | null
           id?: string
           key?: string
           name?: string

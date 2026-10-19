@@ -29,6 +29,11 @@
   import { errMessage } from '#lib/utils/errors.js';
 
   $: s = $casesStore;
+  // Retired processes (migration 265) are listed only when asked for — or when one is open.
+  let showRetired = false;
+  $: tabsShown = s.processes
+    .filter((p) => showRetired || !p.retired_at || p.key === s.chosen)
+    .map((p) => ({ key: p.key, label: p.retired_at ? `${p.name} (retired)` : p.name }));
   $: canEdit = $permissions.isAdmin || $permissions.canModify;
   $: me = $auth.user?.id ?? null;
   $: nameById = Object.fromEntries(/** @type {Array<{ id: string, full_name: string|null }>} */ ($profiles.list)
@@ -111,7 +116,11 @@
   <div class="flex items-center gap-3 flex-wrap">
     <h2 class="text-sm font-semibold text-white">Cases</h2>
     <div class="flex-1"></div>
-    {#if ready && s.workflow && canEdit}<Button variant="primary" size="small" on:click={startNew}>+ Open a case</Button>{/if}
+    {#if ready && s.processes.some((p) => p.retired_at)}
+      <label class="flex items-center gap-1 text-xs text-slate-400">
+        <input type="checkbox" bind:checked={showRetired} /> Show retired processes</label>
+    {/if}
+    {#if ready && s.workflow && !s.workflow.retired_at && canEdit}<Button variant="primary" size="small" on:click={startNew}>+ Open a case</Button>{/if}
   </div>
   <ErrorDisplay message={error || s.error || ''} onDismiss={() => (error = '')} />
 
@@ -124,7 +133,11 @@
           permits to work — never a resident's personal records.</p>
       </div>
     {:else}
-      <TabBar tabs={s.processes.map((p) => ({ key: p.key, label: p.name }))} active={s.chosen} on:select={(e) => choose(e.detail)} />
+      <TabBar tabs={tabsShown} active={s.chosen} on:select={(e) => choose(e.detail)} />
+      {#if s.workflow?.retired_at}
+        <p class="text-sm text-amber-200" data-testid="process-retired">This process is retired: no new cases are opened in it. Its cases
+          stay here and can be finished.</p>
+      {/if}
       {#if s.workflow?.description}<p class="text-sm text-slate-400">{s.workflow.description}</p>{/if}
 
       <div class="flex flex-wrap gap-2 items-center">

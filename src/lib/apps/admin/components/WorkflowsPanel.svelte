@@ -9,12 +9,13 @@
 <script>
   import { workflowLabel, sortByLabel } from '#lib/workflow/workflowNaming.js';
   import { onMount } from 'svelte';
-  import { listWorkflows, loadWorkflow, saveWorkflow, listChanges, listEvents, listTimerRuns, runTimers, setPublicStatus } from '#lib/workflow/workflowApi.js';
+  import { listWorkflows, loadWorkflow, saveWorkflow, listChanges, listEvents, listTimerRuns, runTimers, setPublicStatus,
+    retireWorkflow, deleteWorkflow, listDeletedWorkflows } from '#lib/workflow/workflowApi.js';
   import { publicStatusAllowed, publicStageName } from '#lib/workflow/workflowModel.js';
   import { workflowStats, simulateDeadlines } from '#lib/workflow/workflowStats.js';
   import WorkflowDiagram from '#lib/workflow/WorkflowDiagram.svelte';
   import { today } from '#lib/utils/dates.js';
-  import { definitionOf, definitionChanged, workflowDiff } from '#lib/workflow/workflowModel.js';
+  import { definitionOf, definitionChanged, workflowDiff, CHANGE_EVENTS } from '#lib/workflow/workflowModel.js';
   import { profiles, profilesStore } from '#lib/stores/profiles.js';
   import { fmtDateTime } from '#lib/utils/dates.js';
   import Modal from '#lib/components/common/Modal.svelte';
@@ -131,9 +132,65 @@
       await readOffDays();
       workflows = await listWorkflows();
       if (workflows.length) chosenKey = workflows[0].key;
+      readDeleted();
     } catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read the workflows.'); }
     finally { ready = true; }
   });
+
+  // ── Retire or delete a Cases process (migration 265) ──
+  // Retire: no new cases; those it has stay. Delete: only with no cases, and
+  // its change history is kept. ⛔ Never an app's own workflow (the app runs
+  // on it, and would put the shipped one back).
+  /** @type {null | 'retire' | 'bring_back' | 'delete'} */
+  let lifecycle = null;
+  let lifecycleReview = { reviewedBy: '', reviewedAgainst: '', note: '' };
+  let lifecycleBusy = false;
+  let lifecycleError = '';
+  /** @type {Array<{ key: string, name: string, deletedAt: string, changes: any[] }>} */
+  let deleted = [];
+  async function readDeleted() {
+    try { deleted = await listDeletedWorkflows(); }
+    catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read the deleted processes.'); }
+  }
+  function askLifecycle(/** @type {'retire' | 'bring_back' | 'delete'} */ what) {
+    lifecycle = what; lifecycleError = '';
+    lifecycleReview = { reviewedBy: '', reviewedAgainst: '', note: '' };
+  }
+  $: lifecycleReviewMissing = !!current?.review_required
+    && (!lifecycleReview.reviewedBy.trim() || !lifecycleReview.reviewedAgainst.trim());
+  async function doLifecycle() {
+    const wf = current;
+    const what = lifecycle;
+    if (!wf || !what) return;
+    lifecycleBusy = true; lifecycleError = ''; error = ''; saved = '';
+    const review = wf.review_required ? lifecycleReview : null;
+    try {
+      if (what === 'delete') {
+        await deleteWorkflow(wf.key, review);
+        logAudit('delete', 'workflow', wf.id, wf.name, { appId: 'admin', eventCategory: 'admin', beforeData: { key: wf.key, app: wf.app_id } });
+        saved = `“${wf.name}” deleted. Its history is kept under Deleted processes.`;
+        workflows = await listWorkflows();
+        chosenKey = workflows[0]?.key ?? '';
+        loadedKey = '';
+        await readDeleted();
+      } else {
+        await retireWorkflow(wf.key, what === 'retire', review);
+        logAudit('update', 'workflow', wf.id, wf.name, { appId: 'admin', eventCategory: 'admin', afterData: { retired: what === 'retire' } });
+        saved = what === 'retire'
+          ? `“${wf.name}” retired: no new cases can be opened in it. The cases it has stay, and can be finished.`
+          : `“${wf.name}” brought back: cases can be opened in it again.`;
+        workflows = await listWorkflows();
+        loadedKey = '';                       // read it back
+      }
+      lifecycle = null;
+    } catch (/** @type {any} */ err) { lifecycleError = errMessage(err, 'That could not be done.'); }
+    finally { lifecycleBusy = false; }
+  }
+  /** A change row in words: an event, or what the definition change did. @param {any} c */
+  const changeLines = (c) => {
+    const ev = CHANGE_EVENTS.find((e) => e.value === c.event);
+    return ev ? [ev.label] : workflowDiff(c.before, c.after);
+  };
 
   // Read the chosen workflow once per choice (keyed on the string, never an object).
   $: if (chosenKey && chosenKey !== loadedKey) { loadedKey = chosenKey; open(chosenKey); }
@@ -396,7 +453,7 @@
   {#if ready && workflows.length}
     <label class="flex items-center gap-2 text-sm text-slate-300">Workflow
       <select bind:value={chosenKey} class={inputCls}>
-        {#each sortByLabel(workflows) as w (w.key)}<option value={w.key}>{workflowLabel(w)}</option>{/each}
+        {#each sortByLabel(workflows) as w (w.key)}<option value={w.key}>{workflowLabel(w)}{w.retired_at ? " (retired)" : ""}</option>{/each}
       </select>
     </label>
     <div class="flex flex-wrap items-center gap-2" data-testid="workflow-transfer">
@@ -409,6 +466,11 @@
 
     {#if current}
       {#if current.description}<p class="text-sm text-slate-400">{current.description}</p>{/if}
+      {#if current.retired_at}
+        <p class="text-sm text-amber-200 rounded border border-amber-600/50 bg-amber-900/20 p-2" data-testid="workflow-retired">
+          Retired {fmtDateTime(current.retired_at)}{current.retired_by ? ` by ${nameOf(current.retired_by)}` : ''}: no new cases can be
+          opened in it. Its cases stay in Cases, behind “Show retired processes”, and can be finished.</p>
+      {/if}
 
       <div class="rounded-lg border p-3 space-y-2 {current.review_required ? 'border-amber-500/60 bg-amber-900/20' : 'border-slate-700'}" data-testid="workflow-review-mark">
         {#if current.review_required}
@@ -629,6 +691,24 @@
         <Button variant="secondary" on:click={() => (loadedKey = '')} disabled={saving || !changed}>Undo changes</Button>
       </div>
 
+      {#if current.app_id === 'cases'}
+        <div class="space-y-2 border-t border-slate-700 pt-3" data-testid="workflow-lifecycle">
+          <p class="text-sm font-semibold text-slate-200">Retire or delete this process</p>
+          <p class="text-xs text-slate-400"><strong class="text-slate-300">Retire</strong> stops new cases; the cases it has stay, and can be
+            worked and finished. It can be brought back. <strong class="text-slate-300">Delete</strong> is only for a process with no
+            cases at all — delete them first, or retire it instead. Its history of changes is kept either way.</p>
+          <div class="flex flex-wrap gap-2">
+            {#if current.retired_at}
+              <Button variant="secondary" size="small" disabled={changed} on:click={() => askLifecycle('bring_back')}>Bring back</Button>
+            {:else}
+              <Button variant="secondary" size="small" disabled={changed} on:click={() => askLifecycle('retire')}>Retire — no new cases</Button>
+            {/if}
+            <Button variant="danger" size="small" disabled={changed} on:click={() => askLifecycle('delete')}>Delete process…</Button>
+          </div>
+          {#if changed}<p class="text-xs text-amber-300">Save or undo the changes in the editor first.</p>{/if}
+        </div>
+      {/if}
+
       {#if changes.length}
         <div class="space-y-2 border-t border-slate-700 pt-3" data-testid="workflow-history">
           <p class="text-sm font-semibold text-slate-200">Changes</p>
@@ -640,7 +720,7 @@
                   <p class="text-xs text-amber-200">Reviewed by {c.reviewed_by}, against {c.reviewed_against}{c.review_note ? ` — ${c.review_note}` : ''}</p>
                 {/if}
                 <ul class="list-disc pl-5 text-slate-300">
-                  {#each workflowDiff(c.before, c.after) as line}<li>{line}</li>{/each}
+                  {#each changeLines(c) as line}<li>{line}</li>{/each}
                 </ul>
               </li>
             {/each}
@@ -648,6 +728,25 @@
         </div>
       {/if}
     {/if}
+  {/if}
+
+  {#if deleted.length}
+    <details class="space-y-2 border-t border-slate-700 pt-4 text-sm" data-testid="deleted-processes">
+      <summary class="cursor-pointer text-sm font-semibold text-slate-200">Deleted processes ({deleted.length})</summary>
+      <p class="text-xs text-slate-500">A deleted process's history of changes, and every review recorded on it, is kept.</p>
+      {#each deleted as d (d.key + d.deletedAt)}
+        <div class="border-b border-slate-800 pb-2">
+          <p class="text-slate-200">{d.name} <span class="text-xs text-slate-500">· deleted {fmtDateTime(d.deletedAt)}</span></p>
+          <ul class="space-y-1 pl-3">
+            {#each d.changes as c (c.id)}
+              <li class="text-xs text-slate-400">{fmtDateTime(c.changed_at)} · {nameOf(c.changed_by)}
+                {#if c.reviewed_by}<span class="text-amber-200"> · reviewed by {c.reviewed_by}, against {c.reviewed_against}</span>{/if}
+                — {changeLines(c).join(' ')}</li>
+            {/each}
+          </ul>
+        </div>
+      {/each}
+    </details>
   {/if}
 
   <div class="space-y-2 border-t border-slate-700 pt-4" data-testid="non-working-days">
@@ -715,5 +814,34 @@
     <Button variant="secondary" on:click={() => (askReview = false)} disabled={saving}>Cancel</Button>
     <Button variant="primary" loading={saving} disabled={saving || !review.reviewedBy.trim() || !review.reviewedAgainst.trim()}
       on:click={() => doSave(review)}>Save the change</Button>
+  </div>
+</Modal>
+
+<Modal show={!!lifecycle} size="medium" on:close={() => (lifecycle = null)}
+  title={lifecycle === 'delete' ? `Delete “${current?.name ?? ''}”?` : lifecycle === 'retire' ? `Retire “${current?.name ?? ''}”?` : `Bring back “${current?.name ?? ''}”?`}>
+  <div class="space-y-3 text-sm" data-testid="workflow-lifecycle-form">
+    {#if lifecycle === 'delete'}
+      <p class="text-slate-300">Its steps, moves and fields are deleted. It can only be deleted when it has no cases. Its history of
+        changes is kept, under Deleted processes.</p>
+      <p class="text-slate-400">To be able to put it back, use <strong>⬇ Export as a file</strong> first: importing the file sets it up again.</p>
+    {:else if lifecycle === 'retire'}
+      <p class="text-slate-300">No new cases can be opened in it. The cases it has stay in Cases, behind “Show retired processes”, and
+        can still be worked and finished. It can be brought back.</p>
+    {:else}
+      <p class="text-slate-300">Cases can be opened in it again, and it is listed in Cases as before.</p>
+    {/if}
+    {#if current?.review_required}
+      <p class="text-amber-200">⚠ This process needs a full review before any change{current.review_reason ? ` (${current.review_reason})` : ''}.</p>
+      <FormInput label="Reviewed by" bind:value={lifecycleReview.reviewedBy} placeholder="Name, and role if not on the portal" required />
+      <FormInput label="Reviewed against" bind:value={lifecycleReview.reviewedAgainst} placeholder="e.g. the procedure it followed" required />
+      <FormTextarea label="Note" bind:value={lifecycleReview.note} rows={2} />
+    {/if}
+    {#if lifecycleError}<p class="text-red-400" role="alert">{lifecycleError}</p>{/if}
+  </div>
+  <div slot="footer" class="flex gap-3">
+    <Button variant="secondary" on:click={() => (lifecycle = null)} disabled={lifecycleBusy}>Cancel</Button>
+    <Button variant={lifecycle === 'delete' ? 'danger' : 'primary'} loading={lifecycleBusy}
+      disabled={lifecycleBusy || lifecycleReviewMissing} on:click={doLifecycle}>
+      {lifecycle === 'delete' ? 'Delete the process' : lifecycle === 'retire' ? 'Retire it' : 'Bring it back'}</Button>
   </div>
 </Modal>

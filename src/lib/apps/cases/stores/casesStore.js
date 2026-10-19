@@ -47,7 +47,9 @@ function createCasesStore() {
   const load = storeLoader(update,
     async (/** @type {string|undefined} */ key) => {
       const processes = await api.getAll('workflows', { filters: { app_id: 'cases' }, orderBy: 'name', ascending: true });
-      const chosen = key && processes.some((p) => p.key === key) ? key : (processes[0]?.key ?? '');
+      // A retired process (migration 265) is chosen only when asked for by name.
+      const chosen = key && processes.some((p) => p.key === key) ? key
+        : (processes.find((p) => !p.retired_at)?.key ?? processes[0]?.key ?? '');
       if (!chosen) return { processes, chosen: '', workflow: null, steps: [], moves: [], fields: [], items: [], cases: [] };
       return { processes, ...(await readProcess(chosen)) };
     },

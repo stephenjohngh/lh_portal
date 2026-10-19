@@ -53,6 +53,16 @@ describe('cases', () => {
     expect(get(casesStore).chosen).toBe('case_change');
   });
 
+  // Migration 265: a retired process is chosen only when asked for by name.
+  it('a retired process is not chosen by default, but can be asked for', async () => {
+    const retired = [{ ...PROCESSES[0], retired_at: '2026-10-19T10:00:00Z' }, PROCESSES[1]];
+    h.api.getAll.mockImplementation(async (/** @type {string} */ table) => (table === 'workflows' ? retired : [CASE]));
+    await casesStore.load();
+    expect(get(casesStore).chosen).toBe('case_triage');
+    await casesStore.load('case_change');
+    expect(get(casesStore).chosen).toBe('case_change');
+  });
+
   it('a case is opened through case_open() in the chosen process, and the audit names its reference only', async () => {
     await casesStore.create({ title: ' Boiler ', description: '', fields: { contractor: 'ACME' } });
     expect(h.api.rpc).toHaveBeenCalledWith('case_open', { p_workflow: 'w1', p_title: 'Boiler', p_description: null, p_fields: { contractor: 'ACME' } });
