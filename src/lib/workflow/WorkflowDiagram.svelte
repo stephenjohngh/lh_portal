@@ -8,14 +8,14 @@
      Any app's workflow can be drawn with it: the point of one standard model.
      Plain SVG, laid out by workflowLayout.js; no graph library. -->
 <script>
-  import { layoutWorkflow } from './workflowLayout.js';
+  import { layoutWorkflow, LABEL } from './workflowLayout.js';
   import { describeDeadline } from './workflowDeadlines.js';
   import { timerPhrase } from './workflowModel.js';
   import { ACCENT } from '#lib/theme.js';
 
   /** @type {Array<{ key: string, name: string, kind: string, position?: number, deadline_days?: number|string|null, deadline_basis?: string, deadline_from?: string }>} */
   export let steps = [];
-  /** @type {Array<{ from_key: string, to_key: string, label: string, note_required?: boolean, admin_only?: boolean, action?: string|null, who?: string, four_eyes?: boolean }>} */
+  /** @type {Array<{ from_key: string, to_key: string, label: string, note_required?: boolean, admin_only?: boolean, action?: string|null, who?: string, four_eyes?: boolean, timer_days?: number|null, timer_basis?: string }>} */
   export let moves = [];
   /** @type {ReturnType<typeof import('./workflowStats.js').workflowStats> | null} */
   export let stats = null;
@@ -29,6 +29,9 @@
   const LATE_SHOWN = 8;
   $: late = stats?.late ?? [];
 
+  /** A move back in the flow: its own colour, so it reads apart from the way forward. */
+  const BACK = '#f59e0b';
+  const BACK_TEXT = '#fcd34d';
   const FILL = { start: '#134e4a', open: '#1e293b', done: '#14532d', declined: '#4c1d1d' };
   const STROKE = { start: ACCENT, open: '#64748b', done: '#22c55e', declined: '#ef4444' };
   const fmtDays = (/** @type {number|null} */ d) => (d == null ? '' : `${Number.isInteger(d) ? d : d.toFixed(1)} d`);
@@ -40,19 +43,19 @@
       <marker id="wf-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
         <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8" />
       </marker>
+      <marker id="wf-arrow-back" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill={BACK} />
+      </marker>
     </defs>
 
     {#each layout.edges as e (e.from + '>' + e.to)}
       {@const used = stats?.moveCount?.[`${e.from}>${e.to}`] ?? 0}
       {@const mv = moves.find((m) => m.from_key === e.from && m.to_key === e.to)}
-      <path d={e.path} fill="none" stroke={e.back ? '#64748b' : '#94a3b8'} stroke-dasharray={e.back ? '5 4' : ''}
-        stroke-width={stats ? 1.2 + (3 * used) / maxMoves : 1.5} marker-end="url(#wf-arrow)">
+      <path d={e.path} fill="none" stroke={e.back ? BACK : '#94a3b8'} stroke-dasharray={e.back ? '5 4' : ''}
+        stroke-width={stats ? 1.2 + (3 * used) / maxMoves : 1.5} marker-end={e.back ? 'url(#wf-arrow-back)' : 'url(#wf-arrow)'}
+        data-back={e.back ? 'true' : undefined}>
         <title>{e.label}{mv?.note_required ? ' — needs a note' : ''}{mv?.admin_only ? ' — admin only' : ''}{mv?.who === 'assignee' ? ' — only the person it is with' : ''}{mv?.four_eyes ? ' — four-eyes: not the person who made the last move' : ''}{mv?.action ? ' — runs an action' : ''}{mv?.timer_days ? ` — by itself ${timerPhrase(mv)}` : ''}{stats ? ` — made ${used} time${used === 1 ? '' : 's'}` : ''}</title>
       </path>
-      <text x={e.labelX} y={e.labelY} text-anchor="middle" font-size="10" fill="#cbd5e1" class="select-none"
-        stroke="#0f172a" stroke-width="3" paint-order="stroke">
-        {e.label}{mv?.note_required ? ' ✎' : ''}{mv?.admin_only ? ' 🔒' : ''}{mv?.who === 'assignee' ? ' 👤' : ''}{mv?.four_eyes ? ' 👥' : ''}{mv?.action ? ' ⚙' : ''}{mv?.timer_days ? ' ⏲' : ''}{stats && used ? ` (${used})` : ''}
-      </text>
     {/each}
 
     {#each layout.nodes as n (n.key)}
@@ -73,9 +76,19 @@
         {/if}
       </g>
     {/each}
+    <!-- Move labels last, on top: a box never hides one. Each is the layout's wrapped lines. -->
+    {#each layout.edges as e (e.from + '>' + e.to + ':label')}
+      {@const used = stats?.moveCount?.[`${e.from}>${e.to}`] ?? 0}
+      <text text-anchor={e.anchor ?? 'middle'} font-size="10" fill={e.back ? BACK_TEXT : '#cbd5e1'} class="select-none"
+        stroke="#0f172a" stroke-width="3" paint-order="stroke" data-testid="workflow-diagram-label">
+        {#each e.lines as line, i}
+          <tspan x={e.labelX} y={e.labelTop + i * LABEL.lineH}>{line}{i === e.lines.length - 1 && stats && used ? ` (${used})` : ''}</tspan>
+        {/each}
+      </text>
+    {/each}
   </svg>
   <p class="mt-1 text-xs text-slate-500">
-    Teal: start · grey: in progress · green: accepted · red: not accepted · dashed: a move back · ✎ needs a note · 🔒 admin only · 👤 only the person it is with · 👥 four-eyes · ⚙ runs an action · ⏲ made by itself after a time · ⏱ has a deadline{stats ? ' · thicker arrow: used more · red badge: overdue · “d”: median days spent there' : ''}
+    Teal: start · grey: in progress · green: accepted · red: not accepted · <span class="text-amber-400">amber dashed: a move back</span> · ✎ needs a note · 🔒 admin only · 👤 only the person it is with · 👥 four-eyes · ⚙ runs an action · ⏲ made by itself after a time · ⏱ has a deadline{stats ? ' · thicker arrow: used more · red badge: overdue · “d”: median days spent there' : ''}
   </p>
   {#if late.length}
     <div class="mt-1 text-xs text-red-300" data-testid="workflow-diagram-late">
