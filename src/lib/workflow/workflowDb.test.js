@@ -25,6 +25,7 @@ import { DEFAULT_COMPLIANCE_ACTION_WORKFLOW as ACTION_WF } from '#lib/apps/compl
 import { DEFAULT_WORKS_SCHEDULE_WORKFLOW as WORKS_WF } from '#lib/apps/building_assets/utils/worksScheduleWorkflow.js';
 import { DEFAULT_MAINTENANCE_JOB_WORKFLOW as JOB_WF } from '#lib/apps/maintenance/utils/maintenanceJobWorkflow.js';
 import { DEFAULT_WAITING_LIST_WORKFLOW as WL_WF } from '#lib/apps/parking/utils/waitingListWorkflow.js';
+import { DEFAULT_MOR_WORKFLOW as MOR_WF } from '#lib/apps/mor/utils/morWorkflow.js';
 
 const RUN = process.env.LH_DB_TESTS === 'dev';
 const PSQL = process.platform === 'win32' ? 'C:/Program Files/PostgreSQL/18/bin/psql.exe' : 'psql';
@@ -94,6 +95,14 @@ const wlItem = `(select id from workflow_items where subject_id = ${wlApp})`;
 const wlBay = `(select id from dbtest_bay)`;
 const NOBODY = `perform set_config('request.jwt.claims', '{}', true);
     perform set_config('request.jwt.claim.sub', '', true);`;
+const morSave = `perform workflow_save('mor_case', ${txt(MOR_WF.name)}, 'mor', null,
+      ${lit(MOR_WF.steps.map((x, n) => ({ ...x, position: n + 1 })))},
+      ${lit(MOR_WF.moves.map((m, n) => ({ ...m, position: n + 1 })))}, true, ${txt(MOR_WF.reviewReason)}, null, '[]', null);`;
+const morCase = `(select id from mor_cases where description = 'DB test MOR')`;
+const morItem = `(select id from workflow_items where subject_id = ${morCase})`;
+const morStatus = `(select status from mor_cases where id = ${morCase})`;
+/** Someone other than the administrator — the proposer of a decision. */
+const OTHER = `(select id from profiles where not is_admin order by created_at limit 1)`;
 const firstAction = `(select i.id from workflow_items i join statutory_register r on r.id = i.subject_id where r.template_key = ${ACT})`;
 
 /** The runtime checks, in order; each sees what the ones before it did. */
@@ -358,12 +367,22 @@ const RUNTIME = [
     ${ADMIN_CLAIMS}
     ${wlSave}
     perform parking_waiting_list_attach_to_workflow();
+    -- A free licensable bay: one with no agreement and no offer, else a drawn
+    -- bay given a Parking row here (browser tests on dev use the bays up).
     create temp table dbtest_bay on commit drop as
-      with b as (insert into parking_bays (space_id, tenure, in_service)
-                 select s.id, 'licensable', true from spaces s
-                  where s.kind = 'slot' and not exists (select 1 from parking_bays x where x.space_id = s.id)
-                  order by s.id limit 1 returning id) select id from b;
-    if (select count(*) from dbtest_bay) <> 1 then raise exception 'dev has no bay without a Parking row to test with'; end if;
+      select b.id from parking_bays b
+       where b.tenure = 'licensable' and b.in_service
+         and not exists (select 1 from parking_agreements a where a.bay_id = b.id)
+         and not exists (select 1 from parking_applications x where x.offered_bay_id = b.id)
+       order by b.id limit 1;
+    if not exists (select 1 from dbtest_bay) then
+      insert into dbtest_bay
+        with b as (insert into parking_bays (space_id, tenure, in_service)
+                   select s.id, 'licensable', true from spaces s
+                    where s.kind = 'slot' and not exists (select 1 from parking_bays x where x.space_id = s.id)
+                    order by s.id limit 1 returning id) select id from b;
+    end if;
+    if (select count(*) from dbtest_bay) <> 1 then raise exception 'dev has no free bay to test with'; end if;
     insert into parking_holders (display_name, holder_type, email) values ('DB test holder', 'leaseholder', 'dbtest@example.com');
     insert into parking_applications (holder_id, wanted_size, joined_on, created_by)
          values ((select id from parking_holders where display_name = 'DB test holder'), 'any', current_date - 10, auth.uid());
@@ -429,6 +448,84 @@ const RUNTIME = [
     delete from parking_applications where id = ${wlApp};
     if exists (select 1 from workflow_items i join workflows w on w.id = i.workflow_id
                 where w.key = 'parking_waiting_list' and not exists (select 1 from parking_applications a where a.id = i.subject_id))
+      then raise exception 'left behind'; end if;`, null],
+  // Migration 263: MOR (BSA s.87) — what the case screen's forms used to carry.
+  ['the shipped MOR workflow saves; a new case joins at Submitted, counted from identification', `
+    ${ADMIN_CLAIMS}
+    if not exists (select 1 from workflows where key = 'mor_case') then ${morSave} end if;
+    perform mor_attach_to_workflow();
+    insert into mor_cases (description, identification_date, created_by)
+         values ('DB test MOR', now() - interval '3 days', auth.uid());
+    if (select step_key from workflow_items where id = ${morItem}) <> 'submitted' then raise exception 'not at Submitted'; end if;
+    if (select label from workflow_items where id = ${morItem}) <> (select reference from mor_cases where id = ${morCase})
+      then raise exception 'not named by its reference'; end if;
+    if (select started_at::date from workflow_items where id = ${morItem}) <> current_date - 3 then raise exception 'not started at identification'; end if;`, null],
+  ['an MOR case’s status changes only through its workflow', `
+    update mor_cases set status = 'acknowledged' where id = ${morCase};`, 'through its workflow'],
+  ['acknowledging stamps the case and writes its timeline', `
+    perform workflow_move(${morItem}, 'acknowledged', null);
+    perform workflow_move(${morItem}, 'in_triage', null);
+    if (select acknowledged_at from mor_cases where id = ${morCase}) is null then raise exception 'not stamped'; end if;
+    if (select count(*) from mor_timeline_entries where case_id = ${morCase} and to_status in ('acknowledged', 'in_triage')) <> 2
+      then raise exception 'timeline not written'; end if;`, null],
+  ['a bare triage move is refused: the triage is recorded with it', `
+    perform workflow_move(${morItem}, 'decision_pending', null);`, 'Record the triage'],
+  ['a triage needs its reasons', `
+    perform mor_triage(${morCase}, 'clearly_reportable', '  ');`, 'Give the reasons'],
+  ['a triage records its outcome and makes its move', `
+    perform mor_triage(${morCase}, 'clearly_reportable', 'Cracking in a structural column');
+    if ${morStatus} <> 'decision_pending' then raise exception 'not moved'; end if;
+    if (select triage_outcome from mor_cases where id = ${morCase}) <> 'clearly_reportable'
+       or (select triage_by from mor_cases where id = ${morCase}) is null then raise exception 'not recorded'; end if;`, null],
+  ['an approval needs a proposed decision', `
+    perform workflow_move(${morItem}, 'bsr_notice', null);`, 'Propose a decision first'],
+  ['the proposer cannot approve their own decision', `
+    update mor_cases set decision_outcome = 'bsr', decision_rationale = 'Reportable', decision_proposed_by = auth.uid() where id = ${morCase};
+    perform workflow_move(${morItem}, 'bsr_notice', null);`, 'different person'],
+  ['an approval must be of the decision proposed', `
+    update mor_cases set decision_outcome = 'bsr', decision_rationale = 'Reportable', decision_proposed_by = ${OTHER} where id = ${morCase};
+    perform workflow_move(${morItem}, 'in_remediation', null);`, 'not the decision that was proposed'],
+  ['rejecting needs a note, and returns it to triage with the decision cleared', `
+    update mor_cases set decision_outcome = 'bsr', decision_rationale = 'Reportable', decision_proposed_by = ${OTHER} where id = ${morCase};
+    begin perform workflow_move(${morItem}, 'in_triage', null); raise exception 'accepted without a note';
+    exception when others then if sqlerrm not like 'Add a note%' then raise; end if; end;
+    perform workflow_move(${morItem}, 'in_triage', 'Needs a structural opinion first');
+    if (select decision_outcome from mor_cases where id = ${morCase}) is not null then raise exception 'decision not cleared'; end if;
+    if not exists (select 1 from mor_timeline_entries where case_id = ${morCase} and entry_type = 'rejection') then raise exception 'no rejection entry'; end if;`, null],
+  ['the same outcome again keeps the recorded triage; another person’s proposal is approved', `
+    perform mor_triage(${morCase}, 'clearly_reportable', 'Opinion received');
+    if (select triage_rationale from mor_cases where id = ${morCase}) <> 'Cracking in a structural column' then raise exception 'triage overwritten'; end if;
+    update mor_cases set decision_outcome = 'bsr', decision_rationale = 'Reportable', decision_proposed_by = ${OTHER} where id = ${morCase};
+    perform workflow_move(${morItem}, 'bsr_notice', null);
+    if ${morStatus} <> 'bsr_notice' or (select decision_approved_by from mor_cases where id = ${morCase}) <> auth.uid()
+       or (select decision_at from mor_cases where id = ${morCase}) is null then raise exception 'not approved'; end if;`, null],
+  ['the BSR report is recorded with its reference, never by a bare move', `
+    begin perform workflow_move(${morItem}, 'bsr_report', null); raise exception 'a bare move was accepted';
+    exception when others then if sqlerrm not like 'Record the BSR report%' then raise; end if; end;
+    begin perform mor_record_bsr_report(${morCase}, ' '); raise exception 'no reference was accepted';
+    exception when others then if sqlerrm not like 'Give the BSR report%' then raise; end if; end;
+    perform mor_record_bsr_report(${morCase}, 'BSR-DBTEST-1');
+    if ${morStatus} <> 'bsr_report' or (select bsr_report_ref from mor_cases where id = ${morCase}) <> 'BSR-DBTEST-1'
+      then raise exception 'not recorded'; end if;`, null],
+  ['remediated and closed, the case is stamped and its item has no deadline', `
+    perform workflow_move(${morItem}, 'in_remediation', null);
+    perform workflow_move(${morItem}, 'remediated', null);
+    perform workflow_move(${morItem}, 'closed', null);
+    if (select closed_at from mor_cases where id = ${morCase}) is null then raise exception 'not stamped'; end if;
+    if (select due_on from workflow_items where id = ${morItem}) is not null then raise exception 'still has a deadline'; end if;`, null],
+  ['reopening an MOR case needs a note', `
+    perform workflow_move(${morItem}, 'reopened', null);`, 'Add a note'],
+  ['reopened with a note, it is on the timeline', `
+    perform workflow_move(${morItem}, 'reopened', 'Cracking has returned');
+    if not exists (select 1 from mor_timeline_entries where case_id = ${morCase} and entry_type = 'reopened' and content = 'Cracking has returned')
+      then raise exception 'not on the timeline'; end if;`, null],
+  ['MOR keeps its own reporter status page, not the shared one', `
+    perform workflow_set_public('mor_case', true, null);`, 'not named by a reference'],
+  ['a deleted MOR case takes its item with it', `
+    delete from mor_timeline_entries where case_id = ${morCase};
+    delete from mor_cases where id = ${morCase};
+    if exists (select 1 from workflow_items i join workflows w on w.id = i.workflow_id
+                where w.key = 'mor_case' and not exists (select 1 from mor_cases c where c.id = i.subject_id))
       then raise exception 'left behind'; end if;`, null],
   ['a deleted job takes its item with it', `
     ${ADMIN_CLAIMS}

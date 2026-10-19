@@ -2,14 +2,14 @@
 //
 // CHARACTERIZATION tests for morStore — the statutory MOR workflow. These pin
 // the contract that matters for compliance: a new case is stamped + referenced
-// correctly and anonymised when asked; the state machine rejects illegal
-// transitions BEFORE writing; triage outcomes map to the right next status; and
-// the two-step decision enforces proposer ≠ approver.
+// correctly and anonymised when asked; and since migration 263 a case MOVES only
+// through its workflow — never by writing its status — with a triage and the
+// BSR report recorded and moved together by the database (mor_triage,
+// mor_record_bsr_report). The rules themselves (the machine, proposer ≠
+// approver) are the database's and are tested there (workflowDb.test.js).
 //
 // Seams mocked: supabaseClient (auth + the refreshCase/fetchCases query chains),
-// api, auditLogger, logger, and the reference/verification-code generators.
-// isValidTransition is left REAL — it is the authentic state machine (and mirrors
-// the migration-137 trigger), so the tests exercise the genuine transition rules.
+// api, the workflow API, auditLogger, logger, and the verification-code generator.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
@@ -41,10 +41,24 @@ const h = vi.hoisted(() => {
     create:  vi.fn((t, d) => Promise.resolve({ id: 'c1', reference: d.reference ?? 'MOR-2026-001', ...d })),
     update:  vi.fn(() => Promise.resolve({})),
     delete:  vi.fn(() => Promise.resolve()),
+    rpc:     vi.fn(() => Promise.resolve({})),
+  };
+
+  // The case's workflow item, where the store looks it up.
+  let items = [{ id: 'i1', subject_id: 'c1', step_key: 'submitted' }];
+  const wfApi = {
+    loadWorkflow: vi.fn(() => Promise.resolve({ workflow: { id: 'w1', key: 'mor_case' }, steps: [], moves: [], fields: [] })),
+    listItems:    vi.fn(() => Promise.resolve(items)),
+    itemHistory:  vi.fn(() => Promise.resolve([])),
+    moveItem:     vi.fn(() => Promise.resolve({})),
+    saveWorkflow: vi.fn(() => Promise.resolve('w1')),
+    assignItem:   vi.fn(() => Promise.resolve({ changed: true })),
+    listAssignees: vi.fn(() => Promise.resolve([])),
   };
 
   return {
-    supabase, api, logAudit: vi.fn(),
+    supabase, api, wfApi, logAudit: vi.fn(),
+    setItems:   (r) => { items = r; },
     setSingle:  (r) => { single = r; },
     setList:    (r) => { list = r; },
     setCaseRow: (r) => { caseRow = r; },
@@ -56,6 +70,7 @@ vi.mock('#lib/utils/api.js',                 () => ({ api: h.api }));
 vi.mock('#lib/utils/auditLogger.js',         () => ({ logAudit: h.logAudit }));
 vi.mock('#lib/utils/logger.js',              () => ({ getLogger: () => () => {} }));
 vi.mock('#lib/utils/caseVerificationCode.js', () => ({ generateVerificationCode: () => 'R7PQK2' }));
+vi.mock('#lib/workflow/workflowApi.js',      () => h.wfApi);
 
 const { morStore } = await import('./morStore.js');
 
@@ -70,7 +85,16 @@ beforeEach(() => {
   h.setSingle({ data: { id: 'c1', reference: 'MOR-2026-001', status: 'submitted' }, error: null });
   h.setList({ data: [], error: null });
   h.setCaseRow({ status: 'submitted' });
+  h.setItems([{ id: 'i1', subject_id: 'c1', step_key: 'submitted' }]);
 });
+
+/** Load once so the store knows the case's workflow item. */
+const withItem = async (step) => {
+  h.setItems([{ id: 'i1', subject_id: 'c1', step_key: step }]);
+  h.setList({ data: [{ id: 'c1', reference: 'MOR-2026-001' }], error: null });
+  await morStore.fetchCases();
+  h.setList({ data: [], error: null });
+};
 
 describe('fetchCases', () => {
   it('loads the case list newest-first and clears loading', async () => {
@@ -132,44 +156,80 @@ describe('createCase', () => {
   });
 });
 
-describe('transitionStatus (via acknowledge)', () => {
-  it('allows a legal transition and stamps the milestone timestamp', async () => {
-    h.setCaseRow({ status: 'submitted' });               // submitted → acknowledged is legal
-    const r = await morStore.acknowledge('c1');
+// ⛔ Since migration 263 the store never writes a case's status: every move is
+// the workflow's, and the database sets the status, dates and timeline.
+const statusWritten = () => h.api.update.mock.calls.some(c => c[0] === 'mor_cases' && 'status' in (c[2] ?? {}));
+
+describe('moveCase — through the workflow, never by writing the status', () => {
+  it('moves the case\u2019s item and writes no status itself', async () => {
+    await withItem('submitted');
+    const r = await morStore.moveCase('c1', 'acknowledged');
     expect(r.success).toBe(true);
-    const patch = lastUpdate('mor_cases');
-    expect(patch.status).toBe('acknowledged');
-    expect(patch.acknowledged_at).toBeTruthy();
+    expect(h.wfApi.moveItem).toHaveBeenCalledWith('i1', 'acknowledged', '');
+    expect(statusWritten()).toBe(false);
+    expect(h.logAudit).toHaveBeenCalledWith('update', 'mor_case', 'c1', 'MOR-2026-001',
+      expect.objectContaining({ afterData: { from: 'submitted', to: 'acknowledged' } }));
   });
 
-  it('REJECTS an illegal transition without writing', async () => {
-    h.setCaseRow({ status: 'closed' });                  // closed → acknowledged is NOT legal
-    const r = await morStore.acknowledge('c1');
+  it('shows the database\u2019s refusal and changes nothing', async () => {
+    await withItem('decision_pending');
+    h.wfApi.moveItem.mockRejectedValueOnce(new Error('The decision must be approved by a different person from the one who proposed it.'));
+    const r = await morStore.moveCase('c1', 'bsr_notice');
     expect(r.success).toBe(false);
-    expect(r.error).toMatch(/invalid transition/i);
-    expect(h.api.update).not.toHaveBeenCalledWith('mor_cases', expect.anything(), expect.objectContaining({ status: 'acknowledged' }));
+    expect(r.error).toMatch(/different person/);
+    expect(get(morStore).error).toMatch(/different person/);
+  });
+
+  it('refuses a case not in its workflow yet, without writing', async () => {
+    await withItem('submitted');
+    h.setItems([]);
+    await morStore.reloadItems();
+    const r = await morStore.moveCase('c1', 'acknowledged');
+    expect(r.success).toBe(false);
+    expect(r.error).toMatch(/not in its workflow/);
+    expect(h.wfApi.moveItem).not.toHaveBeenCalled();
   });
 });
 
-describe('submitTriage — outcome → next status mapping', () => {
-  beforeEach(() => h.setCaseRow({ status: 'in_triage' }));
-
-  it('clearly_reportable → decision_pending', async () => {
+describe('triage, assessment, BSR report, close — recorded with their move', () => {
+  it('a triage goes through mor_triage, which records it and moves', async () => {
+    await withItem('in_triage');
     const r = await morStore.submitTriage('c1', { outcome: 'clearly_reportable', rationale: 'obvious' });
     expect(r.success).toBe(true);
-    expect(lastUpdate('mor_cases')).toMatchObject({ status: 'decision_pending', triage_outcome: 'clearly_reportable' });
+    expect(h.api.rpc).toHaveBeenCalledWith('mor_triage', { p_case: 'c1', p_outcome: 'clearly_reportable', p_rationale: 'obvious' });
+    expect(h.wfApi.moveItem).not.toHaveBeenCalled();
+    expect(statusWritten()).toBe(false);
   });
 
-  it('possibly_reportable → in_assessment', async () => {
-    const r = await morStore.submitTriage('c1', { outcome: 'possibly_reportable', rationale: 'need advice' });
-    expect(r.success).toBe(true);
-    expect(lastUpdate('mor_cases').status).toBe('in_assessment');
+  it('the assessment is the move to a decision, carrying its summary', async () => {
+    await withItem('in_assessment');
+    await morStore.recordAssessment('c1', { advisorName: 'Dr Eng', summary: 'Beam overstressed.' });
+    expect(h.wfApi.moveItem).toHaveBeenCalledWith('i1', 'decision_pending', 'Technical assessment from Dr Eng: Beam overstressed.');
   });
 
-  it('not_reportable → reclassified', async () => {
-    const r = await morStore.submitTriage('c1', { outcome: 'not_reportable', rationale: 'below threshold' });
+  it('the BSR report goes through mor_record_bsr_report with its reference', async () => {
+    await withItem('bsr_notice');
+    const r = await morStore.recordBsrReport('c1', { reportRef: 'BSR-1', submittedAt: '', notes: '' });
     expect(r.success).toBe(true);
-    expect(lastUpdate('mor_cases').status).toBe('reclassified');
+    expect(h.api.rpc).toHaveBeenCalledWith('mor_record_bsr_report',
+      { p_case: 'c1', p_ref: 'BSR-1', p_submitted_at: null, p_notes: null });
+  });
+
+  it('closing records the lessons learned, then moves to Closed', async () => {
+    await withItem('remediated');
+    await morStore.closeCase('c1', { lessonsLearned: ' Check props weekly. ' });
+    expect(h.api.update).toHaveBeenCalledWith('mor_cases', 'c1', expect.objectContaining({ lessons_learned: 'Check props weekly.' }));
+    expect(h.wfApi.moveItem).toHaveBeenCalledWith('i1', 'closed', 'Case closed. Lessons learned: Check props weekly.');
+    expect(statusWritten()).toBe(false);
+  });
+});
+
+describe('setUpWorkflow', () => {
+  it('saves the shipped MOR workflow, marked for review, and attaches older cases', async () => {
+    await morStore.setUpWorkflow();
+    const def = h.wfApi.saveWorkflow.mock.calls[0][0];
+    expect(def).toMatchObject({ key: 'mor_case', appId: 'mor', reviewRequired: true });
+    expect(h.api.rpc).toHaveBeenCalledWith('mor_attach_to_workflow', {});
   });
 });
 
@@ -186,31 +246,6 @@ describe('proposeDecision', () => {
     const r = await morStore.proposeDecision('c1', { outcome: 'bsr', rationale: 'x' });
     expect(r.success).toBe(false);
     expect(h.api.update).not.toHaveBeenCalledWith('mor_cases', expect.anything(), expect.objectContaining({ decision_outcome: 'bsr' }));
-  });
-});
-
-describe('approveDecision — two-step separation of duties', () => {
-  it('REJECTS approval by the same user who proposed the decision', async () => {
-    // current user is u1 (the auth mock); proposer is also u1.
-    h.setCaseRow({ status: 'decision_pending', decision_outcome: 'bsr', decision_proposed_by: 'u1' });
-    const r = await morStore.approveDecision('c1');
-    expect(r.success).toBe(false);
-    expect(r.error).toMatch(/different user/i);
-    expect(h.api.update).not.toHaveBeenCalled();
-  });
-
-  it('approves a bsr decision proposed by someone else → bsr_notice', async () => {
-    h.setCaseRow({ status: 'decision_pending', decision_outcome: 'bsr', decision_proposed_by: 'other' });
-    const r = await morStore.approveDecision('c1');
-    expect(r.success).toBe(true);
-    expect(lastUpdate('mor_cases')).toMatchObject({ status: 'bsr_notice', decision_approved_by: 'u1' });
-  });
-
-  it('approves an internal decision → in_remediation', async () => {
-    h.setCaseRow({ status: 'decision_pending', decision_outcome: 'internal', decision_proposed_by: 'other' });
-    const r = await morStore.approveDecision('c1');
-    expect(r.success).toBe(true);
-    expect(lastUpdate('mor_cases').status).toBe('in_remediation');
   });
 });
 

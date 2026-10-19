@@ -29,6 +29,7 @@ export const WORKFLOW_TABS = Object.freeze({
   compliance_action: 'Compliance obligations',
   complaint: null,          // the whole Complaints app — Open and All both list them
   maintenance_job: null,    // Due work and All Jobs both show jobs
+  mor_case: null,           // the whole MOR app — its dashboard and case list both
 });
 
 /** @param {string|null|undefined} appId */

@@ -1,8 +1,10 @@
 <!-- src/lib/apps/mor/components/CaseDetail.svelte -->
-<!-- Full case workflow view. Every action that writes to the store is
-     surfaced through a modal — no inline expanding boxes. The status of
-     the case drives which "next step" button(s) are shown in the action
-     panel; everything else (mitigations, timeline, header) is always-on. -->
+<!-- Full case workflow view. The case moves through its workflow (migration
+     263): the shared WorkflowItemControls show its step, who it is with, the
+     moves from it — each held back with its reason — and the history. Moves
+     that record something hand off to MOR's own forms (triage, assessment,
+     BSR report, close-out), and the database makes the move with the record.
+     Mitigations, timeline and the header are always-on. -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { auth }        from '#lib/stores/auth.js';
@@ -17,14 +19,15 @@
   import TimelineEntry  from '#lib/apps/mor/components/TimelineEntry.svelte';
   import TriageForm     from '#lib/apps/mor/components/TriageForm.svelte';
   import DecisionForm   from '#lib/apps/mor/components/DecisionForm.svelte';
-  import RejectionForm  from '#lib/apps/mor/components/RejectionForm.svelte';
   import AssessmentForm from '#lib/apps/mor/components/AssessmentForm.svelte';
   import CloseForm      from '#lib/apps/mor/components/CloseForm.svelte';
-  import ReopenForm     from '#lib/apps/mor/components/ReopenForm.svelte';
-  import PauseForm      from '#lib/apps/mor/components/PauseForm.svelte';
   import BsrHelper      from '#lib/apps/mor/components/BsrHelper.svelte';
   import MitigationForm from '#lib/apps/mor/components/MitigationForm.svelte';
   import ReporterContactPanel from '#lib/apps/mor/components/ReporterContactPanel.svelte';
+  import WorkflowItemControls from '#lib/workflow/WorkflowItemControls.svelte';
+  import { TRIAGE_OUTCOME_FOR, APPROVAL_TARGET } from '#lib/apps/mor/utils/morWorkflow.js';
+  import { profiles, profilesStore } from '#lib/stores/profiles.js';
+  import { onMount } from 'svelte';
   import {
     STATUS_LABEL, STATUS_COLOUR,
     MECHANISM_LABEL, MECHANISM_COLOUR,
@@ -33,7 +36,7 @@
   } from '#lib/apps/mor/utils/morHelpers.js';
   import { formatVerificationCode } from '#lib/utils/caseVerificationCode.js';
   import { GT_STATUS_LABELS, GT_STATUS_BADGE } from '#lib/apps/golden_thread/utils/gtLifecycle.js';
-  import { fmtDate, fmtDateTime } from '#lib/utils/dates.js';
+  import { fmtDate, fmtDateTime, today } from '#lib/utils/dates.js';
   import { requestDownload } from '#lib/utils/download.js';
   import { errMessage } from '#lib/utils/errors.js';
 
@@ -65,13 +68,10 @@
   let showTriage      = false;
   let showAssessment  = false;
   let showDecision    = false;
-  let showRejection   = false;
   let showBsrNotice   = false;
   let showBsrReport   = false;
   let showClose       = false;
-  let showReopen      = false;
-  let showPause       = false;
-  let pendingPauseType = 'reporter';
+  let triagePreset    = '';
   let showNote        = false;
   let showMitForm     = false;
   let editingMit      = null;
@@ -87,12 +87,92 @@
   // ── Action handlers ──────────────────────────────────────────────────────
   function clearErr() { morStore.clearError(); }
 
-  async function doAcknowledge() {
-    await morStore.acknowledge(c.id);
+  // ── Its workflow (migration 263) ────────────────────────────────────────
+  onMount(() => { profilesStore.load(); });
+  $: wf      = $morStore.workflow;
+  $: wfItem  = c?.id ? ($morStore.items ?? []).find(i => i.subject_id === c.id) ?? null : null;
+  $: me      = userId ?? null;
+  $: nameById = Object.fromEntries(($profiles.list ?? []).map(p => [p.id, p.full_name ?? '']));
+  let assigneeList = [];
+  let assigneesFor = null;
+  $: if (wf?.id && wf.id !== assigneesFor) {
+    assigneesFor = wf.id;
+    morStore.assignees().then((l) => { assigneeList = l; }, () => { assigneeList = []; });
   }
-  async function doStartTriage() {
-    await morStore.startTriage(c.id);
+
+  /** A store result as the controls expect it: a throw carries the reason. */
+  function orThrow(/** @type {any} */ r) {
+    if (r?.success) return r;
+    clearErr();                       // the controls show the reason beside the move
+    throw new Error(r?.error || 'That could not be done.');
   }
+  async function onWfMove(/** @type {any} */ m, /** @type {string} */ note) {
+    orThrow(await morStore.moveCase(c.id, m.to_key, note));
+  }
+  async function onWfAssign(/** @type {string|null} */ uid) {
+    orThrow(await morStore.assign(c.id, uid));
+  }
+
+  /** Moves that record something first: MOR's own form makes the move with it. */
+  const handOff = (/** @type {any} */ m) => {
+    if (m.from_key === 'in_triage' && TRIAGE_OUTCOME_FOR[m.to_key]) {
+      triagePreset = TRIAGE_OUTCOME_FOR[m.to_key]; showTriage = true; return true;
+    }
+    if (m.from_key === 'in_assessment' && m.to_key === 'decision_pending') { showAssessment = true; return true; }
+    if (m.from_key === 'bsr_notice' && m.to_key === 'bsr_report') { showBsrReport = true; return true; }
+    if (m.from_key === 'remediated' && m.to_key === 'closed') { showClose = true; return true; }
+    return false;
+  };
+
+  const APPROVALS = new Set(Object.values(APPROVAL_TARGET));
+  /** MOR's own reasons a move cannot be made yet — the database refuses the same. */
+  const extraRefusal = (/** @type {any} */ m) => {
+    if (m.from_key === 'decision_pending' && APPROVALS.has(m.to_key)) {
+      if (!c.decision_outcome) return 'Propose a decision first: a different person then approves it.';
+      if (APPROVAL_TARGET[c.decision_outcome] !== m.to_key) return 'That is not the decision that was proposed.';
+      if (me && me === c.decision_proposed_by) return 'You proposed this decision: a different person must approve it.';
+    }
+    if (m.from_key === 'decision_pending' && m.to_key === 'in_triage' && !c.decision_outcome) {
+      return 'There is no proposed decision to reject.';
+    }
+    if (m.from_key === 'bsr_notice' && m.to_key === 'bsr_report' && !c.bsr_notice_ref) {
+      return 'Record the BSR notice first.';
+    }
+    return null;
+  };
+  const confirmMove = (/** @type {any} */ m) => (m.from_key === 'decision_pending' && APPROVALS.has(m.to_key)
+    ? { title: 'Approve the decision?', message: `Approve “${DECISION_LABEL[c.decision_outcome] ?? c.decision_outcome}”, proposed by ${c.decision_proposed_by_profile?.full_name ?? 'someone else'}. This is recorded against your name.` }
+    : null);
+
+  $: wfAudit = c ? { appId: 'mor', entityType: 'mor_case', entityId: c.id } : null;
+  $: wfRecord = c ? {
+    filenameStem: `MOR_${c.reference}_${today()}`,
+    subject: () => ({
+      title: `Mandatory occurrence report — ${c.reference}`,
+      facts: [['Identified', fmtDateTime(c.identification_date)], ['Received', fmtDateTime(c.received_date)],
+        ['Mechanism', MECHANISM_LABEL[c.mechanism] ?? c.mechanism ?? '—'],
+        ['Triage', c.triage_outcome ? TRIAGE_LABEL[c.triage_outcome] ?? c.triage_outcome : '—'],
+        ['Decision', c.decision_outcome ? DECISION_LABEL[c.decision_outcome] ?? c.decision_outcome : '—'],
+        ['BSR notice', c.bsr_notice_ref || '—'], ['BSR report', c.bsr_report_ref || '—']],
+      sections: [{ heading: 'Description', text: c.description }, { heading: 'Lessons learned', text: c.lessons_learned }],
+    }),
+  } : null;
+
+  /** What happens next at each step, in a line. */
+  const NEXT = {
+    submitted:         'Acknowledge receipt to the reporter (same business day).',
+    acknowledged:      'Triage Officer to assess whether this meets the MOR threshold (within 24 hours).',
+    in_triage:         'Apply the two-part threshold test and record the triage outcome with the move it decides.',
+    in_assessment:     'Technical advisor (fire/structural engineer) to provide a written assessment; record it when received.',
+    decision_pending:  'AP to propose a decision (BSR / internal / no action); a different person (PAP/admin) then approves it.',
+    bsr_notice:        'Submit the notice to the BSR portal and record its reference; the full report is due within 10 calendar days of identification.',
+    bsr_report:        'Proceed with permanent remediation and respond to any BSR queries.',
+    in_remediation:    'Carry out and evidence the permanent remediation.',
+    awaiting_reporter: 'On hold — awaiting information from the reporter.',
+    awaiting_bsr:      'On hold — awaiting the BSR’s response.',
+    remediated:        'Close the case and capture lessons learned.',
+    reopened:          'Begin triage again with the new information.',
+  };
 
   async function handleTriage({ detail }) {
     const r = await morStore.submitTriage(c.id, detail);
@@ -107,15 +187,6 @@
   async function handleDecision({ detail }) {
     const r = await morStore.proposeDecision(c.id, detail);
     if (r.success) showDecision = false;
-  }
-
-  async function doApprove() {
-    await morStore.approveDecision(c.id);
-  }
-
-  async function handleReject({ detail }) {
-    const r = await morStore.rejectDecision(c.id, detail);
-    if (r.success) showRejection = false;
   }
 
   async function handleBsrNotice({ detail }) {
@@ -137,24 +208,6 @@
   async function handleClose({ detail }) {
     const r = await morStore.closeCase(c.id, detail);
     if (r.success) showClose = false;
-  }
-
-  async function doMarkRemediationComplete() {
-    await morStore.markRemediationComplete(c.id);
-  }
-
-  async function handlePause({ detail }) {
-    const r = await morStore.pauseCase(c.id, detail.pauseType, detail.reason);
-    if (r.success) showPause = false;
-  }
-
-  async function doResume() {
-    await morStore.resumeCase(c.id);
-  }
-
-  async function handleReopen({ detail }) {
-    const r = await morStore.reopenCase(c.id, detail.reason);
-    if (r.success) showReopen = false;
   }
 
   // Mitigations
@@ -266,220 +319,76 @@
   <ReporterContactPanel {c} timeline={tl} />
 {/if}
 
-<!-- ── Action panel ────────────────────────────────────────────────────── -->
-{#if c.status !== 'closed' && c.status !== 'reclassified'}
-  <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 mb-4">
+<!-- ── Its workflow: step, who has it, the moves, history (migration 263) ── -->
+<div class="bg-slate-800 border border-slate-700 rounded-xl p-4 mb-4" data-testid="mor-workflow">
+  {#if !wf}
+    <p class="text-sm text-amber-300">MOR’s workflow is not set up yet — an administrator opening MOR sets it up.</p>
+  {:else if !wfItem}
+    <p class="text-sm text-amber-300">This case is not in its workflow. Reload the page; if it stays like this, report it.</p>
+  {:else}
+    <WorkflowItemControls item={wfItem} workflow={wf} steps={$morStore.steps} moves={$morStore.moves}
+      fields={$morStore.fields} reference={c.reference} {isAdmin} {canEdit} {me}
+      assignees={assigneeList} {nameById}
+      onMove={onWfMove} onAssign={onWfAssign}
+      {handOff} {extraRefusal} {confirmMove} audit={wfAudit} record={wfRecord}
+      finishedText={c.status === 'closed' ? 'The case is closed. An administrator can reopen it.' : 'Nothing further happens to this case.'}>
 
-    {#if c.status === 'submitted'}
-      <p class="text-sm text-slate-400 mb-3">
-        <strong class="text-slate-200">Next:</strong> Acknowledge receipt to the reporter (same business day).
-      </p>
-      {#if canEdit}
-        <Button variant="primary" size="medium" disabled={saving} on:click={doAcknowledge}>
-          Mark Acknowledged
-        </Button>
+      {#if NEXT[c.status]}
+        <p class="text-sm text-slate-400 mb-3"><strong class="text-slate-200">Next:</strong> {NEXT[c.status]}</p>
       {/if}
 
-    {:else if c.status === 'acknowledged'}
-      <p class="text-sm text-slate-400 mb-3">
-        <strong class="text-slate-200">Next:</strong> Triage Officer to assess whether this meets the MOR threshold (within 24 hours).
-      </p>
-      {#if canEdit}
-        <Button variant="primary" size="medium" disabled={saving} on:click={doStartTriage}>
-          Begin Triage
-        </Button>
-      {/if}
-
-    {:else if c.status === 'in_triage'}
-      <p class="text-sm text-slate-400 mb-3">
-        <strong class="text-slate-200">Next:</strong> Apply the two-part threshold test and record the triage outcome.
-      </p>
-      {#if canEdit}
-        <Button variant="primary" size="medium" on:click={() => showTriage = true}>
-          Record Triage
-        </Button>
-      {/if}
-
-    {:else if c.status === 'in_assessment'}
-      <p class="text-sm text-slate-400 mb-3">
-        <strong class="text-slate-200">Next:</strong> Technical advisor (fire/structural engineer) to provide written assessment.
-        Record the outcome when received.
-      </p>
-      {#if canEdit}
-        <Button variant="primary" size="medium" on:click={() => showAssessment = true}>
-          Record Assessment Complete
-        </Button>
-      {/if}
-
-    {:else if c.status === 'decision_pending'}
-      {#if !c.decision_outcome}
-        <p class="text-sm text-slate-400 mb-3">
-          <strong class="text-slate-200">Next:</strong> AP to propose a decision (BSR / internal / no action).
-          A different user (PAP/admin) must then approve.
-        </p>
-        {#if canEdit}
-          <Button variant="primary" size="medium" on:click={() => showDecision = true}>
-            Propose Decision
-          </Button>
-        {/if}
-      {:else}
-        <div class="space-y-3">
-          <div class="bg-slate-700/50 rounded-lg p-3">
+      {#if c.status === 'decision_pending'}
+        {#if c.decision_outcome}
+          <div class="bg-slate-700/50 rounded-lg p-3 mb-3">
             <p class="text-xs text-slate-500 mb-1">Decision proposed</p>
             <p class="text-sm font-semibold text-slate-200">{DECISION_LABEL[c.decision_outcome]}</p>
             <p class="text-sm text-slate-300 mt-1">{c.decision_rationale}</p>
-            <p class="text-xs text-slate-500 mt-1">
-              By: {c.decision_proposed_by_profile?.full_name ?? 'Unknown'}
-            </p>
+            <p class="text-xs text-slate-500 mt-1">By: {c.decision_proposed_by_profile?.full_name ?? 'Unknown'}</p>
+            {#if userId === c.decision_proposed_by}
+              <p class="text-xs text-amber-300 mt-2">You proposed this decision, so a different person must approve it.</p>
+            {/if}
           </div>
-
-          {#if isAdmin && userId !== c.decision_proposed_by}
-            <div class="flex gap-2">
-              <Button variant="primary" size="medium" disabled={saving} on:click={doApprove}>
-                {saving ? '…' : '✓ Approve Decision'}
-              </Button>
-              <Button variant="danger" size="medium" on:click={() => showRejection = true}>
-                Reject
-              </Button>
-            </div>
-          {:else if userId === c.decision_proposed_by}
-            <p class="text-xs text-amber-300">
-              Awaiting PAP approval — you proposed this decision and cannot approve it yourself.
-            </p>
+        {/if}
+        {#if canEdit}
+          <div class="mb-3">
             <Button variant="secondary" size="medium" on:click={() => showDecision = true}>
-              Revise Decision
+              {c.decision_outcome ? 'Revise Decision' : 'Propose Decision'}
             </Button>
+          </div>
+        {/if}
+      {/if}
+
+      {#if c.status === 'bsr_notice'}
+        <div class="mb-3">
+          {#if c.bsr_notice_ref}
+            <p class="text-sm"><span class="text-emerald-400">✓ Notice submitted</span>
+              <span class="text-slate-500 ml-2">Ref: {c.bsr_notice_ref}</span></p>
           {:else if canEdit}
-            <p class="text-xs text-slate-400">
-              Awaiting PAP approval.
-            </p>
+            <Button variant="secondary" size="medium" on:click={() => showBsrNotice = true}>
+              Record BSR Notice Submission
+            </Button>
           {/if}
         </div>
       {/if}
 
-    {:else if c.status === 'bsr_notice'}
-      <div class="space-y-3">
-        <p class="text-sm text-slate-400">
-          <strong class="text-slate-200">Next:</strong> Submit the notice to the BSR portal, then record the reference here.
-          {#if !c.bsr_notice_ref}
-            The full report must be submitted within 10 calendar days of identification.
-          {:else}
-            Notice recorded — now prepare and submit the full BSR report.
-          {/if}
-        </p>
-        {#if canEdit}
-          {#if !c.bsr_notice_ref}
-            <Button variant="primary" size="medium" on:click={() => showBsrNotice = true}>
-              Record BSR Notice Submission
-            </Button>
-          {:else}
-            <div class="flex flex-wrap items-center gap-3">
-              <div class="text-sm">
-                <span class="text-emerald-400">✓ Notice submitted</span>
-                <span class="text-slate-500 ml-2">Ref: {c.bsr_notice_ref}</span>
-              </div>
-              <Button variant="primary" size="medium" on:click={() => showBsrReport = true}>
-                Record BSR Report Submission
-              </Button>
-            </div>
-          {/if}
-        {/if}
-      </div>
-
-    {:else if c.status === 'bsr_report'}
-      <div class="space-y-2">
-        <p class="text-sm text-emerald-400">✓ BSR report submitted — Ref: {c.bsr_report_ref}</p>
-        <p class="text-sm text-slate-400">
-          <strong class="text-slate-200">Next:</strong> Proceed with permanent remediation,
-          respond to any BSR queries, and close the case once remediation is complete.
-        </p>
-        {#if canEdit}
-          <div class="flex flex-wrap gap-2 pt-1">
-            <Button variant="primary" size="medium" disabled={saving} on:click={doMarkRemediationComplete}>
-              Move to Remediation
-            </Button>
-            <Button variant="secondary" size="medium"
-              on:click={() => { pendingPauseType = 'bsr'; showPause = true; }}>
-              Pause — awaiting BSR
-            </Button>
-          </div>
-        {/if}
-      </div>
-
-    {:else if c.status === 'in_remediation'}
-      <div class="space-y-3">
-        <p class="text-sm text-slate-400">
-          <strong class="text-slate-200">Next:</strong> Carry out and evidence the permanent remediation.
-          Mark complete when the fix is in place and documented.
-        </p>
-        {#if canEdit}
-          <div class="flex flex-wrap gap-2">
-            <Button variant="primary" size="medium" disabled={saving} on:click={doMarkRemediationComplete}>
-              {saving ? '…' : '✓ Mark Remediation Complete'}
-            </Button>
-            <Button variant="secondary" size="medium"
-              on:click={() => { pendingPauseType = 'reporter'; showPause = true; }}>
-              Pause — awaiting reporter
-            </Button>
-          </div>
-        {/if}
-      </div>
-
-    {:else if c.status === 'remediated'}
-      <p class="text-sm text-slate-400 mb-3">
-        <strong class="text-slate-200">Permanent remediation complete.</strong>
-        Close the case and capture lessons learned.
-      </p>
-      {#if canEdit}
-        <Button variant="primary" size="medium" on:click={() => showClose = true}>
-          Close Case
-        </Button>
+      {#if c.bsr_report_ref && ['bsr_report', 'awaiting_bsr', 'in_remediation'].includes(c.status)}
+        <p class="text-sm text-emerald-400 mb-3">✓ BSR report submitted — Ref: {c.bsr_report_ref}</p>
       {/if}
 
-    {:else if c.status === 'awaiting_reporter' || c.status === 'awaiting_bsr'}
-      <div class="space-y-3">
-        <p class="text-sm text-slate-400">
-          Case on hold: <strong class="text-slate-200">
-            {c.status === 'awaiting_reporter' ? 'awaiting information from the reporter' : 'awaiting BSR response'}
-          </strong>.
-        </p>
-        {#if canEdit}
-          <Button variant="primary" size="medium" disabled={saving} on:click={doResume}>
-            Resume Case
-          </Button>
-        {/if}
-      </div>
-
-    {:else if c.status === 'reopened'}
-      <p class="text-sm text-slate-400 mb-3">
-        <strong class="text-slate-200">Case reopened.</strong> Begin triage again with new information.
-      </p>
-      {#if canEdit}
-        <Button variant="primary" size="medium" disabled={saving} on:click={doStartTriage}>
-          Begin Triage
-        </Button>
+      {#if c.status === 'closed' || c.status === 'reclassified'}
+        <div class="bg-emerald-900/20 border border-emerald-700/40 rounded-lg p-3 mb-3">
+          <p class="text-sm text-emerald-300 font-medium">
+            {c.status === 'closed' ? '✓ Case closed' : '→ Case reclassified'}
+            {#if c.closed_at}&nbsp;· {fmtDate(c.closed_at)}{/if}
+          </p>
+          {#if c.lessons_learned}
+            <p class="text-sm text-slate-400 mt-1"><strong class="text-slate-300">Lessons learned:</strong> {c.lessons_learned}</p>
+          {/if}
+        </div>
       {/if}
-    {/if}
-
-  </div>
-{:else}
-  <!-- Closed / reclassified -->
-  <div class="bg-emerald-900/20 border border-emerald-700/40 rounded-xl p-4 mb-4">
-    <p class="text-sm text-emerald-300 font-medium">
-      {c.status === 'closed' ? '✓ Case closed' : '→ Case reclassified'}
-      {#if c.closed_at}&nbsp;· {fmtDate(c.closed_at)}{/if}
-    </p>
-    {#if c.lessons_learned}
-      <p class="text-sm text-slate-400 mt-1"><strong class="text-slate-300">Lessons learned:</strong> {c.lessons_learned}</p>
-    {/if}
-    {#if isAdmin && c.status === 'closed'}
-      <button type="button"
-        class="text-xs text-slate-500 hover:text-slate-300 mt-2 underline"
-        on:click={() => showReopen = true}
-      >Reopen case (admin)</button>
-    {/if}
-  </div>
-{/if}
+    </WorkflowItemControls>
+  {/if}
+</div>
 
 <!-- ── Case details ──────────────────────────────────────────────────── -->
 <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 mb-4">
@@ -723,7 +632,7 @@
 
 <!-- ── Modals ─────────────────────────────────────────────────────────── -->
 <TriageForm
-  show={showTriage} {saving} {error}
+  show={showTriage} {saving} {error} presetOutcome={triagePreset}
   on:submit={handleTriage}
   on:close={() => { showTriage = false; clearErr(); }}
   on:clearError={clearErr}
@@ -745,13 +654,6 @@
   on:clearError={clearErr}
 />
 
-<RejectionForm
-  show={showRejection} {saving} {error}
-  on:submit={handleReject}
-  on:close={() => { showRejection = false; clearErr(); }}
-  on:clearError={clearErr}
-/>
-
 <BsrHelper
   show={showBsrNotice} mode="notice" {saving} {c} {error}
   on:submit={handleBsrNotice}
@@ -766,25 +668,10 @@
   on:clearError={clearErr}
 />
 
-<PauseForm
-  show={showPause} {saving} {error}
-  pauseType={pendingPauseType}
-  on:submit={handlePause}
-  on:close={() => { showPause = false; clearErr(); }}
-  on:clearError={clearErr}
-/>
-
 <CloseForm
   show={showClose} {saving} {error}
   on:submit={handleClose}
   on:close={() => { showClose = false; clearErr(); }}
-  on:clearError={clearErr}
-/>
-
-<ReopenForm
-  show={showReopen} {saving} {error}
-  on:submit={handleReopen}
-  on:close={() => { showReopen = false; clearErr(); }}
   on:clearError={clearErr}
 />
 

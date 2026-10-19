@@ -13,6 +13,7 @@
 // BOTH places, like an action (workflowActions.js).
 
 import { isValidTransition } from '#lib/apps/complaints/utils/complaintLifecycle.js';
+import { isValidTransition as morTransitionAllowed } from '#lib/apps/mor/utils/morHelpers.js';
 
 /**
  * @typedef {{ name: string, stepsAre?: string, steps?: Record<string, string>, moveAllowed?: (from: string, to: string) => boolean, moveRule?: string, check?: (def: any) => string|null, subjectDue?: boolean, explains: string }} Contract
@@ -33,6 +34,25 @@ export const CONTRACTS = Object.freeze({
     },
     moveAllowed: isValidTransition,
     explains: 'Its steps are the complaint statuses (BSA s.93) and each has a fixed kind; a move must be one s.93 allows. The names, deadlines, conditions and fields can be changed.',
+  },
+  // Migration 263: Mandatory Occurrence Reporting (BSA 2022 s.87). ⛔ No timer:
+  // a person decides every step — a triage, a decision, a report to the BSR.
+  mor: {
+    name: 'MOR',
+    stepsAre: 'the MOR case statuses (BSA s.87)',
+    steps: {
+      submitted: 'start', acknowledged: 'open', in_triage: 'open', in_assessment: 'open',
+      decision_pending: 'open', bsr_notice: 'open', bsr_report: 'open', in_remediation: 'open',
+      awaiting_reporter: 'open', awaiting_bsr: 'open', remediated: 'open',
+      closed: 'done', reclassified: 'declined', reopened: 'open',
+    },
+    moveAllowed: morTransitionAllowed,
+    moveRule: 'an MOR case can make',
+    check: ({ moves }) => {
+      const timed = moves.find((/** @type {any} */ m) => m.timer_days != null && m.timer_days !== '');
+      return timed ? `The move "${timed.label}" cannot be made by a timer: a person decides every step of an MOR case.` : null;
+    },
+    explains: 'Its steps are the MOR case statuses (BSA s.87) and each has a fixed kind; a move must be one the MOR machine allows, and none may be made by a timer. A triage move records its outcome, an approval needs a proposed decision of that outcome and an approver who did not propose it, and the BSR report move records the report’s reference. The names, notes, conditions and who may move can be changed; MOR’s statutory clocks are its own.',
   },
   // W3 (migration 255): the register's outstanding actions.
   compliance: {

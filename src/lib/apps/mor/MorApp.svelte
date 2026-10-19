@@ -1,6 +1,7 @@
 <!-- src/lib/apps/mor/MorApp.svelte -->
 <script>
   import { morStore }    from '#lib/apps/mor/stores/morStore.js';
+  import { permissions } from '#lib/stores/permissions.js';
   import Button       from '#lib/components/common/Button.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import AppGate      from '#lib/components/common/AppGate.svelte';
@@ -21,7 +22,15 @@
 
   // Nothing reads as empty until the first load has finished (AppGate): before
   // it "No cases match the current filters" would be untrue.
-  const loadCases = () => morStore.fetchCases();
+  const loadCases = async () => {
+    await morStore.fetchCases();
+    // The seed rule: the first administrator to open MOR sets up its workflow
+    // (migration 263) and attaches any case logged before it existed.
+    if (!$morStore.error && !$morStore.workflow && $permissions.isAdmin) {
+      try { await morStore.setUpWorkflow(); }
+      catch (/** @type {any} */ err) { morStore.reportError(`MOR's workflow could not be set up: ${err?.message ?? err}`); }
+    }
+  };
   const TABS = [
     { key: 'cases',     label: 'Cases' },
     { key: 'dashboard', label: 'Dashboard' },

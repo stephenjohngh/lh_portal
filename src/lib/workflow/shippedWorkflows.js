@@ -14,10 +14,11 @@ import { DEFAULT_COMPLIANCE_ACTION_WORKFLOW } from '#lib/apps/compliance/utils/c
 import { DEFAULT_WORKS_SCHEDULE_WORKFLOW } from '#lib/apps/building_assets/utils/worksScheduleWorkflow.js';
 import { DEFAULT_MAINTENANCE_JOB_WORKFLOW } from '#lib/apps/maintenance/utils/maintenanceJobWorkflow.js';
 import { DEFAULT_WAITING_LIST_WORKFLOW } from '#lib/apps/parking/utils/waitingListWorkflow.js';
+import { DEFAULT_MOR_WORKFLOW } from '#lib/apps/mor/utils/morWorkflow.js';
 
 /** @type {ReadonlyArray<any>} */
 export const SHIPPED_WORKFLOWS = Object.freeze([DEFAULT_APPLICATION_WORKFLOW, DEFAULT_COMPLAINT_WORKFLOW, DEFAULT_COMPLIANCE_ACTION_WORKFLOW, DEFAULT_WORKS_SCHEDULE_WORKFLOW,
-  DEFAULT_MAINTENANCE_JOB_WORKFLOW, DEFAULT_WAITING_LIST_WORKFLOW]);
+  DEFAULT_MAINTENANCE_JOB_WORKFLOW, DEFAULT_WAITING_LIST_WORKFLOW, DEFAULT_MOR_WORKFLOW]);
 
 /** The shipped version of a workflow, or null (a Cases process has none). @param {string} key */
 export function shippedWorkflowFor(key) {

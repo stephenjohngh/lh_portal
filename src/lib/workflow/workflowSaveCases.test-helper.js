@@ -12,6 +12,7 @@ import { DEFAULT_COMPLIANCE_ACTION_WORKFLOW as ACTION } from '#lib/apps/complian
 import { DEFAULT_WORKS_SCHEDULE_WORKFLOW as WORKS } from '#lib/apps/building_assets/utils/worksScheduleWorkflow.js';
 import { DEFAULT_MAINTENANCE_JOB_WORKFLOW as JOB } from '#lib/apps/maintenance/utils/maintenanceJobWorkflow.js';
 import { DEFAULT_WAITING_LIST_WORKFLOW as WAITING } from '#lib/apps/parking/utils/waitingListWorkflow.js';
+import { DEFAULT_MOR_WORKFLOW as MOR } from '#lib/apps/mor/utils/morWorkflow.js';
 
 /** @typedef {{ name: string, appId: string, key?: string, steps: any[], moves: any[], fields?: any[], expect: RegExp|null }} SaveCase */
 
@@ -30,6 +31,8 @@ const waitingSteps = () => WAITING.steps.map((s) => ({ ...s }));
 const waitingMoves = () => WAITING.moves.map((m) => ({ ...m }));
 const WL = { appId: 'parking', key: WAITING.key };
 const complaintMoves = () => COMPLAINT.moves.map((m) => ({ ...m }));
+const morSteps = () => MOR.steps.map((s) => ({ ...s }));
+const morMoves = () => MOR.moves.map((m) => ({ ...m }));
 
 /** @type {SaveCase[]} */
 export const SAVE_CASES = [
@@ -134,4 +137,17 @@ export const SAVE_CASES = [
     moves: waitingMoves().map((m) => (m.from_key === 'waiting' && m.to_key === 'offered' ? { ...m, timer_days: 3 } : m)),
     expect: /needs a bay or an agreement a person chooses/ },
   { name: 'Parking’s online application is not held to the waiting list’s steps', appId: 'parking', steps: STEPS(), moves: MOVES(), expect: null },
+  // Migration 263: MOR (BSA s.87).
+  { name: 'the shipped MOR workflow saves', appId: 'mor', steps: morSteps(), moves: morMoves(), expect: null },
+  { name: 'MOR: a step that is not a status', appId: 'mor',
+    steps: [...morSteps(), { key: 'parked', name: 'Parked', kind: 'open' }],
+    moves: [...morMoves(), { from_key: 'in_triage', to_key: 'parked', label: 'Park' }], expect: /are fixed: "parked" is not one/ },
+  { name: 'MOR: a status of the wrong kind', appId: 'mor',
+    steps: morSteps().map((x) => (x.key === 'reclassified' ? { ...x, kind: 'done' } : x)), moves: morMoves(),
+    expect: /has a fixed kind in the MOR workflow/ },
+  { name: 'MOR: a move the case cannot make', appId: 'mor', steps: morSteps(),
+    moves: [...morMoves(), { from_key: 'submitted', to_key: 'closed', label: 'Close at once' }], expect: /not one an MOR case can make/ },
+  { name: 'MOR: a timer', appId: 'mor', steps: morSteps(),
+    moves: morMoves().map((m) => (m.from_key === 'submitted' ? { ...m, timer_days: 5 } : m)),
+    expect: /a person decides every step of an MOR case/ },
 ];

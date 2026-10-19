@@ -9,11 +9,18 @@
   export let show   = false;
   export let saving = false;
   export let error  = '';
+  /** The outcome the move that opened the form stands for (still changeable). */
+  export let presetOutcome = '';
 
   const dispatch = createEventDispatcher();
 
   let outcome   = '';
   let rationale = '';
+
+  // Each time it opens, start from the outcome of the move that opened it.
+  let opened = false;
+  $: if (show && !opened) { opened = true; if (presetOutcome) outcome = presetOutcome; }
+  $: if (!show) opened = false;
 
   let outcomeError   = '';
   let rationaleError = '';
