@@ -356,6 +356,7 @@
         ],
         "workflow_moves.timer_basis": [
             "calendar",
+            "deadline",
             "working"
         ],
         "component_types.marker_size": [

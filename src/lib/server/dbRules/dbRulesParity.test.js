@@ -208,9 +208,7 @@ describe('the database rules snapshot', () => {
 // once that migration is applied and `npm run db:rules` run — the first test
 // below then fails, saying to remove it.
 /** @type {Record<string, { values: string[], migration: string }>} */
-const VALUES_AWAITING_MIGRATION = {
-  'workflow_moves.timer_basis': { values: ['deadline'], migration: '262_parking_waiting_list_on_the_workflow_manager.sql' },
-};
+const VALUES_AWAITING_MIGRATION = {};
 
 describe('value lists: the code holds exactly what the database accepts', () => {
   it('a value allowance goes once its migration is applied', () => {
