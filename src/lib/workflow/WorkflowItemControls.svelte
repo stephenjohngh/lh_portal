@@ -81,7 +81,8 @@
   let note = '';
   /** @type {any[]} */
   let history = [];
-  let assignNonce = 0;                               // redraws the choice when a change is refused
+  let historyAsk = 0;
+  let assignNonce = 0;                              // redraws the choice when a change is refused
 
   // History and the field draft are read per item (keyed on the id, never the object).
   let itemFor = '';
@@ -91,14 +92,24 @@
     itemFor = item?.id ?? '';
     note = ''; done = ''; error = '';
     draft = fieldDraft(fields, item?.fields ?? {});
+  }
+  // …and again whenever it reaches another step, however it got there: a move
+  // handed to the app (handOff — Parking's offer, Maintenance's completion) or
+  // the overnight timer never passes through move() below.
+  let historyFor = '';
+  $: if (`${item?.id ?? ''}:${item?.step_key ?? ''}` !== historyFor) {
+    historyFor = `${item?.id ?? ''}:${item?.step_key ?? ''}`;
     readHistory();
   }
   async function readHistory() {
     const id = item?.id;
     history = [];
     if (!id) return;
-    try { history = await itemHistory(id); }
-    catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read its history.'); }
+    const asked = ++historyAsk;
+    try {
+      const read = await itemHistory(id);
+      if (asked === historyAsk) history = read;    // a slower, earlier read never overwrites a newer one
+    } catch (/** @type {any} */ err) { if (asked === historyAsk) error = errMessage(err, 'Could not read its history.'); }
   }
 
   // What the link fields offer, read once per process that has one.
