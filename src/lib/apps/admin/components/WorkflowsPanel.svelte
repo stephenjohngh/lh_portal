@@ -351,8 +351,14 @@
     moves = moves.filter((m) => m.from_key !== st.key && m.to_key !== st.key);
   }
   function addMove() {
-    const from = steps[0]?.key ?? '';
-    const to = steps.find((s) => s.key !== from)?.key ?? '';
+    // The first pair of steps with no move between them yet, so a second new
+    // move is not a duplicate of the first (2026-10-20: the diagram threw).
+    const used = new Set(moves.map((m) => `${m.from_key}>${m.to_key}`));
+    let from = steps[0]?.key ?? '';
+    let to = steps.find((s) => s.key !== from)?.key ?? '';
+    outer: for (const a of steps) for (const b of steps) {
+      if (a.key !== b.key && !used.has(`${a.key}>${b.key}`)) { from = a.key; to = b.key; break outer; }
+    }
     moves = [...moves, { from_key: from, to_key: to, label: 'New move', note_required: false, admin_only: false, action: '', who: 'anyone', four_eyes: false, timer_days: null, timer_basis: 'calendar' }];
   }
   function removeMove(/** @type {any} */ m) { moves = moves.filter((x) => x !== m); }

@@ -255,6 +255,21 @@ describe('Admin → Workflows', () => {
     expect(screen.queryByTestId('workflow-lifecycle')).toBeNull();
   });
 
+  // ⚠ 2026-10-20 (the tutorial run): two new moves both started first step →
+  // second step, and the diagram, keyed by that pair, threw and blanked the page.
+  it('adding moves gives each a pair not yet used, and the diagram keeps drawing', async () => {
+    await opened();
+    const add = screen.getByRole('button', { name: '+ Add a move' });
+    await fireEvent.click(add);
+    await fireEvent.click(add);
+    await fireEvent.click(add);
+    const rows = [...screen.getByTestId('workflow-moves').querySelectorAll('tbody tr')];
+    expect(rows).toHaveLength(WF.moves.length + 3);
+    const pairs = rows.map((r) => [...r.querySelectorAll('select')].slice(0, 2).map((x) => x.value).join('>'));
+    expect(new Set(pairs).size).toBe(pairs.length);
+    expect(screen.getByRole('img', { name: /diagram/ })).toBeTruthy();
+  });
+
   it('a process named by titles has no public page to switch', async () => {
     h.app = 'maintenance';
     await opened();

@@ -48,7 +48,7 @@
       </marker>
     </defs>
 
-    {#each layout.edges as e (e.from + '>' + e.to)}
+    {#each layout.edges as e, i (i)}
       {@const used = stats?.moveCount?.[`${e.from}>${e.to}`] ?? 0}
       {@const mv = moves.find((m) => m.from_key === e.from && m.to_key === e.to)}
       <path d={e.path} fill="none" stroke={e.back ? BACK : '#94a3b8'} stroke-dasharray={e.back ? '5 4' : ''}
@@ -77,7 +77,7 @@
       </g>
     {/each}
     <!-- Move labels last, on top: a box never hides one. Each is the layout's wrapped lines. -->
-    {#each layout.edges as e (e.from + '>' + e.to + ':label')}
+    {#each layout.edges as e, i (i + ':label')}
       {@const used = stats?.moveCount?.[`${e.from}>${e.to}`] ?? 0}
       <text text-anchor={e.anchor ?? 'middle'} font-size="10" fill={e.back ? BACK_TEXT : '#cbd5e1'} class="select-none"
         stroke="#0f172a" stroke-width="3" paint-order="stroke" data-testid="workflow-diagram-label">

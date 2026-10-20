@@ -218,6 +218,11 @@
             "week",
             "year"
         ],
+        "workflow_changes.event": [
+            "brought_back",
+            "deleted",
+            "retired"
+        ],
         "works_schedules.status": [
             "cancelled",
             "completed",
