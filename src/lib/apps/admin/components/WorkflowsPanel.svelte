@@ -405,8 +405,9 @@
       logAudit('create', 'workflow', id, name, { appId: 'admin', eventCategory: 'admin', afterData: { key, app: 'cases' } });
       workflows = await listWorkflows();
       newProcessName = '';
-      chosenKey = key;
       saved = `“${name}” set up — give it its steps, moves and fields, then save.`;
+      keepMessage = saved;                      // choosing it reads it, which clears messages
+      chosenKey = key;
     } catch (/** @type {any} */ err) { error = errMessage(err, 'The process could not be set up.'); }
     finally { creating = false; }
   }

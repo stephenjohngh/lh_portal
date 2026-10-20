@@ -15,6 +15,7 @@ vi.mock('#lib/utils/download.js', () => ({ downloadBlob: () => {} }));
 vi.mock('#lib/workflow/workflowApi.js', () => ({
   setPublicStatus: async (key, on, review) => { h.switched.push({ key, on, review }); return { changed: true }; },
   listWorkflows: async () => [{ id: 'w1', key: WF.key, name: WF.name, app_id: h.app, description: WF.description }],
+  // (a new Cases process is saved through saveWorkflow, below)
   retireWorkflow: async (key, retire, review) => { h.retired.push({ key, retire, review }); return { changed: true }; },
   deleteWorkflow: async (key, review) => { h.deleted.push({ key, review }); return { deleted: true }; },
   listDeletedWorkflows: async () => [],
@@ -268,6 +269,14 @@ describe('Admin → Workflows', () => {
     const pairs = rows.map((r) => [...r.querySelectorAll('select')].slice(0, 2).map((x) => x.value).join('>'));
     expect(new Set(pairs).size).toBe(pairs.length);
     expect(screen.getByRole('img', { name: /diagram/ })).toBeTruthy();
+  });
+
+  it('setting up a new Cases process says so, and the message stays once it is opened', async () => {
+    await opened();
+    await fireEvent.input(screen.getByLabelText('New process name'), { target: { value: 'Permit to work' } });
+    await fireEvent.click(screen.getByRole('button', { name: '+ Set it up' }));
+    await waitFor(() => expect(h.saved.some((w) => w.name === 'Permit to work')).toBe(true));
+    expect((await screen.findByRole('status')).textContent).toMatch(/“Permit to work” set up/);
   });
 
   it('a process named by titles has no public page to switch', async () => {
