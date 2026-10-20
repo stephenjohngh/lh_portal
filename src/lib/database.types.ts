@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema33.csv
+// Source: docs/ops/supabase_lhportal_schema34.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -5575,9 +5575,6 @@ export type Database = {
       }
       workflow_changes: {
         Row: {
-          event: string | null
-          workflow_key: string | null
-          workflow_name: string | null
           id: number
           workflow_id: string | null
           changed_at: string
@@ -5587,34 +5584,37 @@ export type Database = {
           reviewed_by: string | null
           reviewed_against: string | null
           review_note: string | null
+          event: string | null
+          workflow_key: string | null
+          workflow_name: string | null
         }
         Insert: {
-          event?: string | null
-          workflow_key?: string | null
-          workflow_name?: string | null
           id?: number
-          workflow_id: string
+          workflow_id?: string | null
           changed_at?: string
           changed_by?: string | null
           before?: Json | null
-          after: Json
+          after?: Json | null
           reviewed_by?: string | null
           reviewed_against?: string | null
           review_note?: string | null
+          event?: string | null
+          workflow_key?: string | null
+          workflow_name?: string | null
         }
         Update: {
-          event?: string | null
-          workflow_key?: string | null
-          workflow_name?: string | null
           id?: number
-          workflow_id?: string
+          workflow_id?: string | null
           changed_at?: string
           changed_by?: string | null
           before?: Json | null
-          after?: Json
+          after?: Json | null
           reviewed_by?: string | null
           reviewed_against?: string | null
           review_note?: string | null
+          event?: string | null
+          workflow_key?: string | null
+          workflow_name?: string | null
         }
         Relationships: [
             {
@@ -5786,15 +5786,15 @@ export type Database = {
               foreignKeyName: "workflow_items_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
+              referencedRelation: "workflows"
+              referencedColumns: ["id"]
             },
             {
               foreignKeyName: "workflow_items_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
-              referencedRelation: "workflows"
-              referencedColumns: ["id"]
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
             },
             {
               foreignKeyName: "workflow_items_step_key_fkey"
@@ -5870,22 +5870,22 @@ export type Database = {
               foreignKeyName: "workflow_moves_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
-            },
-            {
-              foreignKeyName: "workflow_moves_workflow_id_fkey"
-              columns: ["workflow_id"]
-              isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
-            },
-            {
-              foreignKeyName: "workflow_moves_workflow_id_fkey"
-              columns: ["workflow_id"]
-              isOneToOne: false
               referencedRelation: "workflows"
               referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "workflow_moves_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
+            },
+            {
+              foreignKeyName: "workflow_moves_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
             },
             {
               foreignKeyName: "workflow_moves_from_key_fkey"
@@ -5973,8 +5973,6 @@ export type Database = {
       }
       workflows: {
         Row: {
-          retired_at: string | null
-          retired_by: string | null
           id: string
           key: string
           name: string
@@ -5985,10 +5983,10 @@ export type Database = {
           review_required: boolean
           review_reason: string | null
           public_status: boolean
+          retired_at: string | null
+          retired_by: string | null
         }
         Insert: {
-          retired_at?: string | null
-          retired_by?: string | null
           id?: string
           key: string
           name: string
@@ -5999,10 +5997,10 @@ export type Database = {
           review_required?: boolean
           review_reason?: string | null
           public_status?: boolean
-        }
-        Update: {
           retired_at?: string | null
           retired_by?: string | null
+        }
+        Update: {
           id?: string
           key?: string
           name?: string
@@ -6013,11 +6011,20 @@ export type Database = {
           review_required?: boolean
           review_reason?: string | null
           public_status?: boolean
+          retired_at?: string | null
+          retired_by?: string | null
         }
         Relationships: [
             {
               foreignKeyName: "workflows_updated_by_fkey"
               columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "workflows_retired_by_fkey"
+              columns: ["retired_by"]
               isOneToOne: false
               referencedRelation: "profiles"
               referencedColumns: ["id"]

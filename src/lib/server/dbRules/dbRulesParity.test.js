@@ -114,6 +114,7 @@ const VALUE_LISTS = {
   'workflow_events.kind':             () => values(workflowModel.EVENT_KINDS),            // migration 250
   'workflow_moves.who':               () => values(workflowModel.MOVE_WHO),               // migration 251
   'workflow_moves.timer_basis':       () => values(workflowModel.TIMER_BASES),            // migration 259
+  'workflow_changes.event':           () => values(workflowModel.CHANGE_EVENTS),          // migration 265
   'maintenance_jobs.status':          () => values(maintenanceJobWf.MAINTENANCE_JOB_STATUSES), // migration 260
   'workflow_fields.type':             () => values(workflowModel.FIELD_TYPES),            // migration 253
   'parking_requests.holder_type':     () => values(applicationForm.APPLICANT_KINDS),      // migration 247
