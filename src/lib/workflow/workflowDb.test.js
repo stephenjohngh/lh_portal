@@ -667,6 +667,20 @@ const RUNTIME = [
     if exists (select 1 from workflow_items i join workflows w on w.id = i.workflow_id
                 where w.key = 'maintenance_job' and not exists (select 1 from maintenance_jobs j where j.id = i.subject_id))
       then raise exception 'left behind'; end if;`, null],
+  // Migration 266 (2026-10-20): Supabase's pg_safeupdate refuses an UPDATE or
+  // DELETE with no WHERE when it comes through the API, but not from psql — so
+  // the bank-holiday check above passed while the screen failed. This session
+  // cannot load safeupdate, so read every function for the shape instead
+  // (comments and ON CONFLICT DO UPDATE aside).
+  ['no function has an UPDATE or DELETE without a WHERE (the API refuses one)', `
+    declare bad text; begin
+      select string_agg(distinct p.proname, ', ') into bad
+        from pg_proc p join pg_namespace n on n.oid = p.pronamespace,
+             regexp_matches(regexp_replace(pg_get_functiondef(p.oid), '--[^\\n]*', '', 'g'),
+               '(?<!do\\s)((?:\\mupdate\\s+[a-z_.]+\\s+set\\M|\\mdelete\\s+from\\s+[a-z_.]+)[^;]*;)', 'gi') m
+       where n.nspname = 'public' and p.prokind = 'f' and m[1] !~* '\\mwhere\\M';
+      if bad is not null then raise exception 'without a WHERE: %', bad; end if;
+    end;`, null],
 ];
 
 describe.skipIf(!RUN)('workflow manager — the database (dev, rolled back)', () => {
