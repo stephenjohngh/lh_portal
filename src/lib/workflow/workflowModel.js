@@ -319,7 +319,7 @@ export function workflowDiff(before, after) {
   /** @type {string[]} */
   const out = [];
   const deadline = (/** @type {any} */ s) => (s?.deadline_days
-    ? `${s.deadline_days} ${s.deadline_basis === 'working' ? 'working' : 'calendar'} days from ${s.deadline_from === 'started' ? 'the start' : 'reaching it'}`
+    ? `${s.deadline_days} ${s.deadline_basis === 'working' ? 'working' : 'calendar'} ${Number(s.deadline_days) === 1 ? 'day' : 'days'} from ${s.deadline_from === 'started' ? 'the start' : 'reaching it'}`
     : 'none');
   if (before.name !== after.name) out.push(`Renamed “${before.name}” → “${after.name}”.`);
   // The public status page (migration 261), switched on or off on its own.

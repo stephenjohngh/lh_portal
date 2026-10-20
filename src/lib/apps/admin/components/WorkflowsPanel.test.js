@@ -10,7 +10,7 @@ import { DEFAULT_APPLICATION_WORKFLOW as WF } from '#lib/apps/parking/utils/appl
 
 const h = vi.hoisted(() => ({ saved: /** @type {any[]} */ ([]), marked: false, changes: /** @type {any[]} */ ([]), app: 'parking', renamed: false,
   timerRuns: /** @type {any[]} */ ([]), ran: 0, publicOn: false, switched: /** @type {any[]} */ ([]),
-  loads: 0, retired: /** @type {any[]} */ ([]), deleted: /** @type {any[]} */ ([]) }));
+  loads: 0, dueOn: '2000-01-01', retired: /** @type {any[]} */ ([]), deleted: /** @type {any[]} */ ([]) }));
 vi.mock('#lib/utils/download.js', () => ({ downloadBlob: () => {} }));
 vi.mock('#lib/workflow/workflowApi.js', () => ({
   setPublicStatus: async (key, on, review) => { h.switched.push({ key, on, review }); return { changed: true }; },
@@ -25,7 +25,7 @@ vi.mock('#lib/workflow/workflowApi.js', () => ({
     steps: WF.steps.map((s, i) => ({ ...s, position: i + 1, ...(h.renamed && i === 0 ? { name: 'Arrived' } : {}) })), moves: WF.moves.map((m) => ({ note_required: false, admin_only: false, action: null, ...m, ...(h.app !== 'parking' ? { action: null } : {}) })) }),
   saveWorkflow: async (w) => { h.saved.push(w); return 'w1'; },
   listChanges: async () => h.changes,
-  listEvents: async () => ({ items: [{ id: 'i1', step_key: 'checking', due_on: '2000-01-01' }], events: [] }),
+  listEvents: async () => ({ items: [{ id: 'i1', step_key: 'checking', due_on: h.dueOn }], events: [] }),
   listTimerRuns: async () => h.timerRuns ?? [],
   runTimers: async () => { h.ran = (h.ran ?? 0) + 1; return { moved: 2, failed: 0, failures: [] }; },
 }));
@@ -40,7 +40,7 @@ vi.mock('#lib/workflow/nonWorkingDays.js', () => ({
 }));
 
 const WorkflowsPanel = (await import('./WorkflowsPanel.svelte')).default;
-beforeEach(() => { cleanup(); h.saved.length = 0; h.marked = false; h.changes = []; h.app = 'parking'; h.renamed = false; h.timerRuns = []; h.ran = 0; h.publicOn = false; h.switched = []; h.loads = 0; h.retired = []; h.deleted = []; });
+beforeEach(() => { cleanup(); h.saved.length = 0; h.marked = false; h.changes = []; h.app = 'parking'; h.renamed = false; h.timerRuns = []; h.ran = 0; h.publicOn = false; h.switched = []; h.loads = 0; h.dueOn = '2000-01-01'; h.retired = []; h.deleted = []; });
 
 async function opened() {
   render(WorkflowsPanel);
@@ -227,6 +227,17 @@ describe('Admin → Workflows', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Save workflow' }));
     await waitFor(() => expect(h.loads).toBeGreaterThan(before));
     expect((await screen.findByRole('status')).textContent).toBe('Saved.');
+  });
+
+  it('the usage figures are read again after a save, which re-dates the items (2026-10-20: they stayed stale)', async () => {
+    h.dueOn = '2999-01-01';
+    await opened();
+    await fireEvent.click(screen.getByLabelText('Show how it is being used'));
+    expect(await screen.findByText(/1 in all · 1 open · 0 overdue/)).toBeTruthy();
+    h.dueOn = '2000-01-01';                       // the save's re-dating made it late
+    await fireEvent.input(screen.getAllByLabelText('Step name')[0], { target: { value: 'Arrived' } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Save workflow' }));
+    expect(await screen.findByText(/1 in all · 1 open · 1 overdue/)).toBeTruthy();
   });
 
   // Migration 265: a Cases process can be retired or deleted; an app's own cannot.

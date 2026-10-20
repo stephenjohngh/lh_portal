@@ -98,12 +98,12 @@
   async function addDay() {
     dayError = '';
     if (!newDay || !newDayName.trim()) { dayError = 'Give the date and what it is.'; return; }
-    try { await addNonWorkingDay(newDay, newDayName); newDay = ''; newDayName = ''; await readOffDays(); }
+    try { await addNonWorkingDay(newDay, newDayName); newDay = ''; newDayName = ''; await readOffDays(); usageFor = ''; }
     catch (/** @type {any} */ err) { dayError = errMessage(err, 'That day could not be added.'); }
   }
   async function removeDay(/** @type {string} */ day) {
     dayError = '';
-    try { await removeNonWorkingDay(day); await readOffDays(); }
+    try { await removeNonWorkingDay(day); await readOffDays(); usageFor = ''; }
     catch (/** @type {any} */ err) { dayError = errMessage(err, 'That day could not be removed.'); }
   }
 
@@ -199,6 +199,7 @@
   $: if (chosenKey && chosenKey !== loadedKey) { loadedKey = chosenKey; open(chosenKey); }
   async function open(/** @type {string} */ key) {
     error = ''; saved = keepMessage; keepMessage = '';
+    usageFor = '';   // a save re-dates items: read the figures again (2026-10-20: they stayed stale)
     try {
       const wf = await loadWorkflow(key);
       current = wf?.workflow ?? null;
