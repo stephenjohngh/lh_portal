@@ -177,7 +177,7 @@
   processing={deleting}
   title="Delete Section"
   message="Delete '{pendingDelete?.name}'? All notes and documents in this section will be permanently deleted."
-  confirmLabel="Delete Section"
+  confirmText="Delete Section"
   on:confirm={confirmDelete}
   on:cancel={() => pendingDelete = null}
 />

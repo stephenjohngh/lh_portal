@@ -426,16 +426,16 @@
     on:completed={() => { showComplete = false; dispatch('changed'); dispatch('close'); }} />
 {/if}
 
-{#if showDeleteConf}
-  <ConfirmDialog
-    title="Delete job?"
-    message="Permanently delete '{job?.title}' and all its documents. This cannot be undone."
-    confirmLabel="Delete"
-    variant="danger"
-    on:confirm={handleDelete}
-    on:cancel={() => showDeleteConf = false}
-  />
-{/if}
+<!-- ConfirmDialog shows only when given `show` (2026-10-20: it was not, so a job could never be deleted). -->
+<ConfirmDialog
+  show={showDeleteConf}
+  title="Delete job?"
+  message="Permanently delete '{job?.title}' and all its documents. This cannot be undone."
+  confirmText="Delete"
+  danger={true}
+  on:confirm={handleDelete}
+  on:cancel={() => showDeleteConf = false}
+/>
 
 <style>
   .chain-node {

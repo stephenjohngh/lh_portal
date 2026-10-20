@@ -346,7 +346,7 @@
   processing={deleting}
   title="Delete Document"
   message="Delete '{pendingDelete?.display_name || pendingDelete?.filename}'? This cannot be undone."
-  confirmLabel="Delete Document"
+  confirmText="Delete Document"
   on:confirm={confirmDelete}
   on:cancel={() => pendingDelete = null}
 />

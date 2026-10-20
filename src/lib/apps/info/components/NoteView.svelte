@@ -204,7 +204,7 @@
   processing={deletingNote}
   title="Delete Note"
   message="Permanently delete '{note?.title}'? All attached documents will also be deleted."
-  confirmLabel="Delete Note"
+  confirmText="Delete Note"
   on:confirm={confirmDeleteNote}
   on:cancel={() => pendingDeleteNote = false}
 />
