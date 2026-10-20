@@ -55,6 +55,9 @@
   /** @type {any[]} */
   let fields = [];
   let loadedKey = '';
+  // A confirmation to keep across the re-read after a save (reading the
+  // workflow back clears the messages; without this every "Saved." vanished).
+  let keepMessage = '';
   // The review mark (migration 249): a workflow that must not change without a
   // full review. Changing a marked one asks who reviewed it and against what.
   let reviewRequired = false;
@@ -171,7 +174,7 @@
         saved = `“${wf.name}” deleted. Its history is kept under Deleted processes.`;
         workflows = await listWorkflows();
         chosenKey = workflows[0]?.key ?? '';
-        loadedKey = '';
+        keepMessage = saved; loadedKey = '';
         await readDeleted();
       } else {
         await retireWorkflow(wf.key, what === 'retire', review);
@@ -180,7 +183,7 @@
           ? `“${wf.name}” retired: no new cases can be opened in it. The cases it has stay, and can be finished.`
           : `“${wf.name}” brought back: cases can be opened in it again.`;
         workflows = await listWorkflows();
-        loadedKey = '';                       // read it back
+        keepMessage = saved; loadedKey = '';                     // read it back
       }
       lifecycle = null;
     } catch (/** @type {any} */ err) { lifecycleError = errMessage(err, 'That could not be done.'); }
@@ -195,7 +198,7 @@
   // Read the chosen workflow once per choice (keyed on the string, never an object).
   $: if (chosenKey && chosenKey !== loadedKey) { loadedKey = chosenKey; open(chosenKey); }
   async function open(/** @type {string} */ key) {
-    error = ''; saved = '';
+    error = ''; saved = keepMessage; keepMessage = '';
     try {
       const wf = await loadWorkflow(key);
       current = wf?.workflow ?? null;
@@ -226,7 +229,7 @@
       saved = on ? 'Public status page switched on.' : 'Public status page switched off.';
       publicReview = { reviewedBy: '', reviewedAgainst: '', note: '' };
       workflows = await listWorkflows();
-      loadedKey = '';                         // read it back
+      keepMessage = saved; loadedKey = '';                       // read it back
     } catch (/** @type {any} */ err) { error = errMessage(err, 'That could not be changed.'); }
     finally { switchingPublic = false; }
   }
@@ -419,7 +422,7 @@
       logAudit('update', 'workflow', wf.id, wf.name, { appId: 'admin', eventCategory: 'admin',
         afterData: { steps: steps.map((s) => s.key), moves: moves.map((m) => `${m.from_key}>${m.to_key}`) } });
       saved = 'Saved.';
-      loadedKey = '';                         // read it back
+      keepMessage = saved; loadedKey = '';                       // read it back
     } catch (/** @type {any} */ err) { error = errMessage(err, 'It could not be saved.'); }
     finally { saving = false; }
   }

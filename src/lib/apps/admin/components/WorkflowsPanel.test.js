@@ -9,12 +9,16 @@ import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/sv
 import { DEFAULT_APPLICATION_WORKFLOW as WF } from '#lib/apps/parking/utils/applicationWorkflow.js';
 
 const h = vi.hoisted(() => ({ saved: /** @type {any[]} */ ([]), marked: false, changes: /** @type {any[]} */ ([]), app: 'parking', renamed: false,
-  timerRuns: /** @type {any[]} */ ([]), ran: 0, publicOn: false, switched: /** @type {any[]} */ ([]) }));
+  timerRuns: /** @type {any[]} */ ([]), ran: 0, publicOn: false, switched: /** @type {any[]} */ ([]),
+  loads: 0, retired: /** @type {any[]} */ ([]), deleted: /** @type {any[]} */ ([]) }));
 vi.mock('#lib/utils/download.js', () => ({ downloadBlob: () => {} }));
 vi.mock('#lib/workflow/workflowApi.js', () => ({
   setPublicStatus: async (key, on, review) => { h.switched.push({ key, on, review }); return { changed: true }; },
   listWorkflows: async () => [{ id: 'w1', key: WF.key, name: WF.name, app_id: h.app, description: WF.description }],
-  loadWorkflow: async () => ({ fields: [], workflow: { id: 'w1', key: WF.key, name: WF.name, app_id: h.app, description: WF.description,
+  retireWorkflow: async (key, retire, review) => { h.retired.push({ key, retire, review }); return { changed: true }; },
+  deleteWorkflow: async (key, review) => { h.deleted.push({ key, review }); return { deleted: true }; },
+  listDeletedWorkflows: async () => [],
+  loadWorkflow: async () => (h.loads += 1, { fields: [], workflow: { id: 'w1', key: WF.key, name: WF.name, app_id: h.app, description: WF.description,
       updated_at: '2026-10-18T08:00:00Z', public_status: h.publicOn,
       review_required: h.marked, review_reason: h.marked ? 'Statutory — BSA s.93' : null },
     steps: WF.steps.map((s, i) => ({ ...s, position: i + 1, ...(h.renamed && i === 0 ? { name: 'Arrived' } : {}) })), moves: WF.moves.map((m) => ({ note_required: false, admin_only: false, action: null, ...m, ...(h.app !== 'parking' ? { action: null } : {}) })) }),
@@ -35,7 +39,7 @@ vi.mock('#lib/workflow/nonWorkingDays.js', () => ({
 }));
 
 const WorkflowsPanel = (await import('./WorkflowsPanel.svelte')).default;
-beforeEach(() => { cleanup(); h.saved.length = 0; h.marked = false; h.changes = []; h.app = 'parking'; h.renamed = false; h.timerRuns = []; h.ran = 0; h.publicOn = false; h.switched = []; });
+beforeEach(() => { cleanup(); h.saved.length = 0; h.marked = false; h.changes = []; h.app = 'parking'; h.renamed = false; h.timerRuns = []; h.ran = 0; h.publicOn = false; h.switched = []; h.loads = 0; h.retired = []; h.deleted = []; });
 
 async function opened() {
   render(WorkflowsPanel);
@@ -211,6 +215,44 @@ describe('Admin → Workflows', () => {
     await fireEvent.input(screen.getByLabelText('Public status: reviewed against'), { target: { value: 'BSA s.93' } });
     await fireEvent.click(btn);
     await waitFor(() => expect(h.switched[0]).toMatchObject({ on: true, review: { reviewedBy: 'A Person', reviewedAgainst: 'BSA s.93' } }));
+  });
+
+  // ⚠ 2026-10-20: reading the workflow back after a save cleared the message,
+  // so "Saved." (and every switch's confirmation) vanished as it appeared.
+  it('a save says so, and the message survives the workflow being read back', async () => {
+    await opened();
+    await fireEvent.input(screen.getAllByLabelText('Step name')[0], { target: { value: 'Arrived' } });
+    const before = h.loads;
+    await fireEvent.click(screen.getByRole('button', { name: 'Save workflow' }));
+    await waitFor(() => expect(h.loads).toBeGreaterThan(before));
+    expect((await screen.findByRole('status')).textContent).toBe('Saved.');
+  });
+
+  // Migration 265: a Cases process can be retired or deleted; an app's own cannot.
+  it('a Cases process can be retired, and says so', async () => {
+    h.app = 'cases';
+    await opened();
+    await fireEvent.click(await screen.findByRole('button', { name: 'Retire — no new cases' }));
+    await fireEvent.click(await screen.findByRole('button', { name: 'Retire it' }));
+    await waitFor(() => expect(h.retired).toEqual([{ key: WF.key, retire: true, review: null }]));
+    expect((await screen.findByRole('status')).textContent).toMatch(/retired: no new cases/);
+  });
+
+  it('a Cases process can be deleted; a marked one asks for the review first', async () => {
+    h.app = 'cases'; h.marked = true;
+    await opened();
+    await fireEvent.click(await screen.findByRole('button', { name: 'Delete process…' }));
+    const go = await screen.findByRole('button', { name: 'Delete the process' });
+    expect(go.hasAttribute('disabled')).toBe(true);
+    await fireEvent.input(screen.getByLabelText(/^Reviewed by/), { target: { value: 'A Person' } });
+    await fireEvent.input(screen.getByLabelText(/^Reviewed against/), { target: { value: 'The procedure' } });
+    await fireEvent.click(go);
+    await waitFor(() => expect(h.deleted[0]).toMatchObject({ key: WF.key, review: { reviewedBy: 'A Person', reviewedAgainst: 'The procedure' } }));
+  });
+
+  it('an app’s own workflow offers neither', async () => {
+    await opened();
+    expect(screen.queryByTestId('workflow-lifecycle')).toBeNull();
   });
 
   it('a process named by titles has no public page to switch', async () => {
