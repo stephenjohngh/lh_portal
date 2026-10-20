@@ -336,7 +336,12 @@ export function workflowDiff(before, after) {
   const aSteps = new Map((after.steps ?? []).map((/** @type {any} */ s) => [s.key, s]));
   for (const [k, s] of aSteps) {
     const was = bSteps.get(k);
-    if (!was) { out.push(`Step added: “${s.name}” (${STEP_KIND_LABEL[s.kind] ?? s.kind}).`); continue; }
+    if (!was) {
+      // A new step's deadline is part of what was added (it went unsaid until 2026-10-20).
+      const due = deadline(s) === 'none' ? '' : ` — deadline ${deadline(s)}`;
+      out.push(`Step added: “${s.name}” (${STEP_KIND_LABEL[s.kind] ?? s.kind})${due}.`);
+      continue;
+    }
     if (was.name !== s.name) out.push(`Step “${was.name}” renamed “${s.name}”.`);
     if ((was.public_name ?? null) !== (s.public_name ?? null)) out.push(`Step “${s.name}”: the name the public sees is now “${s.public_name ?? s.name}”.`);
     if (was.kind !== s.kind) out.push(`Step “${s.name}”: ${STEP_KIND_LABEL[was.kind] ?? was.kind} → ${STEP_KIND_LABEL[s.kind] ?? s.kind}.`);

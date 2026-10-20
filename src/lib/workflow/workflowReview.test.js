@@ -52,6 +52,10 @@ describe('workflowDiff — what changed, in words', () => {
     expect(lines).toContain('Move added: “Look again” (Being checked → Second look).');
     expect(lines).toContain('Move removed: “Accept” (Being checked → Done).');
   });
+  it('a step added WITH a deadline says what the deadline is', () => {
+    const after = def({ steps: [...def().steps, { key: 'extra', name: 'Second look', kind: 'open', deadline_days: 2, deadline_basis: 'working', deadline_from: 'entered' }] });
+    expect(workflowDiff(def(), after)).toContain('Step added: “Second look” (In progress) — deadline 2 working days from reaching it.');
+  });
   it('the mark put on and taken off, and a move made to need a note', () => {
     expect(workflowDiff(def(), def({ reviewRequired: true, reviewReason: 'Statutory — BSA s.93' })))
       .toEqual(['Marked as needing a full review: Statutory — BSA s.93.']);
