@@ -20,6 +20,9 @@ describe('workflowProblem — what workflow_save() refuses, said first', () => {
   });
   it('every step reachable from the start', () => {
     expect(workflowProblem({ steps: [S('a', 'start'), S('b', 'done')], moves: [], appId: 'parking' })).toMatch(/"b" cannot be reached/);
+    // By the name a person sees, not its key (2026-10-20: it said "waiting_list").
+    expect(workflowProblem({ steps: [S('a', 'start'), S('waiting_list', 'done', 'On the waiting list')], moves: [], appId: 'parking' }))
+      .toBe('Step "On the waiting list" cannot be reached from the start.');
   });
   it('a move OUT of a finished step is allowed — a reopen (migration 252; it was refused before)', () => {
     expect(workflowProblem({ steps: [S('a', 'start'), S('b', 'declined'), S('c', 'open')],

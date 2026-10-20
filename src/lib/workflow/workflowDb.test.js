@@ -161,6 +161,11 @@ const RUNTIME = [
     if not exists (select 1 from workflow_events e join workflow_items i on i.id = e.item_id join cases c on c.id = i.subject_id
                     where c.title = 'T' and e.kind = 'fields' and e.note = 'Changed: Checked') then raise exception 'no history row'; end if;
     perform workflow_move((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'T'), 'done', null);`, null],
+  // 266: named as a person sees the step, not by its key ("done").
+  ['a step with an item in it cannot be removed, and the refusal names the step', `
+    perform workflow_save('dbtest_case', 'DB test case', 'cases', null,
+      '[{"key":"open","name":"Open","kind":"start","position":1}]', '[]', null, null, null, null, null);`,
+    'Step "Done" has items in it, so it cannot be removed'],
   ['a save over somebody else’s is refused', `
     perform workflow_save('dbtest_case', 'DB test case', 'cases', null,
       '[{"key":"open","name":"Open","kind":"start","position":1},{"key":"done","name":"Done","kind":"done","position":2}]',

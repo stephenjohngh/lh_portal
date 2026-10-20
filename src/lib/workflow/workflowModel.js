@@ -245,7 +245,7 @@ export function workflowProblem({ steps, moves, appId, key = '', fields = [] }) 
     }
   }
   const lost = steps.find((s) => !reached.has(s.key));
-  if (lost) return `Step "${lost.key}" cannot be reached from the start.`;
+  if (lost) return `Step "${lost.name || lost.key}" cannot be reached from the start.`;
   // What the owning app needs the workflow to keep (254).
   return contractProblem(appId, { steps, moves }, key);
 }
