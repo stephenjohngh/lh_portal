@@ -476,10 +476,13 @@
     background: #0d0d14; color: #e2e8f0;
     font-family: inherit;
   }
-  .ts-head { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.75rem; gap: 0.5rem; }
+  .ts-head { display: flex; align-items: center; justify-content: space-between; padding: 0.9rem 0.75rem; gap: 0.5rem; }
   .ts-title { font-weight: 600; }
-  .ts-view { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; background: #000; }
-  .ts-view video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* A fixed share of the screen (2026-10-23: the view took so much that the
+     buttons for a recognised plate fell off the foot). The panel under it
+     takes the rest and scrolls if it must. */
+  .ts-view { position: relative; flex: 0 0 auto; height: 38vh; height: 38dvh; min-height: 0; overflow: hidden; background: #000; }
+  .ts-view video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
   .ts-head-actions { display: inline-flex; gap: 0.4rem; flex-wrap: wrap; justify-content: flex-end; }
   .ts-link { background: none; border: 0; padding: 0; margin-left: 0.4rem; color: var(--ts-accent); text-decoration: underline; cursor: pointer; font: inherit; }
   .ts-diag { border: 1px solid #334155; border-radius: 8px; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.25rem; }
@@ -522,7 +525,7 @@
   .ts-steps li + li { margin-top: 0.4rem; }
   .ts-help-alt { margin: 0; font-size: 0.85rem; color: #94a3b8; }
   .ts-btn.ts-primary-plain { align-self: flex-start; background: var(--ts-accent); border-color: var(--ts-accent); color: #fff; }
-  .ts-panel { padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; max-height: 50vh; overflow-y: auto; }
+  .ts-panel { flex: 1 1 auto; min-height: 0; padding: 1rem 0.75rem calc(2rem + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 0.6rem; overflow-y: auto; }
   .ts-status { margin: 0; font-size: 0.9rem; color: #cbd5e1; }
   .ts-warn { margin: 0; font-size: 0.9rem; color: #fbbf24; }
   .ts-matches { display: flex; flex-direction: column; gap: 0.4rem; }
