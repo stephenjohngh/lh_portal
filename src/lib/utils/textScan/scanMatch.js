@@ -28,7 +28,7 @@ export const SCAN_PROFILES = {
   // screen wide (2026-10-12; it was 82%, which meant holding the phone about half
   // a metre away to fill it — from a normal distance the plate was a strip lost
   // in bodywork).
-  registration: { label: 'Number plate', charset: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', minLength: 2, maxLength: 8, aspect: 4.7, boxFraction: 0.6, edgeMarks: ['GB', 'UK', 'NI', 'CYM', 'ENG', 'SCO'],
+  registration: { label: 'Number plate', charset: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', minLength: 2, maxLength: 8, aspect: 4.7, boxFraction: 0.75, edgeMarks: ['GB', 'UK', 'NI', 'CYM', 'ENG', 'SCO'],
     // I/1 and O/0 put right by position in the UK formats (ukPlate.js, 2026-10-13).
     fix: fixUkPlate },
   // A number painted or fixed on something — a door, a riser, a meter. Digits
