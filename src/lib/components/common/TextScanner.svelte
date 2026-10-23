@@ -25,6 +25,8 @@
   import { matchScan, readingsFrom, scanProfile } from '#lib/utils/textScan/scanMatch.js';
   import { guideCrop, readSize, greyAndStretch, blackAndWhite, clearEdgesAndSpecks, closeGaps, withMargin, preparePlate } from '#lib/utils/textScan/scanImage.js';
   import { errMessage } from '#lib/utils/errors.js';
+  import { getPref, setPref } from '#lib/utils/prefs.js';
+  import { findPlate, plateCrop } from '#lib/utils/textScan/plateFinder.js';
   import { cameraHelp } from '#lib/utils/textScan/cameraHelp.js';
   import { createScanTally } from '#lib/utils/textScan/scanTally.js';
   import { scanStatus, boxState } from '#lib/utils/textScan/scanFeedback.js';
@@ -41,7 +43,24 @@
   const dispatch = createEventDispatcher();
   const prof = scanProfile(profile);
   const boxAspect = aspect || prof.aspect;
-  const BOX_FRACTION = prof.boxFraction ?? 0.82;
+  // FIND-FIRST (2026-10-23, for trying out; the header button switches it): the
+  // guide box becomes a wide search area, the plate is found inside it
+  // (plateFinder.js) and only the plate is read. Off, the box is the plate-
+  // shaped one it always was. Number plates only.
+  const CAN_FIND = profile === 'registration';
+  const SEARCH_FRACTION = 0.94, SEARCH_ASPECT = 2.4, FIND_WIDTH = 320;
+  let findFirst = CAN_FIND && getPref('scan.findFirst', '1') !== '0';
+  const PLAIN_FRACTION = prof.boxFraction ?? 0.82;
+  $: BOX_FRACTION = findFirst ? SEARCH_FRACTION : PLAIN_FRACTION;
+  $: BOX_ASPECT = findFirst ? SEARCH_ASPECT : boxAspect;
+  /** Where the latest frame found the plate, as percentages of the box, or null. */
+  let plateRect = /** @type {{ l: number, t: number, w: number, h: number } | null} */ (null);
+  function toggleFind() {
+    findFirst = !findFirst;
+    setPref('scan.findFirst', findFirst ? '1' : '0');
+    plateRect = null; matches = []; lastRead = ''; seeing = ''; held = false;
+    tally.reset?.();
+  }
 
   /** @type {HTMLVideoElement} */ let video;
   /** @type {MediaStream|null} */ let stream = null;
@@ -260,10 +279,33 @@
   let frameTurn = 0;
   async function readFrame() {
     const rect = video.getBoundingClientRect();
-    const crop = guideCrop({
-      frameW: video.videoWidth, frameH: video.videoHeight,
-      viewW: rect.width, viewH: rect.height, boxFraction: BOX_FRACTION, aspect: boxAspect,
-    });
+    const view = { frameW: video.videoWidth, frameH: video.videoHeight, viewW: rect.width, viewH: rect.height };
+    const finding = CAN_FIND && findFirst;
+    let crop = guideCrop({ ...view, boxFraction: BOX_FRACTION, aspect: BOX_ASPECT });
+    let foundNote = '';
+    if (finding) {
+      // Look for the plate in the whole search area, on a small copy, then read
+      // only the plate, cut from the full-size frame. Nothing found: read the
+      // plate-shaped middle, as with find-first off.
+      const sw = FIND_WIDTH, sh = Math.max(8, Math.round(sw * crop.h / crop.w));
+      const sc = document.createElement('canvas'); sc.width = sw; sc.height = sh;
+      const sctx = /** @type {CanvasRenderingContext2D} */ (sc.getContext('2d', { willReadFrequently: true }));
+      sctx.drawImage(video, crop.x, crop.y, crop.w, crop.h, 0, 0, sw, sh);
+      const t0 = performance.now();
+      const f = findPlate(sctx.getImageData(0, 0, sw, sh).data, sw, sh);
+      const ms = Math.round(performance.now() - t0);
+      if (f) {
+        const c = plateCrop(f, sw, sh);
+        plateRect = { l: (c.x / sw) * 100, t: (c.y / sh) * 100, w: (c.w / sw) * 100, h: (c.h / sh) * 100 };
+        foundNote = `plate found (${ms} ms) · `;
+        crop = { x: Math.round(crop.x + (c.x / sw) * crop.w), y: Math.round(crop.y + (c.y / sh) * crop.h),
+                 w: Math.max(1, Math.round((c.w / sw) * crop.w)), h: Math.max(1, Math.round((c.h / sh) * crop.h)) };
+      } else {
+        plateRect = null;
+        foundNote = `no plate found (${ms} ms), read the middle · `;
+        crop = guideCrop({ ...view, boxFraction: PLAIN_FRACTION, aspect: boxAspect });
+      }
+    }
     const size = readSize(crop.w, crop.h);
     // A number plate is read the two ways in turn, and the frames vote: each
     // way reads plates the other cannot (2026-10-17, the user's pictures 7–9).
@@ -273,7 +315,7 @@
     const { text, confidence } = await readText(out, prof);
     noteDiag(raw, out, text, confidence,
       `camera ${video.videoWidth}×${video.videoHeight} · box ${crop.w}×${crop.h} px · read at ${size.w}×${size.h} · `
-      + `${way === 'plate' ? 'plate way · ' : ''}${bw.inverted ? 'light on dark, turned round · ' : ''}${focusInfo}`);
+      + `${foundNote}${way === 'plate' ? 'plate way · ' : ''}${bw.inverted ? 'light on dark, turned round · ' : ''}${focusInfo}`);
     if (photoMode) return;            // a photo was taken while this frame was read
     takeFrame(text, confidence);
   }
@@ -373,6 +415,9 @@
     <span class="ts-head-actions">
       <!-- In the header so it is always on screen (2026-10-13: at the foot of the
            panel it could be scrolled out of sight on a phone). -->
+      {#if CAN_FIND}
+        <button class="ts-btn" on:click={toggleFind} aria-pressed={findFirst} data-testid="scan-find-toggle">{findFirst ? 'Find plate: on' : 'Find plate: off'}</button>
+      {/if}
       <button class="ts-btn" on:click={toggleDiag} aria-pressed={diagOn}>{diagOn ? 'Hide what the reader sees' : 'What the reader sees'}</button>
       {#if diagOn && diag}
         <button class="ts-btn ts-save" on:click={saveDiag} data-testid="scan-save-diag">Save pictures</button>
@@ -388,7 +433,10 @@
       <img class="ts-photo" src={photoUrl} alt="" data-testid="scan-photo" />
     {/if}
     {#if !cameraError && !photoMode}
-      <div class="ts-box ts-box-{frame}" data-state={frame} style="width: {BOX_FRACTION * 100}%; aspect-ratio: {boxAspect}">
+      <div class="ts-box ts-box-{frame}" data-state={frame} style="width: {BOX_FRACTION * 100}%; aspect-ratio: {BOX_ASPECT}">
+        {#if findFirst && plateRect}
+          <div class="ts-found" style="left: {plateRect.l}%; top: {plateRect.t}%; width: {plateRect.w}%; height: {plateRect.h}%" data-testid="scan-found"></div>
+        {/if}
         <!-- A line sweeping through the box while it reads: it is working. -->
         {#if live && frame !== 'found'}<div class="ts-sweep" data-testid="scan-sweep"></div>{/if}
       </div>
@@ -492,6 +540,7 @@
   .ts-diag-text span { font-family: 'DM Mono', monospace; color: #fff; }
   .ts-diag-info { font-size: 0.7rem; color: #94a3b8; margin: 0; word-break: break-word; }
   .ts-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+  .ts-found { position: absolute; border: 2px solid #4ade80; border-radius: 4px; box-sizing: border-box; pointer-events: none; }
   .ts-box-looking { border-color: var(--ts-accent); }
   .ts-box-seeing  { border-color: #fbbf24 !important; }
   .ts-box-found   { border-color: #4ade80 !important; }
