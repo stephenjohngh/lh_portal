@@ -49,6 +49,8 @@
    *    lines: [{ text, href? }], notes } for a value.
    *  @type {null | ((value: string) => Promise<any>)} */
   export let checker = null;
+  /** The Take a photo button (2026-10-25: Car check turns it off — a photo did not read better than the live camera). */
+  export let allowPhoto = true;
   /** Whether the person may make a report (shows Create report). */
   export let canReport = false;
 
@@ -512,7 +514,7 @@
         {#if cameraError.steps.length}
           <ol class="ts-steps">{#each cameraError.steps as step}<li>{step}</li>{/each}</ol>
         {/if}
-        <p class="ts-help-alt">Or use <b>Take a photo</b> below — that does not need this permission.</p>
+        {#if allowPhoto}<p class="ts-help-alt">Or use <b>Take a photo</b> below — that does not need this permission.</p>{/if}
         {#if cameraError.retry}<button class="ts-btn ts-primary-plain" on:click={startCamera}>Try again</button>{/if}
       </div>
     {/if}
@@ -590,11 +592,13 @@
       {#if torchAvailable}
         <button class="ts-btn" on:click={toggleTorch} aria-pressed={torchOn}>{torchOn ? 'Light off' : 'Light on'}</button>
       {/if}
-      <label class="ts-btn">
+      {#if allowPhoto}
+        <label class="ts-btn">
         {photoMode ? 'Take another photo' : 'Take a photo'}
         <input type="file" accept="image/*" capture="environment" on:click={pauseForPhoto} on:change={readPhoto} />
       </label>
-      {#if photoMode && !cameraError}
+      {/if}
+      {#if photoMode && !cameraError && allowPhoto}
         <button class="ts-btn" on:click={scanLiveAgain}>Scan live again</button>
       {/if}
     </div>

@@ -296,6 +296,6 @@
 
 {#if scanning}
   <TextScanner profile="registration" title="Scan a number plate" candidates={scanCandidates}
-    checker={scannerChecker} canReport={canRecord}
+    checker={scannerChecker} canReport={canRecord} allowPhoto={false}
     on:pick={scanned} on:report={reportFromScan} on:close={() => (scanning = false)} />
 {/if}

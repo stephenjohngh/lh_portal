@@ -19,7 +19,9 @@
   export let prefillNotes = '';
 
   const dispatch = createEventDispatcher();
-  let notes = prefillNotes;
+  // A known detail starts the note BELOW a blank first line, so the person can
+  // type their own text above it (2026-10-25); a blank line left there is dropped on save.
+  let notes = prefillNotes ? `\n${prefillNotes}` : '';
   /** @type {Blob|null} */
   let photo = null;
   let preview = '';
@@ -40,7 +42,7 @@
   async function save() {
     saving = true; error = '';
     try {
-      const { sighting, queued, photoError } = await sightingStore.record({ registration, place, notes, photo });
+      const { sighting, queued, photoError } = await sightingStore.record({ registration, place, notes: notes.replace(/^(\s*\n)+/, ''), photo });
       if (preview) URL.revokeObjectURL(preview);
       dispatch('recorded', { sighting, queued, photoError });
     } catch (/** @type {any} */ err) {
@@ -63,7 +65,7 @@
 
   <label class="block">
     <span class="text-sm text-slate-300">Notes</span>
-    <textarea bind:value={notes} rows="3" placeholder="Where exactly, what it was doing, any note left…"
+    <textarea bind:value={notes} rows="4" on:focus={(e) => { if (notes.startsWith('\n')) e.currentTarget.setSelectionRange(0, 0); }} placeholder="Where exactly, what it was doing, any note left…"
       class="mt-1 w-full rounded-lg bg-slate-900 border border-slate-600 p-2 text-base"></textarea>
   </label>
 

@@ -277,3 +277,15 @@ describe('TextScanner verdict mode (2026-10-25, Car check)', () => {
     expect(screen.queryByTestId('scan-back')).toBeNull();
   });
 });
+
+describe('TextScanner without the photo button (2026-10-25)', () => {
+  beforeEach(() => { cleanup(); fakeCanvas(); });
+  it('allowPhoto false: no Take a photo, none in the camera-refused help either', () => {
+    render(TextScanner, { props: { profile: 'registration', allowPhoto: false } });
+    expect(screen.queryByLabelText(/Take (a|another) photo/)).toBeNull();
+  });
+  it('by default it is there', () => {
+    render(TextScanner, { props: { profile: 'registration' } });
+    expect(screen.getByLabelText(/Take a photo/)).toBeTruthy();
+  });
+});
