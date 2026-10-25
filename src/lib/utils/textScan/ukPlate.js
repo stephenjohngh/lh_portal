@@ -17,6 +17,13 @@ const TO_LETTER = { 0: 'O', 1: 'I', 2: 'Z', 4: 'A', 5: 'S', 6: 'G', 8: 'B' };
 /** A letter a reader gives where the digit is meant, and the digit. */
 const TO_DIGIT = { O: '0', Q: '0', D: '0', U: '0', I: '1', L: '1', J: '1', T: '1', Z: '2', A: '4', S: '5', G: '6', B: '8' };
 
+/** Letters with no single digit they stand for: tried in this order, the age
+ *  identifier (below) choosing among them — E read where a 6 is, usually. */
+const TO_DIGIT_ALT = { E: '683', F: '7', H: '4', K: '4', N: '1', P: '9' };
+
+/** A current-format age identifier: 02–25 and 51–75 to 2025, 26 and 76 since March 2026. */
+const validAge = (d) => { const n = Number(d); return (n >= 2 && n <= 26) || (n >= 51 && n <= 76); };
+
 const isLetter = (c) => c >= 'A' && c <= 'Z';
 const isDigit = (c) => c >= '0' && c <= '9';
 
@@ -45,13 +52,25 @@ export function fixUkPlate(raw) {
   let best = null;
   for (const { format, pattern } of patternsFor(v.length)) {
     let out = '', changes = 0, ok = true;
+    /** @type {Record<number, string>} position → the digits it may be */
+    const choices = {};
     for (let i = 0; i < v.length && ok; i++) {
       const c = v[i];
       if (pattern[i] === 'L') {
         if (isLetter(c)) out += c;
         else if (TO_LETTER[c]) { out += TO_LETTER[c]; changes++; } else ok = false;
       } else if (isDigit(c)) out += c;
-      else if (TO_DIGIT[c]) { out += TO_DIGIT[c]; changes++; } else ok = false;
+      else if (TO_DIGIT[c]) { out += TO_DIGIT[c]; changes++; }
+      else if (TO_DIGIT_ALT[c] && format === 'current' && (i === 2 || i === 3)) { choices[i] = TO_DIGIT_ALT[c]; out += TO_DIGIT_ALT[c][0]; changes += 1.5; }
+      else ok = false;
+    }
+    if (ok && format === 'current' && Object.keys(choices).length) {
+      // Several digits could be meant: take the first making a real age identifier.
+      let found = false;
+      pick: for (const a of choices[2] ?? out[2]) for (const b of choices[3] ?? out[3]) {
+        if (validAge(a + b)) { out = out.slice(0, 2) + a + b + out.slice(4); found = true; break pick; }
+      }
+      if (!found) ok = false;
     }
     if (ok && (!best || changes < best.changes)) best = { value: out, format, changes };
   }

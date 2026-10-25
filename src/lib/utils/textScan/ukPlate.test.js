@@ -14,7 +14,7 @@ describe('fixUkPlate — lookalikes put right by position', () => {
   });
 
   it('prefix (L D{1,3} LLL) and suffix (LLL D{1,3} L)', () => {
-    expect(fix('A12E ABC')).toBe(null);                 // E is no lookalike of a digit: not forced
+    expect(fix('A12X ABC')).toBe(null);                 // X is no lookalike of a digit: not forced
     expect(fix('AI2 ABC')).toBe('A12ABC');             // (AI23 ABC would be a valid CURRENT plate, so it stays)
     expect(fix('AI23 ABC')).toBe('AI23ABC');
     expect(fix('ABC I23A')).toBe('ABC123A');
@@ -32,5 +32,15 @@ describe('fixUkPlate — lookalikes put right by position', () => {
     expect(fix('XXXXXXXX')).toBe(null);
     expect(fix('')).toBe(null);
     expect(fix('KL55MNPQ')).toBe(null);
+  });
+});
+
+describe('a letter that is no digit but stands where one must be', () => {
+  it('reads E as the 6 that makes a real age identifier', () => {
+    expect(fixUkPlate('EYES BNJ')?.value).toBe('EY65BNJ');
+  });
+  it('leaves a digit already read, and a plate that fits no format, alone', () => {
+    expect(fixUkPlate('EY65BNJ')?.value).toBe('EY65BNJ');
+    expect(fixUkPlate('DA67PJO')?.value).toBe('DA67PJO');
   });
 });
