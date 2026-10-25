@@ -198,3 +198,82 @@ describe('TextScanner', () => {
     expect(closed).toHaveBeenCalled();
   });
 });
+
+describe('TextScanner verdict mode (2026-10-25, Car check)', () => {
+  beforeEach(() => { cleanup(); h.reads.length = 0; h.text = ''; fakeCanvas(); });
+
+  const verdictOf = (headline, tone) => async (value) => ({
+    plate: value, tone, headline, title: 'The title', lines: [{ text: 'Bay L/PK/22' }], notes: `Plate read: ${value}` });
+
+  it('the top row is Back, New scan and Debug; the reader pictures only show with Debug on', async () => {
+    const closed = vi.fn();
+    render(TextScanner, { props: { profile: 'registration', candidates: CANDIDATES, checker: verdictOf('No Permit', 'none') }, events: { close: closed } });
+    expect(screen.getByTestId('scan-back').textContent).toMatch(/Back/);
+    expect(screen.getByTestId('scan-new').textContent).toMatch(/New scan/);
+    expect(screen.getByTestId('scan-debug').textContent).toMatch(/Debug: off/);
+    expect(screen.queryByTestId('scan-diagnostics')).toBeNull();
+    await fireEvent.click(screen.getByTestId('scan-debug'));
+    expect(screen.getByTestId('scan-diagnostics')).toBeTruthy();
+    expect(screen.getByTestId('scan-debug').textContent).toMatch(/Debug: on/);
+    await fireEvent.click(screen.getByTestId('scan-back'));
+    expect(closed).toHaveBeenCalled();
+  });
+
+  it('shows the best guess with its confidence, then the plate and the answer; tapping opens the details', async () => {
+    h.text = 'KL55 MNP';
+    render(TextScanner, { props: { profile: 'registration', candidates: CANDIDATES, checker: verdictOf('No Permit', 'none') } });
+    expect(screen.getByTestId('scan-guess').textContent).toMatch(/Best guess so far/);
+    await takePhoto();
+    const v = await screen.findByTestId('scan-verdict');
+    expect(v.textContent).toMatch(/Read plate: KL55MNP/);
+    expect(v.textContent).toMatch(/No Permit/);
+    expect(screen.queryByRole('button', { name: /Use “/ })).toBeNull();     // no picking in this mode
+    await fireEvent.click(v);
+    expect(screen.getByTestId('scan-details').textContent).toMatch(/Bay L\/PK\/22/);
+  });
+
+  it('a known plate says Permit Found', async () => {
+    h.text = 'AB12 CDE';
+    render(TextScanner, { props: { profile: 'registration', candidates: CANDIDATES, checker: verdictOf('Permit Found', 'ok') } });
+    await takePhoto();
+    expect((await screen.findByTestId('scan-verdict')).textContent).toMatch(/Permit Found/);
+  });
+
+  it('Create report hands back the plate and the known details, in either case', async () => {
+    for (const [headline, tone] of [['Permit Found', 'ok'], ['No Permit', 'none']]) {
+      cleanup();
+      h.text = 'AB12 CDE';
+      const report = vi.fn();
+      render(TextScanner, { props: { profile: 'registration', candidates: CANDIDATES, canReport: true, checker: verdictOf(headline, tone) }, events: { report: (e) => report(e.detail) } });
+      await takePhoto();
+      await fireEvent.click(await screen.findByTestId('scan-verdict'));
+      await fireEvent.click(screen.getByTestId('scan-create-report'));
+      expect(report).toHaveBeenCalledTimes(1);
+      expect(report.mock.calls[0][0]).toMatchObject({ value: 'AB12 CDE', notes: 'Plate read: AB12 CDE' });
+    }
+  });
+
+  it('no Create report for someone who may not make one', async () => {
+    h.text = 'AB12 CDE';
+    render(TextScanner, { props: { profile: 'registration', candidates: CANDIDATES, canReport: false, checker: verdictOf('No Permit', 'none') } });
+    await takePhoto();
+    await fireEvent.click(await screen.findByTestId('scan-verdict'));
+    expect(screen.queryByTestId('scan-create-report')).toBeNull();
+  });
+
+  it('New scan clears the answer', async () => {
+    h.text = 'AB12 CDE';
+    render(TextScanner, { props: { profile: 'registration', candidates: CANDIDATES, checker: verdictOf('No Permit', 'none') } });
+    await takePhoto();
+    await screen.findByTestId('scan-verdict');
+    await fireEvent.click(screen.getByTestId('scan-new'));
+    await tick();
+    expect(screen.queryByTestId('scan-verdict')).toBeNull();
+  });
+
+  it('without a checker the old screen is unchanged', () => {
+    render(TextScanner, { props: { profile: 'registration', candidates: CANDIDATES } });
+    expect(screen.getByRole('button', { name: 'Close' })).toBeTruthy();
+    expect(screen.queryByTestId('scan-back')).toBeNull();
+  });
+});

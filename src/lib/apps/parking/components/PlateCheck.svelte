@@ -58,6 +58,8 @@
   function choosePlace(/** @type {string} */ p) { place = p; setPref(PLACE_PREF, p); recording = false; }
   let recording = false;
   let recordedNote = '';
+  /** The notes a scanner report starts with. */
+  let reportNotes = '';
 
   const load = () => {
     permitStore.ensureLoaded().catch(() => { /* the answer says road permits were not checked */ });
@@ -84,13 +86,18 @@
     return () => stopSync();
   });
 
+  /** The answer for a registration, as the page shows it. */
+  async function lookup(/** @type {string} */ value) {
+    const offline = !$online;
+    const r = await checkRegistration(value, { offline });
+    return { q: value, ...splitExact(value, r.hits, r.permitHits), permitError: r.permitError, offline };
+  }
+
   async function check(/** @type {string} */ value) {
     if (normaliseReg(value).length < 2 || !place) return;
-    checking = true; error = ''; recording = false; recordedNote = '';
-    const offline = !$online;
+    checking = true; error = ''; recording = false; recordedNote = ''; reportNotes = '';
     try {
-      const r = await checkRegistration(value, { offline });
-      result = { q: value, ...splitExact(value, r.hits, r.permitHits), permitError: r.permitError, offline };
+      result = await lookup(value);
     } catch (/** @type {any} */ err) {
       error = errMessage(err, 'That registration could not be checked.');
     } finally { checking = false; }
@@ -104,7 +111,63 @@
     await check(q);
   }
 
-  function scanAgain() { result = null; q = ''; recording = false; recordedNote = ''; scanning = true; }
+  /**
+   * What the scanner shows once it has read a plate (2026-10-25, user: the
+   * scanner itself says Permit Found / No Permit, tap for details, and can start
+   * a report). Same lookup, same answer as the page. The notes it hands to a
+   * report name references and standing, never the holder's name or phone.
+   * @param {string} value
+   */
+  async function scannerChecker(value) {
+    if (!place) throw new Error('Choose where the car is first.');
+    const r = await lookup(value);
+    const v = lookupVerdict(r.hits, r.permitHits, r.permitError, /** @type {any} */ (place));
+    const plate = formatReg(normaliseReg(value));
+    /** @type {{ text: string, href?: string }[]} */
+    const lines = [{ text: `Checked for the ${SIGHTING_PLACES[place].toLowerCase()}.` }];
+    /** @type {string[]} */
+    const known = [];
+    if (v.elsewhere) { lines.push({ text: v.elsewhere }); known.push(v.elsewhere); }
+    for (const h of r.hits) {
+      const standing = h.standing === 'authorised' ? 'authorised today'
+        : h.standing === 'pending' ? 'not yet authorised' : 'no longer authorised';
+      const what = `Car park licence ${h.agreement?.reference ?? ''} · bay ${h.bay?.ref ?? '—'} · ${standing}`.replace(/\s+/g, ' ');
+      lines.push({ text: `${formatReg(h.vehicle.registration)} · ${what}` });
+      if (h.holder?.display_name) lines.push({ text: h.holder.display_name });
+      if (h.holder?.phone) lines.push({ text: h.holder.phone, href: `tel:${h.holder.phone}` });
+      known.push(what);
+    }
+    for (const h of r.permitHits) {
+      const when = h.status === 'current' ? `current, until ${fmtPermitWhen(h.permit.valid_to, h.permit.valid_to_time)}`
+        : h.status === 'upcoming' ? `starts ${fmtPermitWhen(h.permit.valid_from, h.permit.valid_from_time)}`
+        : `${h.permit.ended_early_at ? 'ended early' : 'expired'} ${fmtPermitWhen(h.permit.valid_to, h.permit.valid_to_time)}`;
+      const what = `Road permit ${permitNumberLabel(h.permit.permit_number)} · ${h.permit.company} · ${when}`;
+      lines.push({ text: `${h.permit.registration} · ${what}` });
+      known.push(what);
+    }
+    if (r.permitError) { lines.push({ text: `Road permits were NOT checked: ${r.permitError}` }); known.push('Road permits were not checked.'); }
+    if (r.otherHits.length || r.otherPermitHits.length) {
+      const others = [...r.otherHits.map((h) => formatReg(h.vehicle.registration)), ...r.otherPermitHits.map((h) => h.permit.registration)];
+      lines.push({ text: `Other cars containing “${normaliseReg(value)}” — not this one: ${others.join(', ')}` });
+    }
+    if (r.offline) lines.push({ text: `Checked with no signal, against the car park as read at ${fmtTime(new Date(loadedAt).toISOString())}.` });
+    const earlierHere = sightingsOf(value, $sightingStore.sightings);
+    if (earlierHere.length) lines.push({ text: `Seen before: ${earlierHere.length} earlier sighting${earlierHere.length === 1 ? '' : 's'} recorded.` });
+    const headline = v.tone === 'ok' ? 'Permit Found' : 'No Permit';
+    const notes = [`Plate read: ${plate} — ${headline} (${v.title}).`, ...known].join('\n');
+    return { plate, tone: v.tone, headline, title: v.title, lines, notes };
+  }
+
+  /** Create report from the scanner: show the answer on the page, with the report form open and the known details in its notes. */
+  async function reportFromScan(/** @type {CustomEvent<{ value: string, notes: string }>} */ e) {
+    scanning = false;
+    q = e.detail.value;
+    await check(q);
+    reportNotes = e.detail.notes;
+    recording = true;
+  }
+
+  function scanAgain() { result = null; q = ''; recording = false; recordedNote = ''; reportNotes = ''; scanning = true; }
 
   /** @param {CustomEvent<{ sighting: any, queued: boolean, photoError: string }>} e */
   function recorded(e) {
@@ -216,11 +279,11 @@
           {#if recordedNote}<p class="text-sm text-white border-t border-white/10 pt-2" role="status">✓ {recordedNote}</p>{/if}
         </div>
 
-        {#if verdict.tone !== 'ok' && canRecord}
+        {#if canRecord}
           {#if recording}
-            <RecordSighting registration={result.q} {place} prefillNotes={verdict.elsewhere}
+            <RecordSighting registration={result.q} {place} prefillNotes={reportNotes || verdict.elsewhere}
               on:recorded={recorded} on:cancel={() => (recording = false)} />
-          {:else}
+          {:else if verdict.tone !== 'ok'}
             <button type="button" on:click={() => (recording = true)}
               class="w-full min-h-[56px] rounded-xl border-2 border-red-400 text-red-200 text-lg font-semibold">
               Record this car</button>
@@ -233,5 +296,6 @@
 
 {#if scanning}
   <TextScanner profile="registration" title="Scan a number plate" candidates={scanCandidates}
-    on:pick={scanned} on:close={() => (scanning = false)} />
+    checker={scannerChecker} canReport={canRecord}
+    on:pick={scanned} on:report={reportFromScan} on:close={() => (scanning = false)} />
 {/if}

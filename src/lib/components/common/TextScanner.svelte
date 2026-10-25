@@ -39,6 +39,18 @@
   /** Guide box shape, wide to 1 high; the profile's own when 0. */
   export let aspect = 0;
   export let accent = 'var(--lh-accent, #3c9683)';
+  /** VERDICT MODE (2026-10-25, Car check): give a function that answers for a
+   *  plate and the scanner shows the answer itself instead of offering matches:
+   *  top row Back / New scan / Debug, the best guess so far with its confidence,
+   *  and once the read is definite the plate with the answer's headline
+   *  (Permit Found / No Permit); tapping it opens the details with a Create
+   *  report button (event `report`). The function returns
+   *  { plate, tone: 'ok'|'pending'|'ended'|'none', headline, title,
+   *    lines: [{ text, href? }], notes } for a value.
+   *  @type {null | ((value: string) => Promise<any>)} */
+  export let checker = null;
+  /** Whether the person may make a report (shows Create report). */
+  export let canReport = false;
 
   const dispatch = createEventDispatcher();
   const prof = scanProfile(profile);
@@ -103,12 +115,56 @@
   let diagCanvases = null;
   let focusInfo = '';
   $: live = !!stream && readerReady && !cameraError && !photoMode;
+
+  // -- Verdict mode: the best guess so far, and the answer once it is decided.
+  let guess = '';
+  let guessConf = 0;
+  /** @type {Map<string, number>} reading to the best confidence it was read with */
+  let readConf = new Map();
+  /** @type {any} */ let verdict = null;
+  let verdictFor = '';
+  let verdictBusy = false;
+  let verdictError = '';
+  let showDetails = false;
+  const flatKey = (/** @type {string} */ v) => String(v ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  // Decided: a definite answer is held (or a photo was read). A known plate's
+  // own spelling wins over the raw reading.
+  $: decidedValue = checker && (held || photoMode) ? (matches[0]?.value ?? lastRead) : '';
+  $: if (checker && decidedValue !== verdictFor) runChecker(decidedValue);
+
+  /** @param {string} value */
+  async function runChecker(value) {
+    verdictFor = value; verdict = null; verdictError = ''; showDetails = false;
+    if (!value || !checker) return;
+    verdictBusy = true;
+    try {
+      const r = await checker(value);
+      if (verdictFor === value) verdict = r;
+    } catch (/** @type {any} */ err) {
+      if (verdictFor === value) verdictError = errMessage(err, 'That plate could not be checked.');
+    } finally { if (verdictFor === value) verdictBusy = false; }
+  }
+
+  function newScan() {
+    readConf = new Map(); guess = ''; guessConf = 0;
+    verdict = null; verdictFor = ''; verdictError = ''; showDetails = false;
+    if (photoMode) { scanLiveAgain(); return; }
+    tally.reset();
+    matches = []; lastRead = ''; held = false; note = ''; seeing = '';
+    sinceAt = Date.now();
+  }
+
+  function createReport() {
+    const value = decidedValue, notes = verdict?.notes ?? '';
+    stopped = true; clearTimeout(timer); clearInterval(ticker); stopStream();
+    dispatch('report', { value, notes, verdict });
+  }
   $: answered = matches.length > 0 || !!lastRead;
   $: if (answered) hadAnswer = true;
   $: if (!answered && hadAnswer) { hadAnswer = false; sinceAt = Date.now(); }
-  $: liveStatus = scanStatus({ elapsedMs: nowTick - sinceAt, seeing, matched: matches.length > 0,
-    reading: lastRead, torchAvailable, torchOn });
-  $: frame = boxState({ seeing, matched: matches.length > 0, reading: lastRead });
+  $: liveStatus = scanStatus({ elapsedMs: nowTick - sinceAt, seeing, matched: !checker && matches.length > 0,
+    reading: checker ? '' : lastRead, torchAvailable, torchOn });
+  $: frame = boxState({ seeing, matched: matches.length > 0 || !!decidedValue, reading: lastRead });
 
   onMount(() => {
     startReader().then(() => { readerReady = true; loop(); })
@@ -337,6 +393,9 @@
     lastRead = v.reading ?? '';
     held = v.held;
     seeing = readingsFrom(text, prof)[0] ?? '';
+    if (seeing) readConf.set(flatKey(seeing), Math.max(readConf.get(flatKey(seeing)) ?? 0, confidence));
+    guess = matches[0]?.value || lastRead || seeing;
+    guessConf = Math.round(readConf.get(flatKey(guess)) ?? (flatKey(guess) === flatKey(seeing) ? confidence : 0));
     if (seeing) note = '';        // live reading has moved on from any one-off message
   }
 
@@ -406,13 +465,18 @@
   function close() { stopped = true; clearTimeout(timer); clearInterval(ticker); stopStream(); dispatch('close'); }
 </script>
 
-<svelte:window on:keydown={(e) => e.key === 'Escape' && close()} />
+<svelte:window on:keydown={(e) => e.key === 'Escape' && (showDetails ? (showDetails = false) : close())} />
 
 <div class="ts" role="dialog" aria-modal="true" aria-label={title || `Scan a ${prof.label.toLowerCase()}`}
   style="--ts-accent: {accent}" data-testid="text-scanner">
   <div class="ts-head">
-    <span class="ts-title">{title || `Scan a ${prof.label.toLowerCase()}`}</span>
-    <span class="ts-head-actions">
+    {#if !checker}<span class="ts-title">{title || `Scan a ${prof.label.toLowerCase()}`}</span>{/if}
+    <span class="ts-head-actions" class:ts-head-wide={!!checker}>
+      {#if checker}
+        <button class="ts-btn" on:click={close} data-testid="scan-back">Back</button>
+        <button class="ts-btn" on:click={newScan} data-testid="scan-new">New scan</button>
+        <button class="ts-btn" on:click={toggleDiag} aria-pressed={diagOn} data-testid="scan-debug">{diagOn ? 'Debug: on' : 'Debug: off'}</button>
+      {:else}
       <!-- In the header so it is always on screen (2026-10-13: at the foot of the
            panel it could be scrolled out of sight on a phone). -->
       {#if CAN_FIND}
@@ -423,6 +487,7 @@
         <button class="ts-btn ts-save" on:click={saveDiag} data-testid="scan-save-diag">Save pictures</button>
       {/if}
       <button class="ts-btn" on:click={close}>Close</button>
+      {/if}
     </span>
   </div>
 
@@ -458,6 +523,14 @@
          buttons, it had to be scrolled to and was not found on a phone. -->
     {#if diagOn}
       <div class="ts-diag" data-testid="scan-diagnostics">
+        {#if checker}
+          <div class="ts-actions">
+            {#if CAN_FIND}
+              <button class="ts-btn" on:click={toggleFind} aria-pressed={findFirst} data-testid="scan-find-toggle">{findFirst ? 'Find plate: on' : 'Find plate: off'}</button>
+            {/if}
+            {#if diag}<button class="ts-btn ts-save" on:click={saveDiag} data-testid="scan-save-diag">Save pictures</button>{/if}
+          </div>
+        {/if}
         {#if diag}
           <p class="ts-diag-label">Camera crop</p>
           {#if diag.raw}<img src={diag.raw} alt="" />{/if}
@@ -474,6 +547,8 @@
       <p class="ts-warn">{readerError}</p>
     {:else if !readerReady}
       <p class="ts-status">Getting the reader ready… (the first time can take a little while)</p>
+    {:else if checker && decidedValue}
+      <p class="ts-status" aria-live="polite">Read: tap the result for details, or New scan.</p>
     {:else if note || status}
       <p class="ts-status" aria-live="polite">{note || status}</p>
     {:else if live}
@@ -482,11 +557,21 @@
     <!-- Always shown while the camera is live (2026-10-13): when it came and went
          the panel changed height, and the camera view and guide box above it
          jumped about. Empty is a dash, not a missing line. -->
-    {#if live}
+    {#if checker}
+      <p class="ts-guess" data-testid="scan-guess">Best guess so far: <span>{guess || '—'}</span>{#if guess && guessConf} · {guessConf}% sure{/if}</p>
+      {#if decidedValue}
+        <button class="ts-verdict ts-verdict-{verdict?.tone ?? 'wait'}" on:click={() => (showDetails = true)}
+          disabled={!verdict} data-testid="scan-verdict">
+          <span class="ts-vplate">Read plate: {verdict?.plate ?? decidedValue}</span>
+          <span class="ts-vresult">{verdictError ? 'Could not check' : verdict ? verdict.headline : 'Checking…'}</span>
+          <span class="ts-vhint">{verdictError || (verdict ? 'Tap for details' : '')}</span>
+        </button>
+      {/if}
+    {:else if live}
       <p class="ts-seeing" data-testid="scan-seeing">Seeing: <span>{seeing && !matches.length && !held ? seeing : '—'}</span></p>
     {/if}
 
-    {#if matches.length}
+    {#if matches.length && !checker}
       <div class="ts-matches">
         {#each matches as m (m.value + "#" + (m.id ?? ""))}
           <button class="ts-match" on:click={() => pick(m.value, m)}>
@@ -499,7 +584,7 @@
     {/if}
 
     <div class="ts-actions">
-      {#if lastRead}
+      {#if lastRead && !checker}
         <button class="ts-btn ts-primary" on:click={() => pick(lastRead)}>Use “{lastRead}”</button>
       {/if}
       {#if torchAvailable}
@@ -515,6 +600,23 @@
     </div>
     <p class="ts-note">Read on this device — the picture is not sent or kept.</p>
   </div>
+
+  {#if showDetails && verdict}
+    <div class="ts-modal" role="dialog" aria-modal="true" aria-label="Plate details" data-testid="scan-details">
+      <div class="ts-modal-card">
+        <p class="ts-vplate ts-big">{verdict.plate ?? decidedValue}</p>
+        <p class="ts-vresult ts-vtone-{verdict.tone}">{verdict.headline}</p>
+        <p class="ts-vtitle">{verdict.title}</p>
+        {#each verdict.lines ?? [] as l}
+          <p class="ts-vline">{#if l.href}<a href={l.href}>{l.text}</a>{:else}{l.text}{/if}</p>
+        {/each}
+        <div class="ts-actions">
+          {#if canReport}<button class="ts-btn ts-primary" on:click={createReport} data-testid="scan-create-report">Create report</button>{/if}
+          <button class="ts-btn" on:click={() => (showDetails = false)}>Close</button>
+        </div>
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -541,6 +643,39 @@
   .ts-diag-info { font-size: 0.7rem; color: #94a3b8; margin: 0; word-break: break-word; }
   .ts-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
   .ts-found { position: absolute; border: 2px solid #4ade80; border-radius: 4px; box-sizing: border-box; pointer-events: none; }
+  .ts-head-wide { width: 100%; }
+  .ts-head-wide .ts-btn { flex: 1 1 0; }
+  .ts-guess { margin: 0; font-size: 0.95rem; color: #cbd5e1; }
+  .ts-guess span { font-family: ui-monospace, monospace; letter-spacing: 0.05em; color: #fff; }
+  .ts-verdict {
+    display: flex; flex-direction: column; gap: 0.15rem; text-align: left; width: 100%;
+    min-height: 64px; padding: 0.6rem 0.8rem; border-radius: 10px; cursor: pointer;
+    background: #1e293b; color: #fff; border: 2px solid #64748b;
+  }
+  .ts-verdict-ok { border-color: #4ade80; background: rgb(20 83 45 / 0.5); }
+  .ts-verdict-pending { border-color: #38bdf8; background: rgb(12 74 110 / 0.5); }
+  .ts-verdict-ended { border-color: #fbbf24; background: rgb(120 53 15 / 0.5); }
+  .ts-verdict-none { border-color: #f87171; background: rgb(127 29 29 / 0.5); }
+  .ts-vplate { font-family: ui-monospace, monospace; font-size: 1.15rem; letter-spacing: 0.05em; }
+  .ts-vplate.ts-big { font-size: 1.8rem; margin: 0; }
+  .ts-vresult { font-size: 1.25rem; font-weight: 700; }
+  .ts-vhint { font-size: 0.75rem; color: #cbd5e1; }
+  .ts-vtone-ok { color: #86efac; }
+  .ts-vtone-pending { color: #7dd3fc; }
+  .ts-vtone-ended { color: #fcd34d; }
+  .ts-vtone-none { color: #fca5a5; }
+  .ts-vtitle { margin: 0; color: #e2e8f0; }
+  .ts-vline { margin: 0; font-size: 0.9rem; color: #cbd5e1; }
+  .ts-vline a { color: #fff; text-decoration: underline; }
+  .ts-modal {
+    position: absolute; inset: 0; z-index: 10; background: rgb(0 0 0 / 0.75);
+    display: flex; align-items: flex-end; justify-content: center; padding: 0.75rem;
+  }
+  .ts-modal-card {
+    width: 100%; max-width: 28rem; max-height: 90%; overflow-y: auto;
+    background: #0d0d14; border: 1px solid #475569; border-radius: 12px;
+    padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem;
+  }
   .ts-box-looking { border-color: var(--ts-accent); }
   .ts-box-seeing  { border-color: #fbbf24 !important; }
   .ts-box-found   { border-color: #4ade80 !important; }
