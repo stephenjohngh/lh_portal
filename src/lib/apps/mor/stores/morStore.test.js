@@ -115,6 +115,15 @@ describe('fetchCases', () => {
   });
 });
 
+describe('fetchCase', () => {
+  it('selects the case it opens (the screen shows "No case selected" otherwise)', async () => {
+    morStore.clearSelected();
+    await morStore.fetchCase('c1');
+    expect(get(morStore).selectedCase?.id).toBe('c1');
+    morStore.clearSelected();
+  });
+});
+
 describe('createCase', () => {
   it('stamps a verification code + status, omits reference (DB DEFAULT stamps it — mig 150), and writes the opening timeline entry', async () => {
     const r = await morStore.createCase({ description: 'Cracked beam in the car park ceiling.' });

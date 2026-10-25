@@ -275,7 +275,9 @@ function createMorStore() {
     update(s => ({ ...s, loading: true, error: '' }));
     try {
       await refreshCase(id);
-      update(s => ({ ...s, loading: false }));
+      // Opening a case selects it. refreshCase only replaces a case that is already
+      // selected, so without this a case never opened ("No case selected.").
+      update(s => ({ ...s, selectedCase: s.cases.find(c => c.id === id) ?? s.selectedCase, loading: false }));
     } catch (/** @type {any} */ err) {
       logger('❌ fetchCase:', err.message);
       update(s => ({ ...s, error: err.message, loading: false }));
