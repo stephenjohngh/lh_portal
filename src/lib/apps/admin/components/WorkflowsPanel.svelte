@@ -120,7 +120,7 @@
     runningTimers = true; error = '';
     try {
       const r = await runTimers();
-      saved = `Timers run: ${r?.moved ?? 0} moved${r?.failed ? `, ${r.failed} could not be` : ''}.`;
+      saved = `Timers run: ${r?.moved ?? 0} moved${r?.escalated ? `, ${r.escalated} escalated` : ''}${r?.failed ? `, ${r.failed} could not be` : ''}.`;
       logAudit('update', 'workflow', null, 'Timers run by hand', { appId: 'admin', eventCategory: 'admin', afterData: { moved: r?.moved ?? 0, failed: r?.failed ?? 0 } });
       await readTimerRuns();
     } catch (/** @type {any} */ err) { error = errMessage(err, 'Could not run the timers.'); }
@@ -846,7 +846,7 @@
     {#if timerRuns.length}
       <ul class="text-xs text-slate-300 space-y-1">
         {#each timerRuns as run (run.id)}
-          <li>{fmtDateTime(run.ran_at)} — {run.moved} moved{#if run.failed}, <span class="text-amber-300">{run.failed} could not be:</span>
+          <li>{fmtDateTime(run.ran_at)} — {run.moved} moved{#if run.escalated}, {run.escalated} escalated{/if}{#if run.failed}, <span class="text-amber-300">{run.failed} could not be:</span>
             {#each run.failures ?? [] as f}<span class="block pl-3 text-amber-200/80">{f.label ?? 'An item'} — {f.move}: {f.reason}</span>{/each}{/if}</li>
         {/each}
       </ul>

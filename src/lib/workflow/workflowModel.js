@@ -364,7 +364,8 @@ export function workflowDiff(before, after) {
     if (!was) {
       // A new step's deadline is part of what was added (it went unsaid until 2026-10-20).
       const due = deadline(s) === 'none' ? '' : ` — deadline ${deadline(s)}`;
-      out.push(`Step added: “${s.name}” (${STEP_KIND_LABEL[s.kind] ?? s.kind})${due}.`);
+      const more = [s.pauses_clock && 'pauses the clock', (s.signoffs ?? []).length && `sign-offs: ${(s.signoffs ?? []).map((/** @type {any} */ g) => g.label).join(', ')}`].filter(Boolean);
+      out.push(`Step added: “${s.name}” (${STEP_KIND_LABEL[s.kind] ?? s.kind})${due}${more.length ? ` — ${more.join('; ')}` : ''}.`);
       continue;
     }
     if (was.name !== s.name) out.push(`Step “${was.name}” renamed “${s.name}”.`);
