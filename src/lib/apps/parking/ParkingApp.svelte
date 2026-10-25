@@ -64,12 +64,13 @@
     { key: 'sightings',  label: 'Unauthorised parking' },
   ];
   // The tabs are grouped (2026-10-23, user): what you do with bays and who has
-  // them · the side road · setting up · reports. A group's own tabs show under it.
+  // them · the side road · setting up and reports · unauthorised parking. A group's own tabs show under it.
   const GROUPS = [
     { key: 'allocation', label: 'Bay allocation', tabs: ['bays', 'agreements', 'holders', 'applications', 'waiting'] },
-    { key: 'road',       label: 'Road',           tabs: ['permits', 'sightings'] },
-    { key: 'admin',      label: 'Admin',          tabs: ['prices'] },
-    { key: 'reports',    label: 'Reports',        tabs: ['reports'] },
+    { key: 'road',       label: 'Road Permits',   tabs: ['permits'] },
+    { key: 'admin',      label: 'Admin',          tabs: ['prices', 'reports'] },
+    // Last, on the top row, because it concerns both places (user, 2026-10-23).
+    { key: 'sightings',  label: 'Unauthorised parking', tabs: ['sightings'] },
   ];
   let tab = 'bays';
   /** The tab each group last showed, so going back to a group returns to it. */
