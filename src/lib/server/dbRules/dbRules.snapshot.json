@@ -147,12 +147,14 @@
         "workflow_events.kind": [
             "assign",
             "fields",
-            "move"
+            "move",
+            "signoff"
         ],
         "workflow_fields.type": [
             "choice",
             "component",
             "date",
+            "document",
             "long_text",
             "number",
             "person",

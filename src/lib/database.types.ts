@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema34.csv
+// Source: docs/ops/supabase_lhportal_schema35.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -5944,6 +5944,13 @@ export type Database = {
               isOneToOne: false
               referencedRelation: "workflow_items"
               referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "workflow_signoffs_signed_by_fkey"
+              columns: ["signed_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
             }
           ]
       }
@@ -5999,6 +6006,13 @@ export type Database = {
               columns: ["workflow_id"]
               isOneToOne: false
               referencedRelation: "workflows"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "workflow_steps_escalate_to_fkey"
+              columns: ["escalate_to"]
+              isOneToOne: false
+              referencedRelation: "profiles"
               referencedColumns: ["id"]
             }
           ]
