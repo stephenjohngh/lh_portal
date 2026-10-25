@@ -89,6 +89,38 @@
   let torchOn = false;
   let stopped = false;
   let reading = false;
+
+  // -- Pinch to zoom: two fingers on the picture move the camera's zoom.
+  let zoomAvailable = false;
+  let zoomMin = 1, zoomMax = 1, zoomNow = 1;
+  /** @type {Map<number, {x: number, y: number}>} */ const pointers = new Map();
+  let pinchStart = 0, pinchZoom = 1;
+  const spread = () => { const [a, b] = [...pointers.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+
+  /** @param {number} z */
+  async function setZoom(z) {
+    const track = stream?.getVideoTracks()[0];
+    if (!track) return;
+    const v = Math.min(zoomMax, Math.max(zoomMin, z));
+    try {
+      await track.applyConstraints(/** @type {any} */ ({ advanced: [{ zoom: v }] }));
+      zoomNow = v;
+    } catch { zoomAvailable = false; }
+  }
+  /** @param {PointerEvent} e */
+  function onDown(e) {
+    if (!zoomAvailable) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 2) { pinchStart = spread() || 1; pinchZoom = zoomNow; }
+  }
+  /** @param {PointerEvent} e */
+  function onMove(e) {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 2) setZoom(pinchZoom * (spread() / pinchStart));
+  }
+  /** @param {PointerEvent} e */
+  function onUp(e) { pointers.delete(e.pointerId); }
   /** @type {any} */ let timer = null;
 
   // Feedback while it works (scanFeedback.js): it must never look hung.
@@ -198,6 +230,14 @@
       const track = stream.getVideoTracks()[0];
       const caps = /** @type {any} */ (track?.getCapabilities?.() ?? {});
       torchAvailable = !!caps.torch;
+      // Pinch to zoom (2026-10-25): the camera's own zoom, where it offers one
+      // (Android Chrome does; iPhone Safari does not). The frame itself gets
+      // closer, so the crop and the reader need no change.
+      if (caps.zoom && typeof caps.zoom.max === 'number' && caps.zoom.max > (caps.zoom.min ?? 1)) {
+        zoomMin = caps.zoom.min ?? 1; zoomMax = caps.zoom.max;
+        zoomNow = Number(track.getSettings?.().zoom) || zoomMin;
+        zoomAvailable = true;
+      }
       // Keep refocusing (2026-10-12): a frame from the live feed is often softer
       // than a photo. Only where the camera says it can.
       focusInfo = 'focus: not adjustable';
@@ -493,7 +533,8 @@
     </span>
   </div>
 
-  <div class="ts-view">
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="ts-view" on:pointerdown={onDown} on:pointermove={onMove} on:pointerup={onUp} on:pointercancel={onUp}>
     <!-- svelte-ignore a11y_media_has_caption -->
     <video bind:this={video} playsinline muted autoplay></video>
     {#if photoUrl}
@@ -589,6 +630,9 @@
       {#if lastRead && !checker}
         <button class="ts-btn ts-primary" on:click={() => pick(lastRead)}>Use “{lastRead}”</button>
       {/if}
+      {#if zoomAvailable}
+        <button class="ts-btn" on:click={() => setZoom(zoomNow >= zoomMax - 0.01 ? zoomMin : Math.min(zoomMax, zoomNow * 1.5))} data-testid="scan-zoom">Zoom {zoomNow.toFixed(1)}×</button>
+      {/if}
       {#if torchAvailable}
         <button class="ts-btn" on:click={toggleTorch} aria-pressed={torchOn}>{torchOn ? 'Light off' : 'Light on'}</button>
       {/if}
@@ -635,7 +679,7 @@
   /* A fixed share of the screen (2026-10-23: the view took so much that the
      buttons for a recognised plate fell off the foot). The panel under it
      takes the rest and scrolls if it must. */
-  .ts-view { position: relative; flex: 0 0 auto; height: 38vh; height: 38dvh; min-height: 0; overflow: hidden; background: #000; }
+  .ts-view { touch-action: none; position: relative; flex: 0 0 auto; height: 38vh; height: 38dvh; min-height: 0; overflow: hidden; background: #000; }
   .ts-view video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
   .ts-head-actions { display: inline-flex; gap: 0.4rem; flex-wrap: wrap; justify-content: flex-end; }
   .ts-link { background: none; border: 0; padding: 0; margin-left: 0.4rem; color: var(--ts-accent); text-decoration: underline; cursor: pointer; font: inherit; }
