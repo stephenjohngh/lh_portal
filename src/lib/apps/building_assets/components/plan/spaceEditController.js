@@ -17,6 +17,27 @@
 import { writable, get } from 'svelte/store';
 import { buildingAssetsStore }  from '../../stores/buildingAssetsStore.js';
 
+/**
+ * The four corners of the rectangle pulled out from `a` to the opposite corner
+ * `b` (2026-10-23): top-left, top-right, bottom-right, bottom-left, whichever
+ * way it was pulled. Plan coordinates are fractions of the schematic's width and
+ * height, so an axis-aligned rectangle here is one on screen.
+ * @param {{x:number,y:number}} a @param {{x:number,y:number}} b
+ */
+export function rectangleCorners(a, b) {
+  const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x);
+  const y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y);
+  return [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+}
+
+/** A pull too short in either direction is a stray click, not a space. */
+export const MIN_RECTANGLE_SIDE = 0.004;
+/** @param {{x:number,y:number}[]} corners */
+export function isUsableRectangle(corners) {
+  if (corners.length !== 4) return false;
+  return corners[1].x - corners[0].x >= MIN_RECTANGLE_SIDE && corners[2].y - corners[1].y >= MIN_RECTANGLE_SIDE;
+}
+
 export function createSpaceEditController(ctx) {
   // -- Exposed stores --------------------------------------------------
   // drawingVertices: the in-progress polygon vertices while drawing a new space.
@@ -31,6 +52,9 @@ export function createSpaceEditController(ctx) {
   let spaceMoveDragging   = false;
   let spaceMoveOrigin     = null;
   let spaceMoveBasePolygon = null;
+  // The corner a rectangle is being pulled out from, while the button is down.
+  /** @type {{x:number,y:number}|null} */
+  let rectOrigin = null;
 
   // -- Drawing buffer helpers ------------------------------------------
 
@@ -39,9 +63,18 @@ export function createSpaceEditController(ctx) {
     drawingVertices.update(v => [...v, pt]);
   }
 
+  // -- Rectangle: press on one corner, pull to the opposite one, release.
+  // The four corners are the drawing buffer, live while pulling, so the usual
+  // preview and the usual Finish apply.
+  function startRectangle(pt) {
+    rectOrigin = { ...pt };
+    drawingVertices.set([]);
+  }
+
   // Reset just the drawing buffer (called from the parent's cancelSpaceDrawing,
   // which also resets the form fields that live in the parent).
   function cancelDrawing() {
+    rectOrigin = null;
     drawingVertices.set([]);
   }
 
@@ -104,12 +137,13 @@ export function createSpaceEditController(ctx) {
   // -- Mouse move: update live polygon for vertex drag OR polygon move --
 
   function onMousemove(e) {
-    if (vertexDragIndex === null && !spaceMoveDragging) return;
+    if (vertexDragIndex === null && !spaceMoveDragging && !rectOrigin) return;
     const canvas = ctx.getCanvas();
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     const y = Math.max(0, Math.min(1, (e.clientY - rect.top)  / rect.height));
+    if (rectOrigin) { drawingVertices.set(rectangleCorners(rectOrigin, { x, y })); return; }
     const ep = get(editingPolygon);
 
     if (vertexDragIndex !== null && ep) {
@@ -164,6 +198,12 @@ export function createSpaceEditController(ctx) {
   // -- Mouse up: persist the finished vertex drag or polygon move -------
 
   async function onMouseup() {
+    if (rectOrigin) {
+      rectOrigin = null;
+      if (isUsableRectangle(get(drawingVertices))) ctx.onRectangleDrawn?.();
+      else drawingVertices.set([]);
+      return;
+    }
     if (vertexDragIndex === null && !spaceMoveDragging) return;
 
     if (vertexDragIndex !== null) {
@@ -208,6 +248,7 @@ export function createSpaceEditController(ctx) {
     editingPolygon,
     // Drawing buffer
     addVertex,
+    startRectangle,
     cancelDrawing,
     // Vertex / move state
     resetVertexState,

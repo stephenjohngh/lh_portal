@@ -8,6 +8,8 @@
   export let drawingVertices     = [];   // plain array (resolved from store in parent)
   export let scalePoint1         = null;
   export let scalePoint2         = null;
+  /** 'freeform' (click each corner) or 'rectangle' (press and pull across). Bindable. */
+  export let spaceShape          = 'freeform';
 </script>
 
 {#if drawingMode === 'component'}
@@ -21,8 +23,20 @@
   <div class="px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20
               text-xs text-purple-300/80 flex items-center gap-2">
     <span>⬡</span>
+    <span class="inline-flex items-center gap-3 shrink-0" role="radiogroup" aria-label="Shape to draw">
+      <label class="inline-flex items-center gap-1 cursor-pointer">
+        <input type="radio" name="space-shape" value="freeform" bind:group={spaceShape} /> Freeform</label>
+      <label class="inline-flex items-center gap-1 cursor-pointer">
+        <input type="radio" name="space-shape" value="rectangle" bind:group={spaceShape} /> Rectangle</label>
+    </span>
     <span>
-      {#if drawingVertices.length > 0}
+      {#if spaceShape === 'rectangle'}
+        {#if drawingVertices.length === 4}
+          Rectangle drawn. Fill in the details and press <strong>Finish</strong>, or press and drag again to redraw it.
+        {:else}
+          Click an existing space to select and edit it, or press on a blank area and drag to the opposite corner to draw a rectangle.
+        {/if}
+      {:else if drawingVertices.length > 0}
         Click on the schematic to add polygon vertices.
         {#if drawingVertices.length >= 3}
           Click the first vertex <strong>●</strong> to close, or press <strong>Finish</strong>.

@@ -42,6 +42,12 @@
     };
   }
 
+  // The button going down on the schematic — a rectangle is drawn by pulling from here.
+  function handleMousedown(e) {
+    if (!containerEl || e.button !== 0) return;
+    dispatch('planmousedown', { ...getXY(e), event: e });
+  }
+
   function handleClick(e) {
     if (!containerEl) return;
     dispatch('planclick', getXY(e));
@@ -71,6 +77,7 @@
           :                             'cursor-default'}"
   bind:this={containerEl}
   on:click={handleClick}
+  on:mousedown={handleMousedown}
 >
 
   <!-- Floor plan image -->

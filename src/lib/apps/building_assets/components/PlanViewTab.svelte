@@ -60,6 +60,12 @@
   // sidebarMode: 'none' | 'form' | 'detail' | 'inspect' |
   //              'space-drawing' | 'space-detail' | 'scale-input' | 'annotation-detail'
   let drawingMode       = 'off';
+  // How a new space is drawn (2026-10-23): click each corner, or pull out a rectangle.
+  const PREF_SPACE_SHAPE = 'schematic.spaceShape';
+  let spaceShape = getPref(PREF_SPACE_SHAPE) === 'rectangle' ? 'rectangle' : 'freeform';
+  let lastSpaceShape = spaceShape;
+  // Changing the shape drops a half-drawn one: its corners mean something else now.
+  $: if (spaceShape !== lastSpaceShape) { lastSpaceShape = spaceShape; setPref(PREF_SPACE_SHAPE, spaceShape); cancelSpaceDrawing(); }
   let sidebarMode       = 'none';
   let selectedComponent = null;
   let selectedSpace     = null;
@@ -123,6 +129,7 @@
     getDrawingMode:   () => drawingMode,
     setSelectedSpace: v  => selectedSpace = v,
     setError:         msg => errorMsg = msg,
+    onRectangleDrawn: () => { sidebarMode = 'space-drawing'; },
   });
   const { drawingVertices, vertexEditingActive, editingPolygon } = spaceCtrl;
 
@@ -312,6 +319,8 @@
       return;
     }
 
+    if (drawingMode === 'space' && spaceShape === 'rectangle') return;   // drawn by pulling, not clicking
+
     if (drawingMode === 'space') {
       if ($drawingVertices.length >= 3) {
         const first = $drawingVertices[0];
@@ -330,6 +339,15 @@
     }
 
     resetSelection();
+  }
+
+  // Rectangle: press on a blank area and pull to the opposite corner (spaces and
+  // markers stop their own mousedown, so only a blank area gets here).
+  function onPlanMousedown({ detail: { x, y, event } }) {
+    if (drawingMode !== 'space' || spaceShape !== 'rectangle' || readOnly || $vertexEditingActive) return;
+    event.preventDefault();                       // no text or image selection while pulling
+    selectedSpace = null; selectedComponent = null;
+    spaceCtrl.startRectangle({ x, y });
   }
 
   function onMarkerClick({ detail }) {
@@ -553,6 +571,7 @@
     drawingVertices={$drawingVertices}
     {scalePoint1}
     {scalePoint2}
+    bind:spaceShape
   />
 
   <!-- -- Error bar --------------------------------------------------- -->
@@ -600,6 +619,7 @@
           showNewPosDot={sidebarMode === 'form'} {newPos}
           bind:containerEl={canvasEl}
           on:planclick={onPlanClick}
+          on:planmousedown={onPlanMousedown}
           on:markerclick={onMarkerClick}
           on:markerdragstart={onMarkerDragstart}
           on:spaceclick={onSpaceClick}
@@ -680,7 +700,7 @@
           on:finish={handleFinishDrawing}
           on:undo={() => {
             drawingVertices.update(v => {
-              const next = v.slice(0, -1);
+              const next = spaceShape === 'rectangle' ? [] : v.slice(0, -1);   // a rectangle undoes whole
               if (next.length === 0) sidebarMode = 'none';
               return next;
             });

@@ -18,7 +18,7 @@ vi.mock('../../stores/buildingAssetsStore.js', async () => {
   };
 });
 
-const { createSpaceEditController } = await import('./spaceEditController.js');
+const { createSpaceEditController, rectangleCorners, isUsableRectangle } = await import('./spaceEditController.js');
 
 const square = [{ x: 0.1, y: 0.1 }, { x: 0.3, y: 0.1 }, { x: 0.3, y: 0.3 }, { x: 0.1, y: 0.3 }];
 let selected, ctrl;
@@ -57,5 +57,69 @@ describe('setVertex — a corner typed exactly', () => {
   it('does nothing unless Edit shape is on', async () => {
     await ctrl.setVertex(0, '0.5', '0.5');
     expect(h.saved).toHaveLength(0);
+  });
+});
+
+describe('Rectangle drawing (2026-10-23): press on one corner, pull to the opposite, release', () => {
+  const canvas = { getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 500 }) };
+  let drawn;
+  beforeEach(() => {
+    drawn = 0;
+    ctrl = createSpaceEditController({
+      getCanvas: () => canvas, getSelectedSpace: () => null, getPlanSpaces: () => [],
+      getDrawingMode: () => 'space', setSelectedSpace: () => {}, setError: () => {},
+      onRectangleDrawn: () => { drawn++; },
+    });
+  });
+  const move = (x, y) => ctrl.onMousemove({ clientX: x, clientY: y });
+
+  it('rectangleCorners is the same whichever way it is pulled', () => {
+    const want = [{ x: 0.2, y: 0.1 }, { x: 0.6, y: 0.1 }, { x: 0.6, y: 0.4 }, { x: 0.2, y: 0.4 }];
+    expect(rectangleCorners({ x: 0.2, y: 0.1 }, { x: 0.6, y: 0.4 })).toEqual(want);
+    expect(rectangleCorners({ x: 0.6, y: 0.4 }, { x: 0.2, y: 0.1 })).toEqual(want);
+    expect(rectangleCorners({ x: 0.6, y: 0.1 }, { x: 0.2, y: 0.4 })).toEqual(want);
+  });
+
+  it('the four corners follow the pointer while pulling, and drawing finishes on release', async () => {
+    ctrl.startRectangle({ x: 0.1, y: 0.2 });
+    move(500, 250);                                  // 0.5, 0.5
+    expect(get(ctrl.drawingVertices)).toEqual([{ x: 0.1, y: 0.2 }, { x: 0.5, y: 0.2 }, { x: 0.5, y: 0.5 }, { x: 0.1, y: 0.5 }]);
+    await ctrl.onMouseup();
+    expect(drawn).toBe(1);
+    expect(get(ctrl.drawingVertices)).toHaveLength(4);
+  });
+
+  it('keeps the pointer on the schematic', () => {
+    ctrl.startRectangle({ x: 0.5, y: 0.5 });
+    move(5000, -300);
+    expect(get(ctrl.drawingVertices)).toEqual([{ x: 0.5, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 0.5 }, { x: 0.5, y: 0.5 }]);
+  });
+
+  it('a stray click, with no pull, draws nothing', async () => {
+    ctrl.startRectangle({ x: 0.3, y: 0.3 });
+    move(300, 150);
+    await ctrl.onMouseup();
+    expect(drawn).toBe(0);
+    expect(get(ctrl.drawingVertices)).toEqual([]);
+    expect(isUsableRectangle(rectangleCorners({ x: 0.3, y: 0.3 }, { x: 0.3, y: 0.5 }))).toBe(false);
+  });
+
+  it('a mouse move with no button down changes nothing', () => {
+    move(400, 200);
+    expect(get(ctrl.drawingVertices)).toEqual([]);
+  });
+
+  it('cancelling drops a pull in progress', () => {
+    ctrl.startRectangle({ x: 0.1, y: 0.1 });
+    ctrl.cancelDrawing();
+    move(600, 300);
+    expect(get(ctrl.drawingVertices)).toEqual([]);
+  });
+
+  it('pulling again replaces the rectangle', async () => {
+    ctrl.startRectangle({ x: 0.1, y: 0.1 }); move(300, 200); await ctrl.onMouseup();
+    ctrl.startRectangle({ x: 0.5, y: 0.5 }); move(800, 450); await ctrl.onMouseup();
+    expect(get(ctrl.drawingVertices)[0]).toEqual({ x: 0.5, y: 0.5 });
+    expect(drawn).toBe(2);
   });
 });
