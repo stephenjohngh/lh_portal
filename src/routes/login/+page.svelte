@@ -39,12 +39,13 @@
       <p class="text-gray-300">Sign in to access your apps</p>
     </div>
 
-    <div class="space-y-4">
+    <form class="space-y-4" on:submit|preventDefault={handleLogin}>
       <div>
         <label for="email" class="block text-sm font-medium text-gray-200 mb-2">Email</label>
         <input
           id="email"
           type="email"
+          autocomplete="username"
           bind:value={email}
           class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
           placeholder="your@email.com"
@@ -57,6 +58,7 @@
 
           id="password"
           type="password"
+          autocomplete="current-password"
           bind:value={password}
           class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
           placeholder="••••••••"
@@ -68,12 +70,12 @@
       {/if}
 
       <button
-        on:click={handleLogin}
+        type="submit"
         disabled={loading}
         class="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white font-semibold py-3 rounded-lg transition-colors"
       >
         {loading ? 'Signing in...' : 'Sign In'}
       </button>
-    </div>
+    </form>
   </div>
 </div>
