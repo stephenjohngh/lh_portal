@@ -171,7 +171,7 @@
 
     <div class="flex-1 min-w-[1rem]"></div>
 
-    <ProtectedButton variant="primary" size="small" on:click={() => formOpen = true}>
+    <ProtectedButton action="modify" variant="primary" size="small" on:click={() => formOpen = true}>
       + Log a complaint
     </ProtectedButton>
   </div>

@@ -4,7 +4,6 @@
      is a Svelte a11y compile error. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Button          from '#lib/components/common/Button.svelte';
   import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
   import LoadingSpinner  from '#lib/components/common/LoadingSpinner.svelte';
   import Icon            from '#lib/components/icons/Icon.svelte';
@@ -49,9 +48,9 @@
       on:click={() => dispatch('showPublished')}
     >Published links</button>
 
-    <Button variant="primary" size="small" on:click={() => dispatch('new')}>
+    <ProtectedButton action="modify" variant="primary" size="small" on:click={() => dispatch('new')}>
       + New Pack
-    </Button>
+    </ProtectedButton>
   </div>
 
   <!-- Body -->
@@ -104,19 +103,19 @@
 
             <div class="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100
                         focus-within:opacity-100 transition-opacity">
-              <Button variant="secondary" size="small"
+              <ProtectedButton action="modify" variant="secondary" size="small"
                       on:click={(e) => { e.stopPropagation(); dispatch('edit', pack); }}>
                 Edit
-              </Button>
-              <Button variant="secondary" size="small"
+              </ProtectedButton>
+              <ProtectedButton action="modify" variant="secondary" size="small"
                       title="Make an independent copy — the way to reuse a pack as a template"
                       on:click={(e) => { e.stopPropagation(); dispatch('duplicate', pack); }}>
                 Duplicate
-              </Button>
-              <Button variant="secondary" size="small"
+              </ProtectedButton>
+              <ProtectedButton action="modify" variant="secondary" size="small"
                       on:click={(e) => { e.stopPropagation(); dispatch('archive', pack); }}>
                 {pack.status === 'archived' ? 'Restore' : 'Archive'}
-              </Button>
+              </ProtectedButton>
               <ProtectedButton requireAdmin={true} variant="danger" size="small"
                       title="Delete this pack and everything in it"
                       on:click={(e) => { e.stopPropagation(); dispatch('delete', pack); }}>

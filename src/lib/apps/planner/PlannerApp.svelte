@@ -566,7 +566,7 @@
         />
       {/if}
 
-      <ProtectedButton variant="primary" size="small" on:click={newEvent}>
+      <ProtectedButton action="modify" variant="primary" size="small" on:click={newEvent}>
         + New event
       </ProtectedButton>
     </div>
