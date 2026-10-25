@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { guideCrop, readSize, greyAndStretch, blackAndWhite, withMargin, darkInMiddle, clearEdgesAndSpecks, closeGaps, brightestChannel, evenRows, darkerThanPlate, clearEdgesCuttingJoins, preparePlate } from './scanImage.js';
+import { guideCrop, readSize, greyAndStretch, blackAndWhite, withMargin, darkInMiddle, clearEdgesAndSpecks, closeGaps, brightestChannel, evenRows, darkerThanPlate, clearEdgesCuttingJoins, preparePlate, whiteOutBlue, dropEdgeBars } from './scanImage.js';
 
 describe('the guide box, in camera pixels', () => {
   it('a portrait phone showing a landscape camera: the box is centred in what is visible', () => {
@@ -23,9 +23,9 @@ describe('the guide box, in camera pixels', () => {
 
 describe('the size it is read at', () => {
   it('enlarges small text and shrinks huge pictures', () => {
-    expect(readSize(200, 30).h).toBe(64);      // a small crop is drawn up to 64 px tall
-    expect(readSize(1000, 400).h).toBe(90);    // a large one down to 90
-    expect(readSize(300, 72).h).toBe(72);      // in between, as it is
+    expect(readSize(200, 30).h).toBe(80);      // a small crop is drawn up to 80 px tall
+    expect(readSize(1000, 400).h).toBe(100);   // a large one down to 100
+    expect(readSize(300, 90).h).toBe(90);      // in between, as it is
     expect(readSize(4000, 200).w).toBeLessThanOrEqual(1600);
   });
 });
@@ -223,5 +223,31 @@ describe('the second way for a number plate (2026-10-17, the user\'s pictures 7â
     expect(new Set(Array.from(p.px.filter((_, i) => i % 4 === 0)))).toEqual(new Set([0, 255]));
     expect(dark(p, 56, 30)).toBe(true);
     expect(dark(p, 20, 30)).toBe(false);
+  });
+});
+
+describe('plate preparation: the country band and a stray edge bar', () => {
+  /** RGBA picture, white, with filled rectangles painted [x0,y0,x1,y1,[r,g,b]]. */
+  const pic = (w, h, rects) => {
+    const px = new Uint8ClampedArray(w * h * 4).fill(255);
+    for (const [x0, y0, x1, y1, c] of rects) for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const i = (y * w + x) * 4; px[i] = c[0]; px[i + 1] = c[1]; px[i + 2] = c[2]; }
+    return px;
+  };
+  it('paints blue white, leaves black alone', () => {
+    const px = pic(4, 1, [[0, 0, 1, 1, [20, 60, 160]], [1, 0, 2, 1, [10, 10, 10]]]);
+    whiteOutBlue(px);
+    expect(px[0]).toBe(255);
+    expect(px[4]).toBe(10);
+  });
+  it('clears a thin tall bar set apart from the letters, not letters sitting close together', () => {
+    const black = [0, 0, 0];
+    const letters = [[40, 10, 60, 50, black], [66, 10, 86, 50, black], [92, 10, 112, 50, black], [118, 10, 138, 50, black]];
+    const withBar = pic(150, 60, [[8, 10, 16, 50, black], ...letters]);
+    dropEdgeBars(withBar, 150, 60);
+    expect(withBar[(30 * 150 + 10) * 4]).toBe(255);          // the bar is gone
+    expect(withBar[(30 * 150 + 50) * 4]).toBe(0);            // a letter stays
+    const close = pic(150, 60, [[24, 10, 32, 50, black], ...letters]);   // 8 px from the first letter: part of the text
+    dropEdgeBars(close, 150, 60);
+    expect(close[(30 * 150 + 28) * 4]).toBe(0);
   });
 });

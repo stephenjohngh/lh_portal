@@ -26,13 +26,13 @@ export function guideCrop({ frameW, frameH, viewW, viewH, boxFraction, aspect })
 /**
  * How big to draw the crop for the reader. The reader (Tesseract's LSTM) works
  * best with letters a few tens of px tall; a plate's letters are about two-
- * thirds of its height, so the crop is drawn 64–90 px tall (2026-10-13, from the
+ * thirds of its height, so the crop is drawn 80–100 px tall (64–90 until 2026-10-25: of 11 saved plates 64 px read 2, 76 and over read 4–5) (2026-10-13, from the
  * user's car-park pictures: 64 and 90 read every frame, 48 dropped letters; it
  * was 80–160 before 2026-10-12). Larger only costs time.
  * @param {number} w @param {number} h
  */
 export function readSize(w, h) {
-  const target = Math.min(Math.max(h, 64), 90);
+  const target = Math.min(Math.max(h, 80), 100);
   let s = target / h;
   if (w * s > 1600) s = 1600 / w;
   return { w: Math.max(1, Math.round(w * s)), h: Math.max(1, Math.round(h * s)) };
@@ -249,6 +249,20 @@ export function closeGaps(px, w, h, r = 1) {
 // them in turn and the frames vote (TextScanner, scanTally.js).
 
 /**
+ * Paint the blue of a plate's country band white (2026-10-25): the band is a
+ * dark blob beside the first letter once the picture is black and white, and
+ * was read as a letter ("EGU22 YNH") with high confidence. Letters are black,
+ * so nothing that matters is lost. In place, on RGBA pixels.
+ * @param {Uint8ClampedArray} px
+ */
+export function whiteOutBlue(px) {
+  for (let i = 0; i < px.length; i += 4) {
+    const r = px[i], g = px[i + 1], b = px[i + 2];
+    if (b >= r + 40 && b > g + 15) px[i] = px[i + 1] = px[i + 2] = 255;
+  }
+}
+
+/**
  * Brightness as the brightest of red, green and blue (2026-10-17): a yellow
  * plate then counts as bright as a white one, and as bright as the white car
  * round it, so neither looks like a shadow. In place, on RGBA pixels.
@@ -389,16 +403,51 @@ export function clearEdgesCuttingJoins(px, w, h, r = 2) {
 }
 
 /**
+ * Clear a thin upright bar at the very start or end of the text (2026-10-25):
+ * the plate's own edge or the side of its country band comes through as a bar
+ * beside the first letter, and was read as a letter. Black-and-white RGBA, ink
+ * is black. A bar is thin and tall against the ink's height and set well
+ * apart from the letters, which sit close together.
+ * @param {Uint8ClampedArray} px @param {number} w @param {number} h
+ */
+export function dropEdgeBars(px, w, h) {
+  const col = new Int32Array(w);
+  let top = h, bottom = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (px[(y * w + x) * 4] < 128) { col[x]++; if (y < top) top = y; if (y > bottom) bottom = y; }
+  const inkH = bottom - top + 1;
+  if (inkH < 8) return;
+  /** @type {Array<[number, number]>} */ const runs = [];
+  for (let x = 0; x < w; x++) {
+    if (!col[x]) continue;
+    let e = x; while (e + 1 < w && col[e + 1]) e++;
+    runs.push([x, e]); x = e;
+  }
+  if (runs.length < 4) return;
+  for (const [run, next] of [[runs[0], runs[1]], [runs[runs.length - 1], runs[runs.length - 2]]]) {
+    const [x0, x1] = run;
+    // set apart from the letters, which sit close together
+    const gap = next[0] > x1 ? next[0] - x1 : x0 - next[1];
+    if (gap < inkH * 0.35) continue;
+    let tall = 0; for (let x = x0; x <= x1; x++) tall = Math.max(tall, col[x]);
+    if (x1 - x0 + 1 <= inkH * 0.3 && tall >= inkH * 0.6) {
+      for (let y = 0; y < h; y++) for (let x = x0; x <= x1; x++) px[(y * w + x) * 4] = px[(y * w + x) * 4 + 1] = px[(y * w + x) * 4 + 2] = 255;
+    }
+  }
+}
+
+/**
  * The second preparation for a number plate, start to finish, in place on the
  * crop's RGBA pixels; the caller adds the margin. (The first is greyAndStretch
  * → blackAndWhite → clearEdgesAndSpecks → closeGaps.)
  * @param {Uint8ClampedArray} px @param {number} w @param {number} h
  */
 export function preparePlate(px, w, h) {
+  whiteOutBlue(px);
   brightestChannel(px);
   greyAndStretch(px);
   evenRows(px, w, h);
   darkerThanPlate(px, w, h);
   clearEdgesCuttingJoins(px, w, h);
+  dropEdgeBars(px, w, h);
   closeGaps(px, w, h, 1);
 }

@@ -23,6 +23,7 @@
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { startReader, readText } from '#lib/utils/textScan/ocrReader.js';
   import { matchScan, readingsFrom, scanProfile } from '#lib/utils/textScan/scanMatch.js';
+  import { fixUkPlate } from '#lib/utils/textScan/ukPlate.js';
   import { guideCrop, readSize, greyAndStretch, blackAndWhite, clearEdgesAndSpecks, closeGaps, withMargin, preparePlate } from '#lib/utils/textScan/scanImage.js';
   import { errMessage } from '#lib/utils/errors.js';
   import { getPref, setPref } from '#lib/utils/prefs.js';
@@ -425,10 +426,16 @@
   /** One live frame. @param {string} text @param {number} confidence */
   function takeFrame(text, confidence) {
     const now = Date.now();
+    const reading0 = readingsFrom(text, prof)[0] ?? null;
+    // The reader often reports 0% for a plate it read right (BRX 541T, 2026-10-25).
+    // A reading that is a whole plate in one of the UK formats, as read, does not
+    // need its confidence: it still needs to be seen in several frames.
+    const wholePlate = profile === 'registration' && !!reading0 && reading0.length >= 6
+      && fixUkPlate(reading0)?.value === reading0;
     tally.add(now, {
       matches: matchScan(text, candidates, prof),
-      reading: readingsFrom(text, prof)[0] ?? null,
-      confidence,
+      reading: reading0,
+      confidence: wholePlate ? Math.max(confidence, 60) : confidence,
     });
     const v = tally.view(now);
     matches = v.matches;
