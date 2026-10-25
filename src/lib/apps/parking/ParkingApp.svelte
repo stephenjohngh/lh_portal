@@ -256,7 +256,9 @@
         </select>
       </div>
 
-      <div class="grid gap-4 {selected ? 'lg:grid-cols-[1fr_22rem]' : ''}">
+      <!-- Always two columns on a wide screen (2026-10-23, user): the schematic starts at the
+           size it becomes when a bay is selected, so it does not jump when one is. -->
+      <div class="grid gap-4 lg:grid-cols-[1fr_22rem]">
         <div class="space-y-4 min-w-0">
           <BayMap {plan} bays={shown} {selectedSpaceId} on:select={select} />
           <!-- Legend -->
@@ -269,6 +271,11 @@
           </div>
           <BayList bays={shown} {selectedSpaceId} on:select={select} />
         </div>
+        {#if !selected}
+          <div class="hidden lg:block rounded-xl border border-dashed border-slate-600 p-4 text-sm text-slate-400 self-start" data-testid="bay-panel-placeholder">
+            Select a bay on the schematic or in the list to see its details here.
+          </div>
+        {/if}
         {#if selected}
           <div class="scroll-mt-20" use:revealOnNarrow={selectedSpaceId}>
             <BayPanel bay={selected} {canEdit} on:close={() => selectedSpaceId = null}
