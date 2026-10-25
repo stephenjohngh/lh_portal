@@ -4,6 +4,8 @@
   import { onMount, onDestroy, tick } from 'svelte';
   import { get }            from 'svelte/store';
   import { permissions }    from '#lib/stores/permissions.js';
+  // A read-only account is offered nothing to create (the database refuses it too).
+  $: canWrite = $permissions.isAdmin || $permissions.canModify;
   import { auth }           from '#lib/stores/auth.js';
   import { getLogger }      from '#lib/utils/logger.js';
   import { issuesStore }    from './stores/issuesStore';
@@ -373,8 +375,8 @@
                  placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-500
                  flex-1 min-w-0"
         />
-        <Button variant="primary" size="small" icon="plus"
-          on:click={() => showNewIssueModal = true}>New Issue</Button>
+        {#if canWrite}<Button variant="primary" size="small" icon="plus"
+          on:click={() => showNewIssueModal = true}>New Issue</Button>{/if}
       </div>
 
       <!-- Mobile: two rows (below sm) -->
@@ -394,8 +396,8 @@
             {/each}
           </select>
           <span class="flex-1"></span>
-          <Button variant="primary" size="small" icon="plus"
-            on:click={() => showNewIssueModal = true}>New Issue</Button>
+          {#if canWrite}<Button variant="primary" size="small" icon="plus"
+            on:click={() => showNewIssueModal = true}>New Issue</Button>{/if}
         </div>
         <!-- Row 2: jump-to issue · search -->
         <div class="flex items-center gap-2">
@@ -445,7 +447,7 @@
             {searchSummary || 'No issues found.'} Try a different search.
           {/if}
         {:else}
-          No issues found. Click "New Issue" to create one.
+          No issues found.{canWrite ? ' Click "New Issue" to create one.' : ''}
         {/if}
       </div>
     {:else}

@@ -73,9 +73,11 @@
         <h1 class="text-2xl font-bold text-white">Mandatory Occurrence Reporting</h1>
         <p class="text-xs text-slate-500 mt-0.5">BSA 2022 s.87 · 10-day statutory reporting deadline</p>
       </div>
-      <Button variant="primary" size="medium" on:click={openCreate}>
-        + Log Case
-      </Button>
+      {#if $permissions.isAdmin || $permissions.canModify}
+        <Button variant="primary" size="medium" on:click={openCreate}>
+          + Log Case
+        </Button>
+      {/if}
     </div>
 
     <div class="mb-5">

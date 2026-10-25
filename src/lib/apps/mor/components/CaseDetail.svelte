@@ -593,7 +593,7 @@
 <div class="bg-slate-800 border border-slate-700 rounded-xl p-5">
   <div class="flex items-center justify-between mb-4">
     <h3 class="text-sm font-semibold text-slate-300">Timeline</h3>
-    {#if !showNote}
+    {#if !showNote && canEdit}
       <Button variant="secondary" size="small" on:click={() => showNote = true}>+ Add Note</Button>
     {/if}
   </div>
