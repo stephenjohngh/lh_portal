@@ -12,8 +12,9 @@ import { contractProblem } from './workflowContracts.js';
 
 /** @typedef {'start'|'open'|'done'|'declined'} StepKind */
 /** @typedef {{ key: string, name: string, public_name?: string|null, kind: StepKind, position?: number,
- *              deadline_days?: number|null, deadline_basis?: 'calendar'|'working', deadline_from?: 'entered'|'started' }} Step */
-/** @typedef {{ from_key: string, to_key: string, label: string, note_required?: boolean, admin_only?: boolean, action?: string|null, who?: string, four_eyes?: boolean, required_fields?: string[], timer_days?: number|string|null, timer_basis?: string, position?: number }} Move */
+ *              deadline_days?: number|null, deadline_basis?: 'calendar'|'working', deadline_from?: 'entered'|'started',
+ *              pauses_clock?: boolean, signoffs?: Array<{ key: string, label: string }>, escalate_after_days?: number|string|null, escalate_to?: string|null }} Step */
+/** @typedef {{ from_key: string, to_key: string, label: string, note_required?: boolean, admin_only?: boolean, action?: string|null, who?: string, four_eyes?: boolean, required_fields?: string[], timer_days?: number|string|null, timer_basis?: string, needs_signoffs?: boolean, position?: number }} Move */
 /** @typedef {{ key: string, label: string, type: string, options?: string[], help?: string|null, required_on_create?: boolean, position?: number }} Field */
 
 /** The kinds of step — the database's CHECK list, with the words shown. */
@@ -42,6 +43,7 @@ export const FIELD_TYPES = Object.freeze([
   { value: 'component', label: 'A component' },
   { value: 'space',     label: 'A space' },
   { value: 'person',    label: 'A portal user' },
+  { value: 'document',  label: 'A document (evidence)' },   // 267 — Cases processes only
 ]);
 export const FIELD_TYPE_LABEL = Object.fromEntries(FIELD_TYPES.map((t) => [t.value, t.label]));
 
@@ -94,11 +96,11 @@ export const TIMER_BASIS_LABEL = Object.freeze({ calendar: 'days in its step', w
  * pressed. admin_only and the grant are filtered out earlier (movesFrom).
  * @param {Move} m
  * @param {{ userId?: string|null, assignedTo?: string|null, lastMoverId?: string|null,
- *           fields?: Field[], values?: Record<string, any> }} ctx
+ *           fields?: Field[], values?: Record<string, any>, signoffsWaiting?: string[] }} ctx
  *   lastMoverId — who made the item's last MOVE (an assignment is not one);
  *   fields / values — a Cases process's fields and the case's values (migration 253)
  */
-export function moveRefusal(m, { userId = null, assignedTo = null, lastMoverId = null, fields = [], values = {} } = {}) {
+export function moveRefusal(m, { userId = null, assignedTo = null, lastMoverId = null, fields = [], values = {}, signoffsWaiting = [] } = {}) {
   if ((m.who ?? 'anyone') === 'assignee') {
     if (!assignedTo) return 'Give it to someone first: only the person it is with can do this.';
     if (assignedTo !== userId) return 'Only the person it is with can do this.';
@@ -111,6 +113,8 @@ export function moveRefusal(m, { userId = null, assignedTo = null, lastMoverId =
   const empty = [...fields].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
     .find((f) => needed.has(f.key) && fieldMissing(values?.[f.key]));
   if (empty) return `Fill in "${empty.label}" first.`;
+  // Sign-offs (267): a move that needs them waits for each.
+  if (m.needs_signoffs && signoffsWaiting.length) return `Waiting for sign-off: ${signoffsWaiting.join(', ')}.`;
   return null;
 }
 
@@ -136,6 +140,7 @@ export const EVENT_KINDS = Object.freeze([
   { value: 'move',   label: 'Moved' },
   { value: 'assign', label: 'Assigned' },
   { value: 'fields', label: 'Fields changed' },
+  { value: 'signoff', label: 'Sign-off' },   // 267
 ]);
 /** @param {{ kind?: string|null }} e */
 export const isMoveEvent = (e) => (e.kind ?? 'move') === 'move';
@@ -172,6 +177,19 @@ export function workflowProblem({ steps, moves, appId, key = '', fields = [] }) 
     if (!['calendar', 'working'].includes(s.deadline_basis ?? 'calendar') || !['entered', 'started'].includes(s.deadline_from ?? 'entered')) {
       return `Step "${s.name}": a deadline counts calendar or working days, from entering the step or from the start.`;
     }
+    // Pause, sign-offs and escalation (migration 267).
+    if (s.pauses_clock && s.kind !== 'open') return `Step "${s.name}": only a step in progress can pause the clock.`;
+    if (s.pauses_clock && s.deadline_days != null && s.deadline_days !== '') return `Step "${s.name}" pauses the clock, so it has no deadline of its own.`;
+    const so = s.signoffs ?? [];
+    if (so.length && isFinished(s.kind)) return `Step "${s.name}": sign-offs belong to a step that is not finished.`;
+    if (so.some((x) => !/^[a-z][a-z0-9_]{0,40}$/.test(x.key ?? '') || !String(x.label ?? '').trim())) return `Step "${s.name}": every sign-off needs a label.`;
+    if (new Set(so.map((x) => x.key)).size !== so.length) return `Step "${s.name}": two sign-offs share a key.`;
+    const hasDays = s.escalate_after_days != null && s.escalate_after_days !== '';
+    if (hasDays !== !!s.escalate_to) return `Step "${s.name}": escalation needs both the days past the deadline and who it goes to.`;
+    if (hasDays) {
+      const n = Number(s.escalate_after_days);
+      if (!Number.isInteger(n) || n < 1 || n > 365) return `Step "${s.name}": escalation is 1 to 365 days past the deadline.`;
+    }
     if (!String(s.name ?? '').trim()) return 'Every step needs a name.';
     if (!/^[a-z][a-z0-9_]{0,40}$/.test(s.key ?? '')) return `Step "${s.name}" has a key that cannot be used.`;
     if (keys.has(s.key)) return `Two steps share the key "${s.key}".`;
@@ -185,6 +203,8 @@ export function workflowProblem({ steps, moves, appId, key = '', fields = [] }) 
     fieldKeys.add(f.key);
     if (!String(f.label ?? '').trim()) return `Every field needs a label ("${f.key}" has none).`;
     if (!FIELD_TYPES.some((t) => t.value === f.type)) return `The field "${f.label}" has a type that is not offered.`;
+    if (f.type === 'document' && appId !== 'cases') return `The field "${f.label}": only a Cases process can have a document field.`;
+    if (f.type === 'document' && f.required_on_create) return `The field "${f.label}": a document is attached once the item is open, so it cannot be needed to open one.`;
     if (f.type === 'choice' && !(f.options ?? []).some((o) => String(o).trim())) return `The choice field "${f.label}" needs at least one choice.`;
     if (f.required_on_create && appId !== 'cases') {
       return `The field "${f.label}": only a Cases process is opened with a form, so only its fields can be needed to open one.`;
@@ -214,6 +234,8 @@ export function workflowProblem({ steps, moves, appId, key = '', fields = [] }) 
       if (m.action) return `The move "${m.label}" runs an action, so it cannot be made by a timer — a person must make it.`;
       if (isFinished(byKey.get(m.from_key)?.kind)) return `The move "${m.label}" leaves a finished step, so it cannot be made by a timer.`;
     }
+    if (m.needs_signoffs && !(byKey.get(m.from_key)?.signoffs ?? []).length) return `The move "${m.label}" needs sign-offs, but the step it leaves lists none.`;
+    if (m.needs_signoffs && m.timer_days != null && m.timer_days !== '') return `The move "${m.label}" needs sign-offs, so a timer cannot make it — a person must.`;
     if (!TIMER_BASES.includes(m.timer_basis ?? 'calendar')) {
       return `The move "${m.label}": a timer counts calendar or working days in its step, or days after its deadline.`;
     }
@@ -292,12 +314,15 @@ export function definitionOf({ name, description = null, reviewRequired = false,
     name, description: n(description), review_required: !!reviewRequired, review_reason: reviewRequired ? n(reviewReason) : null,
     steps: steps.map((s) => ({ key: s.key, name: s.name, public_name: n(s.public_name), kind: s.kind,
       deadline_days: s.deadline_days === '' || s.deadline_days == null ? null : Number(s.deadline_days),
-      deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered' })),
+      deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered',
+      pauses_clock: !!s.pauses_clock, signoffs: (s.signoffs ?? []).map((x) => ({ key: x.key, label: x.label })),
+      escalate_after_days: s.escalate_after_days === '' || s.escalate_after_days == null ? null : Number(s.escalate_after_days),
+      escalate_to: s.escalate_to || null })),
     moves: moves.map((m) => ({ from_key: m.from_key, to_key: m.to_key, label: m.label, note_required: !!m.note_required,
       admin_only: !!m.admin_only, action: n(m.action), who: m.who ?? 'anyone', four_eyes: !!m.four_eyes,
       required_fields: [...(m.required_fields ?? [])],
       timer_days: m.timer_days === '' || m.timer_days == null ? null : Number(m.timer_days),
-      timer_basis: m.timer_basis ?? 'calendar' })),
+      timer_basis: m.timer_basis ?? 'calendar', needs_signoffs: !!m.needs_signoffs })),
     fields: fields.map((f) => ({ key: f.key, label: f.label, type: f.type, options: (f.options ?? []).map(String),
       help: n(f.help), required_on_create: !!f.required_on_create })),
   };
@@ -346,6 +371,12 @@ export function workflowDiff(before, after) {
     if ((was.public_name ?? null) !== (s.public_name ?? null)) out.push(`Step “${s.name}”: the name the public sees is now “${s.public_name ?? s.name}”.`);
     if (was.kind !== s.kind) out.push(`Step “${s.name}”: ${STEP_KIND_LABEL[was.kind] ?? was.kind} → ${STEP_KIND_LABEL[s.kind] ?? s.kind}.`);
     if (deadline(was) !== deadline(s)) out.push(`Step “${s.name}” deadline: ${deadline(was)} → ${deadline(s)}.`);
+    if (!!was.pauses_clock !== !!s.pauses_clock) out.push(`Step “${s.name}”: ${s.pauses_clock ? 'now pauses the clock' : 'no longer pauses the clock'}.`);
+    const labels = (/** @type {any} */ x) => (x?.signoffs ?? []).map((/** @type {any} */ g) => g.label).join(', ') || 'none';
+    if (labels(was) !== labels(s)) out.push(`Step “${s.name}” sign-offs: ${labels(was)} → ${labels(s)}.`);
+    if ((was.escalate_after_days ?? null) !== (s.escalate_after_days ?? null) || (was.escalate_to ?? null) !== (s.escalate_to ?? null)) {
+      out.push(`Step “${s.name}”: ${s.escalate_after_days ? `now escalates ${s.escalate_after_days} day${Number(s.escalate_after_days) === 1 ? '' : 's'} past its deadline` : 'no longer escalates'}.`);
+    }
   }
   for (const [k, s] of bSteps) if (!aSteps.has(k)) out.push(`Step removed: “${s.name}”.`);
   const mk = (/** @type {any} */ m) => `${m.from_key}>${m.to_key}`;
@@ -357,7 +388,7 @@ export function workflowDiff(before, after) {
     const where = `${name(m.from_key)} → ${name(m.to_key)}`;
     if (!was) {
       const extras = [m.note_required && 'needs a note', m.admin_only && 'admin only', (m.who ?? 'anyone') === 'assignee' && 'only the person it is with',
-        m.four_eyes && 'four-eyes', m.action && `action ${m.action}`, m.timer_days && `by itself ${timerPhrase(m)}`,
+        m.four_eyes && 'four-eyes', m.needs_signoffs && 'needs its sign-offs', m.action && `action ${m.action}`, m.timer_days && `by itself ${timerPhrase(m)}`,
         (m.required_fields ?? []).length && `needs ${(m.required_fields ?? []).map((/** @type {string} */ k) => after.fields?.find((/** @type {any} */ f) => f.key === k)?.label ?? k).join(', ')} filled`].filter(Boolean);
       out.push(`Move added: “${m.label}” (${where})${extras.length ? ` — ${extras.join('; ')}` : ''}.`);
       continue;
@@ -371,6 +402,7 @@ export function workflowDiff(before, after) {
     if (!!was.four_eyes !== !!m.four_eyes) {
       out.push(`Move “${m.label}”: ${m.four_eyes ? 'now four-eyes — not the person who made the last move' : 'no longer four-eyes'}.`);
     }
+    if (!!was.needs_signoffs !== !!m.needs_signoffs) out.push(`Move “${m.label}”: ${m.needs_signoffs ? 'now needs the step’s sign-offs' : 'no longer needs sign-offs'}.`);
     if ((was.action ?? null) !== (m.action ?? null)) out.push(`Move “${m.label}”: action ${was.action ?? 'none'} → ${m.action ?? 'none'}.`);
     if ((was.timer_days ?? null) !== (m.timer_days ?? null) || (was.timer_days && (was.timer_basis ?? 'calendar') !== (m.timer_basis ?? 'calendar'))) {
       out.push(`Move “${m.label}”: ${m.timer_days ? `now made by itself ${timerPhrase(m)}` : 'no longer made by itself'}.`);

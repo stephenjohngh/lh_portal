@@ -686,6 +686,126 @@ const RUNTIME = [
        where n.nspname = 'public' and p.prokind = 'f' and m[1] !~* '\\mwhere\\M';
       if bad is not null then raise exception 'without a WHERE: %', bad; end if;
     end;`, null],
+
+  // ── Migration 267 (2026-10-25): evidence, sign-offs, pause, version, escalation ──
+  ['a second person is given the Cases grant for these checks', `
+    insert into app_permissions (user_id, app_id, is_read_only) select ${OTHER}, 'cases', false
+     where not exists (select 1 from app_permissions where user_id = ${OTHER} and app_id = 'cases');
+    update app_permissions set is_read_only = false where user_id = ${OTHER} and app_id = 'cases';`, null],
+  ['a document field saves on a Cases process, and a move can need it', `
+    perform workflow_save('dbtest_ev', 'DB test evidence', 'cases', null,
+      '[{"key":"open","name":"Open","kind":"start","position":1},{"key":"done","name":"Done","kind":"done","position":2}]',
+      '[{"from_key":"open","to_key":"done","label":"Finish","required_fields":["cert"],"position":1}]', null, null, null,
+      '[{"key":"cert","label":"Certificate","type":"document","position":1}]', null);
+    perform case_open((select id from workflows where key = 'dbtest_ev'), 'EV1', null, '{}');`, null],
+  ['…the move is held until the document is attached', `
+    perform workflow_move((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'EV1'), 'done', null);`,
+    'Fill in "Certificate" first'],
+  ['a document field refuses something that is not a document of this kind', `
+    perform workflow_set_fields((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'EV1'),
+      '{"cert":"00000000-0000-0000-0000-000000000000"}');`, 'names a document that is not attached'],
+  ['an attached document satisfies it, and the move goes', `
+    insert into document_library (provider, provider_file_id, filename, doc_type, entity_type, entity_id)
+         values ('google_drive', 'dbtest-file', 'cert.pdf', 'other', 'workflow_item',
+                 (select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'EV1'));
+    perform workflow_set_fields((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'EV1'),
+      jsonb_build_object('cert', (select id from document_library where provider_file_id = 'dbtest-file')));
+    perform workflow_move((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'EV1'), 'done', null);`, null],
+  ['sign-offs: set up a process whose move needs two', `
+    perform workflow_save('dbtest_so', 'DB test sign-offs', 'cases', null,
+      '[{"key":"open","name":"Open","kind":"start","position":1,"signoffs":[{"key":"budget","label":"Budget"},{"key":"safety","label":"Safety"}]},{"key":"done","name":"Done","kind":"done","position":2},{"key":"no","name":"Refused","kind":"declined","position":3}]',
+      '[{"from_key":"open","to_key":"done","label":"Authorise","needs_signoffs":true,"position":1},{"from_key":"open","to_key":"no","label":"Refuse","position":2}]',
+      null, null, null, '[]', null);
+    perform case_open((select id from workflows where key = 'dbtest_so'), 'SO1', null, '{}');
+    perform case_open((select id from workflows where key = 'dbtest_so'), 'SO2', null, '{}');`, null],
+  ['…the move is held, naming what it waits for', `
+    perform workflow_move((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'SO1'), 'done', null);`,
+    'Waiting for sign-off: Budget, Safety'],
+  ['…a refusal needs none', `
+    perform workflow_move((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'SO2'), 'no', null);`, null],
+  ['…one person gives one sign-off', `
+    perform workflow_signoff((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'SO1'), 'budget', 'Within the £5k line');`, null],
+  ['…the move still waits for the other', `
+    perform workflow_move((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'SO1'), 'done', null);`,
+    'Waiting for sign-off: Safety'],
+  ['…the same person cannot give a second', `
+    perform workflow_signoff((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'SO1'), 'safety', null);`,
+    'each one must be given by a different person'],
+  ['…a sign-off the step does not list is refused', `
+    perform workflow_signoff((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'SO1'), 'nope', null);`,
+    'does not need that sign-off'],
+  ['…a second person gives the other, and the move goes; sign-offs are kept in the history', `
+    perform set_config('request.jwt.claims', json_build_object('sub', ${OTHER}, 'role', 'authenticated')::text, true);
+    perform set_config('request.jwt.claim.sub', (${OTHER})::text, true);
+    perform workflow_signoff((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'SO1'), 'safety', null);
+    ${ADMIN_CLAIMS}
+    perform workflow_move((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'SO1'), 'done', null);
+    if (select count(*) from workflow_events e join workflow_items i on i.id = e.item_id join cases c on c.id = i.subject_id
+         where c.title = 'SO1' and e.kind = 'signoff') <> 2 then raise exception 'the history lacks the sign-offs'; end if;
+    if exists (select 1 from workflow_signoffs where item_id = (select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'SO1'))
+      then raise exception 'sign-offs were left behind'; end if;`, null],
+  ['a withdrawn sign-off counts again', `
+    perform case_open((select id from workflows where key = 'dbtest_so'), 'SO3', null, '{}');
+    perform workflow_signoff((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'SO3'), 'budget', null);
+    perform workflow_signoff_withdraw((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'SO3'), 'budget');
+    if array_length(workflow_signoffs_missing((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'SO3')), 1) <> 2
+      then raise exception 'still counted'; end if;`, null],
+  ['the version rises with every saved change, and the history carries it', `
+    if (select version from workflows where key = 'dbtest_so') < 1 then raise exception 'no version'; end if;
+    perform workflow_save('dbtest_so', 'DB test sign-offs', 'cases', null,
+      '[{"key":"open","name":"Open","kind":"start","position":1,"signoffs":[{"key":"budget","label":"Budget"}]},{"key":"done","name":"Done","kind":"done","position":2},{"key":"no","name":"Refused","kind":"declined","position":3}]',
+      '[{"from_key":"open","to_key":"done","label":"Authorise","needs_signoffs":true,"position":1},{"from_key":"open","to_key":"no","label":"Refuse","position":2}]',
+      null, null, null, '[]', null);
+    if (select version from workflows where key = 'dbtest_so') <> 2 then raise exception 'the version did not rise'; end if;
+    perform workflow_signoff((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'SO3'), 'budget', null);
+    if (select e.workflow_version from workflow_events e join workflow_items i on i.id = e.item_id join cases c on c.id = i.subject_id
+         where c.title = 'SO3' and e.kind = 'signoff' order by e.at desc, e.id desc limit 1) <> 2 then raise exception 'the entry lacks the version'; end if;
+    perform workflow_save('dbtest_so', 'DB test sign-offs', 'cases', null,
+      '[{"key":"open","name":"Open","kind":"start","position":1,"signoffs":[{"key":"budget","label":"Budget"}]},{"key":"done","name":"Done","kind":"done","position":2},{"key":"no","name":"Refused","kind":"declined","position":3}]',
+      '[{"from_key":"open","to_key":"done","label":"Authorise","needs_signoffs":true,"position":1},{"from_key":"open","to_key":"no","label":"Refuse","position":2}]',
+      null, null, null, '[]', null);
+    if (select version from workflows where key = 'dbtest_so') <> 2 then raise exception 'an unchanged save raised the version'; end if;`, null],
+  ['a paused step has no deadline, and the days spent there push a deadline from the start back', `
+    perform workflow_save('dbtest_pause', 'DB test pause', 'cases', null,
+      '[{"key":"open","name":"Open","kind":"start","position":1,"deadline_days":5,"deadline_basis":"calendar","deadline_from":"started"},{"key":"wait","name":"Waiting","kind":"open","pauses_clock":true,"position":2},{"key":"done","name":"Done","kind":"done","position":3}]',
+      '[{"from_key":"open","to_key":"wait","label":"Pause","position":1},{"from_key":"wait","to_key":"open","label":"Resume","position":2},{"from_key":"open","to_key":"done","label":"Finish","position":3}]',
+      null, null, null, '[]', null);
+    perform case_open((select id from workflows where key = 'dbtest_pause'), 'PAUSE', null, '{}');
+    declare it uuid; d0 date; begin
+      select i.id into it from workflow_items i join cases c on c.id = i.subject_id where c.title = 'PAUSE';
+      select due_on into d0 from workflow_items where id = it;
+      perform workflow_move(it, 'wait', null);
+      if (select due_on from workflow_items where id = it) is not null then raise exception 'a paused item still has a deadline'; end if;
+      update workflow_events set at = now() - interval '4 days' where item_id = it;
+      update workflow_events set at = now() - interval '3 days' where item_id = it and kind = 'move' and to_key = 'wait';
+      perform workflow_move(it, 'open', null);
+      if (select held_days from workflow_items where id = it) <> 3 then raise exception 'held_days is %', (select held_days from workflow_items where id = it); end if;
+      if (select due_on from workflow_items where id = it) <> d0 + 3 then raise exception 'the deadline was not pushed back'; end if;
+    end;`, null],
+  ['escalation hands a late item to the person its step names, with the reason', `
+    perform workflow_save('dbtest_esc', 'DB test escalation', 'cases', null,
+      jsonb_build_array(
+        jsonb_build_object('key','open','name','Open','kind','start','position',1,'deadline_days',1,'deadline_basis','calendar','deadline_from','started','escalate_after_days',2,'escalate_to',(${OTHER})::text),
+        jsonb_build_object('key','done','name','Done','kind','done','position',2)),
+      '[{"from_key":"open","to_key":"done","label":"Finish","position":1}]', null, null, null, '[]', null);
+    perform case_open((select id from workflows where key = 'dbtest_esc'), 'ESC old', null, '{}');
+    perform case_open((select id from workflows where key = 'dbtest_esc'), 'ESC new', null, '{}');
+    update workflow_items set started_at = now() - interval '10 days'
+     where subject_id = (select id from cases where title = 'ESC old');
+    update workflow_items i set due_on = workflow_item_due(i.id) where i.workflow_id = (select id from workflows where key = 'dbtest_esc');
+    perform workflow_run_timers();
+    if (select i.assigned_to from workflow_items i join cases c on c.id = i.subject_id where c.title = 'ESC old') is distinct from ${OTHER}
+      then raise exception 'the late item was not handed over'; end if;
+    if (select i.assigned_to from workflow_items i join cases c on c.id = i.subject_id where c.title = 'ESC new') is not null
+      then raise exception 'one that is not late was handed over'; end if;
+    if not exists (select 1 from workflow_events e join workflow_items i on i.id = e.item_id join cases c on c.id = i.subject_id
+                    where c.title = 'ESC old' and e.kind = 'assign' and e.by is null and e.note like 'Escalated — 2 days past its deadline')
+      then raise exception 'no history row'; end if;`, null],
+  ['a document field is refused outside a Cases process', `
+    perform workflow_save('dbtest_ev2', 'DB test evidence 2', 'parking', null,
+      '[{"key":"open","name":"Open","kind":"start","position":1},{"key":"done","name":"Done","kind":"done","position":2}]',
+      '[{"from_key":"open","to_key":"done","label":"Finish","position":1}]', null, null, null,
+      '[{"key":"cert","label":"Certificate","type":"document","position":1}]', null);`, 'only a Cases process can have a document field'],
 ];
 
 describe.skipIf(!RUN)('workflow manager — the database (dev, rolled back)', () => {

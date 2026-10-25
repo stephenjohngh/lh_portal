@@ -55,7 +55,11 @@ export function saveWorkflow({ key, name, appId, description = null, steps, move
     p_review: review ? { reviewed_by: review.reviewedBy, reviewed_against: review.reviewedAgainst, note: review.note ?? null } : null,
     p_steps: steps.map((s, i) => ({ key: s.key, name: s.name, public_name: s.public_name ?? null, kind: s.kind, position: i + 1,
       deadline_days: s.deadline_days === '' || s.deadline_days == null ? null : Number(s.deadline_days),
-      deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered' })),
+      deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered',
+      // Pause, sign-offs and escalation (migration 267).
+      pauses_clock: !!s.pauses_clock, signoffs: (s.signoffs ?? []).map((x) => ({ key: x.key, label: x.label })),
+      escalate_after_days: s.escalate_after_days === '' || s.escalate_after_days == null ? null : Number(s.escalate_after_days),
+      escalate_to: s.escalate_to || null })),
     p_moves: moves.map((m, i) => ({
       from_key: m.from_key, to_key: m.to_key, label: m.label,
       note_required: !!m.note_required, admin_only: !!m.admin_only, action: m.action || null,
@@ -63,6 +67,7 @@ export function saveWorkflow({ key, name, appId, description = null, steps, move
       // Timers (migration 259): the system makes the move after N days in its step.
       timer_days: m.timer_days === '' || m.timer_days == null ? null : Number(m.timer_days),
       timer_basis: m.timer_basis ?? 'calendar',
+      needs_signoffs: !!m.needs_signoffs,
     })),
     p_fields: fields === undefined ? null : fields.map((f, i) => ({
       key: f.key, label: f.label, type: f.type, options: (f.options ?? []).map(String).filter((o) => o.trim()),
@@ -81,6 +86,38 @@ export function saveWorkflow({ key, name, appId, description = null, steps, move
  */
 export function setItemFields(itemId, changes) {
   return api.rpc('workflow_set_fields', { p_item: itemId, p_fields: changes });
+}
+
+/**
+ * Every workflow's steps and items, for the overview across all processes
+ * (what the viewer's own grants let them read).
+ * @returns {Promise<{ steps: any[], items: any[] }>}
+ */
+export async function listOverviewData() {
+  const [steps, items] = await Promise.all([
+    api.getAll('workflow_steps', { orderBy: 'key', tiebreak: false }),
+    api.getAll('workflow_items', { orderBy: 'created_at' }),
+  ]);
+  return { steps, items };
+}
+
+/**
+ * The sign-offs given on an item in its current step (migration 267).
+ * @param {string} itemId
+ * @returns {Promise<Array<{ step_key: string, key: string, signed_by: string|null, at: string, note: string|null }>>}
+ */
+export function listSignoffs(itemId) {
+  return api.get('workflow_signoffs', { filters: { item_id: itemId } });
+}
+
+/** Give one of the step's sign-offs. @param {string} itemId @param {string} key @param {string} [note] */
+export function giveSignoff(itemId, key, note = '') {
+  return api.rpc('workflow_signoff', { p_item: itemId, p_key: key, p_note: note || null });
+}
+
+/** Take back a sign-off you gave. @param {string} itemId @param {string} key */
+export function withdrawSignoff(itemId, key) {
+  return api.rpc('workflow_signoff_withdraw', { p_item: itemId, p_key: key });
 }
 
 /** A workflow's items (each names its subject by id). @param {string} workflowId */

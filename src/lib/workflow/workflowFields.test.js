@@ -14,9 +14,9 @@ const approve = { from_key: 'open', to_key: 'approved', label: 'Approve', requir
 const where = { key: 'where', label: 'Where', type: 'space', position: 0 };
 
 describe('fields', () => {
-  it('the nine types, links being component, space and person', () => {
+  it('the ten types, links being component, space and person, and document (267)', () => {
     expect(FIELD_TYPES.map((t) => t.value)).toEqual(
-      ['text', 'long_text', 'date', 'number', 'yes_no', 'choice', 'component', 'space', 'person']);
+      ['text', 'long_text', 'date', 'number', 'yes_no', 'choice', 'component', 'space', 'person', 'document']);
   });
 
   it('missing: blank, spaces, null, undefined; not 0 and not "No"', () => {

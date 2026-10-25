@@ -92,7 +92,7 @@ function likeContaining(ref) {
 
 /**
  * @typedef {{
- *   library:     Array<{ id: string, entity_type: string|null, filename?: string|null, display_name?: string|null, mime_type?: string|null }>,
+ *   library:     Array<{ id: string, entity_type: string|null, appId?: string|null, filename?: string|null, display_name?: string|null, mime_type?: string|null }>,
  *   media:       Array<{ id: string, entity_type?: string|null, created_by: string|null, filename?: string|null, mime_type?: string|null }>,
  *   maintenance: Array<{ id: string, uploaded_by: string|null, filename?: string|null, mime_type?: string|null }>,
  * }} FileRefs
@@ -113,7 +113,19 @@ export async function findFileReferences(db, ref) {
     db.from('maintenance_documents').select('id, uploaded_by, filename, mime_type').ilike('storage_path', pattern),
   ]);
   for (const r of [library, media, maintenance]) if (r.error) throw new Error(r.error.message);
-  return { library: library.data ?? [], media: media.data ?? [], maintenance: maintenance.data ?? [] };
+  // A workflow item's evidence is viewable by whoever holds its app's grant:
+  // find that app, and fail CLOSED (no appId) if it cannot be found.
+  const lib = library.data ?? [];
+  for (const r of lib) {
+    if (r.entity_type !== 'workflow_item') continue;
+    const item = await db.from('document_library').select('entity_id').eq('id', r.id).maybeSingle();
+    const wf = item.data?.entity_id
+      ? await db.from('workflow_items').select('workflows(app_id)').eq('id', item.data.entity_id).maybeSingle()
+      : null;
+    if (item.error || wf?.error) throw new Error((item.error ?? wf?.error).message);
+    r.appId = wf?.data?.workflows?.app_id ?? null;
+  }
+  return { library: lib, media: media.data ?? [], maintenance: maintenance.data ?? [] };
 }
 
 /**
@@ -152,6 +164,9 @@ export function canViewFile(refs, viewer) {
   // A generic case's documents (migration 253) follow the Cases grant.
   const caseDoc = refs.library.some((r) => r.entity_type === 'case');
   if (caseDoc && !viewer.isAdmin && !viewer.grants.has('cases')) return false;
+  // A workflow item's evidence (migration 267) follows the grant of the item's app.
+  const evidenceApps = refs.library.filter((r) => r.entity_type === 'workflow_item').map((r) => r.appId ?? null);
+  if (evidenceApps.length && !viewer.isAdmin && !evidenceApps.every((a) => a && viewer.grants.has(a))) return false;
   return true;
 }
 

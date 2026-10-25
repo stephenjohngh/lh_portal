@@ -14,6 +14,7 @@
   import { publicStatusAllowed, publicStageName } from '#lib/workflow/workflowModel.js';
   import { workflowStats, simulateDeadlines } from '#lib/workflow/workflowStats.js';
   import WorkflowDiagram from '#lib/workflow/WorkflowDiagram.svelte';
+  import WorkflowOverview from '#lib/workflow/WorkflowOverview.svelte';
   import { today } from '#lib/utils/dates.js';
   import { definitionOf, definitionChanged, workflowDiff, CHANGE_EVENTS } from '#lib/workflow/workflowModel.js';
   import { profiles, profilesStore } from '#lib/stores/profiles.js';
@@ -195,6 +196,27 @@
     return ev ? [ev.label] : workflowDiff(c.before, c.after);
   };
 
+  // Pause, sign-offs and escalation (migration 267). A step carries its sign-offs as
+  // a list; the editor edits them as lines of text (`signoffsText`, kept off the saved copy).
+  function withStepExtras(/** @type {any} */ s) {
+    return { ...s, pauses_clock: !!s.pauses_clock, signoffs: s.signoffs ?? [],
+      signoffsText: (s.signoffs ?? []).map((/** @type {any} */ x) => x.label).join('\n'),
+      escalate_after_days: s.escalate_after_days ?? '', escalate_to: s.escalate_to ?? '' };
+  }
+  /** The lines typed become the step's sign-offs; one that keeps its label keeps its key. */
+  function setSignoffs(/** @type {any} */ st, /** @type {string} */ text) {
+    st.signoffsText = text;
+    const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+    const had = new Map((st.signoffs ?? []).map((/** @type {any} */ x) => [x.label, x.key]));
+    /** @type {string[]} */ const taken = [];
+    st.signoffs = lines.map((label) => {
+      const key = had.get(label) ?? stepKeyFor(label, taken);
+      taken.push(key);
+      return { key, label };
+    });
+    steps = steps;
+  }
+
   // Read the chosen workflow once per choice (keyed on the string, never an object).
   $: if (chosenKey && chosenKey !== loadedKey) { loadedKey = chosenKey; open(chosenKey); }
   async function open(/** @type {string} */ key) {
@@ -203,7 +225,7 @@
     try {
       const wf = await loadWorkflow(key);
       current = wf?.workflow ?? null;
-      steps = orderedSteps(wf?.steps ?? []).map((s) => ({ ...s, deadline_days: s.deadline_days ?? '',
+      steps = orderedSteps(wf?.steps ?? []).map((s) => ({ ...withStepExtras(s), deadline_days: s.deadline_days ?? '',
         deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered', isNew: false }));
       moves = (wf?.moves ?? []).map((m) => ({ ...m, required_fields: [...(m.required_fields ?? [])] }));
       fields = (wf?.fields ?? []).map((f) => ({ ...f, optionsText: (f.options ?? []).join('\n'), help: f.help ?? '', isNew: false }));
@@ -253,7 +275,7 @@
     const had = new Set(steps.map((s) => s.key));
     const hadFields = new Set(fields.map((f) => f.key));
     steps = orderedSteps(def.steps.map((/** @type {any} */ s, /** @type {number} */ i) => ({ ...s, position: i + 1 })))
-      .map((s) => ({ ...s, public_name: s.public_name ?? '', deadline_days: s.deadline_days ?? '',
+      .map((s) => ({ ...withStepExtras(s), public_name: s.public_name ?? '', deadline_days: s.deadline_days ?? '',
         deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered', isNew: !had.has(s.key) }));
     moves = def.moves.map((/** @type {any} */ m) => ({ note_required: false, admin_only: false, action: '', who: 'anyone', four_eyes: false,
       timer_days: null, timer_basis: 'calendar', ...m, action: m.action ?? '', required_fields: [...(m.required_fields ?? [])] }));
@@ -306,7 +328,7 @@
   function loadShipped() {
     if (!shipped) return;
     steps = orderedSteps(shipped.steps.map((/** @type {any} */ s, /** @type {number} */ i) => ({ ...s, position: i + 1 })))
-      .map((s) => ({ ...s, public_name: s.public_name ?? '', deadline_days: s.deadline_days ?? '',
+      .map((s) => ({ ...withStepExtras(s), public_name: s.public_name ?? '', deadline_days: s.deadline_days ?? '',
         deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered', isNew: false }));
     moves = shipped.moves.map((/** @type {any} */ m) => ({ note_required: false, admin_only: false, action: '', who: 'anyone', four_eyes: false, timer_days: null, timer_basis: 'calendar',
       ...m, required_fields: [...(m.required_fields ?? [])] }));
@@ -332,7 +354,7 @@
 
   function addStep() {
     const key = stepKeyFor('New step', steps.map((s) => s.key));
-    steps = [...steps, { key, name: 'New step', public_name: '', kind: 'open', deadline_days: '',
+    steps = [...steps, { key, name: 'New step', public_name: '', kind: 'open', deadline_days: '', pauses_clock: false, signoffs: [], signoffsText: '', escalate_after_days: '', escalate_to: '',
       deadline_basis: 'calendar', deadline_from: 'entered', isNew: true }];
   }
   function renameNew(/** @type {any} */ st) {
@@ -444,6 +466,7 @@
     <p class="text-sm text-slate-400">The steps an item goes through and the moves between them. A workflow
       appears here once its app has set it up. Saved whole; a step that something is in cannot be removed.</p>
   </div>
+  {#if ready && workflows.length}<WorkflowOverview {workflows} on:choose={(e) => (chosenKey = e.detail)} />{/if}
   <ErrorDisplay message={error} onDismiss={() => (error = '')} />
 
   {#if !ready}
@@ -561,6 +584,7 @@
           <thead><tr class="text-left text-xs text-slate-400">
             <th class="py-1 pr-2 font-medium">Name (staff see)</th><th class="py-1 pr-2 font-medium">Name the public sees</th>
             <th class="py-1 pr-2 font-medium">Kind</th><th class="py-1 pr-2 font-medium">Deadline</th>
+            <th class="py-1 pr-2 font-medium" title="Pause the clock, the sign-offs this step can need, and who it goes to when late">Pause · sign-offs · escalation</th>
             <th class="py-1 pr-2 font-medium">Key</th><th></th></tr></thead>
           <tbody>
             {#each steps as st, i (st)}
@@ -579,6 +603,23 @@
                       {#each DEADLINE_BASES as b}<option value={b.value}>{b.label}</option>{/each}</select>
                     <select class={inputCls} bind:value={st.deadline_from} on:change={() => (steps = steps)} aria-label="Deadline from">
                       {#each DEADLINE_FROM as f}<option value={f.value}>{f.label}</option>{/each}</select>
+                  {/if}
+                </td>
+                <td class="py-1 pr-2 align-top text-xs text-slate-300" data-testid="step-extras">
+                  {#if st.kind === 'open'}
+                    <label class="flex items-center gap-1 whitespace-nowrap" title="While an item is here it has no deadline; the days it spends here are added back when it leaves">
+                      <input type="checkbox" bind:checked={st.pauses_clock} on:change={() => (steps = steps)} aria-label="{st.name} pauses the clock" /> Pauses the clock</label>
+                  {/if}
+                  {#if !isFinished(st.kind)}
+                    <textarea class="{inputCls} w-44 mt-1" rows="2" value={st.signoffsText ?? ''} placeholder="Sign-offs needed (one per line)"
+                      on:input={(e) => setSignoffs(st, e.currentTarget.value)} aria-label="{st.name} sign-offs"></textarea>
+                    <div class="mt-1 whitespace-nowrap">
+                      <input type="number" min="1" max="365" class="{inputCls} w-14" bind:value={st.escalate_after_days} on:input={() => (steps = steps)}
+                        placeholder="—" aria-label="{st.name}: escalate after (days past its deadline)" />
+                      days late → <select class={inputCls} bind:value={st.escalate_to} on:change={() => (steps = steps)} aria-label="{st.name}: escalate to">
+                        <option value="">no one</option>
+                        {#each $profiles.list ?? [] as person (person.id)}<option value={person.id}>{person.full_name || person.email}</option>{/each}</select>
+                    </div>
                   {/if}
                 </td>
                 <td class="py-1 pr-2 font-mono text-xs text-slate-500">{st.key}</td>
@@ -636,7 +677,7 @@
             <th class="py-1 pr-2 font-medium">Button</th><th class="py-1 pr-2 font-medium">Note needed</th>
             <th class="py-1 pr-2 font-medium">Admin only</th><th class="py-1 pr-2 font-medium">Who may</th>
             <th class="py-1 pr-2 font-medium" title="Not the person who made the last move">Four-eyes</th>
-            <th class="py-1 pr-2 font-medium">Action</th><th class="py-1 pr-2 font-medium">Fields needed</th>
+            <th class="py-1 pr-2 font-medium">Action</th><th class="py-1 pr-2 font-medium" title="Held until the step's sign-offs are all given">Needs sign-offs</th><th class="py-1 pr-2 font-medium">Fields needed</th>
             <th class="py-1 pr-2 font-medium" title="Made by the system, overnight, once an item has been this long in the step">By itself after</th><th></th></tr></thead>
           <tbody>
             {#each moves as m (m)}
@@ -655,6 +696,11 @@
                 <td class="py-1 pr-2"><select class={inputCls} bind:value={m.action} on:change={() => (moves = moves)} aria-label="Action">
                   <option value="">None</option>
                   {#each actions as a (a.key)}<option value={a.key} title={a.explains}>{a.label}</option>{/each}</select></td>
+                <td class="py-1 pr-2 text-center">
+                  {#if (steps.find((x) => x.key === m.from_key)?.signoffs ?? []).length}
+                    <input type="checkbox" bind:checked={m.needs_signoffs} on:change={() => (moves = moves)} aria-label="{m.label} needs sign-offs" />
+                  {:else}<span class="text-xs text-slate-500">—</span>{/if}
+                </td>
                 <td class="py-1 pr-2" data-testid="move-fields-needed">
                   {#each fields as f (f.key)}
                     <label class="flex items-center gap-1 text-xs text-slate-300 whitespace-nowrap">

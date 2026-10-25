@@ -53,6 +53,8 @@ export const ENTITY_PARENT_TABLE = {
   parking_permit_template: 'parking_permit_templates',
   // A generic case (migration 253), gated on the `cases` grant.
   case:                 'cases',
+  // Evidence on a workflow item (migration 267): gated like the item, on its app's grant.
+  workflow_item:        'workflow_items',
 };
 
 /**

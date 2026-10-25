@@ -35,7 +35,7 @@
   import { deadlineBand, deadlineWords, describeDeadline } from './workflowDeadlines.js';
   import { actionLabel } from './workflowActions.js';
   import { itemRecordModel, assignWords } from './itemRecord.js';
-  import { itemHistory, setItemFields, timerDue } from './workflowApi.js';
+  import { itemHistory, setItemFields, timerDue, listSignoffs, giveSignoff, withdrawSignoff } from './workflowApi.js';
   import { fieldText, fieldChanges, fieldDraft, LINK_TYPES } from './workflowFieldValues.js';
   import { loadLinkOptions } from './fieldLinks.js';
   import { downloadBlob } from '#lib/utils/download.js';
@@ -143,6 +143,43 @@
     try { timerOn = await timerDue(id); }
     catch (/** @type {any} */ err) { timerOn = null; }
   }
+  // ── Sign-offs (migration 267): what this step needs before a move that needs them, and who gave each.
+  /** @type {any[]} */
+  let signoffs = [];
+  let signoffsFor = '';
+  $: if (`${item?.id ?? ''}:${item?.step_key ?? ''}` !== signoffsFor) { signoffsFor = `${item?.id ?? ''}:${item?.step_key ?? ''}`; readSignoffs(); }
+  async function readSignoffs() {
+    const id = item?.id;
+    signoffs = [];
+    if (!id || !(step?.signoffs ?? []).length) return;
+    try { const read = await listSignoffs(id); if (id === item?.id) signoffs = read; }
+    catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read the sign-offs.'); }
+  }
+  $: needed = step?.signoffs ?? [];
+  $: givenBy = new Map(signoffs.filter((g) => g.step_key === item?.step_key).map((g) => [g.key, g]));
+  $: signoffsWaiting = needed.filter((x) => !givenBy.has(x.key)).map((x) => x.label);
+  $: iHaveSigned = signoffs.some((g) => g.step_key === item?.step_key && g.signed_by === me);
+  async function sign(/** @type {string} */ key) {
+    const id = item?.id; if (!id) return;
+    busy = `sign:${key}`; error = ''; done = '';
+    try {
+      await giveSignoff(id, key, note.trim());
+      note = '';
+      dispatch('changed', { signoff: key });
+      await Promise.all([readSignoffs(), readHistory()]);
+    } catch (/** @type {any} */ err) { error = errMessage(err, 'That could not be signed off.'); }
+    finally { busy = ''; }
+  }
+  async function unsign(/** @type {string} */ key) {
+    const id = item?.id; if (!id) return;
+    busy = `sign:${key}`; error = ''; done = '';
+    try {
+      await withdrawSignoff(id, key);
+      dispatch('changed', { signoff: key });
+      await Promise.all([readSignoffs(), readHistory()]);
+    } catch (/** @type {any} */ err) { error = errMessage(err, 'That could not be withdrawn.'); }
+    finally { busy = ''; }
+  }
   $: lastMoverId = [...history].reverse().find(isMoveEvent)?.by ?? null;
   $: withName = (/** @type {string|null|undefined} */ uid) => (uid ? nameById[uid] || 'A user no longer listed' : '');
   $: due = item?.due_on && !finished ? item.due_on : null;
@@ -151,7 +188,7 @@
   /** Why a move cannot be made now: the app's reason, unsaved fields, the workflow's conditions, then the note. */
   $: whyNot = (/** @type {any} */ m) => extraRefusal(m)
     || (fieldsDirty ? 'Save the fields first.' : null)
-    || moveRefusal(m, { userId: me, assignedTo: item?.assigned_to ?? null, lastMoverId, fields, values: item?.fields ?? {} })
+    || moveRefusal(m, { userId: me, assignedTo: item?.assigned_to ?? null, lastMoverId, fields, values: item?.fields ?? {}, signoffsWaiting })
     || (m.note_required && !note.trim() ? 'Add a note to say why.' : null);
   /** Each reason once, with the buttons it holds back — several moves can be held for different reasons. */
   $: reasons = (() => {
@@ -242,7 +279,7 @@
   /** A history row in words. @param {any} e */
   const eventWords = (e) => (isMoveEvent(e)
     ? `${e.from_key ? `${stepByKey.get(e.from_key)?.name ?? e.from_key} → ` : ''}${stepByKey.get(e.to_key)?.name ?? e.to_key}`
-    : e.kind === 'fields' ? 'Fields changed' : assignWords(e.assigned_to, nameById));
+    : e.kind === 'fields' ? 'Fields changed' : e.kind === 'signoff' ? 'Sign-off' : assignWords(e.assigned_to, nameById));
 </script>
 
 <div class="space-y-3 text-sm" data-testid="wf-item">
@@ -263,6 +300,14 @@
         <!-- A date the subject sets itself (an action's due date, migration 255)
              comes with no step rule to describe. -->
         {#if describeDeadline(step ?? {})}<span class="block text-xs text-slate-500">{describeDeadline(step ?? {})}.</span>{/if}</p>
+    {/if}
+    {#if step?.pauses_clock && !finished}
+      <p class="text-xs text-sky-300" data-testid="wf-paused">⏸ The clock is paused while it is here — it has no deadline, and the days spent here are added back when it leaves.</p>
+    {:else if item.held_days > 0 && !finished}
+      <p class="text-xs text-slate-400" data-testid="wf-held">⏸ Paused for {item.held_days} day{item.held_days === 1 ? '' : 's'} in all; a deadline counted from the start is later by that.</p>
+    {/if}
+    {#if step?.escalate_after_days && step?.escalate_to && !finished}
+      <p class="text-xs text-slate-500" data-testid="wf-escalation">If it is {step.escalate_after_days} day{Number(step.escalate_after_days) === 1 ? '' : 's'} past its deadline it goes to {withName(step.escalate_to)}.</p>
     {/if}
     {#if timed && timerOn && !finished}
       <p class="text-xs text-slate-400" data-testid="wf-timer">⏲ <strong>{timed.label}</strong> happens by itself on {fmtDate(timerOn)}
@@ -302,10 +347,32 @@
 
   <slot />
 
+  {#if item && needed.length && !finished}
+    <div class="space-y-1 border-t border-slate-700 pt-3" data-testid="wf-signoffs">
+      <p class="text-xs text-slate-400">Sign-offs needed here — each by a different person</p>
+      <ul class="space-y-1">
+        {#each needed as x (x.key)}
+          {@const g = givenBy.get(x.key)}
+          <li class="flex items-center gap-2 flex-wrap">
+            <span class={g ? 'text-green-400' : 'text-slate-300'}>{g ? '✓' : '○'} {x.label}</span>
+            {#if g}
+              <span class="text-xs text-slate-500">{withName(g.signed_by) || 'Someone'} · {fmtDate(g.at)}{g.note ? ` — ${g.note}` : ''}</span>
+              {#if g.signed_by === me || isAdmin}<Button variant="tertiary" size="xs" disabled={!!busy} on:click={() => unsign(x.key)}>Withdraw</Button>{/if}
+            {:else if canEdit}
+              <Button variant="secondary" size="xs" disabled={!!busy || iHaveSigned} loading={busy === `sign:${x.key}`}
+                title={iHaveSigned ? 'You have already given a sign-off here: each one must be by a different person.' : 'Add a note first if you want one recorded.'}
+                on:click={() => sign(x.key)}>Sign off</Button>
+            {/if}
+          </li>
+        {/each}
+      </ul>
+    </div>
+  {/if}
+
   {#if item && fields.length}
     <div class="space-y-2 border-t border-slate-700 pt-3" data-testid="wf-fields">
       {#if canEdit}
-        {#each fields as f (f.key)}<FieldInput field={f} bind:value={draft[f.key]} {links} />{/each}
+        {#each fields as f (f.key)}<FieldInput field={f} bind:value={draft[f.key]} {links} itemId={item.id} />{/each}
         <div class="flex gap-2">
           <Button size="small" variant="primary" disabled={!fieldsDirty || !!busy} loading={busy === 'fields'} on:click={saveFields}>Save fields</Button>
           <Button size="small" variant="secondary" disabled={!fieldsDirty || !!busy} on:click={() => (draft = fieldDraft(fields, item?.fields ?? {}))}>Undo</Button>

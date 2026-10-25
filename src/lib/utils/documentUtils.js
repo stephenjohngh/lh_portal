@@ -200,6 +200,7 @@ export const DOC_FOLDERS = {
   PARKING_PERMITS: 'Parking Permits', // the permit template's two images
   PARKING_SIGHTINGS: 'Unauthorised Parking', // photos of cars recorded by Car check (migration 245)
   CASES:         'Cases',          // a generic case's documents (migration 253)
+  EVIDENCE:      'Evidence',       // a workflow item's evidence documents (migration 267)
   LOOSE:         'Documents',      // uploaded in the admin tab, attached to nothing
 };
 

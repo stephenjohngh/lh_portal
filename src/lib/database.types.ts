@@ -5645,6 +5645,7 @@ export type Database = {
           by: string | null
           kind: string
           assigned_to: string | null
+          workflow_version: number | null
         }
         Insert: {
           id?: number
@@ -5657,6 +5658,7 @@ export type Database = {
           by?: string | null
           kind?: string
           assigned_to?: string | null
+          workflow_version?: number | null
         }
         Update: {
           id?: number
@@ -5669,6 +5671,7 @@ export type Database = {
           by?: string | null
           kind?: string
           assigned_to?: string | null
+          workflow_version?: number | null
         }
         Relationships: [
             {
@@ -5750,6 +5753,7 @@ export type Database = {
           fields: Json
           started_at: string
           public_code: string | null
+          held_days: number
         }
         Insert: {
           id?: string
@@ -5765,6 +5769,7 @@ export type Database = {
           fields?: Json
           started_at?: string
           public_code?: string | null
+          held_days?: number
         }
         Update: {
           id?: string
@@ -5780,6 +5785,7 @@ export type Database = {
           fields?: Json
           started_at?: string
           public_code?: string | null
+          held_days?: number
         }
         Relationships: [
             {
@@ -5834,6 +5840,7 @@ export type Database = {
           required_fields: string[]
           timer_days: number | null
           timer_basis: string
+          needs_signoffs: boolean
         }
         Insert: {
           workflow_id: string
@@ -5849,6 +5856,7 @@ export type Database = {
           required_fields?: string[]
           timer_days?: number | null
           timer_basis?: string
+          needs_signoffs?: boolean
         }
         Update: {
           workflow_id?: string
@@ -5864,6 +5872,7 @@ export type Database = {
           required_fields?: string[]
           timer_days?: number | null
           timer_basis?: string
+          needs_signoffs?: boolean
         }
         Relationships: [
             {
@@ -5903,6 +5912,41 @@ export type Database = {
             }
           ]
       }
+      workflow_signoffs: {
+        Row: {
+          item_id: string
+          step_key: string
+          key: string
+          signed_by: string | null
+          at: string
+          note: string | null
+        }
+        Insert: {
+          item_id: string
+          step_key: string
+          key: string
+          signed_by?: string | null
+          at?: string
+          note?: string | null
+        }
+        Update: {
+          item_id?: string
+          step_key?: string
+          key?: string
+          signed_by?: string | null
+          at?: string
+          note?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "workflow_signoffs_item_id_fkey"
+              columns: ["item_id"]
+              isOneToOne: false
+              referencedRelation: "workflow_items"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
       workflow_steps: {
         Row: {
           workflow_id: string
@@ -5914,6 +5958,10 @@ export type Database = {
           deadline_days: number | null
           deadline_basis: string
           deadline_from: string
+          pauses_clock: boolean
+          signoffs: Json
+          escalate_after_days: number | null
+          escalate_to: string | null
         }
         Insert: {
           workflow_id: string
@@ -5925,6 +5973,10 @@ export type Database = {
           deadline_days?: number | null
           deadline_basis?: string
           deadline_from?: string
+          pauses_clock?: boolean
+          signoffs?: Json
+          escalate_after_days?: number | null
+          escalate_to?: string | null
         }
         Update: {
           workflow_id?: string
@@ -5936,6 +5988,10 @@ export type Database = {
           deadline_days?: number | null
           deadline_basis?: string
           deadline_from?: string
+          pauses_clock?: boolean
+          signoffs?: Json
+          escalate_after_days?: number | null
+          escalate_to?: string | null
         }
         Relationships: [
             {
@@ -5954,6 +6010,7 @@ export type Database = {
           moved: number
           failed: number
           failures: Json
+          escalated: number
         }
         Insert: {
           id?: string
@@ -5961,6 +6018,7 @@ export type Database = {
           moved?: number
           failed?: number
           failures?: Json
+          escalated?: number
         }
         Update: {
           id?: string
@@ -5968,6 +6026,7 @@ export type Database = {
           moved?: number
           failed?: number
           failures?: Json
+          escalated?: number
         }
         Relationships: []
       }
@@ -5985,6 +6044,7 @@ export type Database = {
           public_status: boolean
           retired_at: string | null
           retired_by: string | null
+          version: number
         }
         Insert: {
           id?: string
@@ -5999,6 +6059,7 @@ export type Database = {
           public_status?: boolean
           retired_at?: string | null
           retired_by?: string | null
+          version?: number
         }
         Update: {
           id?: string
@@ -6013,6 +6074,7 @@ export type Database = {
           public_status?: boolean
           retired_at?: string | null
           retired_by?: string | null
+          version?: number
         }
         Relationships: [
             {

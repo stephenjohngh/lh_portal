@@ -93,6 +93,8 @@ function createCasesStore() {
   async function remove(/** @type {CaseRow} */ c) {
     const { id, reference } = c;                      // captured before the await
     await deleteDocumentsFor('case', id);
+    const item = itemOf(id);
+    if (item) await deleteDocumentsFor('workflow_item', item.id);   // evidence fields (267)
     await api.delete('cases', id);
     logAudit('delete', 'case', id, reference, { ...AUDIT, severity: 'warning', beforeData: { reference } });
     await reload();

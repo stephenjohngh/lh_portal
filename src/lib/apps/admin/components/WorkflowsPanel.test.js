@@ -26,6 +26,7 @@ vi.mock('#lib/workflow/workflowApi.js', () => ({
   saveWorkflow: async (w) => { h.saved.push(w); return 'w1'; },
   listChanges: async () => h.changes,
   listEvents: async () => ({ items: [{ id: 'i1', step_key: 'checking', due_on: h.dueOn }], events: [] }),
+  listOverviewData: async () => ({ steps: [], items: [] }),
   listTimerRuns: async () => h.timerRuns ?? [],
   runTimers: async () => { h.ran = (h.ran ?? 0) + 1; return { moved: 2, failed: 0, failures: [] }; },
 }));

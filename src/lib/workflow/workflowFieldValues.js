@@ -41,6 +41,7 @@ export function linkOptions({ components = [], spaces = [], floors = [], types =
 export function fieldText(field, value, links) {
   if (fieldMissing(value)) return '—';
   if (field.type === 'date') return fmtDateOnly(String(value));
+  if (field.type === 'document') return 'A document is attached';
   if (LINK_TYPES.includes(field.type)) {
     const list = /** @type {Array<{id: string, text: string}>} */ (/** @type {any} */ (links ?? {})[field.type] ?? []);
     return list.find((o) => o.id === value)?.text ?? 'No longer in the portal';
