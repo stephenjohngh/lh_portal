@@ -63,7 +63,26 @@
     { key: 'permits',    label: 'Road Permits' },
     { key: 'sightings',  label: 'Unauthorised parking' },
   ];
+  // The tabs are grouped (2026-10-23, user): what you do with bays and who has
+  // them · the side road · setting up · reports. A group's own tabs show under it.
+  const GROUPS = [
+    { key: 'allocation', label: 'Bay allocation', tabs: ['bays', 'agreements', 'holders', 'applications', 'waiting'] },
+    { key: 'road',       label: 'Road',           tabs: ['permits', 'sightings'] },
+    { key: 'admin',      label: 'Admin',          tabs: ['prices'] },
+    { key: 'reports',    label: 'Reports',        tabs: ['reports'] },
+  ];
   let tab = 'bays';
+  /** The tab each group last showed, so going back to a group returns to it. */
+  /** @type {Record<string, string>} */
+  const lastTab = {};
+  $: group = GROUPS.find((g) => g.tabs.includes(tab)) ?? GROUPS[0];
+  $: if (group) lastTab[group.key] = tab;
+  $: groupTabs = TABS.filter((t) => group.tabs.includes(t.key));
+  function chooseGroup(/** @type {string} */ key) {
+    const g = GROUPS.find((x) => x.key === key);
+    if (g) selectTab(lastTab[g.key] ?? g.tabs[0]);
+  }
+  function selectTab(/** @type {string} */ key) { tab = key; waitingFocus = null; applicationFocus = null; }
   // An application and its waiting-list place link to each other: the place or
   // application to open when the other tab is shown. Cleared by the tab bar.
   /** @type {string|null} */ let waitingFocus = null;
@@ -163,10 +182,6 @@
     <h2 class="heading-page">Parking</h2>
     {#if hasAccess && loaded}
       <RegistrationSearch {loadedAt} on:showAgreement={showAgreement} on:showPermit={showPermit} />
-      <!-- The caretaker's page (2026-10-17): one answer for a car. Opened in a NEW
-           TAB, to bookmark or add to the home screen from there: in this tab it
-           would leave the portal, which warns and restarts the app on Back. -->
-      <a href="/parking/check" target="_blank" rel="noopener" class="inline-block text-sm text-purple-300 hover:text-purple-200 underline">Open Car check in a new tab — to bookmark ↗</a>
     {/if}
   </div>
 
@@ -174,7 +189,10 @@
     {#if state.error}<ErrorDisplay message={state.error} />{/if}
     {#if acceptError}<ErrorDisplay message={acceptError} />{/if}
 
-    <TabBar tabs={TABS} active={tab} on:select={(e) => { tab = e.detail; waitingFocus = null; applicationFocus = null; }} />
+    <TabBar tabs={GROUPS} active={group.key} on:select={(e) => chooseGroup(e.detail)} />
+    {#if groupTabs.length > 1}
+      <div data-testid="parking-subtabs"><TabBar tabs={groupTabs} active={tab} bordered={false} on:select={(e) => selectTab(e.detail)} /></div>
+    {/if}
 
     {#if tab === 'agreements'}
       <AgreementsTab {canEdit} bind:selectedId={selectedAgreementId} on:showBay={showBay} />

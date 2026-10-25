@@ -99,33 +99,14 @@ describe('Registration Lookup with no signal', () => {
   });
 });
 
-describe('Scanning a number plate', () => {
-  beforeEach(() => {
-    cleanup(); h.lookups.length = 0; h.online.set(true); h.sync.set({ pending: 0, error: 0 });
-    h.permits.set({ permits: PERMITS, template: null, imageUrls: {}, loaded: true });
-    const ctx = { drawImage: () => {}, putImageData: () => {},
-      getImageData: (_x, _y, w, hh) => ({ data: new Uint8ClampedArray(Math.max(1, w * hh) * 4) }),
-      createImageData: (w, hh) => ({ data: new Uint8ClampedArray(Math.max(1, w * hh) * 4) }) };
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => /** @type {any} */ (ctx));
-    globalThis.createImageBitmap = /** @type {any} */ (async () => ({ width: 400, height: 300 }));
-  });
-
-  it('offers the registrations this page knows — car park and road permits — and searches the one picked', async () => {
-    h.ocrText = 'ABC I23';                     // a road permit's plate, misread
+describe('Car Check link (2026-10-23)', () => {
+  beforeEach(() => cleanup());
+  it('replaces the Scan button: a link that opens Car Check in a new tab', () => {
     render(RegistrationSearch);
-    await fireEvent.click(screen.getByRole('button', { name: /Scan/ }));
-    expect(await screen.findByTestId('text-scanner')).toBeTruthy();
-    const input = /** @type {HTMLInputElement} */ (screen.getByLabelText(/Take a photo/));
-    Object.defineProperty(input, 'files', { value: [new File(['x'], 'p.jpg', { type: 'image/jpeg' })], configurable: true });
-    await fireEvent.change(input);
-    const match = await screen.findByRole('button', { name: /ABC 123/ });
-    // Two road permits for this plate, no car park vehicle: it says so once.
-    expect(match.textContent).toMatch(/road permit/);
-    expect(match.textContent).not.toMatch(/car park/);
-    await fireEvent.click(match);
-    await tick(); await tick();
-    expect(screen.queryByTestId('text-scanner')).toBeNull();
-    expect(h.lookups).toEqual([['ABC 123', 2, { offline: false }]]);
+    expect(screen.queryByRole('button', { name: /Scan/ })).toBeNull();
+    const link = /** @type {HTMLAnchorElement} */ (screen.getByRole('link', { name: /Open Car Check in new tab/ }));
+    expect(link.getAttribute('href')).toBe('/parking/check');
+    expect(link.getAttribute('target')).toBe('_blank');
   });
 });
 

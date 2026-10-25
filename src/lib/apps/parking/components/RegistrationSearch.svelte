@@ -11,18 +11,15 @@
      car park as loaded, and when.
      ⛔ If the road permits cannot be read, the result SAYS so — "no road
      permit" would otherwise read as a car with no permit.
-     📷 Scan (2026-10-10): the shared TextScanner reads the plate ON the phone
-     and offers the registrations this page knows — car park and road permits —
-     that it could be. Picking one searches it, exactly as if it were typed. -->
+     Scanning a plate moved to Car check (2026-10-23): the Scan button here was
+     replaced by the link that opens Car check in a new tab — to bookmark or put
+     on the home screen. A new tab, because in this one it would leave the portal,
+     which warns and restarts the app on Back. -->
 <script>
-  import { createEventDispatcher, onMount } from 'svelte';
-  import TextScanner from '#lib/components/common/TextScanner.svelte';
-  import { warmReader } from '#lib/utils/textScan/ocrReader.js';
+  import { createEventDispatcher } from 'svelte';
   import { parkingStore } from '../stores/parkingStore.js';
-  import { permitStore } from '../stores/permitStore.js';
   import { normaliseReg, formatReg, STATUS_LABEL } from '../utils/agreementModel.js';
   import { fmtPermitWhen, permitNumberLabel } from '../utils/permitModel.js';
-  import { scanCandidatesFrom } from '../utils/registrationLookup.js';
   import { checkRegistration } from '../stores/registrationCheck.js';
   import { fmtDate, fmtTime } from '#lib/utils/dates.js';
   import { online } from '#lib/stores/online.js';
@@ -39,29 +36,6 @@
   let permitError = '';
   let searching = false;
   let searchedOffline = false;
-  let scanning = false;
-
-  // Every registration this page knows, for the scanner to match a plate to.
-  $: scanCandidates = scanCandidatesFrom($parkingStore.vehicles, $permitStore.permits);
-
-  function openScanner() {
-    scanning = true;
-    permitStore.ensureLoaded().catch(() => {});   // its own failure shows on the search
-  }
-  /** @param {CustomEvent<{ value: string }>} e */
-  function scanned(e) {
-    scanning = false;
-    q = e.detail.value;
-    search();
-  }
-
-  // On a phone, fetch the reader's files while there is a signal, so a scan
-  // works in the basement later. Once fetched they stay; this costs nothing then.
-  onMount(() => {
-    if (!$online || !window.matchMedia?.('(pointer: coarse)').matches) return;
-    const t = setTimeout(() => { void warmReader(); }, 4000);
-    return () => clearTimeout(t);
-  });
 
   async function search() {
     if (normaliseReg(q).length < 2) { hits = null; return; }
@@ -78,7 +52,7 @@
 
 <div class="relative flex flex-wrap items-center gap-x-2 gap-y-1">
   <label for="registration-lookup" class="text-sm text-slate-300 whitespace-nowrap">Registration Lookup:</label>
-  <!-- The box and Scan stay together on one line, even on a phone. The box is
+  <!-- The box and the Car Check link stay together on one line, even on a phone. The box is
        sized for a registration (about 60% of what it was); the phone's keyboard
        shows a Search key, which replaces the "then Enter" the old placeholder said. -->
   <span class="inline-flex items-center gap-2 whitespace-nowrap">
@@ -87,8 +61,8 @@
       title="Type a registration, then press Enter"
       on:keydown={(e) => e.key === 'Enter' && search()}
       class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200 w-[8.5rem] font-mono uppercase" />
-    <button type="button" on:click={openScanner} title="Read a number plate with the camera"
-      class="shrink-0 px-3 py-1.5 text-sm rounded-lg border border-purple-500/70 text-purple-300 hover:bg-purple-500/15 hover:text-purple-200">📷 Scan</button>
+    <a href="/parking/check" target="_blank" rel="noopener"
+      class="shrink-0 text-sm text-purple-300 hover:text-purple-200 underline">Open Car Check in new tab ↗</a>
   </span>
   {#if searching}<span class="text-xs text-slate-400">Looking…</span>{/if}
   {#if !$online}<span class="text-xs rounded-full bg-amber-900/50 px-2 py-0.5 text-amber-300">No signal</span>{/if}
@@ -146,8 +120,3 @@
     </div>
   {/if}
 </div>
-
-{#if scanning}
-  <TextScanner profile="registration" title="Scan a number plate" candidates={scanCandidates}
-    on:pick={scanned} on:close={() => (scanning = false)} />
-{/if}
