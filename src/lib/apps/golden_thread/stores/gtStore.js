@@ -317,6 +317,9 @@ function createGtStore() {
     return run(async (userId) => {
       const draft = await registerDocument(meta, source, userId);
       spliceDoc(draft);
+      // The database joins the new document to its workflow; read that now, or its
+      // screen says "not in its workflow yet" until the page is reloaded.
+      await reloadItems().catch(() => {});
       logAudit('create', 'gt_document', draft.id, draft.title, {
         appId: 'golden_thread',
         eventCategory: 'golden_thread',
