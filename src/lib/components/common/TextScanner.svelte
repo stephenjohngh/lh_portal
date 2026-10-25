@@ -685,7 +685,7 @@
   .ts-link { background: none; border: 0; padding: 0; margin-left: 0.4rem; color: var(--ts-accent); text-decoration: underline; cursor: pointer; font: inherit; }
   .ts-diag { border: 1px solid #334155; border-radius: 8px; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.25rem; }
   .ts-diag-pics { display: flex; gap: 0.5rem; }
-  .ts-diag-pics > div { flex: 0 0 25%; min-width: 0; }
+  .ts-diag-pics > div { flex: 0 0 40%; min-width: 0; }
   .ts-diag img { max-width: 100%; width: 100%; image-rendering: pixelated; background: #fff; border: 1px solid #475569; }
   .ts-diag-label { font-size: 0.75rem; color: #94a3b8; margin: 0.25rem 0 0; }
   .ts-diag-text { font-size: 0.85rem; margin: 0.25rem 0 0; }
