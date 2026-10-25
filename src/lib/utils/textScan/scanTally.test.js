@@ -126,3 +126,15 @@ describe('holding a definite answer', () => {
     expect(tally.view(t + 1)).toEqual({ matches: [], reading: null, held: false });
   });
 });
+
+describe('frames that differ only by a flipped letter vote together', () => {
+  it('holds a plate whose last letter reads O and D in turn', async () => {
+    const { createScanTally } = await import('./scanTally.js');
+    const t = createScanTally();
+    ['DA67PJO', 'DA67PJD', 'DA67PJO', 'DA67PJD'].forEach((reading, i) =>
+      t.add(1000 + i * 300, { matches: [], reading, confidence: 60 }));
+    const v = t.view(2500);
+    expect(v.held).toBe(true);
+    expect(v.reading).toMatch(/^DA67PJ[OD]$/);
+  });
+});

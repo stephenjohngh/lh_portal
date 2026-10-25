@@ -26,6 +26,13 @@
 
 import { scanDistance } from './scanMatch.js';
 
+// Letters a reader flips between from one frame to the next on the same plate
+// (D/O, 5/S...). Frames that differ only by these vote TOGETHER, or a plate
+// whose last letter reads O, D, O, D never collects the votes to be held
+// (2026-10-25, a clear DA67 PJO that was never recognised).
+const FOLD = { O: '0', D: '0', Q: '0', U: '0', I: '1', L: '1', S: '5', B: '8', Z: '2' };
+const fold = (/** @type {string|null} */ r) => String(r ?? '').replace(/[A-Z]/g, (c) => FOLD[c] ?? c);
+
 /**
  * @typedef {{ value: string, distance: number, exact: boolean, [k: string]: any }} Match
  * @typedef {{ t: number, matches: Match[], reading: string|null }} Frame
@@ -98,11 +105,18 @@ export function createScanTally({ windowMs = 5000, minVotes = 2, minConfidence =
 
       // The reading seen most often (ties: the more recent).
       const counts = new Map();
-      for (const f of frames) if (f.reading) counts.set(f.reading, (counts.get(f.reading) ?? 0) + 1);
+      for (const f of frames) if (f.reading) counts.set(fold(f.reading), (counts.get(fold(f.reading)) ?? 0) + 1);
       let reading = null, best = 0;
       for (const f of [...frames].reverse()) {
-        const c = f.reading ? counts.get(f.reading) : 0;
+        const c = f.reading ? counts.get(fold(f.reading)) : 0;
         if (c > best) { best = c; reading = f.reading; }
+      }
+      // Shown as it was most often spelt within the agreeing group.
+      if (reading) {
+        const spell = new Map();
+        for (const f of frames) if (f.reading && fold(f.reading) === fold(reading)) spell.set(f.reading, (spell.get(f.reading) ?? 0) + 1);
+        let top = 0;
+        for (const [r, c] of spell) if (c > top) { top = c; reading = r; }
       }
       const tentative = { matches: offered.map((o) => o.m), reading: best >= minVotes ? reading : null };
 
@@ -130,7 +144,7 @@ export function createScanTally({ windowMs = 5000, minVotes = 2, minConfidence =
       const fits = (/** @type {string|null} */ r, /** @type {Array<any>} */ list) =>
         !!r && list.some((m) => flat(m.value).includes(flat(r)) || flat(r).includes(flat(m.value)));
       let readingLast = -Infinity;
-      for (const f of frames) if (f.reading === sureReading) readingLast = Math.max(readingLast, f.t);
+      for (const f of frames) if (fold(f.reading) === fold(sureReading)) readingLast = Math.max(readingLast, f.t);
 
       if (sureReading && !fits(sureReading, ms) && readingLast > latest) {
         // The newest definite thing read is a different car (on no list, or not yet matched).
