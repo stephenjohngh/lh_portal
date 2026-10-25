@@ -94,6 +94,7 @@
   let drawingSpaceKind = 'space';   // 'space' | 'slot' (a parking bay)
   let drawingColourHex = ACCENT;
   let drawingShowLabel = true;
+  let drawingAssignedId = '';
 
   // -- Scale calibration state ---------------------------------------
   let scalePoint1      = null;
@@ -257,6 +258,7 @@
     drawingSpaceKind = 'space';
     drawingColourHex = ACCENT;
     drawingShowLabel = true;
+    drawingAssignedId = '';
     if (sidebarMode === 'space-drawing') sidebarMode = 'none';
   }
 
@@ -421,6 +423,7 @@
         colour:     drawingColourHex === 'none' ? 'none' : drawingColourHex.replace('#', ''),
         polygon:    $drawingVertices,
         show_label: drawingShowLabel,
+        assigned_id: drawingAssignedId,
       });
       cancelSpaceDrawing();
       drawingMode = 'off';
@@ -694,6 +697,7 @@
           bind:spaceKind={drawingSpaceKind}
           bind:spaceLabel={drawingSpaceLabel}
           bind:spaceName={drawingSpaceName}
+          bind:assignedId={drawingAssignedId}
           bind:spaceType={drawingSpaceType}
           bind:colourHex={drawingColourHex}
           bind:showLabel={drawingShowLabel}

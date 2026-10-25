@@ -16,6 +16,8 @@
   // label = multi-line plan-view display; name = single-line report name.
   export let spaceLabel  = '';
   export let spaceName   = '';
+  /** The ID (assigned_id): e.g. a bay number. Typing it fills the label and name with it. */
+  export let assignedId  = '';
   export let spaceType   = '';
   export let colourHex   = ACCENT;
   export let showLabel   = true;
@@ -31,6 +33,12 @@
   $: if (spaceType && !typeOptions.includes(spaceType)) spaceType = '';
   // Report name defaults to the label stripped to alphanumerics (shown as a hint).
   $: derivedName = deriveSpaceName(spaceLabel);
+  // Typing the ID sets the label and the name to it (2026-10-23, user: a bay is
+  // drawn, numbered, and that number is what it is called). They stay editable.
+  function onIdInput() {
+    spaceLabel = assignedId;
+    spaceName  = assignedId;
+  }
   $: canFinish   = vertices.length >= 3 && spaceLabel.trim().length > 0;
 </script>
 
@@ -48,6 +56,15 @@
       class="text-slate-500 hover:text-white transition-colors"
       title="Cancel drawing"
     >✕</button>
+  </div>
+
+  <!-- ID (the bay number, say): set this first and the label and name follow it -->
+  <div class="flex flex-col gap-1 mb-2">
+    <label class="text-xs text-slate-400" for="sp-new-assigned">
+      ID <span class="text-slate-600 font-normal ml-1">— also fills the label and name</span>
+    </label>
+    <input id="sp-new-assigned" type="text" bind:value={assignedId} on:input={onIdInput}
+      placeholder="e.g. 12" class={inp} />
   </div>
 
   <!-- Label (multi-line — shown on the plan) -->
