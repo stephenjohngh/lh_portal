@@ -328,6 +328,9 @@ function createMorStore() {
       });
 
       await refreshCase(row.id);
+      // The database joins the new case to its workflow; read that now, or the
+      // case screen says "not in its workflow" until the page is reloaded.
+      await reloadItems().catch(() => {});
       update(s => ({ ...s, saving: false }));
       return { success: true, case: row };
     } catch (/** @type {any} */ err) {

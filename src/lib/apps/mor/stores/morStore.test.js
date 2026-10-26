@@ -143,6 +143,14 @@ describe('createCase', () => {
     expect(h.logAudit).toHaveBeenCalledWith('create', 'mor_case', 'c1', 'MOR-2026-001', expect.any(Object));
   });
 
+  it('reads the new case\'s workflow item at once (the screen says "not in its workflow" otherwise)', async () => {
+    h.wfApi.listItems.mockClear();
+    h.setItems([{ id: 'i9', subject_id: 'c1', step_key: 'submitted' }]);
+    await morStore.createCase({ description: 'A new case whose item the database creates.' });
+    expect(h.wfApi.listItems).toHaveBeenCalled();
+    expect(get(morStore).items.some(i => i.subject_id === 'c1')).toBe(true);
+  });
+
   it('nulls reporter identity when the report is anonymous', async () => {
     await morStore.createCase({
       description: 'Anonymous tip about a fire door wedged open.',
