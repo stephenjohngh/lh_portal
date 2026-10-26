@@ -190,3 +190,27 @@ describe('blockedReason', () => {
     expect(blockedReason(undefined, STATUS.CLOSED)).toBeTruthy();
   });
 });
+
+describe('moveConfirmation', () => {
+  const respond = { label: 'Respond', to_key: 'responded' };
+  const close = { label: 'Close', to_key: 'closed' };
+
+  it('every move is asked, and withdrawing or escalating is a danger', async () => {
+    const { moveConfirmation } = await import('./complaintLifecycle.js');
+    expect(moveConfirmation({ label: 'Acknowledge', to_key: 'acknowledged' }, {}).title).toBe('Acknowledge?');
+    expect(moveConfirmation({ label: 'Withdrawn', to_key: 'withdrawn' }, {}).danger).toBe(true);
+    expect(moveConfirmation({ label: 'Escalated to BSR', to_key: 'escalated_to_bsr' }, {}).danger).toBe(true);
+  });
+
+  it('responding or closing warns while the complainant is not recorded as told of the right to escalate', async () => {
+    const { moveConfirmation } = await import('./complaintLifecycle.js');
+    expect(moveConfirmation(respond, { escalation_told_at: null }).message).toMatch(/not recorded as told/);
+    expect(moveConfirmation(close, {}).message).toMatch(/Building Safety Regulator/);
+  });
+
+  it('says nothing extra once they are recorded as told, or for any other move', async () => {
+    const { moveConfirmation } = await import('./complaintLifecycle.js');
+    expect(moveConfirmation(respond, { escalation_told_at: '2026-10-26' }).message).not.toMatch(/not recorded as told/);
+    expect(moveConfirmation({ label: 'Start investigating', to_key: 'investigating' }, {}).message).not.toMatch(/not recorded as told/);
+  });
+});

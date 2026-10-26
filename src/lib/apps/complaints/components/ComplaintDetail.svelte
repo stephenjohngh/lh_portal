@@ -18,15 +18,18 @@
   import FormSelect    from '#lib/components/common/FormSelect.svelte';
   import Badge         from '#lib/components/common/Badge.svelte';
   import ComplaintTimeline from './ComplaintTimeline.svelte';
+  import ComplaintActions from './ComplaintActions.svelte';
   import WorkflowItemControls from '#lib/workflow/WorkflowItemControls.svelte';
   import { fmtDateTime, fmtDate, today } from '#lib/utils/dates.js';
-  import { statusMeta, blockedReason, STATUS } from '../utils/complaintLifecycle.js';
+  import { statusMeta, blockedReason, moveConfirmation, STATUS } from '../utils/complaintLifecycle.js';
   import { categoryLabel, channelLabel, complainantLabel,
            OUTCOMES, asOptions } from '../utils/complaintOptions.js';
 
   /** @type {any} */ export let complaint;
   /** @type {any[]} */ export let timeline = [];
   export let canEdit = false;
+  /** The complaint's follow-up actions (complaint_actions). */
+  export let actions = [];
   export let saving = false;
   export let isAdmin = false;
   /** The complaint's workflow item (migration 252); null until the workflow is set up. */
@@ -67,16 +70,8 @@
   $: probe = { ...complaint, response_text: responseDraft };
   /** s.93's own reason a move cannot be made yet, before the workflow's. */
   $: extraRefusal = (/** @type {any} */ m) => blockedReason(probe, m.to_key);
-  /** Every move is asked first: it is recorded on the timeline and cannot be undone. */
-  const confirmMove = (/** @type {any} */ m) => ({
-    title: `${m.label}?`,
-    message: m.to_key === STATUS.WITHDRAWN
-      ? 'The complainant withdrew this. It stays on the record and cannot be moved again.'
-      : m.to_key === STATUS.ESCALATED
-        ? 'Record that this went to the Building Safety Regulator. It stays on the record and cannot be moved again.'
-        : 'This is recorded on the timeline and cannot be undone, only moved on from.',
-    danger: m.to_key === STATUS.WITHDRAWN || m.to_key === STATUS.ESCALATED,
-  });
+  /** Every move is asked first; responding or closing also says if they have not been told of the right to escalate. */
+  $: confirmMove = (/** @type {any} */ m) => moveConfirmation(m, complaint);
   $: audit = complaint ? { appId: 'complaints', entityType: 'complaint', entityId: complaint.id } : null;
   $: record = complaint ? {
     filenameStem: `${complaint.reference}_${today()}`,
@@ -221,6 +216,8 @@
     {/if}
 
     </WorkflowItemControls>
+
+    <ComplaintActions caseId={complaint.id} {actions} {canEdit} {isAdmin} />
 
     <!-- ── Timeline ───────────────────────────────────────────────────── -->
     <div class="border-t border-slate-700 pt-3">

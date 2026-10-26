@@ -15,6 +15,12 @@ vi.mock('#lib/workflow/workflowApi.js', () => ({ itemHistory: async () => h.hist
 vi.mock('#lib/workflow/fieldLinks.js', () => ({ loadLinkOptions: async () => ({ component: [], space: [], person: [] }) }));
 
 vi.mock('#lib/supabaseClient.js', () => ({ supabase: {} }));
+const store = vi.hoisted(() => ({ added: /** @type {any[]} */ ([]), updated: /** @type {any[]} */ ([]) }));
+vi.mock('../stores/complaintsStore.js', () => ({ complaintsStore: {
+  addAction: async (/** @type {string} */ id, /** @type {any} */ d) => { store.added.push([id, d]); },
+  updateAction: async (/** @type {string} */ id, /** @type {any} */ d) => { store.updated.push([id, d]); },
+  deleteAction: async () => {},
+} }));
 vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: vi.fn() }));
 const ComplaintDetail = (await import('./ComplaintDetail.svelte')).default;
 
@@ -91,5 +97,41 @@ describe('ComplaintDetail on the workflow', () => {
     await fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
     await vi.waitFor(() => expect(h.moved).toEqual([['acknowledged', '']]));
     expect(await screen.findByRole('status')).toHaveTextContent('CMP-2026-000001: Acknowledge — now Acknowledged.');
+  });
+});
+
+describe('the complaint’s follow-up actions', () => {
+  it('says so when there are none, and adds one with its owner and date', async () => {
+    store.added.length = 0;
+    render(ComplaintDetail, { ...base, complaint: complaint('investigating'), item: item('investigating'), actions: [] });
+    expect(screen.getByText('No actions recorded.')).toBeTruthy();
+    await fireEvent.input(screen.getByLabelText('Add an action'), { target: { value: 'Retrain the night porters' } });
+    await fireEvent.input(screen.getByLabelText('Owner (optional)'), { target: { value: 'Caretaker' } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Add action' }));
+    await vi.waitFor(() => expect(store.added).toEqual([['c1', { description: 'Retrain the night porters', owner: 'Caretaker', target_date: null }]]));
+  });
+
+  it('lists an action with its status, and marking it done stamps the completion', async () => {
+    store.updated.length = 0;
+    const actions = [{ id: 'a1', description: 'Fit a closer', owner: 'Contractor', target_date: '2000-01-01', status: 'open', completed_at: null }];
+    render(ComplaintDetail, { ...base, complaint: complaint('investigating'), item: item('investigating'), actions });
+    expect(screen.getByText('Fit a closer')).toBeTruthy();
+    expect(screen.getByText(/overdue/)).toBeTruthy();
+    await fireEvent.click(screen.getByRole('button', { name: 'Mark done' }));
+    await vi.waitFor(() => expect(store.updated[0][1].status).toBe('complete'));
+    expect(store.updated[0][1].completed_at).toBeTruthy();
+  });
+
+  it('a reader without edit rights sees them and no controls; only an admin can remove', () => {
+    const actions = [{ id: 'a1', description: 'Fit a closer', status: 'open' }];
+    render(ComplaintDetail, { ...base, canEdit: false, complaint: complaint('investigating'), item: item('investigating'), actions });
+    expect(screen.getByText('Fit a closer')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Mark done' })).toBeNull();
+    cleanup();
+    render(ComplaintDetail, { ...base, complaint: complaint('investigating'), item: item('investigating'), actions });
+    expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull();
+    cleanup();
+    render(ComplaintDetail, { ...base, isAdmin: true, complaint: complaint('investigating'), item: item('investigating'), actions });
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeTruthy();
   });
 });

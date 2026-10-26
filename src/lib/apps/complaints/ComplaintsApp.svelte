@@ -191,6 +191,7 @@
     <ComplaintDetail
       complaint={state.selected}
       timeline={state.timeline}
+      actions={state.actions}
       {canEdit}
       isAdmin={$permissions.isAdmin}
       item={selectedItem}

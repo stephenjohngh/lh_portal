@@ -154,3 +154,35 @@ export function blockedReason(complaint, to) {
   }
   return null;
 }
+
+/**
+ * What a move asks before it is made. Every move is asked: it is recorded on
+ * the timeline and cannot be undone, only moved on from.
+ *
+ * ⚠ Responding and closing also say so when the complainant has not been
+ * recorded as TOLD they may take it to the Building Safety Regulator. Telling
+ * them is part of discharging the duty, and `escalation_told_at` is the evidence
+ * of it (design §5.1) — the one date nobody thinks of. It warns rather than
+ * blocks: the telling can happen on the same call as the reply, and a block
+ * would only teach people to record it falsely.
+ *
+ * @param {{ label: string, to_key: string }} move
+ * @param {{ escalation_told_at?: string|null }|null} complaint
+ * @returns {{ title: string, message: string, danger: boolean }}
+ */
+export function moveConfirmation(move, complaint) {
+  const told = Boolean(complaint?.escalation_told_at);
+  const untold = !told && (move.to_key === STATUS.RESPONDED || move.to_key === STATUS.CLOSED);
+  const message = move.to_key === STATUS.WITHDRAWN
+    ? 'The complainant withdrew this. It stays on the record and cannot be moved again.'
+    : move.to_key === STATUS.ESCALATED
+      ? 'Record that this went to the Building Safety Regulator. It stays on the record and cannot be moved again.'
+      : 'This is recorded on the timeline and cannot be undone, only moved on from.';
+  return {
+    title: `${move.label}?`,
+    message: untold
+      ? `${message} ⚠ The complainant is not recorded as told they may take this to the Building Safety Regulator. If they have been, press Cancel and use Record as told first.`
+      : message,
+    danger: move.to_key === STATUS.WITHDRAWN || move.to_key === STATUS.ESCALATED,
+  };
+}
