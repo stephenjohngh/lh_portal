@@ -24,6 +24,7 @@ import { listComplaintDueDates } from '#lib/apps/complaints/public.js';
 import { listCaseDueDates } from '#lib/apps/cases/public.js';
 import { listBsrReportDeadlines } from '#lib/apps/mor/public.js';
 import { today } from '#lib/utils/dates.js';
+import { listNonWorkingDays } from '#lib/workflow/nonWorkingDays.js';
 import { storeLoader } from '#lib/utils/storeLoad.js';
 
 const logger = getLogger('planner');
@@ -46,6 +47,8 @@ function createPlannerStore() {
    *   occurrences: (import('#lib/database.types.ts').Tables<'planner_occurrences'> & Record<string, any>)[],
    *   categories: (import('#lib/database.types.ts').Tables<'planner_categories'> & Record<string, any>)[],
    *   dayMarks: (import('#lib/database.types.ts').Tables<'planner_day_marks'> & Record<string, any>)[],
+   *   nonWorking: { day: string, name: string }[],
+   *   nonWorkingFailed: boolean,
    *   linked: Record<string, any>[],
    *   linkedFailures: string[],
    *   loadingLinked: boolean,
@@ -60,6 +63,9 @@ function createPlannerStore() {
     categories: [],
     /** Days shaded on the grids — bank holidays and the like (migration 181). */
     dayMarks: [],
+    /** The building's non-working days (Admin → Non-working days) — read, never written here. */
+    nonWorking: [],
+    nonWorkingFailed: false,
     /** Other apps' dated items — read-only, never written back. */
     linked: [],
     /** Sources that could not be read on the last load, by name. ⛔ Shown on
@@ -84,13 +90,17 @@ function createPlannerStore() {
    */
   const load = storeLoader(update,
     async () => {
-      const [events, occurrences, categories, dayMarks] = await Promise.all([
+      let nonWorkingFailed = false;
+      const [events, occurrences, categories, dayMarks, nonWorking] = await Promise.all([
         api.getAll('planner_events', { orderBy: 'start_date', ascending: true }),
         api.getAll('planner_occurrences', { orderBy: 'occurs_on' }),
         api.get('planner_categories', { orderBy: 'position' }),
         api.getAll('planner_day_marks', { orderBy: 'date', tiebreak: false }),
+        // Fails alone: the year must still draw, and says so rather than
+        // reading as if there were no such days.
+        listNonWorkingDays().catch((err) => { logger('⚠ could not read the non-working days —', errMessage(err)); nonWorkingFailed = true; return []; }),
       ]);
-      return { events, occurrences, categories, dayMarks };
+      return { events, occurrences, categories, dayMarks, nonWorking, nonWorkingFailed };
     },
     (loaded) => loaded,
     { what: 'the planner', log: logger });

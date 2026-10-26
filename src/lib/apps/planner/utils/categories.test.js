@@ -207,3 +207,17 @@ describe('categoryOf — hands_to_maintenance', () => {
     expect(categoryOf(null, CATEGORIES).hands_to_maintenance).toBeFalsy();
   });
 });
+
+describe('withNonWorkingDays', () => {
+  it('adds each non-working day, named and grey, and lets a hand-made mark win', async () => {
+    const { withNonWorkingDays, marksByDate, markStyle } = await import('./categories.js');
+    const merged = withNonWorkingDays(
+      [{ date: '2026-12-26', label: 'Office party', colour: 'rose' }],
+      [{ day: '2026-12-25', name: 'Christmas Day' }, { day: '2026-12-26', name: 'Boxing Day' }]);
+    const byDate = marksByDate(merged);
+    expect(byDate.get('2026-12-25')).toMatchObject({ label: 'Christmas Day', source: 'non_working' });
+    expect(markStyle(byDate.get('2026-12-25')).label).toBe('Christmas Day');
+    expect(byDate.get('2026-12-26').label).toBe('Office party');
+    expect(withNonWorkingDays(undefined, undefined)).toEqual([]);
+  });
+});

@@ -30,10 +30,14 @@
   $: if (date !== loadedFor) {
     loadedFor = date;
     open = false;
-    label = mark?.label ?? '';
-    colour = mark?.colour ?? 'rose';
+    label = own?.label ?? '';
+    colour = own?.colour ?? 'rose';
   }
 
+  // A non-working day comes from Admin, not from this control: it is shown, and
+  // shading the day by hand here puts a mark of your own over it.
+  $: fromAdmin = mark?.source === 'non_working';
+  $: own = fromAdmin ? null : mark;
   $: style = markStyle(mark);
 
   function save() {
@@ -44,6 +48,9 @@
 </script>
 
 <div class="flex items-center gap-2 flex-wrap">
+  {#if fromAdmin}
+    <span class="text-[11px] text-slate-500">Not a working day (Admin → Other Config → Non-working days).</span>
+  {/if}
   {#if style}
     <span class="text-[11px] px-1.5 py-0.5 rounded {style.wash} text-slate-200">
       {style.label}
@@ -54,9 +61,9 @@
     {#if !open}
       <button type="button" class="text-[11px] text-slate-500 hover:text-slate-300"
               on:click={() => open = true}>
-        {mark ? 'Change shading' : 'Shade this day'}
+        {own ? 'Change shading' : 'Shade this day'}
       </button>
-      {#if mark}
+      {#if own}
         <button type="button" class="text-[11px] text-slate-600 hover:text-red-400"
                 on:click={() => dispatch('clear', { date })}>Remove</button>
       {/if}

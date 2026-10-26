@@ -182,3 +182,20 @@ export function markStyle(mark) {
   if (!mark) return null;
   return { ...swatch(mark.colour), label: mark.label ?? '' };
 }
+
+/**
+ * The day marks to draw: the ones somebody shaded by hand, plus the building's
+ * non-working days (Admin → Non-working days) in the neutral grey, each named.
+ * A hand-made mark on the same day wins — somebody chose that one for the day.
+ * `source` tells the day panel which is which: a non-working day is changed in
+ * Admin, not here.
+ * @param {Array<{date:string,label?:string,colour?:string}>} marks
+ * @param {Array<{day:string,name:string}>} nonWorking
+ */
+export function withNonWorkingDays(marks = [], nonWorking = []) {
+  const have = new Set((marks ?? []).map(m => m.date));
+  const added = (nonWorking ?? [])
+    .filter(d => d?.day && !have.has(d.day))
+    .map(d => ({ date: d.day, label: d.name, colour: null, source: 'non_working' }));
+  return [...(marks ?? []), ...added];
+}

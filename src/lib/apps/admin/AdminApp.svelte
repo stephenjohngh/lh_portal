@@ -25,6 +25,7 @@
   import PoliciesPanel from './components/PoliciesPanel.svelte';
   import WordingPanel from './components/WordingPanel.svelte';
   import DocumentCategoriesPanel from './components/DocumentCategoriesPanel.svelte';
+  import NonWorkingDaysPanel from './components/NonWorkingDaysPanel.svelte';
   import DocumentsTab    from './components/DocumentsTab.svelte';
   import TabDropdown     from './components/TabDropdown.svelte';
   import TabBar          from '#lib/components/common/TabBar.svelte';
@@ -53,6 +54,7 @@
     { id: 'space-types', icon: '🏷', label: 'Space Types' },
     { id: 'identity',  icon: '🏠', label: 'Building & business' },
     { id: 'portal',    icon: '⚙',  label: 'Portal' },
+    { id: 'non-working-days', icon: '📅', label: 'Non-working days' },
     { id: 'due-windows', icon: '⏳', label: 'Due windows' },
     { id: 'policies',  icon: '📏', label: 'Policies' },
     { id: 'wording',   icon: '✍', label: 'Wording' },
@@ -296,6 +298,9 @@
 
   {:else if activeTab === 'identity'}
     <IdentityPanel />
+
+  {:else if activeTab === 'non-working-days'}
+    <NonWorkingDaysPanel />
 
   {:else if activeTab === 'due-windows'}
     <DueWindowsPanel />

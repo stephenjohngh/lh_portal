@@ -7,6 +7,7 @@ import { get } from 'svelte/store';
 const h = vi.hoisted(() => ({ jobsFail: false, obligations: [], morFail: false, parkingFail: false, parkingCalls: 0, complaintCalls: 0, caseCalls: 0 }));
 
 vi.mock('#lib/utils/api.js', () => ({ api: {} }));
+vi.mock('#lib/workflow/nonWorkingDays.js', () => ({ listNonWorkingDays: async () => [] }));
 vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: vi.fn() }));
 vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 vi.mock('#lib/apps/maintenance/public.js', () => ({

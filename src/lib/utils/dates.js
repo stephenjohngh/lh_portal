@@ -49,6 +49,16 @@ export function fmtDateLong(iso) {
 }
 
 /**
+ * "Friday" - the weekday of a calendar date (a date, not an instant, so it is
+ * read at noon UTC and cannot slip across midnight).
+ * @param {string|null} iso  YYYY-MM-DD
+ */
+export function weekdayName(iso) {
+  if (!iso) return '';
+  return new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString(GB, { timeZone: 'UTC', weekday: 'long' });
+}
+
+/**
  * "14:35"
  * @param {string|null} iso
  */

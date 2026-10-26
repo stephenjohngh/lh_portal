@@ -14,7 +14,7 @@
   import { profiles, profilesStore } from '#lib/stores/profiles.js';
   import { buildOccurrences, agenda, describeAgenda, archivedSeries, BUCKETS, STATUS } from './utils/agenda.js';
   import { addDaysISO, daysBetween, isRecurring } from './utils/recurrence.js';
-  import { pickable, swatch, marksByDate } from './utils/categories.js';
+  import { pickable, swatch, marksByDate, withNonWorkingDays } from './utils/categories.js';
   import { SOURCES, visibleSources } from './utils/linked.js';
   import { today, fmtDateLong } from '#lib/utils/dates.js';
 
@@ -217,7 +217,7 @@
 
   $: years = yearsInWindow(from, to);
   /** Shaded days, keyed by date, so a grid can ask per cell without scanning. */
-  $: dayMarks = marksByDate(state.dayMarks);
+  $: dayMarks = marksByDate(withNonWorkingDays(state.dayMarks, state.nonWorking));
   $: dayItems = selectedDay
     ? occurrences.filter(o => o.date === selectedDay)
     : [];
@@ -600,9 +600,9 @@
   <!-- ⛔ An unreadable source must never look like an empty one. This used
        to be a log line only, which is how a renamed column hid every
        maintenance job from the year and nobody noticed. -->
-  {#if state.linkedFailures?.length}
+  {#if state.linkedFailures?.length || state.nonWorkingFailed}
     <p class="text-xs text-amber-300" role="alert" data-testid="linked-failures">
-      ⚠ Could not read {state.linkedFailures.join(', ')} — what is shown is
+      ⚠ Could not read {[...(state.linkedFailures ?? []), ...(state.nonWorkingFailed ? ['the non-working days'] : [])].join(', ')} — what is shown is
       missing them, so do not read their absence as nothing due.
     </p>
   {/if}

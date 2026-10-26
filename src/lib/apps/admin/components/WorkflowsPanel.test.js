@@ -72,9 +72,10 @@ describe('Admin → Workflows', () => {
     expect(h.saved[0].steps[0]).not.toHaveProperty('isNew');
   });
 
-  it('a step can be given a deadline, said in words, and it is saved with the step; the non-working days are listed', async () => {
+  it('a step can be given a deadline, said in words, and it is saved with the step; the non-working days are pointed to, not edited here', async () => {
     await opened();
-    expect(screen.getByTestId('non-working-days').textContent).toMatch(/Christmas Day/);
+    expect(screen.getByTestId('non-working-days-pointer').textContent).toMatch(/Non-working days/);
+    expect(screen.queryByTestId('non-working-days')).toBeNull();
     await fireEvent.input(screen.getAllByLabelText('Deadline days')[1], { target: { value: '7' } });
     expect((await screen.findByTestId('workflow-deadlines')).textContent).toMatch(/Being checked:.*Within 7/);
     await fireEvent.click(screen.getByRole('button', { name: 'Save workflow' }));

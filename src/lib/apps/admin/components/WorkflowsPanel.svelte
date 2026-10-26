@@ -27,7 +27,7 @@
   import { contractFor } from '#lib/workflow/workflowContracts.js';
   import { shippedWorkflowFor } from '#lib/workflow/shippedWorkflows.js';
   import { DEADLINE_BASES, DEADLINE_FROM, describeDeadline } from '#lib/workflow/workflowDeadlines.js';
-  import { listNonWorkingDays, ensureNonWorkingDays, addNonWorkingDay, removeNonWorkingDay } from '#lib/workflow/nonWorkingDays.js';
+  import { listNonWorkingDays, ensureNonWorkingDays } from '#lib/workflow/nonWorkingDays.js';
   import { fmtDate } from '#lib/utils/dates.js';
   import { isFinished } from '#lib/workflow/workflowModel.js';
   import { logAudit } from '#lib/utils/auditLogger.js';
@@ -88,24 +88,11 @@
 
   /** @type {{ day: string, name: string }[]} */
   let offDays = [];
-  let newDay = '';
-  let newDayName = '';
   let dayError = '';
 
   async function readOffDays() {
     try { offDays = await listNonWorkingDays(); }
     catch (/** @type {any} */ err) { dayError = errMessage(err, 'Could not read the non-working days.'); }
-  }
-  async function addDay() {
-    dayError = '';
-    if (!newDay || !newDayName.trim()) { dayError = 'Give the date and what it is.'; return; }
-    try { await addNonWorkingDay(newDay, newDayName); newDay = ''; newDayName = ''; await readOffDays(); usageFor = ''; }
-    catch (/** @type {any} */ err) { dayError = errMessage(err, 'That day could not be added.'); }
-  }
-  async function removeDay(/** @type {string} */ day) {
-    dayError = '';
-    try { await removeNonWorkingDay(day); await readOffDays(); usageFor = ''; }
-    catch (/** @type {any} */ err) { dayError = errMessage(err, 'That day could not be removed.'); }
   }
 
   // ── Timers (migration 259) ──
@@ -806,29 +793,11 @@
     </details>
   {/if}
 
-  <div class="space-y-2 border-t border-slate-700 pt-4" data-testid="non-working-days">
-    <p class="text-sm font-semibold text-slate-200">Days that are not working days</p>
-    <p class="text-xs text-slate-400">A deadline in working days skips weekends and these. The bank holidays for England and Wales
-      to 2028 come with the portal; add the next years, or a day the office is closed.</p>
-    <ErrorDisplay message={dayError} onDismiss={() => (dayError = '')} />
-    <div class="flex flex-wrap items-end gap-2">
-      <input type="date" class={inputCls} bind:value={newDay} aria-label="Date" />
-      <input class="{inputCls} w-56" bind:value={newDayName} placeholder="e.g. Christmas Day" aria-label="What it is" />
-      <Button variant="tertiary" size="xs" on:click={addDay}>+ Add a day</Button>
-    </div>
-    {#if offDays.length}
-      <ul class="grid gap-x-6 gap-y-1 sm:grid-cols-2 text-sm">
-        {#each offDays as d (d.day)}
-          <li class="flex items-center justify-between gap-2 border-b border-slate-800 py-0.5">
-            <span><span class="text-slate-300">{fmtDate(d.day)}</span> <span class="text-slate-500">· {d.name}</span></span>
-            <Button variant="tertiary" size="xs" on:click={() => removeDay(d.day)}>Remove</Button>
-          </li>
-        {/each}
-      </ul>
-    {:else}
-      <p class="text-xs text-slate-500">None — working days skip only weekends.</p>
-    {/if}
-  </div>
+  <p class="border-t border-slate-700 pt-4 text-xs text-slate-400" data-testid="non-working-days-pointer">
+    Working-day deadlines skip weekends and the bank holidays and closures listed under
+    <strong>Other Config → Non-working days</strong>.
+  </p>
+  <ErrorDisplay message={dayError} onDismiss={() => (dayError = '')} />
 
   <!-- ── Timers (migration 259) ─────────────────────────────────────────────
        A move with "By itself after" is made by the database every night at
