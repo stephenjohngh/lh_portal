@@ -111,6 +111,7 @@
   }
 
   async function handleBackToRepair() {
+    await inspectionStore.settle();      // a repair just recorded must reach the server first
     await inspectionStore.load();
     screen = 'start_repair';
   }

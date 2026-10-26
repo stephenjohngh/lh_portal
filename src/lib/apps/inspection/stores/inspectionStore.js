@@ -413,6 +413,18 @@ function createInspectionStore() {
 
   // -- Sessions ----------------------------------------------------------------
 
+  /**
+   * Let results already recorded reach the server before the hierarchy is
+   * re-read. A re-read that races the queue brings back the OLD status and
+   * overwrites the in-memory one, so a repaired component still read as failed
+   * on the repair list. Bounded, so no signal never holds the screen.
+   */
+  async function settle() {
+    try {
+      await Promise.race([flushQueue(), new Promise((r) => setTimeout(r, 4000))]);
+    } catch (/** @type {any} */ e) { logger('⚠ settle:', e.message); }
+  }
+
   async function loadSessions() {
     update(s => ({ ...s, loading: true }));
     let base = null, usingCache = false;
@@ -1248,6 +1260,7 @@ function createInspectionStore() {
     subscribe,
     load,
     loadSessions,
+    settle,
     ensureLatestInspections,
     startSession,
     startBuildingWideSession,
