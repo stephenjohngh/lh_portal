@@ -222,3 +222,12 @@ describe('reinspectPhotoPlan', () => {
     expect(reinspectPhotoPlan([], null)).toEqual({ kept: [], photoIds: [], removePhotoUrls: [], removePhotoIds: [] });
   });
 });
+
+describe('sessionState', () => {
+  it('reads a closed walk that did not cover everything as unfinished', async () => {
+    const { sessionState } = await import('./inspectionHelpers.js');
+    expect(sessionState({ status: 'closed', total_components_count: 7, inspected_components_count: 6 })).toBe('unfinished');
+    expect(sessionState({ status: 'closed', total_components_count: 7, inspected_components_count: 7 })).toBe('closed');
+    expect(sessionState({ status: 'open', total_components_count: 7, inspected_components_count: 2 })).toBe('open');
+  });
+});

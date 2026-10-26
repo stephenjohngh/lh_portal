@@ -304,3 +304,17 @@ export function reinspectPhotoPlan(earlier, kept) {
     removePhotoIds:  removed.filter((p) => p.photoId).map((p) => /** @type {string} */ (p.photoId)),
   };
 }
+
+/**
+ * The state a person sees for a walk: 'open' | 'unfinished' | 'closed'.
+ * `status` in the database is only open/closed — "unfinished" is closed with
+ * fewer components inspected than the walk set out to cover. ONE definition,
+ * used by the phone's recent list and the desktop walks tab.
+ * @param {{status?: string, total_components_count?: number|null, inspected_components_count?: number|null}} s
+ */
+export function sessionState(s) {
+  if (s.status !== 'closed') return s.status ?? 'open';
+  const total     = s.total_components_count ?? 0;
+  const inspected = s.inspected_components_count ?? 0;
+  return total > 0 && inspected < total ? 'unfinished' : 'closed';
+}

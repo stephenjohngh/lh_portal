@@ -5,7 +5,7 @@
   import { online } from '#lib/stores/online.js';
   import { syncState } from '../utils/syncRunner.js';
   import { fmtDate, fmtTime, fmtDuration, DAY_MS } from '#lib/utils/dates.js';
-  import { sessionKindLabel, sessionFloorLabel, sessionDefinitionName } from '../utils/inspectionHelpers.js';
+  import { sessionKindLabel, sessionFloorLabel, sessionDefinitionName, sessionState } from '../utils/inspectionHelpers.js';
   import WalkBadge from '#lib/apps/inspection/components/common/WalkBadge.svelte';
 
   const dispatch = createEventDispatcher();
@@ -123,7 +123,11 @@
               <div class="scard-name-row">
                 <span class="scard-name">{sessionTitle(s)}</span>
                 <WalkBadge color={typeColor(s)}>{typeLabel(s)}</WalkBadge>
-                <WalkBadge color="green">✓ CLOSED</WalkBadge>
+                {#if sessionState(s) === 'unfinished'}
+                  <WalkBadge color="amber">UNFINISHED {s.inspected_components_count ?? 0}/{s.total_components_count}</WalkBadge>
+                {:else}
+                  <WalkBadge color="green">✓ CLOSED</WalkBadge>
+                {/if}
               </div>
               <div class="scard-loc">{sessionLoc(s)}</div>
               <div class="scard-meta">

@@ -38,6 +38,7 @@
     worstResult,
     resultLabel,
     sessionFloorLabel,
+    sessionState,
   } from '#lib/apps/inspection/utils/inspectionHelpers.js';
   import { resultBadgeColor } from '#lib/utils/resultConstants.js';
   import { fmtDate, fmtTime, fmtDateTime, fmtDuration, calendarDate } from '#lib/utils/dates.js';
@@ -128,12 +129,6 @@
   // is only open/closed — "unfinished" is derived (closed, but not every
   // in-scope component got a result). ONE definition, used by the row badge,
   // the Status filter and the summary counts so they cannot disagree.
-  function sessionState(s) {
-    if (s.status !== 'closed') return s.status;              // 'open'
-    const total     = s.total_components_count ?? 0;
-    const inspected = s.inspected_components_count ?? 0;
-    return total > 0 && inspected < total ? 'unfinished' : 'closed';
-  }
 
   // -- Derived: sort then filter --------------------------------------------
   // Open sessions always float to top; within each status group, latest first.
