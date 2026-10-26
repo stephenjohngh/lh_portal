@@ -238,3 +238,13 @@ export function archivedSeries(events = []) {
     .filter((e) => e.archived)
     .sort((a, b) => String(b.updated_at ?? '').localeCompare(String(a.updated_at ?? '')) || String(a.title).localeCompare(String(b.title)));
 }
+
+/**
+ * Would restoring this series as it was put dates in the past onto the agenda?
+ * A series that repeats and began before today fills the agenda with every
+ * missed date since; a one-off starting before today is itself overdue.
+ * @param {Record<string, any>} event @param {string} today  YYYY-MM-DD
+ */
+export function staleStart(event, today) {
+  return !!today && !!event?.start_date && event.start_date < today;
+}

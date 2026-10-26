@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   mergeOccurrences, buildOccurrences, bucketOf, agenda, describeAgenda,
-  completionPatch, STATUS, firstLine, archivedSeries,
+  completionPatch, STATUS, firstLine, archivedSeries, staleStart,
 } from './agenda.js';
 
 const TODAY = '2026-06-15';
@@ -299,5 +299,14 @@ describe('archivedSeries', () => {
     ];
     expect(archivedSeries(events).map(e => e.id)).toEqual(['c', 'b']);
     expect(archivedSeries([{ id: 'a', archived: false }])).toEqual([]);
+  });
+});
+
+describe('staleStart', () => {
+  it('is true only when the series began before today', () => {
+    expect(staleStart({ start_date: '2026-01-01' }, '2026-10-26')).toBe(true);
+    expect(staleStart({ start_date: '2026-10-26' }, '2026-10-26')).toBe(false);
+    expect(staleStart({ start_date: '2027-01-01' }, '2026-10-26')).toBe(false);
+    expect(staleStart({ start_date: '2026-01-01' }, '')).toBe(false);
   });
 });

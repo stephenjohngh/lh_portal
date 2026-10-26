@@ -313,9 +313,11 @@
 
   let archivedOpen = false;
   async function restoreEvent(e) {
-    const event = e.detail;                 // captured before the await
-    try { await plannerStore.archiveEvent(event.id, false, $auth.user.id); }
-    catch (err) { error = errMessage(err); }
+    const { event, edit } = e.detail;       // captured before the await
+    try {
+      const restored = await plannerStore.archiveEvent(event.id, false, $auth.user.id);
+      if (edit) { archivedOpen = false; editSeries(restored ?? event); }
+    } catch (err) { error = errMessage(err); }
   }
   $: archivedCount = archivedSeries(state.events).length;
 
@@ -824,7 +826,7 @@
   on:close={() => { formOpen = false; editing = null; }}
 />
 
-<ArchivedEventsModal bind:show={archivedOpen} events={state.events} categories={state.categories} {canEdit}
+<ArchivedEventsModal bind:show={archivedOpen} events={state.events} categories={state.categories} {canEdit} today={now}
   on:restore={restoreEvent} />
 
 <CategoriesModal

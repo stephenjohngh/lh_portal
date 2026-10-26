@@ -10,12 +10,16 @@
   import { fmtDateOnly } from '#lib/utils/dates.js';
   import { describeRule } from '../utils/recurrence.js';
   import { categoryOf } from '../utils/categories.js';
-  import { archivedSeries } from '../utils/agenda.js';
+  import { archivedSeries, staleStart } from '../utils/agenda.js';
+  import { isRecurring } from '../utils/recurrence.js';
+  const isRepeating = (e) => isRecurring(e.recurrence);
 
   export let show = false;
   export let events = [];
   export let categories = [];
   export let canEdit = false;
+  /** Today, for noticing a start date that has long passed. */
+  export let today = '';
 
   const dispatch = createEventDispatcher();
   $: list = archivedSeries(events);
@@ -41,9 +45,17 @@
             </p>
           </div>
           {#if canEdit}
-            <Button variant="secondary" size="small" on:click={() => dispatch('restore', event)}>Restore</Button>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <Button variant="primary" size="small" on:click={() => dispatch('restore', { event, edit: true })}>Restore and set dates…</Button>
+              <Button variant="tertiary" size="xs" on:click={() => dispatch('restore', { event, edit: false })}>Restore as it was</Button>
+            </div>
           {/if}
         </div>
+        {#if canEdit && staleStart(event, today)}
+          <p class="text-[11px] text-amber-300 -mt-1 mb-1 px-2">
+            ⚠ Its dates are in the past. {isRepeating(event) ? 'Restored as it was, every date since ' + fmtDateOnly(event.start_date) + ' will show as overdue' : 'Restored as it was, it will show as overdue'} — use <strong>Restore and set dates…</strong> to give it new ones.
+          </p>
+        {/if}
       {/each}
     </div>
   {/if}
