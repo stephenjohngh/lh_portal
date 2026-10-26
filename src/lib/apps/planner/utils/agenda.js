@@ -226,3 +226,15 @@ export function firstLine(text, limit = 160) {
   const space = cut.lastIndexOf(' ');
   return `${(space > limit * 0.6 ? cut.slice(0, space) : cut).trimEnd()}…`;
 }
+
+/**
+ * The series that have been archived, newest first — the list a person
+ * restores from. Archiving takes a series off every view, so without this list
+ * the Restore button would have nothing to open it.
+ * @param {Array<Record<string, any>>} events
+ */
+export function archivedSeries(events = []) {
+  return events
+    .filter((e) => e.archived)
+    .sort((a, b) => String(b.updated_at ?? '').localeCompare(String(a.updated_at ?? '')) || String(a.title).localeCompare(String(b.title)));
+}

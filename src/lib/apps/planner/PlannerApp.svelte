@@ -12,7 +12,7 @@
   import { permissions } from '#lib/stores/permissions.js';
   import { plannerStore } from './stores/plannerStore.js';
   import { profiles, profilesStore } from '#lib/stores/profiles.js';
-  import { buildOccurrences, agenda, describeAgenda, BUCKETS, STATUS } from './utils/agenda.js';
+  import { buildOccurrences, agenda, describeAgenda, archivedSeries, BUCKETS, STATUS } from './utils/agenda.js';
   import { addDaysISO, daysBetween, isRecurring } from './utils/recurrence.js';
   import { pickable, swatch, marksByDate } from './utils/categories.js';
   import { SOURCES, visibleSources } from './utils/linked.js';
@@ -31,6 +31,7 @@
   import PlannerPrint from './components/PlannerPrint.svelte';
   import './planner-print.css';
   import CategoriesModal from './components/CategoriesModal.svelte';
+  import ArchivedEventsModal from './components/ArchivedEventsModal.svelte';
   import DayMarkControl from './components/DayMarkControl.svelte';
   import MultiSelectDropdown from '#lib/components/common/MultiSelectDropdown.svelte';
   import YearGrid from './components/YearGrid.svelte';
@@ -310,6 +311,14 @@
     } catch (err) { error = errMessage(err); }
   }
 
+  let archivedOpen = false;
+  async function restoreEvent(e) {
+    const event = e.detail;                 // captured before the await
+    try { await plannerStore.archiveEvent(event.id, false, $auth.user.id); }
+    catch (err) { error = errMessage(err); }
+  }
+  $: archivedCount = archivedSeries(state.events).length;
+
   async function removeEvent(e) {
     const target = e.detail;                // captured before the await
     try {
@@ -564,6 +573,13 @@
         >Print</button>
       {/if}
 
+      {#if archivedCount}
+        <button type="button"
+          class="bg-slate-700 border border-slate-600 hover:border-slate-500 rounded px-2.5 py-1.5 text-xs text-white transition-colors"
+          title="Events taken off the planner with Archive — restore one from here"
+          on:click={() => (archivedOpen = true)}>Archived ({archivedCount})</button>
+      {/if}
+
       {#if $permissions.isAdmin}
         <AdminMenu
           items={[{ id: 'categories', label: 'Categories', hint: 'Colours, names, what may be handed over' }]}
@@ -807,6 +823,9 @@
   on:remove={removeEvent}
   on:close={() => { formOpen = false; editing = null; }}
 />
+
+<ArchivedEventsModal bind:show={archivedOpen} events={state.events} categories={state.categories} {canEdit}
+  on:restore={restoreEvent} />
 
 <CategoriesModal
   bind:show={categoriesOpen}

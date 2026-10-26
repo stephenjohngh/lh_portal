@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   mergeOccurrences, buildOccurrences, bucketOf, agenda, describeAgenda,
-  completionPatch, STATUS, firstLine,
+  completionPatch, STATUS, firstLine, archivedSeries,
 } from './agenda.js';
 
 const TODAY = '2026-06-15';
@@ -287,5 +287,17 @@ describe('describeAgenda — needs arranging', () => {
   it('counts what needs arranging alongside what is overdue', () => {
     const groups = { overdue: [1], arranging: [1, 2], due_soon: [], planned: [], done: [] };
     expect(describeAgenda(groups)).toBe('1 overdue · 2 to arrange');
+  });
+});
+
+describe('archivedSeries', () => {
+  it('lists only archived series, newest change first, and nothing when none are', () => {
+    const events = [
+      { id: 'a', title: 'Live', archived: false },
+      { id: 'b', title: 'Old', archived: true, updated_at: '2026-01-01T00:00:00Z' },
+      { id: 'c', title: 'Newer', archived: true, updated_at: '2026-03-01T00:00:00Z' },
+    ];
+    expect(archivedSeries(events).map(e => e.id)).toEqual(['c', 'b']);
+    expect(archivedSeries([{ id: 'a', archived: false }])).toEqual([]);
   });
 });
