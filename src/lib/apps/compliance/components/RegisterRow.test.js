@@ -55,6 +55,13 @@ describe('RegisterRow', () => {
     ]);
   });
 
+  it('a duty applied but not switched on can still be marked not applicable, and is not applied twice', async () => {
+    const sent = row({ entry: anEntry, open: true, status: 'awaiting_setup' });
+    await fireEvent.click(screen.getByRole('button', { name: 'Mark not applicable' }));
+    expect(sent).toEqual([['decide', { entry: anEntry, kind: 'not_applicable' }]]);
+    expect(screen.queryByRole('button', { name: 'Add to this building' })).toBeNull();
+  });
+
   it('offers a candidate that may already cover it, and links it', async () => {
     const sent = row({ entry: anEntry, open: true,
                        candidates: [{ obligation: { id: 'o1', name: 'Existing check' }, reason: 'same type' }] });

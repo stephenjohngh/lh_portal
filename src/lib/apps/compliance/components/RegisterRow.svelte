@@ -327,6 +327,13 @@
             disabled={busy} on:click={() => dispatch('apply', [entry.key])}>Add to this building</ProtectedButton>
           <Button variant="secondary" size="small"
             disabled={busy} on:click={() => dispatch('decide', { entry, kind: 'not_applicable' })}>Mark not applicable</Button>
+        {:else if status === 'awaiting_setup'}
+          <!-- Applied but not switched on. A duty that turns out not to bite here must
+               still be answerable: with every schedulable row applied (the usual state
+               after a bulk apply) this was the only place left to decide it, and the
+               status order already ranks a recorded decision above this state. -->
+          <Button variant="secondary" size="small"
+            disabled={busy} on:click={() => dispatch('decide', { entry, kind: 'not_applicable' })}>Mark not applicable</Button>
         {:else if status === 'not_applicable'}
           <Button variant="secondary" size="small" disabled={busy}
             on:click={() => dispatch('decide', { entry, kind: 'applicable' })}>Reinstate</Button>
