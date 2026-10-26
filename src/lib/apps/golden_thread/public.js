@@ -316,9 +316,15 @@ export function createPerson(data, userId) {
   return api.create('gt_persons', { ...data, created_by: userId }, true);
 }
 
-/** Update a person (e.g. competencies / expiry — Stage E). */
-export function updatePerson(id, patch, userId) {
-  return api.update('gt_persons', id, { ...patch, updated_by: userId }, true);
+/**
+ * Update a person (e.g. competencies / expiry — Stage E).
+ * ⛔ gt_persons has `created_by` and NO `updated_by`: sending one made every edit
+ * fail with "Could not find the 'updated_by' column", since the competence panel
+ * was built (found running the Golden Thread tutorial, 2026-10-26). The audit log
+ * records who made the change.
+ */
+export function updatePerson(id, patch, _userId) {
+  return api.update('gt_persons', id, { ...patch }, true);
 }
 
 // ── Accountable Person / PAP register (gt_accountable_persons) ───────────────
