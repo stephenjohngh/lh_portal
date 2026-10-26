@@ -251,7 +251,14 @@
     .sort((a, b) => a.date.localeCompare(b.date));
 
   $: groups = agenda(occurrences, now);
-  $: summary = describeAgenda(groups);
+  // While the other apps' items are still being read, the counts are only the
+  // planner's own: say so rather than reading as the whole picture (and never
+  // as "Nothing outstanding" before the faults and deadlines have arrived).
+  $: summary = !ready || (state.loading && !state.events.length)
+    ? 'Loading the year…'
+    : state.loadingLinked && showLinked
+    ? `${groups.overdue.length || groups.due_soon.length || groups.arranging?.length ? describeAgenda(groups) + ' · ' : ''}still reading other apps…`
+    : describeAgenda(groups);
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
