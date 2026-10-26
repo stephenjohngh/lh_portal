@@ -9,7 +9,6 @@
 
 import { api } from '#lib/utils/api.js';
 import { requireUserId } from '#lib/utils/currentUser.js';
-import { getJson } from '#lib/utils/request.js';
 
 export const SHIPPED_NON_WORKING_DAYS = Object.freeze([
   ['2026-01-01', 'New Year’s Day'], ['2026-04-03', 'Good Friday'], ['2026-04-06', 'Easter Monday'],
@@ -70,6 +69,9 @@ export function missingFromFeed(feed, existing, from) {
 
 /** Admin: ask the server for GOV.UK's England and Wales list. */
 export async function fetchBankHolidayFeed() {
+  // Loaded when needed: request.js brings the sign-in client with it, which the
+  // pure deadline code that imports this file must not.
+  const { getJson } = await import('#lib/utils/request.js');
   const { events } = await getJson('/api/admin/bank-holidays');
   return events ?? [];
 }
