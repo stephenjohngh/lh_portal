@@ -90,3 +90,26 @@ export const DEFAULT_GT_RISK_WORKFLOW = Object.freeze({
     { from_key: 'closed',     to_key: 'monitored',  label: 'Reopen', note_required: true },
   ],
 });
+
+/**
+ * Which document moves are asked about first. Accepting is the one move that
+ * changes another document too; withdrawing a CURRENT document removes it from
+ * what the building relies on (and from Completeness) and cannot be undone from
+ * the screen. A draft's withdrawal is not asked — nothing relied on it.
+ *
+ * @param {{ from_key: string, to_key: string }} move
+ * @param {{ supersedes?: string|null }|null} doc
+ * @returns {{ title: string, message: string, danger?: boolean }|null}
+ */
+export function documentMoveConfirmation(move, doc) {
+  if (move.to_key === 'current' && move.from_key === 'under_review') {
+    return { title: 'Accept — make current?', message: doc?.supersedes
+      ? 'This document becomes current from today, and the version it replaces is superseded. Both are recorded in the audit chain against your name.'
+      : 'This document becomes current from today. It is recorded in the audit chain against your name.' };
+  }
+  if (move.to_key === 'withdrawn' && move.from_key === 'current') {
+    return { title: 'Withdraw this current document?', danger: true,
+      message: 'It stops being current from today, and the Schedule-1 category it satisfied reads Missing unless another current document covers it. The withdrawal and your note are recorded in the audit chain against your name, and it cannot be reversed from here.' };
+  }
+  return null;
+}

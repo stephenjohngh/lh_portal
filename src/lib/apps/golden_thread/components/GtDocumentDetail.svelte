@@ -9,6 +9,8 @@
 -->
 <script>
   import { createEventDispatcher } from 'svelte';
+  import { documentMoveConfirmation } from '../utils/gtWorkflow.js';
+  import { describeLinkAudit } from '../utils/gtAuditHistory.js';
   import { gtStore } from '#lib/apps/golden_thread/stores/gtStore.js';
   import { permissions } from '#lib/stores/permissions.js';
   import { GT_STATUS_LABELS, GT_STATUS_BADGE } from '#lib/apps/golden_thread/utils/gtLifecycle.js';
@@ -74,8 +76,10 @@
   $: isAdmin = $permissions.isAdmin;
   $: auditHistory = $gtStore.auditHistory;
   let loadedAuditKey = null;
-  $: if (isAdmin && doc?.id && `${doc.id}:${doc.status}` !== loadedAuditKey) {
-    loadedAuditKey = `${doc.id}:${doc.status}`;
+  // …and when a citation is added or removed, which changes the history too.
+  $: auditKey = `${doc?.id}:${doc?.status}:${links.outgoing?.length ?? 0}:${links.incoming?.length ?? 0}`;
+  $: if (isAdmin && doc?.id && auditKey !== loadedAuditKey) {
+    loadedAuditKey = auditKey;
     gtStore.loadAuditHistory(doc.id);
   }
 
@@ -160,15 +164,7 @@
     ? 'Register the version that replaces it and accept it: that supersedes this one.'
     : null);
 
-  /** Accepting is the one move that changes another document too. */
-  const confirmMove = (/** @type {any} */ m) => {
-    if (m.to_key === 'current' && m.from_key === 'under_review') {
-      return { title: 'Accept — make current?', message: doc.supersedes
-        ? 'This document becomes current from today, and the version it replaces is superseded. Both are recorded in the audit chain against your name.'
-        : 'This document becomes current from today. It is recorded in the audit chain against your name.' };
-    }
-    return null;
-  };
+  const confirmMove = (/** @type {any} */ m) => documentMoveConfirmation(m, doc);
 
   $: wfAudit = doc ? { appId: 'golden_thread', entityType: 'gt_document', entityId: doc.id } : null;
   $: wfRecord = doc ? {
@@ -336,7 +332,9 @@
             <li class="text-xs text-slate-300 flex flex-wrap gap-x-2">
               <span class="font-mono text-slate-500">#{a.seq}</span>
               <span class="uppercase text-slate-400">{a.action}</span>
-              {#if a.before_data?.status && a.after_data?.status && a.before_data.status !== a.after_data.status}
+              {#if describeLinkAudit(a, doc.id)}
+                <span class="text-slate-200">{describeLinkAudit(a, doc.id)}</span>
+              {:else if a.before_data?.status && a.after_data?.status && a.before_data.status !== a.after_data.status}
                 <span class="text-slate-200">{a.before_data.status} → {a.after_data.status}</span>
               {/if}
               <span class="text-slate-500">{fmtDateTime(a.occurred_at)}</span>

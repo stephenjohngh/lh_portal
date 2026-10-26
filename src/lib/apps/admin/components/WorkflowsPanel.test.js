@@ -4,7 +4,7 @@
 // the database's checks are shown before saving; a workflow marked as needing
 // a full review asks for the review when a change is saved; every change is
 // listed in words.
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/svelte';
 import { DEFAULT_APPLICATION_WORKFLOW as WF } from '#lib/apps/parking/utils/applicationWorkflow.js';
 
@@ -42,6 +42,11 @@ vi.mock('#lib/workflow/nonWorkingDays.js', () => ({
 
 const WorkflowsPanel = (await import('./WorkflowsPanel.svelte')).default;
 beforeEach(() => { cleanup(); h.saved.length = 0; h.marked = false; h.changes = []; h.app = 'parking'; h.renamed = false; h.timerRuns = []; h.ran = 0; h.publicOn = false; h.switched = []; h.loads = 0; h.dueOn = '2000-01-01'; h.retired = []; h.deleted = []; });
+
+// The first render of this panel compiles and lays out a large screen; under a
+// full parallel run that cost fell inside the first test and timed it out
+// (seen twice, 2026-10-26). Pay it once here, with a stated budget.
+beforeAll(async () => { await opened(); cleanup(); }, 60000);
 
 async function opened() {
   render(WorkflowsPanel);

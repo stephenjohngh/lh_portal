@@ -13,6 +13,7 @@
 // Lifecycle MUTATORS (submit/accept/supersede/withdraw) are NOT here — they are
 // admin/editor-gated store methods on gtStore, not a cross-app surface.
 
+import { mergeDocumentAudit } from './utils/gtAuditHistory.js';
 import { api } from '#lib/utils/api.js';
 import { uploadDocument } from '#lib/utils/documentApi.js';
 import { postJson } from '#lib/utils/request.js';
@@ -390,13 +391,25 @@ export function markSafetyCaseNotified(id, patch, userId) {
  * gt_audit reads to admins — a non-admin gets an empty list.
  * @param {string} documentId
  */
-export function listAuditHistory(documentId) {
-  return api.getAll('gt_audit', {
-    filters: { target_table: 'gt_documents', target_id: documentId },
-    orderBy: 'seq',
-    tiebreak: false,   // seq is gt_audit's primary key; the table has no id
-    ascending: true
-  });
+export async function listAuditHistory(documentId) {
+  // The document's own rows, plus the citations made to or from it: a citation
+  // is chained like everything else, but it is a change to gt_links, so a
+  // filter on the document row alone left it out.
+  const [documentRows, linkRows] = await Promise.all([
+    api.getAll('gt_audit', {
+      filters: { target_table: 'gt_documents', target_id: documentId },
+      orderBy: 'seq',
+      tiebreak: false,   // seq is gt_audit's primary key; the table has no id
+      ascending: true
+    }),
+    api.getAll('gt_audit', {
+      filters: { target_table: 'gt_links' },
+      orderBy: 'seq',
+      tiebreak: false,
+      ascending: true
+    }),
+  ]);
+  return mergeDocumentAudit(documentRows, linkRows, documentId);
 }
 
 // ── Producer ingest (L1: Maintenance/Inspection register a certificate) ───────
