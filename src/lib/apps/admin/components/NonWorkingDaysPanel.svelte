@@ -14,8 +14,11 @@
   import Button from '#lib/components/common/Button.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
-  import { listNonWorkingDays, ensureNonWorkingDays, addNonWorkingDay, removeNonWorkingDay } from '#lib/workflow/nonWorkingDays.js';
-  import { fmtDate, weekdayName } from '#lib/utils/dates.js';
+  import {
+    listNonWorkingDays, ensureNonWorkingDays, addNonWorkingDay, removeNonWorkingDay,
+    fetchBankHolidayFeed, missingFromFeed, addNonWorkingDays,
+  } from '#lib/workflow/nonWorkingDays.js';
+  import { fmtDate, weekdayName, today } from '#lib/utils/dates.js';
   import { logAudit } from '#lib/utils/auditLogger.js';
   import { errMessage } from '#lib/utils/errors.js';
 
@@ -57,11 +60,36 @@
     } catch (/** @type {any} */ err) { error = errMessage(err, 'That day could not be removed.'); }
   }
 
+  // ── GOV.UK's list: checked when an admin opens this tab. Add only — a day the
+  //    feed has and ours lacks is OFFERED; nothing is removed or renamed.
+  /** @type {{ day: string, name: string }[]} */
+  let offered = [];
+  let feedNote = '';
+  let adding = false;
+  async function checkFeed() {
+    feedNote = '';
+    try { offered = missingFromFeed(await fetchBankHolidayFeed(), days, today()); }
+    catch { feedNote = 'GOV.UK’s list could not be checked just now — try again later.'; }
+  }
+  async function addOffered() {
+    const list = offered;
+    adding = true; error = ''; note = '';
+    try {
+      await addNonWorkingDays(list);
+      logAudit('create', 'non_working_day', null, `${list.length} bank holidays from GOV.UK`, { appId: 'admin', eventCategory: 'admin', afterData: { days: list.map((d) => d.day) } });
+      note = `Added ${list.length} from GOV.UK. Open items with a working-day deadline have been re-dated.`;
+      offered = [];
+      await read();
+    } catch (/** @type {any} */ err) { error = errMessage(err, 'Those days could not be added.'); }
+    finally { adding = false; }
+  }
+
   onMount(async () => {
     try {
       await ensureNonWorkingDays().catch((/** @type {any} */ err) => { error = errMessage(err, 'The bank holidays could not be added.'); });
       await read();
     } finally { ready = true; }
+    checkFeed();
   });
 
   $: byYear = days.reduce((/** @type {Record<string, typeof days>} */ acc, d) => { (acc[d.day.slice(0, 4)] ??= []).push(d); return acc; }, {});
@@ -79,6 +107,14 @@
   </div>
 
   <ErrorDisplay message={error} onDismiss={() => (error = '')} />
+  {#if offered.length}
+    <div class="rounded border border-sky-500/40 bg-sky-500/10 p-3 text-sm text-slate-200" data-testid="gov-offer">
+      <p>GOV.UK has <strong>{offered.length}</strong> England and Wales bank holiday{offered.length === 1 ? '' : 's'} that this list does not:
+        {offered.map((d) => `${weekdayName(d.day)} ${fmtDate(d.day)} (${d.name})`).join(', ')}.</p>
+      <div class="mt-2"><Button variant="primary" size="small" loading={adding} disabled={adding} on:click={addOffered}>Add them</Button></div>
+    </div>
+  {/if}
+  {#if feedNote}<p class="text-xs text-slate-500" data-testid="gov-note">{feedNote}</p>{/if}
   {#if note}<p class="text-xs text-green-400" role="status">{note}</p>{/if}
 
   <div class="flex flex-wrap items-end gap-2">

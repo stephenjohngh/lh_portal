@@ -9,6 +9,7 @@
 
 import { api } from '#lib/utils/api.js';
 import { requireUserId } from '#lib/utils/currentUser.js';
+import { getJson } from '#lib/utils/request.js';
 
 export const SHIPPED_NON_WORKING_DAYS = Object.freeze([
   ['2026-01-01', 'New Year’s Day'], ['2026-04-03', 'Good Friday'], ['2026-04-06', 'Easter Monday'],
@@ -43,4 +44,40 @@ export async function addNonWorkingDay(day, name) {
 /** Admin. @param {string} day */
 export async function removeNonWorkingDay(day) {
   return api.deleteMany('non_working_days', { day });
+}
+
+// ── Keeping the list up to date from GOV.UK ─────────────────────────────────
+// GOV.UK publishes the bank holidays as a data file (the server route
+// /api/admin/bank-holidays reads it for England and Wales). ADD ONLY: a day is
+// added when the feed has it and the list does not; nothing is ever removed or
+// renamed, so an admin's own closures and edits are never touched.
+
+/**
+ * The days the feed has that the list lacks, from `from` onwards (a past day
+ * changes nothing). Pure.
+ * @param {{ date: string, title: string }[]} feed
+ * @param {{ day: string }[]} existing
+ * @param {string} from  YYYY-MM-DD
+ * @returns {{ day: string, name: string }[]}
+ */
+export function missingFromFeed(feed, existing, from) {
+  const have = new Set((existing ?? []).map((d) => d.day));
+  return (feed ?? [])
+    .filter((e) => /^\d{4}-\d\d-\d\d$/.test(e?.date ?? '') && e.title && e.date >= from && !have.has(e.date))
+    .map((e) => ({ day: e.date, name: String(e.title).trim() }))
+    .sort((a, b) => a.day.localeCompare(b.day));
+}
+
+/** Admin: ask the server for GOV.UK's England and Wales list. */
+export async function fetchBankHolidayFeed() {
+  const { events } = await getJson('/api/admin/bank-holidays');
+  return events ?? [];
+}
+
+/** Admin: add several days at once (the ones the feed had and the list lacked). @param {{ day: string, name: string }[]} days */
+export async function addNonWorkingDays(days) {
+  if (!days.length) return 0;
+  const userId = await requireUserId();
+  await api.createMany('non_working_days', days.map((d) => ({ day: d.day, name: d.name, created_by: userId })));
+  return days.length;
 }
