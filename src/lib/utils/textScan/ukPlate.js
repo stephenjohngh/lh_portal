@@ -24,6 +24,26 @@ const TO_DIGIT_ALT = { E: '683', F: '7', H: '4', K: '4', N: '1', P: '9' };
 /** A current-format age identifier: 02–25 and 51–75 to 2025, 26 and 76 since March 2026. */
 const validAge = (d) => { const n = Number(d); return (n >= 2 && n <= 26) || (n >= 51 && n <= 76); };
 
+/** For an age identifier that cannot be real (an 8 or 9 in the tens, say: VK85
+ *  where the plate says VK65), the digits a reader mixes up with each digit, most
+ *  likely first. Only used when the reading as it stands is impossible. */
+const DIGIT_LOOKALIKES = { 0: '86', 1: '7', 2: '7', 3: '85', 4: '1', 5: '63', 6: '85', 7: '12', 8: '6035', 9: '80' };
+
+/**
+ * An impossible age identifier put right: the valid one needing fewest
+ * lookalike swaps (ties: the likelier swap), or null when none is within two.
+ * @param {string} d  two digits
+ */
+function fixAge(d) {
+  let best = null;
+  for (const a of d[0] + (DIGIT_LOOKALIKES[d[0]] ?? '')) for (const b of d[1] + (DIGIT_LOOKALIKES[d[1]] ?? '')) {
+    if (!validAge(a + b)) continue;
+    const swaps = (a !== d[0] ? 1 : 0) + (b !== d[1] ? 1 : 0);
+    if (!best || swaps < best.swaps) best = { digits: a + b, swaps };
+  }
+  return best;
+}
+
 const isLetter = (c) => c >= 'A' && c <= 'Z';
 const isDigit = (c) => c >= '0' && c <= '9';
 
@@ -57,7 +77,10 @@ export function fixUkPlate(raw) {
     for (let i = 0; i < v.length && ok; i++) {
       const c = v[i];
       if (pattern[i] === 'L') {
-        if (isLetter(c)) out += c;
+        // Q is never issued in a current-format plate (the age and area letters
+        // and the three at the end), so a Q there is an O the reader closed up.
+        if (c === 'Q' && format === 'current') { out += 'O'; changes += 0.25; }   // nearly free: it cannot be a Q
+        else if (isLetter(c)) out += c;
         else if (TO_LETTER[c]) { out += TO_LETTER[c]; changes++; } else ok = false;
       } else if (isDigit(c)) out += c;
       else if (TO_DIGIT[c]) { out += TO_DIGIT[c]; changes++; }
@@ -71,6 +94,11 @@ export function fixUkPlate(raw) {
         if (validAge(a + b)) { out = out.slice(0, 2) + a + b + out.slice(4); found = true; break pick; }
       }
       if (!found) ok = false;
+    }
+    if (ok && format === 'current' && !validAge(out.slice(2, 4))) {
+      // 85, 93… cannot be an age identifier: a lookalike digit is meant (VK65).
+      const fix = fixAge(out.slice(2, 4));
+      if (fix) { out = out.slice(0, 2) + fix.digits + out.slice(4); changes += fix.swaps * 0.25; }   // nearly free: the age was impossible as read
     }
     if (ok && (!best || changes < best.changes)) best = { value: out, format, changes };
   }

@@ -44,3 +44,27 @@ describe('a letter that is no digit but stands where one must be', () => {
     expect(fixUkPlate('DA67PJO')?.value).toBe('DA67PJO');
   });
 });
+
+describe('impossible readings put right (2026-10-26, plates VK65 SVG and DA67 PJO)', () => {
+  it('an age identifier that cannot be real takes the nearest lookalike that can: VK85 SVG is VK65 SVG', () => {
+    expect(fixUkPlate('VK85SVG').value).toBe('VK65SVG');
+    expect(fixUkPlate('VKB5SVG').value).toBe('VK65SVG');    // B read for the 6, then the 8 it stands for
+    expect(fixUkPlate('DA87PJO').value).toBe('DA67PJO');
+  });
+
+  it('leaves every real age identifier alone, 8 included (08, 18, 58 are real years)', () => {
+    for (const plate of ['AB08CDE', 'AB18CDE', 'AB58CDE', 'BD51SMR', 'AB26CDE', 'AB76CDE', 'AB02CDE']) {
+      expect(fixUkPlate(plate).value).toBe(plate);
+    }
+  });
+
+  it('a Q in a current-format letter slot is an O: DA67 PJQ is DA67 PJO', () => {
+    expect(fixUkPlate('DA67PJQ').value).toBe('DA67PJO');
+    expect(fixUkPlate('DQ67PJO').value).toBe('DO67PJO');
+  });
+
+  it('does not touch the older formats, where Q may belong to the plate', () => {
+    expect(fixUkPlate('A123QBC')?.value ?? 'A123QBC').toBe('A123QBC');
+  });
+});
+
