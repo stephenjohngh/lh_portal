@@ -17,6 +17,7 @@
 
 import { fmtDate } from '#lib/utils/dates.js';
 import { computeObligationSchedule, walkEventsFromSessions } from '#lib/utils/obligationSchedule.js';
+import { walkEventsWithCoverage } from '#lib/utils/walkCoverage.js';
 
 /**
  * @typedef {import('#lib/database.types.ts').Tables<'statutory_obligations'>} InspectionDefinition
@@ -44,6 +45,12 @@ import { computeObligationSchedule, walkEventsFromSessions } from '#lib/utils/ob
  * @param {Object} [opts]
  * @param {Date}   [opts.now]          reference time (injectable for tests)
  * @param {number} [opts.dueSoonDays]  window (days) counted as "due soon" (default: the plannedObligation window, dueWindows.js)
+ * @param {{ inspections: any[], scopeIdsByObligation: Record<string, Set<string>> }|null} [opts.coverage]
+ *        ⛔ EVERY REAL CALLER PASSES THIS. What each walk looked at and what each duty covers, so a walk of
+ *        7 of 104 components is not read as the duty done (`walkCoverage.js`). `null` = could not be loaded:
+ *        every walk is then an attempt and nothing reads as done. Left OUT, the old per-session rule
+ *        applies, which is kept only so the scheduler's own tests can pin it — `walkCoverageGuard.test.js`
+ *        fails a caller that omits it.
  * @returns {ScheduleState[]}          one entry per input definition, input order preserved
  */
 export function computeInspectionSchedule(definitions, sessions, opts = {}) {
@@ -57,7 +64,14 @@ export function computeInspectionSchedule(definitions, sessions, opts = {}) {
   // Kept as its own export because "the inspection walk schedule" is a real,
   // narrower question three surfaces ask, and because every existing caller
   // passes sessions, not events.
-  return computeObligationSchedule(definitions, walkEventsFromSessions(sessions), opts);
+  const events = opts.coverage === undefined
+    ? walkEventsFromSessions(sessions)
+    : walkEventsWithCoverage({
+      sessions, obligations: definitions,
+      inspections: opts.coverage?.inspections ?? [],
+      scopeIdsByObligation: opts.coverage?.scopeIdsByObligation ?? {},
+    });
+  return computeObligationSchedule(definitions, events, opts);
 }
 
 /**

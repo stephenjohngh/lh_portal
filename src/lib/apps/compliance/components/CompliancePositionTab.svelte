@@ -31,12 +31,12 @@
   // ⭐ This app's own tables. They used to be read through
   // `inspection/public.js`, which was an ownership inversion left behind by
   // migration 206 — see compliance/public.js.
-  import { listPlannedObligations, listStatutoryExclusions } from '../public.js';
+  import { listPlannedObligations, listStatutoryExclusions, loadWalkCoverage, walkEvents } from '../public.js';
   import { listComponentsByStatus, listWorksLinesFor } from '#lib/apps/building_assets/public.js';
   import { correctiveSummary, faultLabel, FAULT_STATUSES } from '../utils/correctiveWork.js';
   import { permissions } from '#lib/stores/permissions.js';
   import { requestDownload } from '#lib/utils/download.js';
-  import { walkEventsFromSessions, jobEventsFromJobs } from '#lib/utils/obligationSchedule.js';
+  import { jobEventsFromJobs } from '#lib/utils/obligationSchedule.js';
   import {
     compliancePosition, positionSummary, filterRows, sortRows, groupRows,
     evidenceHistory, SORTS, SORT_LABEL, ROW_STATUS, ROW_STATUS_LABEL,
@@ -74,6 +74,8 @@
   let jobEvidenceNote = '';
   let exclusionsNote = '';
   let faultsAvailable = true;
+  /** What each walk covered and what each duty covers — null until read, or when it could not be. */
+  let coverage = null;
 
   $: canReadWalks = $permissions.isAdmin || Boolean($permissions.appPermissions?.inspection?.hasAccess);
   $: canReadJobs  = $permissions.isAdmin || Boolean($permissions.appPermissions?.maintenance?.hasAccess);
@@ -100,6 +102,14 @@
     if (canReadWalks) {
       try {
         sessions = await listWalkSessions();
+        // A duty is judged against ALL it covers, across sessions and days.
+        // ⛔ Without this every walk reads as an attempt: safe, never a quiet pass.
+        try {
+          coverage = await loadWalkCoverage(obligations, sessions);
+        } catch (/** @type {any} */ err) {
+          walkEvidenceNote = 'What each walk covered could not be loaded, so inspection walks below read as attempts only, and nothing shows as completed by a walk.';
+          logger('⚠ walk coverage unavailable:', err.message);
+        }
       } catch (/** @type {any} */ err) {
         walkEvidenceNote = 'Inspection evidence could not be loaded, so walk-evidenced compliance obligations below show only what jobs prove.';
         logger('⚠ walk sessions unavailable:', err.message);
@@ -158,7 +168,7 @@
   let showFaults = false;
 
   // -- The two reports ---------------------------------------------------------
-  $: events = [...walkEventsFromSessions(sessions), ...jobEventsFromJobs(jobs)];
+  $: events = [...walkEvents(obligations, sessions, coverage), ...jobEventsFromJobs(jobs)];
   $: allRows = compliancePosition({ obligations, events, exclusions });
 
   let report = 'position';        // 'position' | 'history'

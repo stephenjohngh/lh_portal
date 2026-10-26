@@ -150,14 +150,14 @@ describe('TextScanner', () => {
     let streams = 0;
     const fakeStream = () => ({ getVideoTracks: () => [{ getCapabilities: () => ({}) }], getTracks: () => [{ stop: () => {} }] });
     Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => { streams++; return fakeStream(); } } });
-    h.text = 'ZZ99 ZZZ';                    // what the live camera keeps seeing
+    h.text = 'ZZ19 ZZZ';                    // what the live camera keeps seeing
     try {
       render(TextScanner, { props: { profile: 'registration', candidates: CANDIDATES } });
-      await waitFor(() => expect(screen.getByTestId('scan-seeing').textContent).toMatch(/ZZ99ZZZ/), { timeout: 3000 });
+      await waitFor(() => expect(screen.getByTestId('scan-seeing').textContent).toMatch(/ZZ19ZZZ/), { timeout: 3000 });
       h.text = 'AB12 CDE';                  // the photo
       await takePhoto();
       expect(await screen.findByRole('button', { name: /AB12 CDE/ })).toBeTruthy();
-      h.text = 'ZZ99 ZZZ';                  // live frames would read this again…
+      h.text = 'ZZ19 ZZZ';                  // live frames would read this again…
       const readsAfterPhoto = h.reads.length;
       await new Promise((r) => setTimeout(r, 1200));
       await tick();

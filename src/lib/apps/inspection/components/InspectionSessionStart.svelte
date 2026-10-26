@@ -12,6 +12,7 @@
   import { generateSessionName } from '../utils/sessionNaming.js';
   import { buildWalkComponentsFromScope } from '../utils/inspectionWalk.js';
   import { buildRotatingWalk } from '../utils/inspectionRotation.js';
+  import { walkScopeIds } from '../utils/walkScopeIds.js';
   import { lastDefinitionInspections } from '../public.js';
   import { buildComponentRef } from '#lib/utils/componentRef.js';
   import { computeInspectionSchedule, sortByDisplayOrder, scheduleDueText } from '#lib/utils/inspectionSchedule.js';
@@ -62,9 +63,15 @@
   // in the position the admin put it. Each row still shows its own due state.
   // The window comes from the store, not the default: on /inspection the
   // settings may arrive after this list is first drawn, and it must redraw.
+  // A duty is judged against everything it covers, across walks and days — a
+  // walk of one floor is not the duty done (walkCoverage.js).
+  $: scheduleCoverage = {
+    inspections: $inspectionStore.scheduleInspections ?? [],
+    scopeIdsByObligation: walkScopeIds(definitions, Object.values(allComponents).flat(), scopeCtx),
+  };
   $: schedStates = sortByDisplayOrder(computeInspectionSchedule(
     definitions, $inspectionStore.scheduleSessions ?? [],
-    { dueSoonDays: $portalSettings.windows.plannedObligation },
+    { dueSoonDays: $portalSettings.windows.plannedObligation, coverage: scheduleCoverage },
   ));
   $: selectedDefinition = definitions.find(d => d.id === selectedDefinitionId) ?? null;
   // ctx for the shared scope filter engine — same shape the walk builder uses,

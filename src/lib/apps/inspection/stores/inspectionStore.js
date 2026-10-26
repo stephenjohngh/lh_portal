@@ -138,6 +138,7 @@ function audit(eventType, targetType, targetId, targetName, data = {}) {
  *   componentLinks: Record<string, (import('#lib/database.types.ts').Tables<'component_links'> & Loose)[]>,
  *   definitions: (import('#lib/database.types.ts').Tables<'statutory_obligations'> & Loose)[],
  *   scheduleSessions: WalkSession[],
+ *   scheduleInspections: Array<{walk_session_id: string, component_id: string, inspection_result: string, inspected_at: string|null}>,
  *   latestInspections: Record<string, Inspection>,
  *   sessions: WalkSession[],
  *   activeSession: WalkSession | null,
@@ -175,6 +176,7 @@ const INITIAL_STATE = {
   // sessions that drive their due/overdue state (computeInspectionSchedule).
   definitions:      [],      // statutory_obligations rows
   scheduleSessions: [],      // closed walk_sessions (lite rows: id, definition_id, status, closed_at)
+  scheduleInspections: [],   // what those walks looked at — judges a duty's coverage across walks
   latestInspections: {},     // { componentId: latest component_inspections row } — lazy, for
                              // definition scopes with condition-attribute filters
 
@@ -361,13 +363,22 @@ function createInspectionStore() {
           ascending: false,
         }),
       ]);
-      update(s => ({ ...s, definitions, scheduleSessions }));
-      void cachePut(CACHE_KEY_DEFS, { definitions, scheduleSessions });
+      // What each of those walks actually looked at: a duty is judged against
+      // everything it covers, across sessions and days, not by one walk's own
+      // components (walkCoverage.js). Every page and every session.
+      const sessionIds = scheduleSessions.filter(s => s.definition_id).map(s => s.id);
+      const scheduleInspections = sessionIds.length
+        ? await api.getAllIn('component_inspections', 'walk_session_id', sessionIds, {
+          select: 'walk_session_id, component_id, inspection_result, inspected_at, created_at',
+        })
+        : [];
+      update(s => ({ ...s, definitions, scheduleSessions, scheduleInspections }));
+      void cachePut(CACHE_KEY_DEFS, { definitions, scheduleSessions, scheduleInspections });
       logger('✅ definitions loaded:', definitions.length);
     } catch (/** @type {any} */ err) {
       logger('⚠ definitions load (non-fatal), trying cache:', err.message);
       const cached = await cacheGet(CACHE_KEY_DEFS);
-      if (cached) update(s => ({ ...s, definitions: cached.data.definitions ?? [], scheduleSessions: cached.data.scheduleSessions ?? [] }));
+      if (cached) update(s => ({ ...s, definitions: cached.data.definitions ?? [], scheduleSessions: cached.data.scheduleSessions ?? [], scheduleInspections: cached.data.scheduleInspections ?? [] }));
     }
   }
 

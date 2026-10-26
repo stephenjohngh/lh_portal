@@ -25,7 +25,12 @@ vi.mock('#lib/utils/api.js', () => ({
 vi.mock('#lib/supabaseClient.js', () => ({ supabase: {} }));
 vi.mock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', { PUBLIC_SUPABASE_URL: 'http://x', PUBLIC_SUPABASE_ANON_KEY: 'k' }));
 vi.mock('#lib/apps/compliance/stores/inspectionDefinitionsStore.js', () => ({ inspectionDefinitionsStore: {} }));
-vi.mock('#lib/apps/inspection/public.js', () => ({ listWalkSessions: vi.fn(async () => []) }));
+vi.mock('#lib/apps/inspection/public.js', () => ({ listWalkSessions: vi.fn(async () => []), listWalkInspections: vi.fn(async () => []) }));
+vi.mock('#lib/apps/building_assets/stores/buildingAssetsStore.js', () => {
+  const state = { floors: [{ id: 'f' }], components: [{ id: 'c' }], types: [], attrDefs: {}, componentAttrs: {}, inspections: {}, error: null };
+  return { buildingAssetsStore: { subscribe: (run) => { run(state); return () => {}; }, load: async () => {}, loadComponents: async () => {} } };
+});
+vi.mock('#lib/apps/inspection/utils/walkScopeIds.js', () => ({ walkScopeIds: () => ({}) }));
 
 import { listWorksDue } from '#lib/apps/building_assets/public.js';
 import { listUnaddressedFaults } from '#lib/apps/compliance/public.js';

@@ -19,6 +19,8 @@
 
   export let definitions = [];   // active statutory_obligations rows
   export let sessions    = [];   // walk_sessions (only closed ones with a definition_id contribute)
+  /** loadWalkCoverage()'s answer, or null when it could not be read (walks then read as attempts only). */
+  export let coverage    = null;
   /** Components still awaiting access, from listComponentsAwaitingAccess() (G13).
    *  A completed run can hide unobserved components — this is what stops a
    *  definition reading a clean "OK" while a locked door has never been seen. */
@@ -29,7 +31,7 @@
   // Display order (Compliance → Planned obligations), so this panel, the mobile start list
   // and the Inspections filter all show the same sequence. Urgency still reads
   // off each row's band + due text, and the "N due" count summarises it.
-  $: states = sortByDisplayOrder(computeInspectionSchedule(definitions, sessions));
+  $: states = sortByDisplayOrder(computeInspectionSchedule(definitions, sessions, { coverage }));
   $: dueCount = states.filter(s => s.overdue).length;
 
   // -- Rotating: derive the next trigger ("Next: G/CP/03") -------------------

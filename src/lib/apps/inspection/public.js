@@ -60,6 +60,24 @@ export async function lastDefinitionInspections(definitionId) {
 }
 
 /**
+ * What each CLOSED, duty-driven walk actually looked at: one row per recorded
+ * result, enough to judge a duty's coverage across sessions and days.
+ * ⛔ Every page and every session — a truncated read would make a finished
+ * round read as partial, and a partial one as never done.
+ * @param {Array<{id: string, status?: string, definition_id?: string|null}>} sessions
+ * @returns {Promise<Array<{walk_session_id: string, component_id: string, inspection_result: string, inspected_at: string|null}>>}
+ */
+export async function listWalkInspections(sessions) {
+  const ids = (sessions ?? [])
+    .filter((s) => s.status === 'closed' && s.definition_id)
+    .map((s) => s.id);
+  if (ids.length === 0) return [];
+  return api.getAllIn('component_inspections', 'walk_session_id', ids, {
+    select: 'walk_session_id, component_id, inspection_result, inspected_at, created_at',
+  });
+}
+
+/**
  * All walk sessions, newest first, with the inspector's name joined. The
  * cross-app read for Compliance → Inspection walks and the compliance position
  * report (the Inspection app's

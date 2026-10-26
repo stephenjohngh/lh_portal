@@ -60,7 +60,7 @@
   // ⛔ Planned obligations come from the Compliance app, which owns
   // `statutory_obligations`. They used to be served by inspection/public.js —
   // an ownership inversion left behind when migration 206 renamed the table.
-  import { listPlannedObligations } from '#lib/apps/compliance/public.js';
+  import { listPlannedObligations, loadWalkCoverage } from '#lib/apps/compliance/public.js';
   import { isWalkEvidenced } from '#lib/utils/obligationEvidence.js';
 
   const logger = getLogger('InspectionWalksTab');
@@ -197,6 +197,30 @@
     }
   }
 
+  // What each walk covered, and what each duty covers — a duty is judged against
+  // ALL of it, across sessions and days, not by one walk's own components
+  // (walkCoverage.js). Until it has been read the due panel is not drawn: "never
+  // run" before the read would be a wrong answer, not an empty one.
+  let coverage = null;
+  let coverageReady = false;
+  let coverageFor = '';
+  $: coverageKey = `${sessions.length}:${definitions.length}`;
+  $: if ($permissions.isAdmin && !loading && definitions.length && coverageFor !== coverageKey) {
+    loadCoverage(coverageKey);
+  }
+  async function loadCoverage(key) {
+    coverageFor = key;
+    try {
+      coverage = await loadWalkCoverage(definitions, sessions);
+    } catch (/** @type {any} */ err) {
+      logger('❌ loadCoverage:', err.message);
+      coverage = null;
+      dueUnavailable = [...dueUnavailable, 'what each walk covered, so a walk reads as an attempt only'];
+    } finally {
+      coverageReady = true;
+    }
+  }
+
   async function loadAwaitingAccess() {
     try {
       awaitingAccess = await listComponentsAwaitingAccess();
@@ -283,7 +307,11 @@
         ⚠ Could not read {dueUnavailable.join(' or ')}, so what is due is not shown in full. Reload to try again.
       </p>
     {/if}
-    <UpcomingInspections definitions={activeDefs} {sessions} {awaitingAccess} />
+    {#if coverageReady || definitions.length === 0}
+      <UpcomingInspections definitions={activeDefs} {sessions} {awaitingAccess} {coverage} />
+    {:else}
+      <LoadingSpinner text="Working out what is due…" />
+    {/if}
   {/if}
 
   <!-- -- Toolbar ------------------------------------------------------------ -->

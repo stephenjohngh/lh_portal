@@ -10,7 +10,13 @@ vi.mock('#lib/utils/api.js', () => ({
   api: (() => { const get = vi.fn(async () => h.obligations); return { get, getAll: get }; })(),
 }));
 vi.mock('./stores/inspectionDefinitionsStore.js', () => ({ inspectionDefinitionsStore: {} }));
-vi.mock('#lib/apps/inspection/public.js', () => ({ listWalkSessions: vi.fn(async () => h.sessions) }));
+vi.mock('#lib/apps/inspection/public.js', () => ({ listWalkSessions: vi.fn(async () => h.sessions), listWalkInspections: vi.fn(async () => []) }));
+vi.mock('#lib/apps/building_assets/stores/buildingAssetsStore.js', () => {
+  const state = { floors: [{ id: 'f' }], components: [{ id: 'c' }], types: [], attrDefs: {}, componentAttrs: {}, inspections: {}, error: null };
+  return { buildingAssetsStore: { subscribe: (run) => { run(state); return () => {}; }, load: async () => {}, loadComponents: async () => {} } };
+});
+vi.mock('#lib/apps/inspection/utils/walkScopeIds.js', () => ({ walkScopeIds: () => ({}) }));
+
 vi.mock('#lib/apps/maintenance/public.js', () => ({
   listJobEvidence: vi.fn(async () => { if (h.jobsFail) throw new Error('boom'); return h.jobs; }),
 }));

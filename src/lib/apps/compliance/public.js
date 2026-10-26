@@ -21,11 +21,15 @@
 
 import { api } from '#lib/utils/api.js';
 import { inspectionDefinitionsStore } from './stores/inspectionDefinitionsStore.js';
-import { listWalkSessions } from '#lib/apps/inspection/public.js';
+import { get } from 'svelte/store';
+import { listWalkSessions, listWalkInspections } from '#lib/apps/inspection/public.js';
+import { buildingAssetsStore } from '#lib/apps/building_assets/stores/buildingAssetsStore.js';
+import { walkScopeIds } from '#lib/apps/inspection/utils/walkScopeIds.js';
 import { listJobEvidence } from '#lib/apps/maintenance/public.js';
 import {
-  computeObligationSchedule, walkEventsFromSessions, jobEventsFromJobs,
+  computeObligationSchedule, jobEventsFromJobs,
 } from '#lib/utils/obligationSchedule.js';
+import { walkEventsWithCoverage } from '#lib/utils/walkCoverage.js';
 import { currentDecisions } from '#lib/utils/statutoryExclusions.js';
 import { templateEntry } from '#lib/utils/statutoryTemplate.js';
 import { listComponentsByStatus, listWorksLinesFor } from '#lib/apps/building_assets/public.js';
@@ -61,6 +65,49 @@ export function listPlannedObligations({ activeOnly = false } = {}) {
 }
 
 /**
+ * Everything needed to judge a walk-evidenced duty against ALL it covers: what
+ * each walk looked at, and what each duty's scope resolves to. A walk that
+ * checked everything in ITS session is not the same as the duty being done —
+ * see `#lib/utils/walkCoverage.js`.
+ *
+ * ⛔ Rejects rather than returning a partial answer: coverage judged without the
+ * components would call every duty never done, and without the results would
+ * call a finished round partial.
+ *
+ * @param {Array<any>} obligations
+ * @param {Array<any>} sessions     from listWalkSessions()
+ * @returns {Promise<{ inspections: any[], scopeIdsByObligation: Record<string, Set<string>> }>}
+ */
+export async function loadWalkCoverage(obligations, sessions) {
+  const inspections = await listWalkInspections(sessions);
+
+  if (!get(buildingAssetsStore).floors.length) await buildingAssetsStore.load();
+  if (!get(buildingAssetsStore).components.length) await buildingAssetsStore.loadComponents();
+  const bas = get(buildingAssetsStore);
+  if (!bas.components.length) {
+    throw new Error(bas.error || 'the components could not be read');
+  }
+  const scopeIdsByObligation = walkScopeIds(obligations, bas.components, {
+    types: bas.types, attrDefs: bas.attrDefs,
+    componentAttrs: bas.componentAttrs, inspections: bas.inspections,
+  });
+  return { inspections, scopeIdsByObligation };
+}
+
+/**
+ * Walk evidence events for the schedule. `coverage` is loadWalkCoverage's
+ * answer, or null when it could not be loaded — in which case every walk is an
+ * ATTEMPT and nothing reads as done, which is the safe way to be wrong.
+ */
+export function walkEvents(obligations, sessions, coverage) {
+  return walkEventsWithCoverage({
+    sessions, obligations,
+    inspections: coverage?.inspections ?? [],
+    scopeIdsByObligation: coverage?.scopeIdsByObligation ?? {},
+  });
+}
+
+/**
  * When each SWITCHED-ON planned obligation is next due — one row per
  * obligation, from the same scheduler and the same evidence the compliance
  * position report uses. This is the ONE place that answers "what is due"; the
@@ -92,7 +139,8 @@ export async function listObligationDueDates() {
     listJobEvidence(),
   ]);
   const live = (obligations ?? []).filter((o) => !o.retired_on);
-  const events = [...walkEventsFromSessions(sessions), ...jobEventsFromJobs(jobs)];
+  const coverage = await loadWalkCoverage(live, sessions);
+  const events = [...walkEvents(live, sessions, coverage), ...jobEventsFromJobs(jobs)];
   return computeObligationSchedule(live, events).map((st) => ({
     id: st.definition.id,
     name: st.definition.name,
