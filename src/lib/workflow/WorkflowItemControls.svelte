@@ -372,7 +372,7 @@
   {#if item && fields.length}
     <div class="space-y-2 border-t border-slate-700 pt-3" data-testid="wf-fields">
       {#if canEdit}
-        {#each fields as f (f.key)}<FieldInput field={f} bind:value={draft[f.key]} {links} itemId={item.id} />{/each}
+        {#each fields as f (f.key)}<FieldInput field={f} bind:value={draft[f.key]} {links} itemId={item.id} unsaved={f.key in changes} />{/each}
         <div class="flex gap-2">
           <Button size="small" variant="primary" disabled={!fieldsDirty || !!busy} loading={busy === 'fields'} on:click={saveFields}>Save fields</Button>
           <Button size="small" variant="secondary" disabled={!fieldsDirty || !!busy} on:click={() => (draft = fieldDraft(fields, item?.fields ?? {}))}>Undo</Button>

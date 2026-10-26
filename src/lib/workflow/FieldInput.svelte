@@ -25,6 +25,12 @@
   // against the item; the field's value is that document's id.
   let docName = '';
   let docNote = '';
+  const PENDING = 'Attached — press Save fields to keep it.';
+  /** True while the parent still holds this field's value unsaved; once saved, the "press Save" note must go. */
+  export let unsaved = true;
+  let wasUnsaved = unsaved;
+  // Only on the change from unsaved to saved — not before the parent has noticed the new value.
+  $: { if (wasUnsaved && !unsaved && docNote === PENDING) docNote = ''; wasUnsaved = unsaved; }
   let docBusy = false;
   let docFor = '';
   $: if (field.type === 'document' && itemId && value && `${itemId}:${value}` !== docFor) { docFor = `${itemId}:${value}`; readDoc(); }
@@ -49,7 +55,7 @@
       const row = await uploadDocument(file, { entity_type: 'workflow_item', entity_id: itemId, display_name: file.name,
         folder_path: folderPath, category: 'evidence' });
       value = row.id;
-      docNote = 'Attached — press Save fields to keep it.';
+      docNote = PENDING;
     } catch (err) { docNote = errMessage(err, 'The file could not be attached.'); }
     finally { docBusy = false; input.value = ''; }
   }
