@@ -158,6 +158,21 @@ describe('completeJob', () => {
     expect(nextCreate).toMatchObject({ obligation_id: 'reg1', status: 'scheduled', scheduled_date: '2026-01-31' }); // +30 days
   });
 
+  it('links to the next job the generator already made instead of making a second', async () => {
+    h.setObligations([{ id: 'reg1', name: 'Service', frequency_days: 30, evidenced_by: 'maintenance_job' }]);
+    h.setTables({ maintenance_jobs: [
+      { id: 'j1', obligation_id: 'reg1', title: 'Service', scheduled_date: '2026-01-01', status: 'scheduled' },
+      { id: 'j2', obligation_id: 'reg1', title: 'Service', scheduled_date: '2026-01-31', status: 'scheduled' },
+    ] });
+    await maintenanceStore.load();
+    h.setUpdateExtra({ obligation_id: 'reg1', title: 'Service' });
+
+    await maintenanceStore.completeJob('j1', { result: 'pass', completedDate: '2026-01-01', createNextJob: true });
+
+    expect(jobCreates()).toHaveLength(0);
+    expect(lastJobUpdate()).toMatchObject({ next_job_id: 'j2' });
+  });
+
   it('does NOT spawn a recurrence when the job has no obligation link', async () => {
     h.setUpdateExtra({});   // no obligation_id on the returned row
     await maintenanceStore.completeJob('j1', { result: 'pass', completedDate: '2026-01-01', createNextJob: true });

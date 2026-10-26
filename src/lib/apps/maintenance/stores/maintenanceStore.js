@@ -418,21 +418,35 @@ function createMaintenanceStore() {
           : null;
         const scheduledDate  = nextJobDate || calculatedDate;
 
-        nextJob = await api.create('maintenance_jobs', {
-          obligation_id:      updated.obligation_id,
-          scope_type:     updated.scope_type,
-          scope_id:       updated.scope_id,
-          scope_label:    updated.scope_label,
-          title:          updated.title,
-          description:    updated.description,
-          scheduled_date: scheduledDate,
-          status:         'scheduled',
-          created_by:     userId,
-        }, true);
+        // ⚠ The bulk generator may already have made this very job (it makes one
+        // per interval ahead). Link to it rather than making a second.
+        const already = get({ subscribe }).jobs.find(j =>
+          j.id !== id && j.obligation_id === updated.obligation_id
+          && j.scheduled_date === scheduledDate && j.status === 'scheduled'
+          && (j.scope_type ?? null) === (updated.scope_type ?? null)
+          && (j.scope_id ?? null) === (updated.scope_id ?? null));
 
-        await api.update('maintenance_jobs', id, { next_job_id: nextJob.id, updated_by: userId });
-        updated.next_job_id = nextJob.id;
-        logger('✅ Created next recurrence:', scheduledDate);
+        if (already) {
+          await api.update('maintenance_jobs', id, { next_job_id: already.id, updated_by: userId });
+          updated.next_job_id = already.id;
+          logger('✅ Next recurrence already scheduled:', scheduledDate);
+        } else {
+          nextJob = await api.create('maintenance_jobs', {
+            obligation_id:      updated.obligation_id,
+            scope_type:     updated.scope_type,
+            scope_id:       updated.scope_id,
+            scope_label:    updated.scope_label,
+            title:          updated.title,
+            description:    updated.description,
+            scheduled_date: scheduledDate,
+            status:         'scheduled',
+            created_by:     userId,
+          }, true);
+
+          await api.update('maintenance_jobs', id, { next_job_id: nextJob.id, updated_by: userId });
+          updated.next_job_id = nextJob.id;
+          logger('✅ Created next recurrence:', scheduledDate);
+        }
       }
     }
 

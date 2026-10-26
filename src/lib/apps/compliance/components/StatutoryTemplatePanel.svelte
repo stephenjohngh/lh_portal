@@ -598,8 +598,9 @@
       {#if collisions.length}
         <div class="collision">
           <p class="collision-h">
-            {collisions.length} compliance obligation{collisions.length === 1 ? '' : 's'} changed in
-            the application, and {collisions.length === 1 ? 'was' : 'were'} also edited here
+            {collisions.length} compliance obligation{collisions.length === 1 ? '' : 's'}
+            {collisions.length === 1 ? 'was' : 'were'} edited here and
+            {collisions.length === 1 ? 'differs' : 'differ'} from the standard register
           </p>
           <p>
             Nothing has been overwritten. Open each one and pick the wording that is right
