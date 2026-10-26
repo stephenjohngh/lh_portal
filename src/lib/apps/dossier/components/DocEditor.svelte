@@ -196,6 +196,23 @@
    */
   export function skipScrollRestoreOnce() { skipRestore = true; }
 
+  /**
+   * Show the current page's stored content again. A restore rewrites the page
+   * in the store, but the swap above runs only when the page's id changes, so
+   * without this the editor kept the text from before the restore (and the next
+   * autosave could write it back over what had just been restored).
+   */
+  export function reloadFromDoc() {
+    if (!editor || !doc || doc.id !== loadedDocId) return;
+    clearTimeout(timer);
+    timer = null;
+    swapping = true;
+    dirty = false;
+    pendingFor = null;
+    editor.commands.setContent(doc.blocks ?? EMPTY_DOC, { emitUpdate: false });
+    swapping = false;
+  }
+
   async function swapDoc(next) {
     const nextId = next.id;
     dbg('page swap', { from: loadedDocId, to: nextId });

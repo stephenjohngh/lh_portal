@@ -129,8 +129,8 @@
         </div>
 
         <p class="text-xs text-slate-500">
-          The full message text goes into the Summary column, where you can
-          shorten it. Nothing is thrown away here.
+          The subject goes into Subject / summary, where you can reword it. The
+          full message is kept in full on its own line beneath each entry.
         </p>
       {/if}
     {/if}

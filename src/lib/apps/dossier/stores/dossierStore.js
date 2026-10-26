@@ -27,6 +27,7 @@ import { generateToken, hashToken, tokenPrefix } from '../utils/publicationToken
 import { hashPassphrase } from '../utils/publicationPassphrase.js';
 import { storeLoader } from '#lib/utils/storeLoad.js';
 import { policy } from '#lib/utils/policies.js';
+import { fmtDateTime } from '#lib/utils/dates.js';
 
 const logger = getLogger('dossierStore');
 
@@ -868,7 +869,7 @@ function createDossierStore() {
   async function restoreRevision(docId, revision, userId) {
     const doc = await saveDocBlocks(docId, revision.blocks, userId, {
       force: true,
-      summary: `Restored the version from ${new Date(revision.created_at).toISOString()}`,
+      summary: `Restored the version from ${fmtDateTime(revision.created_at)}`,
     });
     logAudit('restore', 'dossier_doc', docId, doc.title, {
       appId: 'dossier', eventCategory: 'dossier', severity: 'info',

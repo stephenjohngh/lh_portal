@@ -602,6 +602,8 @@
     try {
       await dossierStore.restoreRevision(docId, revision, $auth.user.id);
       revisions = await dossierStore.loadRevisions(docId);
+      // The editor shows the page it loaded; make it show the restored one.
+      if (selectedId === docId) editorRef?.reloadFromDoc();
       historyModalRef?.done();
       showHistory = false;
     } catch (/** @type {any} */ err) {
