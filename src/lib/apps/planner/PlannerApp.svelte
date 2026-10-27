@@ -199,7 +199,9 @@
   // The agenda answers "what should I be doing"; the year answers "what does
   // this year look like". They are different questions, and a wallplanner that
   // could only answer the second would not be much use on a Monday morning.
-  let view = 'agenda';
+  // Opens on the year: the wallplanner is the picture of the building's year, and
+  // the agenda is one click away. (Year, Month, Agenda, in that order.)
+  let view = 'year';
   let year = Number(now.slice(0, 4));
   let month = Number(now.slice(5, 7));
   let selectedDay = null;
@@ -483,7 +485,7 @@
     </div>
 
     <div class="flex rounded border border-slate-600 overflow-hidden text-xs shrink-0">
-      {#each [['agenda', 'Agenda'], ['month', 'Month'], ['year', 'Year']] as [key, label]}
+      {#each [['year', 'Year'], ['month', 'Month'], ['agenda', 'Agenda']] as [key, label]}
         <button type="button"
                 class="px-2.5 py-1 transition-colors
                        {view === key ? 'bg-purple-600 text-white'
@@ -682,8 +684,11 @@
     </div>
 
   {:else if view === 'year'}
-    <!-- ── The wallplanner ─────────────────────────────────────────────── -->
-    <div class="space-y-3">
+    <!-- ── The wallplanner ───────────────────────────────────────────────
+         The chart on the left; the day clicked, with its events, on the right
+         (underneath on a narrow window). -->
+    <div class="flex flex-col lg:flex-row gap-4 items-start">
+    <div class="min-w-0 flex-1 space-y-3 w-full">
       <!-- Fullscreen is not just more room around the chart: `fit` makes the
            chart take the room. -->
       <YearGrid
@@ -717,8 +722,9 @@
           Those are marked ↗ and are completed where they live.
         </p>
       {/if}
+    </div>
 
-
+    <aside class="w-full lg:w-72 xl:w-80 shrink-0 space-y-3" aria-label="The selected day">
       {#if selectedDay}
         <div class="border border-slate-700 rounded p-3 bg-slate-800/40">
           <div class="flex items-center gap-2 mb-2">
@@ -764,6 +770,7 @@
       {:else}
         <p class="text-xs text-slate-600">Click a day to see what is on it.</p>
       {/if}
+    </aside>
     </div>
 
   {:else}
