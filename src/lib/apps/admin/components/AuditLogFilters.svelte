@@ -92,10 +92,6 @@
       case 'auth':     filters.eventCategory = 'auth';     break;
       case 'critical': filters.severity      = 'critical'; break;
       case 'flagged':  filters.flaggedOnly   = true;       break;
-      case 'assets':   filters.appId         = 'building_assets'; break;
-      case 'management': filters.appId        = 'management';       break;
-      case 'inspection': filters.appId       = 'inspection';      break;
-      case 'maintenance': filters.appId      = 'maintenance';     break;
     }
     dispatch('change');
   }
@@ -115,10 +111,6 @@
     <Button variant="secondary" size="small" on:click={() => setQuickFilter('week')}>Last 7 Days</Button>
     <Button variant="secondary" size="small" on:click={() => setQuickFilter('month')}>Last 30 Days</Button>
     <span class="text-muted mx-1">|</span>
-    <Button variant="secondary" size="small" on:click={() => setQuickFilter('assets')}>🏢 Assets</Button>
-    <Button variant="secondary" size="small" on:click={() => setQuickFilter('inspection')}>🚶 Inspection</Button>
-    <Button variant="secondary" size="small" on:click={() => setQuickFilter('maintenance')}>🔧 Maintenance</Button>
-    <Button variant="secondary" size="small" on:click={() => setQuickFilter('management')}>📋 Management</Button>
     <Button variant="secondary" size="small" on:click={() => setQuickFilter('auth')}>🔐 Auth</Button>
     <Button variant="secondary" size="small" on:click={() => setQuickFilter('critical')}>🔴 Critical</Button>
     <Button variant="secondary" size="small" on:click={() => setQuickFilter('flagged')}>🚩 Flagged</Button>
