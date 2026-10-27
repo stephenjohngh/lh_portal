@@ -12,7 +12,9 @@
   import RecurrenceFields from './RecurrenceFields.svelte';
   import { pickable } from '../utils/categories.js';
   import { isRecurring } from '../utils/recurrence.js';
-  import { today } from '#lib/utils/dates.js';
+  import { today, fmtDateLong } from '#lib/utils/dates.js';
+  import { STATUS } from '../utils/agenda.js';
+  import { categoryOf } from '../utils/categories.js';
   import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
 
@@ -30,6 +32,13 @@
    * its own start date, because that date is part of the pattern.
    */
   export let defaultDate = null;
+  /**
+   * The dated occurrence the pencil on a row was pressed for, if any. The form is
+   * about the series, but somebody pressing edit on one date also wants to move
+   * it, skip it or hand it to Maintenance — those are offered at the top, so the
+   * row carries one button instead of four.
+   */
+  export let occurrence = null;
 
   const dispatch = createEventDispatcher();
 
@@ -70,6 +79,11 @@
    * how much they are about to change.
    */
   $: editingSeries = !!event && isRecurring(event.recurrence);
+  $: skipped = occurrence?.status === STATUS.SKIPPED;
+  $: canPromote = !!occurrence && !!categoryOf(event?.category, categories).hands_to_maintenance;
+
+  /** An action on the one date: the parent does it, and closes this. */
+  function onDate(action) { dispatch('occurrence', { action, occurrence }); }
 
   $: token = !show ? null : (event?.id ?? `new:${defaultDate ?? ''}`);
   $: if (token && token !== loadedFor) {
@@ -168,6 +182,22 @@
   <div class="planner-form space-y-2.5 max-h-[calc(100vh-16rem)] overflow-y-auto pr-1">
     {#if error}
       <ErrorDisplay message={error} onDismiss={() => error = ''} />
+    {/if}
+
+    {#if occurrence && event}
+      <div class="flex flex-wrap items-center gap-2 p-2 rounded border border-slate-700 bg-slate-800/40"
+           data-testid="this-date">
+        <span class="text-xs text-slate-400">
+          {editingSeries ? 'Just this date' : 'This event'} — {fmtDateLong(occurrence.date)}:
+        </span>
+        <Button variant="tertiary" size="xs" on:click={() => onDate('move')}>Move to another date</Button>
+        <Button variant="tertiary" size="xs" on:click={() => onDate('skip')}>
+          {skipped ? (editingSeries ? 'Un-skip' : 'Reinstate') : (editingSeries ? 'Skip' : 'Mark as cancelled')}
+        </Button>
+        {#if canPromote}
+          <Button variant="tertiary" size="xs" on:click={() => onDate('promote')}>Hand to Maintenance</Button>
+        {/if}
+      </div>
     {/if}
 
     <FormInput label="Title" bind:value={title}

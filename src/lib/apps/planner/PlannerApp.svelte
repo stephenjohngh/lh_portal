@@ -27,6 +27,7 @@
   import FormSelect   from '#lib/components/common/FormSelect.svelte';
   import OccurrenceRow from './components/OccurrenceRow.svelte';
   import EventFormModal from './components/EventFormModal.svelte';
+  import EventDetailsModal from './components/EventDetailsModal.svelte';
   import AdminMenu from './components/AdminMenu.svelte';
   import PlannerPrint from './components/PlannerPrint.svelte';
   import './planner-print.css';
@@ -270,8 +271,25 @@
   let formRef;
   let error = '';
 
-  function newEvent()  { editing = null; formOpen = true; }
-  function editSeries(series) { editing = series; formOpen = true; }
+  /** The dated row the pencil was pressed on, so its date actions are offered in the form. */
+  let editingOccurrence = null;
+  /** The row clicked to read — everything about it, read-only. */
+  let detailOccurrence = null;
+  let detailOpen = false;
+
+  function newEvent()  { editing = null; editingOccurrence = null; formOpen = true; }
+  function editSeries(series) { editing = series; editingOccurrence = null; formOpen = true; }
+  function editOccurrence(occurrence) { editing = occurrence.series; editingOccurrence = occurrence; formOpen = true; }
+  function openDetails(occurrence) { detailOccurrence = occurrence; detailOpen = true; }
+
+  /** Move, skip or hand over the one date: the form closes and the usual dialog or action follows. */
+  function onDateAction(e) {
+    const { action, occurrence } = e.detail;
+    formOpen = false; editing = null; editingOccurrence = null;
+    if (action === 'move') requestMove({ detail: occurrence });
+    else if (action === 'skip') toggleSkip({ detail: occurrence });
+    else if (action === 'promote') requestPromote({ detail: occurrence });
+  }
 
   async function saveEvent(e) {
     const target = editing;                 // captured before the await
@@ -280,6 +298,7 @@
       else        await plannerStore.createEvent(e.detail, $auth.user.id);
       formOpen = false;
       editing = null;
+      editingOccurrence = null;
     } catch (err) {
       formRef?.fail(errMessage(err));
     }
@@ -669,10 +688,8 @@
                   categories={state.categories}
                   owners={$profiles.list}
                   on:toggle={toggleDone}
-                  on:skip={toggleSkip}
-                  on:move={requestMove}
-                  on:promote={requestPromote}
-                  on:editSeries={(e) => editSeries(e.detail)}
+                  on:open={(e) => openDetails(e.detail)}
+                  on:edit={(e) => editOccurrence(e.detail)}
                 />
               {/each}
             </div>
@@ -724,7 +741,7 @@
       {/if}
     </div>
 
-    <aside class="w-full lg:w-72 xl:w-80 shrink-0 space-y-3" aria-label="The selected day">
+    <aside class="w-full lg:w-60 shrink-0 space-y-3" aria-label="The selected day">
       {#if selectedDay}
         <div class="border border-slate-700 rounded p-3 bg-slate-800/40">
           <div class="flex items-center gap-2 mb-2">
@@ -736,15 +753,6 @@
               on:set={setDayMark}
               on:clear={clearDayMark}
             />
-            <div class="flex-1"></div>
-            <!-- Adding from the day panel, where somebody looking at a date
-                 already is. The form opens with this date filled in. -->
-            {#if canEdit}
-              <Button variant="tertiary" size="xs"
-                      on:click={newEvent}>+ Add event</Button>
-            {/if}
-            <button class="text-xs text-slate-500 hover:text-slate-300"
-                    on:click={() => selectedDay = null}>Close</button>
           </div>
 
           {#if dayItems.length}
@@ -756,10 +764,8 @@
                   categories={state.categories}
                   owners={$profiles.list}
                   on:toggle={toggleDone}
-                  on:skip={toggleSkip}
-                  on:move={requestMove}
-                  on:promote={requestPromote}
-                  on:editSeries={(e) => editSeries(e.detail)}
+                  on:open={(e) => openDetails(e.detail)}
+                  on:edit={(e) => editOccurrence(e.detail)}
                 />
               {/each}
             </div>
@@ -800,11 +806,8 @@
                     showLateness={bucket.key === 'overdue' && daysBetween(occurrence.date, now) > 0}
                     daysLate={daysBetween(occurrence.date, now)}
                     on:toggle={toggleDone}
-                    on:skip={toggleSkip}
-                    on:move={requestMove}
-                    on:promote={requestPromote}
-                  on:promote={requestPromote}
-                    on:editSeries={(e) => editSeries(e.detail)}
+                    on:open={(e) => openDetails(e.detail)}
+                    on:edit={(e) => editOccurrence(e.detail)}
                   />
                 {/each}
               </div>
@@ -825,13 +828,20 @@
   bind:this={formRef}
   bind:show={formOpen}
   event={editing}
+  occurrence={editingOccurrence}
   defaultDate={selectedDay}
   categories={state.categories}
   on:save={saveEvent}
   on:archive={archiveEvent}
   on:remove={removeEvent}
-  on:close={() => { formOpen = false; editing = null; }}
+  on:occurrence={onDateAction}
+  on:close={() => { formOpen = false; editing = null; editingOccurrence = null; }}
 />
+
+<EventDetailsModal bind:show={detailOpen} occurrence={detailOccurrence}
+  categories={state.categories} owners={$profiles.list} {canEdit}
+  on:edit={(e) => { detailOpen = false; editOccurrence(e.detail); }}
+  on:close={() => { detailOpen = false; }} />
 
 <ArchivedEventsModal bind:show={archivedOpen} events={state.events} categories={state.categories} {canEdit} today={now}
   on:restore={restoreEvent} />

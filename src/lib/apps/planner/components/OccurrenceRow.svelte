@@ -53,10 +53,9 @@
    * migration 184. An AGM or a set of accounts is not maintenance work, and a
    * button that makes a job out of one is an invitation to a mess.
    */
-  $: canPromote = !!category.hands_to_maintenance;
 </script>
 
-<div class="flex items-start gap-3 p-2.5 rounded border border-slate-700
+<div class="flex items-start gap-2.5 p-2.5 rounded border border-slate-700
             bg-slate-800/40 hover:bg-slate-800/70 transition-colors
             {done || skipped ? 'opacity-60' : ''}">
 
@@ -64,7 +63,7 @@
     <!-- No tick at all, rather than a disabled one. A disabled tick invites
          the question "why can I not"; a mark that is plainly not a control
          says this belongs elsewhere. -->
-    <span class="mt-0.5 w-5 h-5 shrink-0 rounded flex items-center justify-center
+    <span class="w-5 h-5 shrink-0 rounded flex items-center justify-center
                  text-[10px] text-slate-500 border border-slate-700"
           title="Owned by {occurrence.ownerApp}">↗</span>
   {:else}
@@ -72,7 +71,7 @@
        vanishes leaves the reader wondering where it went. -->
   <button
     type="button"
-    class="mt-0.5 w-5 h-5 shrink-0 rounded border flex items-center justify-center
+    class="w-5 h-5 shrink-0 rounded border flex items-center justify-center
            text-xs transition-colors
            {done ? 'bg-green-600 border-green-500 text-white'
                  : 'border-slate-500 text-transparent hover:border-green-500'}
@@ -83,10 +82,15 @@
   >✓</button>
   {/if}
 
-  <div class="min-w-0 flex-1">
-    <div class="flex items-baseline gap-2 flex-wrap">
+  <!-- Clicking the text (not the tick or the pencil) opens everything about it,
+       read-only. -->
+  <div class="min-w-0 flex-1 cursor-pointer" role="button" tabindex="0"
+       title="Show the details"
+       on:click={() => dispatch('open', occurrence)}
+       on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dispatch('open', occurrence); } }}>
+    <div class="flex items-center gap-2 flex-wrap min-h-[1.25rem]">
       <span class="w-1.5 h-1.5 rounded-full shrink-0 {category.dot}"></span>
-      <span class="text-sm text-white {done ? 'line-through' : ''}">{series?.title}</span>
+      <span class="text-sm leading-5 text-white {done ? 'line-through' : ''}">{series?.title}</span>
 
       {#if linked}
         <span class="text-[10px] px-1 rounded border {category.chip}">{occurrence.sourceLabel}</span>
@@ -135,25 +139,12 @@
     {/if}
   </div>
 
+  <!-- One pencil. Moving this date, skipping it and handing it to Maintenance
+       are inside the edit dialog, with the series, rather than a row of small
+       glyphs to tell apart. -->
   {#if canEdit && !linked}
-    <div class="flex items-center gap-1 shrink-0">
-      <button type="button" title={recurring ? 'Move this one to another date' : 'Move to another date'}
-              class="text-slate-600 hover:text-amber-300 text-xs px-1"
-              on:click={() => dispatch('move', occurrence)}>↦</button>
-      <button type="button"
-              title={skipped
-                ? (recurring ? 'Un-skip' : 'Reinstate')
-                : (recurring ? 'Skip this one' : 'Mark as cancelled')}
-              class="text-slate-600 hover:text-slate-300 text-xs px-1"
-              on:click={() => dispatch('skip', occurrence)}>⊘</button>
-      {#if canPromote}
-        <button type="button" title="Hand this to Maintenance"
-                class="text-slate-600 hover:text-sky-300 text-xs px-1"
-                on:click={() => dispatch('promote', occurrence)}>⇥</button>
-      {/if}
-      <button type="button" title={recurring ? 'Edit the series' : 'Edit this event'}
-              class="text-slate-600 hover:text-purple-300 text-xs px-1"
-              on:click={() => dispatch('editSeries', series)}>✎</button>
-    </div>
+    <button type="button" title={recurring ? 'Edit — this date or the series' : 'Edit this event'}
+            class="shrink-0 text-slate-500 hover:text-purple-300 text-sm px-1 leading-5"
+            on:click={() => dispatch('edit', occurrence)}>✎</button>
   {/if}
 </div>
