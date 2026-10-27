@@ -840,7 +840,7 @@
   show={showDeleteConfirm}
   title="Delete Activity"
   message={pendingDeleteDoc
-    ? `Delete this entry and its document, ${pendingDeleteDoc}? The file is removed from storage too. This cannot be undone.`
+    ? `Delete this entry and its document, ${pendingDeleteDoc}? The file is removed from storage too. This action cannot be undone.`
     : 'Are you sure you want to delete this entry? This action cannot be undone.'}
   confirmText="Delete"
   cancelText="Cancel"
@@ -876,8 +876,8 @@
   show={showLinkedDeleteConfirm}
   title="Delete linked action"
   message={pendingLinkedAction
-    ? `Delete the linked action "${pendingLinkedAction.action_text}"? This cannot be undone.`
-    : 'Delete this linked action? This cannot be undone.'}
+    ? `Delete the linked action "${pendingLinkedAction.action_text}"? This action cannot be undone.`
+    : 'Delete this linked action? This action cannot be undone.'}
   confirmText="Delete Action"
   cancelText="Cancel"
   danger={true}

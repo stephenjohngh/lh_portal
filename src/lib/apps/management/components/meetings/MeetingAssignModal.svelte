@@ -15,6 +15,7 @@
   plus all its visible (filtered) comments and actions in one click.
 -->
 <script>
+  import { getActionStatusLabel } from '#lib/utils/constants.js';
   import Modal           from '#lib/components/common/Modal.svelte';
   import Button          from '#lib/components/common/Button.svelte';
   import { meetingsStore } from '../../stores/meetingsStore';
@@ -356,7 +357,7 @@
                             </p>
                             <div class="flex items-center gap-2 flex-wrap text-[10px] text-slate-500 mt-0.5">
                               {#if a.name_text}<span>👤 {a.name_text}</span>{/if}
-                              {#if a.status}<span class="capitalize">{a.status}</span>{/if}
+                              {#if a.status}<span>{getActionStatusLabel(a.status)}</span>{/if}
                             </div>
                             {#if !isUntagged(a)}
                               <p class="text-[10px] text-amber-400">

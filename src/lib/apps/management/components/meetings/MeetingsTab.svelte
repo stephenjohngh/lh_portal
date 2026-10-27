@@ -525,7 +525,7 @@
   show={showDeleteConfirm}
   title="Delete meeting"
   message={pendingDeleteMeeting
-    ? `Delete "${pendingDeleteMeeting.title}"? Items tagged to it keep their content but lose the meeting tag. This cannot be undone.`
+    ? `Delete "${pendingDeleteMeeting.title}"? Items tagged to it keep their content but lose the meeting tag. This action cannot be undone.`
     : 'Delete this meeting?'}
   confirmText="Delete Meeting"
   cancelText="Cancel"

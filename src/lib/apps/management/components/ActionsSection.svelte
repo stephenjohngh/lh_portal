@@ -7,7 +7,7 @@
   import { auth }          from '#lib/stores/auth.js';
   import { canDeleteOwn }  from '#lib/utils/permissions.js';
   import { fmtDate, fmtDateTime, isOverdue, wasModified, toDateTimeLocal } from '#lib/utils/dates.js';
-  import { ACTION_STATUS, ACTION_STATUS_OPTIONS } from '#lib/utils/constants.js';
+  import { ACTION_STATUS, ACTION_STATUS_OPTIONS, getActionStatusLabel } from '#lib/utils/constants.js';
   import Icon from '#lib/components/icons/Icon.svelte';
   import Button from '#lib/components/common/Button.svelte';
   import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
@@ -312,7 +312,7 @@
                     </span>
                   {/if}
                   <span class="px-2 py-1 bg-purple-600/20 text-purple-300 rounded border border-purple-200 capitalize">
-                    {action.status}
+                    {getActionStatusLabel(action.status)}
                   </span>
 
                 </div>
@@ -392,7 +392,7 @@
 <ConfirmDialog
   show={showDeleteConfirm}
   title="Delete Action"
-  message="Are you sure you want to delete this action? This cannot be undone."
+  message="Are you sure you want to delete this action? This action cannot be undone."
   confirmText="Delete"
   cancelText="Cancel"
   danger={true}

@@ -1,7 +1,7 @@
 <!-- src/lib/apps/management/components/reports/ReportIssueCard.svelte -->
 <script>
   import { sanitizeHtml } from '#lib/utils/sanitizeHtml.js';
-  import { getPriorityLabel, ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG } from '#lib/utils/constants.js';
+  import { getPriorityLabel, getActionStatusLabel, ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG } from '#lib/utils/constants.js';
   import { fmtDate, isOverdue, wasModified } from '#lib/utils/dates.js';
   import { buildFieldSummary, formatTimestamp, STATUS_COLORS } from './reportUtils';
 
@@ -72,7 +72,7 @@
         {/if}
         <div class="text-xs text-gray-600">
           Created: {formatTimestamp(issue.created_at, issue.updated_at)}
-          • Priority: {issue.priority}
+          • Priority: {getPriorityLabel(issue.priority).label}
           {#if sortedActions.length > 0}
             • {sortedActions.length} {sortedActions.length === 1 ? 'action' : 'actions'}
           {/if}
@@ -214,7 +214,7 @@
                       📅 Due: {fmtDate(action.date_deadline)}{#if isOverdue(action.date_deadline)} ⚠️{/if}
                     </span>
                   {/if}
-                  <span class="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded border border-purple-200 capitalize">{action.status}</span>
+                  <span class="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded border border-purple-200 ">{getActionStatusLabel(action.status)}</span>
                 </div>
                 <p class="text-xs text-gray-500 mt-2">Added: {fmtDate(action.created_at)}</p>
               </div>

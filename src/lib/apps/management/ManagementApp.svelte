@@ -364,7 +364,7 @@
         >
           <option value="">Jump to issue…</option>
           {#each jumpIssues as issue (issue.id)}
-            <option value={issue.id}>{#if issue.issue_number}#{issue.issue_number} — {/if}{issue.name}</option>
+            <option value={issue.id}>{issue.issue_number ? `#${issue.issue_number} — ` : ''}{issue.name}</option>
           {/each}
         </select>
         <input
@@ -409,7 +409,7 @@
           >
             <option value="">Jump to issue…</option>
             {#each jumpIssues as issue (issue.id)}
-              <option value={issue.id}>{#if issue.issue_number}#{issue.issue_number} — {/if}{issue.name}</option>
+              <option value={issue.id}>{issue.issue_number ? `#${issue.issue_number} — ` : ''}{issue.name}</option>
             {/each}
           </select>
           <input
@@ -558,7 +558,7 @@
         ? a.priority - b.priority
         : (a.issue_number || 0) - (b.issue_number || 0)) as issue (issue.id)}
       <option value={issue.id}>
-        {#if issue.issue_number}#{issue.issue_number} — {/if}{issue.name}
+        {issue.issue_number ? `#${issue.issue_number} — ` : ''}{issue.name}
       </option>
     {/each}
   </select>

@@ -125,3 +125,31 @@ describe('minutes: nothing tagged to the meeting is dropped', () => {
     expect(t).toContain('Book engineer');
   });
 });
+
+describe('the same words in every report (2026-10-27)', () => {
+  it('prints an action status as its label, never the stored value', async () => {
+    const issues = words((await xmlOf('Issues Report', buildIssuesReport({ issues: [{
+      id: 'i', issue_number: 1, name: 'A', status: 'current', created_at: '2026-09-01T10:00:00Z',
+      actions: [action({ status: 'in-progress' })], outstandingActions: [action({ status: 'in-progress' })], activities: [],
+    }] }))).body);
+    const actions = words((await actionsXml([action({ status: 'in-progress' })])).body);
+    const minutes = words((await xmlOf('Meeting Minutes', buildMinutesReport({ meeting: { id: 'm', title: 'Board' }, issues: [{
+      id: 'i', issue_number: 3, name: 'Lift', activities: [],
+      actions: [action({ meeting_id: 'm', status: 'in-progress' })],
+    }] }))).body);
+    for (const t of [issues, actions, minutes]) {
+      expect(t).toContain('In Progress');
+      expect(t).not.toContain('in-progress');
+    }
+  });
+
+  it('leads a note, decision or comment in the minutes with its one-line summary', async () => {
+    const t = words((await xmlOf('Meeting Minutes', buildMinutesReport({ meeting: { id: 'm', title: 'Board' }, issues: [{
+      id: 'i', issue_number: 3, name: 'Lift', actions: [],
+      activities: [{ id: 'a', meeting_id: 'm', activity_type: 'decision', fields: { summary: 'Use LED' },
+                     body: '<p>Warm white approved.</p>', created_at: '2026-09-01T10:00:00Z' }],
+    }] }))).body);
+    expect(t.indexOf('Use LED')).toBeGreaterThan(-1);
+    expect(t.indexOf('Use LED')).toBeLessThan(t.indexOf('Warm white approved.'));
+  });
+});

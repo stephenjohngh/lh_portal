@@ -18,7 +18,7 @@
   import { buildFieldSummary }                 from '../reports/reportUtils.js';
   import { sanitizeHtml }                       from '#lib/utils/sanitizeHtml.js';
   import { buildMeetingMinutes }               from '../../utils/meetingMinutes.js';
-  import { ACTIVITY_TYPE_CONFIG }              from '#lib/utils/constants.js';
+  import { ACTIVITY_TYPE_CONFIG, getActionStatusLabel } from '#lib/utils/constants.js';
 
   export let meeting = null;
   export let issues  = [];   // already filtered to this meeting's items
@@ -142,6 +142,7 @@
                       <li class="flex items-start gap-2 text-sm">
                         <span class="text-blue-400 shrink-0 mt-0.5">•</span>
                         <div class="flex-1 min-w-0">
+                          {#if c.fields?.summary}<p class="text-slate-100 text-sm font-semibold">{c.fields.summary}</p>{/if}
                           {#if c.body?.startsWith('<')}
                             <div class="rich-content text-slate-200 text-sm">{@html sanitizeHtml(c.body)}</div>
                           {:else}
@@ -170,6 +171,7 @@
                       <li class="flex items-start gap-2 text-sm">
                         <span class="text-violet-400 shrink-0 mt-0.5">•</span>
                         <div class="flex-1 min-w-0">
+                          {#if d.fields?.summary}<p class="text-slate-100 text-sm font-semibold">{d.fields.summary}</p>{/if}
                           {#if d.body?.startsWith('<')}
                             <div class="rich-content text-slate-200 text-sm">{@html sanitizeHtml(d.body)}</div>
                           {:else}
@@ -198,6 +200,7 @@
                       <li class="flex items-start gap-2 text-sm">
                         <span class="text-teal-400 shrink-0 mt-0.5">📝</span>
                         <div class="flex-1 min-w-0">
+                          {#if n.fields?.summary}<p class="text-slate-100 text-sm font-semibold">{n.fields.summary}</p>{/if}
                           {#if n.body?.startsWith('<')}
                             <div class="rich-content text-slate-200 text-sm">{@html sanitizeHtml(n.body)}</div>
                           {:else}
@@ -354,7 +357,7 @@
                           <div class="flex items-center gap-2 mt-0.5 text-xs text-slate-500 flex-wrap">
                             <span class="px-1.5 py-0.5 rounded bg-purple-600/15 text-purple-300
                                          border border-purple-500/30 capitalize">
-                              {a.status}
+                              {getActionStatusLabel(a.status)}
                             </span>
                             {#if a.name_text}
                               <span>👤 {a.name_text}</span>

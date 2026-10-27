@@ -26,7 +26,7 @@ import {
 } from './docxHelpers.js';
 import { parseHtmlToDocxParagraphs, htmlToText } from './richTextDocx.js';
 import { fmtShortDate, fmtDateLong, fmtGenerated, isOverdue, wasModified } from '#lib/utils/dates.js';
-import { getPriorityLabel, ACTION_STATUS, ACTIVITY_TYPE_CONFIG } from '#lib/utils/constants.js';
+import { getPriorityLabel, getActionStatusLabel, ACTION_STATUS, ACTIVITY_TYPE_CONFIG } from '#lib/utils/constants.js';
 import { buildFieldSummary } from '#lib/apps/management/components/reports/reportUtils.js';
 import { buildMeetingMinutes } from '#lib/apps/management/utils/meetingMinutes.js';
 
@@ -273,7 +273,7 @@ function issueBlock(issue, sortOrder, summaryOnly) {
       const details = [
         action.name_text ? `👤 ${action.name_text}` : null,
         action.date_deadline ? `📅 Due ${fmtShortDate(action.date_deadline)}${actionOverdue(action) ? ' — overdue' : ''}` : null,
-        action.status ? `Status: ${action.status}` : null,
+        action.status ? `Status: ${getActionStatusLabel(action.status)}` : null,
       ].filter(Boolean);
       if (details.length) {
         out.push(text(details.join('  ·  '), { size: 20, color: '666666' }, { spacing: { after: 40 }, indent: { left: 360 } }));
@@ -327,7 +327,7 @@ export function buildActionsReport({ groups = [], userName, sortMode }) {
         r(`  ${action.action_text || '(no description)'}`, { bold: true, size: 22 }),
       ], { fill: 'F5F5F5', width: CONTENT_W - 360, indent: 360 }));
       const details = [
-        action.status,
+        action.status ? getActionStatusLabel(action.status) : null,
         action.name_text ? `👤 ${action.name_text}` : null,
         action.date_deadline ? `📅 Due ${fmtShortDate(action.date_deadline)}${actionOverdue(action) ? ' — overdue' : ''}` : null,
         `Added ${fmtShortDate(action.created_at)}`,
@@ -412,10 +412,14 @@ export function buildMinutesReport({ meeting, issues = [], attendees = [] }) {
       content.push(text(section.title, { bold: true, size: 22, color: section.colour }, { spacing: { before: 180, after: 80 } }));
       for (const a of items) {
         const fieldLine = section.fields ? buildFieldSummary(section.fields, a.fields) : '';
+        // A comment, decision or note's one-line summary leads, as it does in the
+        // issues report; the minutes used to print the body alone.
+        const lead = !section.fields && a.fields?.summary ? String(a.fields.summary) : '';
         const body = htmlToText(a.body) || (section.key === 'documents' ? fieldLine : '');
         if (section.labelled) {
           content.push(text(activityLabel(a.activity_type), { size: 18, bold: true, color: '666666' }, { indent: { left: 360 }, spacing: { before: 60 } }));
         }
+        if (lead) content.push(text(lead, { size: 22, bold: true }, { indent: { left: 360 }, spacing: { before: 60 } }));
         if (body) content.push(text(body, { size: 22 }, { indent: { left: 360 }, spacing: { before: 60, after: 40 } }));
         const meta = [section.key !== 'documents' ? fieldLine || null : null, a.historic ? 'historic' : null]
           .filter(Boolean).join('  ·  ');
@@ -428,7 +432,7 @@ export function buildMinutesReport({ meeting, issues = [], attendees = [] }) {
       for (const a of m.actions.slice().sort(byCreated(1))) {
         content.push(text(a.action_text || '(no description)', { size: 22, bold: true }, { indent: { left: 360 }, spacing: { before: 60, after: 40 } }));
         content.push(text([
-          a.status,
+          a.status ? getActionStatusLabel(a.status) : null,
           a.name_text ? `👤 ${a.name_text}` : null,
           a.date_deadline ? `📅 due ${fmtShortDate(a.date_deadline)}${actionOverdue(a) ? ' — overdue' : ''}` : null,
         ].filter(Boolean).join('  ·  '), { size: 18, color: '666666' }, { indent: { left: 360 }, spacing: { after: 120 } }));

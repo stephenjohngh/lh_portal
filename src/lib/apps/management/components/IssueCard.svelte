@@ -223,7 +223,7 @@
           {@const h = activityCounts.decision_h}
           {@const cur = activityCounts.decision - h}
           <div class="text-icon">
-            <span class="text-[10px] px-1.5 py-0.5 rounded bg-yellow-900/40 text-yellow-300 border border-yellow-700/50 font-semibold uppercase tracking-wide">D</span>
+            <span>✅</span>
             <span class="text-yellow-300">{cur}{#if h > 0}<span class="text-gray-500">/{h}</span>{/if} decision{activityCounts.decision !== 1 ? 's' : ''}</span>
           </div>
         {/if}
@@ -345,7 +345,7 @@
 <ConfirmDialog
   show={showDeleteConfirm}
   title="Delete Issue"
-  message="Are you sure you want to delete '{issue.name}'? This will also delete {issue.activities?.length || 0} activities and {issue.actions?.length || 0} actions. This action cannot be undone."
+  message="Are you sure you want to delete '{issue.name}'? This will also delete {issue.activities?.length || 0} {(issue.activities?.length || 0) === 1 ? 'activity' : 'activities'} and {issue.actions?.length || 0} {(issue.actions?.length || 0) === 1 ? 'action' : 'actions'}. This action cannot be undone."
   confirmText="Delete Issue"
   cancelText="Cancel"
   danger={true}

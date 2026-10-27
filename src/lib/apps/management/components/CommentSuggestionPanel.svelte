@@ -19,6 +19,7 @@
     'deleteLinkedRequest' — open the delete-linked-action confirm dialog
 -->
 <script>
+  import { getActionStatusLabel } from '#lib/utils/constants.js';
   import { portalSettings } from '#lib/stores/portalSettings.js';
   import { createEventDispatcher } from 'svelte';
   import { auth }           from '#lib/stores/auth.js';
@@ -49,7 +50,7 @@
         <p class="text-sm text-gray-200 whitespace-pre-wrap">{linkedAction.action_text}</p>
         <div class="flex items-center gap-2 mt-1.5 text-xs flex-wrap">
           <span class="px-1.5 py-0.5 rounded bg-purple-600/20 text-purple-300 border border-purple-200/30 capitalize">
-            {linkedAction.status}
+            {getActionStatusLabel(linkedAction.status)}
           </span>
           {#if linkedAction.name_text}
             <span class="text-gray-500">👤 {linkedAction.name_text}</span>

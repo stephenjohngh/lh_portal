@@ -1,5 +1,6 @@
 <!-- src/lib/apps/management/components/reports/ActionsReportPanel.svelte -->
 <script>
+  import { getActionStatusLabel } from '#lib/utils/constants.js';
   import { onMount }      from 'svelte';
   import Button           from '#lib/components/common/Button.svelte';
   import Badge            from '#lib/components/common/Badge.svelte';
@@ -313,7 +314,7 @@
                             Due: {fmtDate(action.date_deadline)}{isOverdue(action.date_deadline) ? ' ⚠️' : ''}
                           </Badge>
                         {/if}
-                        <Badge variant="primary" outline className="capitalize">{action.status}</Badge>
+                        <Badge variant="primary" outline className="">{getActionStatusLabel(action.status)}</Badge>
                       </div>
                       <p class="text-xs text-gray-400">Added: {fmtDate(action.created_at)}</p>
                     </div>

@@ -25,7 +25,7 @@
   import { sanitizeHtml }         from '#lib/utils/sanitizeHtml.js';
   import { fmtBytes, mimeIcon }   from '#lib/utils/files.js';
   import { fmtDateTime, fmtDate, wasModified } from '#lib/utils/dates.js';
-  import { ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPES } from '#lib/utils/constants.js';
+  import { ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPES, getActionStatusLabel } from '#lib/utils/constants.js';
   import { parseEmailPaste }   from '#lib/utils/emailParser.js';
   import { canDeleteOwn }      from '#lib/utils/permissions.js';
   import { postJson }          from '#lib/utils/request.js';
@@ -548,7 +548,7 @@
         <div class="flex flex-wrap gap-2 mt-0.5 text-[10px] text-gray-400">
           {#if linkedAction.name_text}<span>👤 {linkedAction.name_text}</span>{/if}
           {#if linkedAction.date_deadline}<span>📅 {fmtDate(linkedAction.date_deadline)}</span>{/if}
-          <span class="capitalize">{linkedAction.status}</span>
+          <span>{getActionStatusLabel(linkedAction.status)}</span>
         </div>
       </div>
     {/if}
