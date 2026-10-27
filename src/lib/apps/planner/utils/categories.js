@@ -75,7 +75,6 @@ export const FALLBACK = {
   ink: '#64748b',
   dot: 'bg-slate-300',
   edge: 'border-slate-300',
-  edge: 'border-slate-300',
   chip: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
   wash: 'bg-slate-400/25',
 };
@@ -180,9 +179,19 @@ export function marksByDate(marks = []) {
  * Returns null for an unmarked day so a caller can test it as a condition
  * rather than checking a shape.
  */
+/**
+ * The shade of a weekend, and of a non-working day: the neutral grey. A weekend
+ * takes it as is, and a public holiday a little lighter (2026-10-27), so a
+ * holiday still reads as more than an ordinary Saturday.
+ */
+export const WEEKEND_WASH = 'bg-slate-400/25';
+export const NON_WORKING_WASH = 'bg-slate-300/40';
+
 export function markStyle(mark) {
   if (!mark) return null;
-  return { ...swatch(mark.colour), label: mark.label ?? '' };
+  const style = { ...swatch(mark.colour), label: mark.label ?? '' };
+  if (mark.source === 'non_working') style.wash = NON_WORKING_WASH;
+  return style;
 }
 
 /**

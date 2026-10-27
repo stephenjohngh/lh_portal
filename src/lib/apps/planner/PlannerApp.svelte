@@ -205,7 +205,8 @@
   let view = 'year';
   let year = Number(now.slice(0, 4));
   let month = Number(now.slice(5, 7));
-  let selectedDay = null;
+  // Opens on today, so the panel beside the year already shows what is on it.
+  let selectedDay = now;
 
   /** Paging the month view, stopped at the edges of the expanded window. */
   function goMonth(step) {

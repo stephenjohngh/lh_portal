@@ -187,8 +187,8 @@
     {#if occurrence && event}
       <div class="flex flex-wrap items-center gap-2 p-2 rounded border border-slate-700 bg-slate-800/40"
            data-testid="this-date">
-        <span class="text-xs text-slate-400">
-          {editingSeries ? 'Just this date' : 'This event'} — {fmtDateLong(occurrence.date)}:
+        <span class="text-sm font-bold text-white">
+          {editingSeries ? 'Only change this one date' : 'This event'} — {fmtDateLong(occurrence.date)}:
         </span>
         <Button variant="tertiary" size="xs" on:click={() => onDate('move')}>Move to another date</Button>
         <Button variant="tertiary" size="xs" on:click={() => onDate('skip')}>
@@ -207,8 +207,7 @@
       <FormSelect label="Category" bind:value={category}
                   options={[{ value: '', label: 'None' },
                             ...pickable(categories).map(c => ({ value: c.slug, label: c.name }))]} />
-      <FormInput label="Where (optional)" bind:value={location}
-                 placeholder="e.g. Residents' lounge" />
+      <FormInput label="Where (optional)" bind:value={location} />
     </div>
 
     <!-- Date, all-day and times on one line: "all day" is about the times

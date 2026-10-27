@@ -16,7 +16,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { buildYearGrid, cellMarks, columnWeekdays, WEEKDAY_SHORT } from '../utils/yearGrid.js';
-  import { categoryOf, markStyle } from '../utils/categories.js';
+  import { categoryOf, markStyle, WEEKEND_WASH } from '../utils/categories.js';
 
   export let year;
   export let occurrences = [];
@@ -60,7 +60,7 @@
         </th>
         {#each COLUMNS as weekday}
           <th class="weekday px-0 py-1 font-semibold uppercase border border-slate-700
-                     {weekday >= 5 ? 'bg-sky-500/20 text-sky-200' : 'bg-slate-700/70 text-slate-300'}"
+                     {weekday >= 5 ? WEEKEND_WASH + ' text-slate-100' : 'bg-slate-700/70 text-slate-300'}"
           >{WEEKDAY_SHORT[weekday].slice(0, 1)}</th>
         {/each}
       </tr>
@@ -87,7 +87,7 @@
               <!-- Before the 1st or after the last. Empty, and visibly outside
                    the month rather than merely dark. -->
               <td class="border border-slate-800 bg-slate-950/80
-                         {COLUMNS[column] >= 5 ? 'bg-sky-950/40' : ''}"></td>
+                         {COLUMNS[column] >= 5 ? 'bg-slate-900/60' : ''}"></td>
             {:else}
               {@const dots = cellMarks(cell.items, 6)}
               {@const mark = markStyle(marks.get(cell.date))}
@@ -96,9 +96,9 @@
                    square. -->
               <td class="p-0 align-top border border-slate-700
                          {mark ? mark.wash
-                           : cell.weekend ? 'bg-sky-500/10' : 'bg-slate-800/80'}
-                         {cell.today ? 'ring-2 ring-inset ring-purple-400 z-10 relative' : ''}
-                         {selected === cell.date ? 'ring-2 ring-inset ring-white z-10 relative' : ''}">
+                           : cell.weekend ? WEEKEND_WASH : 'bg-slate-800/80'}
+                         {selected === cell.date ? 'ring-2 ring-inset ring-white z-10 relative'
+                           : cell.today ? 'ring-2 ring-inset ring-purple-400 z-10 relative' : ''}">
                 <button
                   type="button"
                   class="w-full h-full px-0.5 pt-0.5 flex flex-col items-center
@@ -110,7 +110,7 @@
                        counted rather than read. -->
                   <span class="day-num tabular-nums leading-none
                                {cell.today ? 'text-white font-bold'
-                                 : cell.weekend && !mark ? 'text-sky-200/80' : 'text-slate-200'}">
+                                 : 'text-slate-200'}">
                     {cell.day}
                   </span>
 

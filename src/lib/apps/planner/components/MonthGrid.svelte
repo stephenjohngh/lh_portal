@@ -8,7 +8,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { buildMonthGrid, WEEKDAY_LABELS } from '../utils/monthGrid.js';
-  import { categoryOf, markStyle } from '../utils/categories.js';
+  import { categoryOf, markStyle, WEEKEND_WASH } from '../utils/categories.js';
   import { STATUS } from '../utils/agenda.js';
 
   export let year;
@@ -55,7 +55,7 @@
             <td class="align-top p-0 border border-slate-600/70
                        {mark ? mark.wash
                          : day.outside ? 'bg-slate-900/70'
-                         : day.weekend ? 'bg-slate-900/40' : 'bg-slate-800/70'}
+                         : day.weekend ? WEEKEND_WASH : 'bg-slate-800/70'}
                        {day.today ? 'ring-2 ring-inset ring-purple-500/70' : ''}">
               <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
               <div class="h-24 p-1 overflow-hidden cursor-pointer hover:bg-slate-700/30
