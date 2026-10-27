@@ -57,6 +57,17 @@
     };
   }
 
+  /**
+   * A day's items on a month sheet: as many as fit the cell, then "+ N more".
+   * A cell grows to hold its content, so a day with dozens of items made one row
+   * taller than the sheet and the month ran over onto further pages (found from a
+   * 16-page print, 2026-10-27). The cell is a fixed height, so what is shown must
+   * be bounded: at most MAX_ITEMS lines, one line each, and the rest counted.
+   */
+  const MAX_ITEMS = 7;
+  const shownItems = (items) => (items.length <= MAX_ITEMS + 1 ? items : items.slice(0, MAX_ITEMS));
+  const hiddenCount = (items) => (items.length <= MAX_ITEMS + 1 ? 0 : items.length - MAX_ITEMS);
+
   const time = (item) => (item.series?.all_day ? '' : (item.series?.start_time ?? '').slice(0, 5));
 </script>
 
@@ -142,8 +153,9 @@
                   {@const mark = marks.get(day.date)}
                   <td class={day.outside ? 'adjacent' : ''}>
                     <div class="date">{day.day}</div>
+                    <div class="day-body">
                     {#if mark}<div class="mark-label">{mark.label}</div>{/if}
-                    {#each day.items as item}
+                    {#each shownItems(day.items) as item}
                       <div class="item {item.status === 'done' ? 'done' : ''}">
                         <span class="print-dot" data-ink
                               style="--ink: {categoryOf(item.series?.category, categories).ink ?? swatch(null).ink}"></span>
@@ -152,6 +164,10 @@
                         </span>
                       </div>
                     {/each}
+                    {#if hiddenCount(day.items)}
+                      <div class="item more">+ {hiddenCount(day.items)} more</div>
+                    {/if}
+                    </div>
                   </td>
                 {/each}
               </tr>

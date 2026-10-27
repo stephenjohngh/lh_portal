@@ -128,7 +128,9 @@ body.planner-print-portrait  { page: planner-portrait; }
     vertical-align: middle;
   }
   .print-year .day       { font-size: 7.5pt; line-height: 1.05; padding-top: 0.5mm; }
-  .print-year .outside   { background: #f2f2f2 !important; }
+  /* Days that do not exist (before the 1st, after the last): clearly a block,
+     much darker than the weekend stripe so the two cannot be confused. */
+  .print-year .outside   { background: #7a7a7a !important; }
 
   /* ── Every row the same height, and that height fills the sheet ──────────
      Left to the content, a row was as tall as its busiest day: one day with
@@ -194,6 +196,11 @@ body.planner-print-portrait  { page: planner-portrait; }
   /* Portrait gives six rows about 40mm each, which is the point of printing a
      month: room for the day's items rather than a grid of bare numbers. */
   .print-month td { height: 38mm; }
+  /* The cell's contents are held to the cell: a fixed height with the overflow
+     cut, and one line per item, so no number of items can stretch a row and push
+     the month onto a second sheet. (The renderer lists at most 7 and counts the
+     rest.) */
+  .print-month .day-body { height: 31mm; overflow: hidden; }
   .print-month .date { font-size: 8pt; font-weight: 700; }
   .print-month .adjacent .date { color: #999 !important; }
   .print-month .item {
@@ -203,7 +210,10 @@ body.planner-print-portrait  { page: planner-portrait; }
     gap: 1mm;
     margin-top: 0.6mm;
   }
+  .print-month .item { white-space: nowrap; overflow: hidden; }
+  .print-month .item > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .print-month .item .when { font-variant-numeric: tabular-nums; }
+  .print-month .more { font-style: italic; color: #444 !important; }
   .print-month .done { color: #666 !important; text-decoration: line-through; }
   .print-month .mark-label { font-size: 6.5pt; font-style: italic; color: #444 !important; }
 
