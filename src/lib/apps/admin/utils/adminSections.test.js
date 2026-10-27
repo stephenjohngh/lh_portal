@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { SECTION_GROUPS, SECTION_IDS, NEEDS_BUILDING_DATA } from './adminSections.js';
+import { SECTION_GROUPS, SCREEN_IDS as SECTION_IDS, NEEDS_BUILDING_DATA, leavesOf, sectionOf } from './adminSections.js';
 
 const shell = readFileSync('src/lib/apps/admin/AdminApp.svelte', 'utf8');
 
@@ -32,6 +32,14 @@ describe('Admin sections', () => {
     for (const g of SECTION_GROUPS) {
       expect(g.label).toBeTruthy();
       expect(g.sections.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('every screen belongs to exactly one section, and a section opens on a real screen', () => {
+    for (const id of SECTION_IDS) expect(sectionOf(id), id).toBeTruthy();
+    for (const g of SECTION_GROUPS) for (const s of g.sections) {
+      expect(leavesOf(s).length).toBeGreaterThan(0);
+      for (const l of leavesOf(s)) expect(sectionOf(l.id)).toBe(s);
     }
   });
 });

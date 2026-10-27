@@ -186,8 +186,11 @@ npx tailwindcss -i src/app.css -o dist/app.css --watch --watch-stats
   }
 
   /* ========== GRIDS ========== */
+  /* As many cards per row as fit at a readable width, so the number follows
+     the room the screen actually has (Admin sits beside a section list). */
   .grid-cards {
-    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
+    @apply grid gap-4;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
   }
 
   /* ========== REVEAL ==========

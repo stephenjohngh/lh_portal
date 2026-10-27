@@ -5,8 +5,9 @@
      entry there. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { SECTION_GROUPS } from '../utils/adminSections.js';
+  import { SECTION_GROUPS, sectionOf } from '../utils/adminSections.js';
 
+  /** The screen showing; the section it belongs to is highlighted. */
   export let active = 'users';
   /** Only some sections show for a non-admin. @type {boolean} */
   export let isAdmin = false;
@@ -14,6 +15,7 @@
   export let userCount = null;
 
   const dispatch = createEventDispatcher();
+  $: activeSection = sectionOf(active)?.id;
   $: groups = SECTION_GROUPS.map((g) => ({
     ...g,
     sections: g.sections.filter((s) => isAdmin || !s.adminOnly),
@@ -30,9 +32,9 @@
             <button
               type="button"
               class="w-full flex items-center gap-2 px-3 py-1.5 rounded text-sm text-left transition-colors
-                     {active === s.id ? 'bg-purple-600/20 text-purple-300' : 'text-slate-300 hover:bg-slate-700/50'}"
-              aria-current={active === s.id ? 'page' : undefined}
-              on:click={() => dispatch('select', s.id)}
+                     {activeSection === s.id ? 'bg-purple-600/20 text-purple-300' : 'text-slate-300 hover:bg-slate-700/50'}"
+              aria-current={activeSection === s.id ? 'page' : undefined}
+              on:click={() => dispatch('select', s)}
             >
               <span class="shrink-0">{s.icon}</span>
               <span class="flex-1 truncate">{s.label}</span>

@@ -30,8 +30,8 @@
 
 <div class="card">
   <!-- User Header -->
-  <div class="flex-start mb-3">
-    <div class="flex-row-md">
+  <div class="flex-start gap-2 mb-3">
+    <div class="flex-row-md flex-1 min-w-0">
       <div class="flex-shrink-0">
         <div class="avatar-md bg-purple-600">
           <Icon name="user" size={6} className="text-white" />
@@ -46,7 +46,7 @@
       </div>
     </div>
 
-    <div class="flex gap-1.5 flex-wrap justify-end">
+    <div class="flex gap-1.5 flex-wrap justify-end shrink-0">
       {#if user.is_admin}
         <Badge color="bg-purple-600">Admin</Badge>
       {:else if user.is_read_only}
