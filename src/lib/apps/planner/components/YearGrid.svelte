@@ -54,7 +54,7 @@
 
     <thead>
       <tr>
-        <th class="sticky left-0 z-20 bg-slate-700 text-left px-2 py-1
+        <th class="sticky left-0 z-20 bg-slate-700 text-left px-1 py-1
                    text-[11px] text-slate-100 font-semibold border border-slate-600">
           {year}
         </th>
@@ -76,7 +76,7 @@
                  a year; the question it prompts is "what IS that in March", and
                  the answer needs words. -->
             <button type="button"
-                    class="month-name w-full text-left px-2 py-1 font-semibold
+                    class="month-name w-full text-left px-1 py-1 font-semibold
                            text-slate-100 hover:bg-slate-600 transition-colors"
                     title="Open {month.label}"
                     on:click={() => dispatch('selectMonth', month.month)}>{month.short}</button>
@@ -150,9 +150,9 @@
   /* Every size the chart is made of, in one place — so "fill the screen" is a
      handful of new values rather than a second layout. */
   .planner-year {
-    --cell-w: 1.6rem;
+    --cell-w: 1.5rem;
     --cell-h: 3rem;
-    --head-w: 3.25rem;
+    --head-w: 2.45rem;   /* was 3.25rem: the year and month names need little more than their text */
     --date-size: 10px;
     --dot-size: 0.5rem;
     --weekday-size: 9px;

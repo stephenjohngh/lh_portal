@@ -55,41 +55,42 @@
    */
 </script>
 
-<div class="flex items-start gap-2.5 p-2.5 rounded border border-slate-700
+<!-- The tick opens the row, level with the title; what follows sits under it at
+     the full width of the row rather than indented beside it. The tick's outline
+     is the category's colour (it replaces the coloured dot), filled when done. -->
+<div class="p-2.5 rounded border border-slate-700
             bg-slate-800/40 hover:bg-slate-800/70 transition-colors
             {done || skipped ? 'opacity-60' : ''}">
 
-  {#if linked}
-    <!-- No tick at all, rather than a disabled one. A disabled tick invites
-         the question "why can I not"; a mark that is plainly not a control
-         says this belongs elsewhere. -->
-    <span class="w-5 h-5 shrink-0 rounded flex items-center justify-center
-                 text-[10px] text-slate-500 border border-slate-700"
-          title="Owned by {occurrence.ownerApp}">↗</span>
-  {:else}
-  <!-- The tick. Disabled rather than hidden for a viewer: a control that
-       vanishes leaves the reader wondering where it went. -->
-  <button
-    type="button"
-    class="w-5 h-5 shrink-0 rounded border flex items-center justify-center
-           text-xs transition-colors
-           {done ? 'bg-green-600 border-green-500 text-white'
-                 : 'border-slate-500 text-transparent hover:border-green-500'}
-           {canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}"
-    disabled={!canEdit}
-    title={done ? 'Mark as not done' : 'Mark as done'}
-    on:click={() => dispatch('toggle', occurrence)}
-  >✓</button>
-  {/if}
+  <div class="flex items-center gap-2 min-h-[1.25rem]">
+    {#if linked}
+      <!-- No tick at all, rather than a disabled one. A disabled tick invites
+           the question "why can I not"; a mark that is plainly not a control
+           says this belongs elsewhere. -->
+      <span class="w-5 h-5 shrink-0 rounded border-2 {category.edge} flex items-center justify-center
+                   text-[10px] text-slate-400"
+            title="Owned by {occurrence.ownerApp}">↗</span>
+    {:else}
+      <!-- Disabled rather than hidden for a viewer: a control that vanishes
+           leaves the reader wondering where it went. -->
+      <button
+        type="button"
+        class="w-5 h-5 shrink-0 rounded border-2 {category.edge} flex items-center justify-center
+               text-xs transition-colors
+               {done ? category.dot + ' text-white' : 'text-transparent hover:bg-slate-700'}
+               {canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}"
+        disabled={!canEdit}
+        title={done ? 'Mark as not done' : 'Mark as done'}
+        on:click={() => dispatch('toggle', occurrence)}
+      >✓</button>
+    {/if}
 
-  <!-- Clicking the text (not the tick or the pencil) opens everything about it,
-       read-only. -->
-  <div class="min-w-0 flex-1 cursor-pointer" role="button" tabindex="0"
-       title="Show the details"
-       on:click={() => dispatch('open', occurrence)}
-       on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dispatch('open', occurrence); } }}>
-    <div class="flex items-center gap-2 flex-wrap min-h-[1.25rem]">
-      <span class="w-1.5 h-1.5 rounded-full shrink-0 {category.dot}"></span>
+    <!-- Clicking the text (not the tick or the pencil) opens everything about it,
+         read-only. -->
+    <div class="min-w-0 flex-1 flex items-center gap-2 flex-wrap cursor-pointer" role="button" tabindex="0"
+         title="Show the details"
+         on:click={() => dispatch('open', occurrence)}
+         on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dispatch('open', occurrence); } }}>
       <span class="text-sm leading-5 text-white {done ? 'line-through' : ''}">{series?.title}</span>
 
       {#if linked}
@@ -104,7 +105,19 @@
       {/if}
     </div>
 
-    <p class="text-xs text-slate-500 mt-0.5">
+    <!-- One pencil. Moving this date, skipping it and handing it to Maintenance
+         are inside the edit dialog, with the series, rather than a row of small
+         glyphs to tell apart. -->
+    {#if canEdit && !linked}
+      <button type="button" title={recurring ? 'Edit — this date or the series' : 'Edit this event'}
+              class="shrink-0 text-slate-500 hover:text-purple-300 text-sm px-1 leading-5"
+              on:click={() => dispatch('edit', occurrence)}>✎</button>
+    {/if}
+  </div>
+
+  <div class="cursor-pointer" role="button" tabindex="-1" on:click={() => dispatch('open', occurrence)}
+       on:keydown={() => {}}>
+    <p class="text-xs text-slate-500 mt-1">
       {fmtDate(occurrence.date)}
       {#if !series?.all_day && series?.start_time}
         · {series.start_time.slice(0, 5)}{#if series.end_time}–{series.end_time.slice(0, 5)}{/if}
@@ -138,13 +151,4 @@
       </p>
     {/if}
   </div>
-
-  <!-- One pencil. Moving this date, skipping it and handing it to Maintenance
-       are inside the edit dialog, with the series, rather than a row of small
-       glyphs to tell apart. -->
-  {#if canEdit && !linked}
-    <button type="button" title={recurring ? 'Edit — this date or the series' : 'Edit this event'}
-            class="shrink-0 text-slate-500 hover:text-purple-300 text-sm px-1 leading-5"
-            on:click={() => dispatch('edit', occurrence)}>✎</button>
-  {/if}
 </div>
