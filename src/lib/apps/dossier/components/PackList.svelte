@@ -101,8 +101,7 @@
               </p>
             </div>
 
-            <div class="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100
-                        focus-within:opacity-100 transition-opacity">
+            <div class="flex items-center gap-1 shrink-0 ">
               <ProtectedButton action="modify" variant="secondary" size="small"
                       on:click={(e) => { e.stopPropagation(); dispatch('edit', pack); }}>
                 Edit

@@ -326,8 +326,7 @@
           </a>
           {#if canDelete}
             <button
-              class="p-1.5 rounded text-slate-600 hover:text-red-400 transition-colors shrink-0
-                     opacity-0 group-hover:opacity-100"
+              class="p-1.5 rounded text-slate-600 hover:text-red-400 transition-colors shrink-0 "
               title="Delete document"
               on:click={() => pendingDelete = doc}
             >

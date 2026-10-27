@@ -269,7 +269,7 @@
               {/if}
             </div>
             {#if canModify}
-              <div class="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div class="flex gap-1 shrink-0 ">
                 <button
                   on:click={() => startEdit(link)}
                   class="text-xs px-1.5 py-0.5 rounded text-slate-400 hover:text-white

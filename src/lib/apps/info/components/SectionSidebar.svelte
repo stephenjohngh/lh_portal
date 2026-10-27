@@ -106,7 +106,7 @@
       <span class="text-xs text-slate-500 tabular-nums">{noteCounts[section.id] ?? 0}</span>
 
       {#if $permissions.isAdmin}
-        <div class="hidden group-hover:flex items-center gap-0.5">
+        <div class="flex items-center gap-0.5">
           <button
             class="p-0.5 rounded text-slate-500 hover:text-purple-300 transition-colors"
             title="Edit section"

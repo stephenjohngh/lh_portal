@@ -378,8 +378,7 @@
                 <!-- Inherited, no override: offer Override button on hover -->
                 <button
                   class="shrink-0 text-xs px-1.5 py-0.5 rounded text-slate-600
-                         hover:text-amber-300 hover:bg-amber-800/20 transition-colors
-                         opacity-0 group-hover:opacity-100 mt-0.5"
+                         hover:text-amber-300 hover:bg-amber-800/20 transition-colors  mt-0.5"
                   on:click|stopPropagation={() => startOverride(def)}
                   title="Override the default value for this type only"
                 >Override →</button>

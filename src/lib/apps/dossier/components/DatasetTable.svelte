@@ -391,8 +391,7 @@
                   {/if}
                 </span>
               {:else if canEdit}
-                <span class="flex items-center gap-2 opacity-0 group-hover:opacity-100
-                             focus-within:opacity-100 transition-opacity">
+                <span class="flex items-center gap-2 ">
                   <button class="text-slate-500 hover:text-white"
                           title="Link this entry to a page"
                           on:click={() => dispatch('linkPage', record)}>¶ Page</button>

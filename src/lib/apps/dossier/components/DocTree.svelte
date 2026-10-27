@@ -59,9 +59,7 @@
           <span class="absolute right-1 top-1/2 -translate-y-1/2 z-10
                        flex items-center gap-0.5 rounded px-0.5
                        bg-slate-700 shadow-sm
-                       opacity-0 pointer-events-none transition-opacity
-                       group-hover:opacity-100 group-hover:pointer-events-auto
-                       focus-within:opacity-100 focus-within:pointer-events-auto">
+                      ">
             <button class="w-5 h-5 text-slate-400 hover:text-white text-xs" title="Move up"
                     on:click|stopPropagation={() => dispatch('move', { node, kind: 'up' })}>↑</button>
             <button class="w-5 h-5 text-slate-400 hover:text-white text-xs" title="Move down"

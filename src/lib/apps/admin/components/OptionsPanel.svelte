@@ -201,7 +201,7 @@
             {#if !opt.visible}
               <span class="text-xs text-slate-600 italic">hidden</span>
             {/if}
-            <div class="flex gap-1 opacity-0 group-hover:opacity-100 shrink-0">
+            <div class="flex gap-1  shrink-0">
               <button
                 class="text-xs px-1.5 py-0.5 rounded text-slate-500
                        hover:text-white hover:bg-slate-600 transition-colors"

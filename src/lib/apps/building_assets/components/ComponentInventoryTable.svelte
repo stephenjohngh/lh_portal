@@ -366,7 +366,7 @@
 
               <!-- ⑩ Actions — inspect for edit users; delete admin only -->
               <td class="px-2 py-2 whitespace-nowrap" on:click|stopPropagation>
-                <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity
+                <div class="flex items-center gap-1 
                             {inDel && $permissions.isAdmin ? '!opacity-100' : ''}">
                   {#if !inDel && !readOnly}
                     <button

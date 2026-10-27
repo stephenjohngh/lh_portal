@@ -131,7 +131,7 @@
 
             <!-- Actions -->
             <td class="py-2 whitespace-nowrap">
-              <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div class="flex gap-1 ">
                 <button
                   class="px-2 py-0.5 text-xs text-slate-400 hover:text-teal-300 border border-slate-700 rounded hover:border-slate-500"
                   on:click={() => openDoc(doc)}
