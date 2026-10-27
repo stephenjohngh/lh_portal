@@ -112,9 +112,9 @@
   </div>
 
   <!-- Advanced filters. Search, App and Flagged are in the toolbar above (AuditLogsView), not repeated here. -->
-  <!-- Compact: each control is about 8rem wide, as many per row as fit (four or
+  <!-- Compact: each control is about 9.5rem wide, as many per row as fit (four or
        more), so the filters take a row or two and the results stay in view. -->
-  <div class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));">
+  <div class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));">
     <!-- Event Type -->
     <FormSelect
       label="Event Type"
