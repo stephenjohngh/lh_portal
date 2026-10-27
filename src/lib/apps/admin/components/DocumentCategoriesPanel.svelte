@@ -1,5 +1,5 @@
 <!-- src/lib/apps/admin/components/DocumentCategoriesPanel.svelte -->
-<!-- Admin → Other Config → Document categories: what a document IS to this
+<!-- Admin → Portal settings → Document categories: what a document IS to this
      building (an EICR, a fire risk assessment…), offered when one is uploaded.
 
      An admin setting since 2026-10-04 (#lib/utils/documentCategories.js). The

@@ -1,5 +1,5 @@
 // POST /api/documents/check — does each listed document still stand for
-// something? (Admin → Document Demo → Check files, 2026-09-27.)
+// something? (Admin → Records → Document library → Check files, 2026-09-27.)
 //
 // Body: { ids: string[] } — the documents on screen, at most 200.
 // Returns { results: { [id]: { owner, file, fileDetail? } }, checkedAt }.

@@ -795,7 +795,7 @@
 
   <p class="border-t border-slate-700 pt-4 text-xs text-slate-400" data-testid="non-working-days-pointer">
     Working-day deadlines skip weekends and the bank holidays and closures listed under
-    <strong>Other Config → Non-working days</strong>.
+    <strong>Portal settings → Non-working days</strong>.
   </p>
   <ErrorDisplay message={dayError} onDismiss={() => (dayError = '')} />
 

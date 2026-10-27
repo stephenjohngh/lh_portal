@@ -225,7 +225,7 @@ export async function listDocuments(opts = {}) {
 
 /**
  * Check what each of these documents still stands for — its record and its
- * file — changing nothing (Admin → Document Demo → Check files). The rows are
+ * file — changing nothing (Admin → Records → Document library → Check files). The rows are
  * read here, never taken from the caller: a check of what the CLIENT says a
  * row holds would check the client. See documentCheck.js.
  * @param {string[]} ids

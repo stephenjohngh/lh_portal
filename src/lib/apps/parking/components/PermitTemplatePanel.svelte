@@ -3,7 +3,7 @@
      details, the first permit number, and the two images — a background
      behind the top two-thirds and a FIXED image filling the bottom third,
      which nothing is written over. The building's name and address come from
-     Admin → Other Config → Building & business, not from here. -->
+     Admin → Building → Building & business, not from here. -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { permitStore, TEMPLATE_IMAGES } from '../stores/permitStore.js';
@@ -74,7 +74,7 @@
       <div class="space-y-3">
         <p class="text-sm text-slate-400">
           The permit heads with <strong class="text-slate-200">{building.name}</strong>
-          — change it in Admin → Other Config → Building &amp; business. The address is not printed.
+          — change it in Admin → Building → Building &amp; business. The address is not printed.
         </p>
         <FormInput label="Title" bind:value={form.title} placeholder="Parking Permit" />
         <FormInput label="Where it is valid (optional)" bind:value={form.location}

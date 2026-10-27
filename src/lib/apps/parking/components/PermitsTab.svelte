@@ -60,7 +60,7 @@
       valid_from_time: '', valid_to_time: '', issued_by: '' };
   }
   // A permit is issued by the BUSINESS, always (user, 2026-10-13): the Business
-  // name from Admin → Other Config → Building & business, never the person
+  // name from Admin → Building → Building & business, never the person
   // signed in. Who pressed the button is still recorded (created_by) and shown
   // in the list.
   /** @param {any[]} list @param {string|undefined|null} id */
@@ -159,7 +159,7 @@
   async function issue() {
     issueError = ''; issuedNote = '';
     if (!businessName) {
-      issueError = 'Set the Business name first (Admin → Other Config → Building & business): permits are issued in its name.';
+      issueError = 'Set the Business name first (Admin → Building → Building & business): permits are issued in its name.';
       return;
     }
     const problem = validatePermit(form);
@@ -284,7 +284,7 @@
           <FormInput label="Time" type="time" bind:value={form.valid_to_time} required disabled={datesLocked} />
         </div>
         {#if datesLocked}<p class="text-xs text-slate-400">This permit was ended early, so its dates stay as they are.</p>{/if}
-        <p class="text-xs text-slate-400">Issued by <span class="text-slate-200">{businessName || '— set the Business name in Admin → Other Config → Building & business'}</span></p>
+        <p class="text-xs text-slate-400">Issued by <span class="text-slate-200">{businessName || '— set the Business name in Admin → Building → Building & business'}</span></p>
         {#if issueError}<ErrorDisplay message={issueError} />{/if}
         {#if issuedNote}<p class="text-sm text-green-400" data-testid="issued-note">{issuedNote}</p>{/if}
         {#if editing}

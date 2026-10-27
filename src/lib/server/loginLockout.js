@@ -20,7 +20,7 @@
 // and the per-address limit behaves exactly as the old per-email one did —
 // the failure mode is the previous behaviour, never a weaker one.
 
-// ⭐ The three numbers are admin policies (Admin → Other Config → Policies,
+// ⭐ The three numbers are admin policies (Admin → Portal settings → Policies,
 // 2026-10-04): 5, 20 and 15 are the shipped defaults, with bounds that keep the
 // lockout a lockout (#lib/utils/policies.js). Read when used — the caller
 // refreshes them first (passwordCheck → loadServerPolicies).

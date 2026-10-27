@@ -1,7 +1,7 @@
 // src/lib/utils/wording.js
 //
 // The portal's own WORDS that an operator will need to change, each an admin
-// setting: Admin → Other Config → Wording (2026-10-04, PROJECT_STATUS §6ccc
+// setting: Admin → Portal settings → Wording (2026-10-04, PROJECT_STATUS §6ccc
 // item 10, C). User, 2026-10-03: *"things that can change … should have an
 // admin parameter"*.
 //

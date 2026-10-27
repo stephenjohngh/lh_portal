@@ -80,7 +80,7 @@ export function isUnknownModelError(err) {
  */
 export async function callWithModel(call) {
   let choice = await resolveModel();
-  if (!choice.model) throw new Error('No AI model is available. Choose one in Admin → Other Config → Portal.');
+  if (!choice.model) throw new Error('No AI model is available. Choose one in Admin → Portal settings → AI assistant.');
   try {
     return { result: await call(choice.model), ...choice };
   } catch (/** @type {any} */ err) {

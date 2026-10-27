@@ -1,6 +1,6 @@
 // src/routes/status/+page.server.js
 // The public status page (migration 261) has no login: its introduction —
-// an admin setting, Admin → Other Config → Wording — is read here, filled with
+// an admin setting, Admin → Portal settings → Wording — is read here, filled with
 // this building's name. The look-up itself is POST /api/status.
 
 import { getIdentity } from '#lib/server/identity.js';

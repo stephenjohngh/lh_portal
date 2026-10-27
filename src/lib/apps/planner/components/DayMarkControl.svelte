@@ -49,7 +49,7 @@
 
 <div class="flex items-center gap-2 flex-wrap">
   {#if fromAdmin}
-    <span class="text-[11px] text-slate-500">Not a working day (Admin → Other Config → Non-working days).</span>
+    <span class="text-[11px] text-slate-500">Not a working day (Admin → Portal settings → Non-working days).</span>
   {/if}
   {#if style}
     <span class="text-[11px] px-1.5 py-0.5 rounded {style.wash} text-slate-200">

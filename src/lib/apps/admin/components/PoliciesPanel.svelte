@@ -1,5 +1,5 @@
 <!-- src/lib/apps/admin/components/PoliciesPanel.svelte -->
-<!-- Admin → Other Config → Policies: the portal's policy numbers — sign-in
+<!-- Admin → Portal settings → Policies: the portal's policy numbers — sign-in
      lockout, rate limits, the public MOR form, Parking offers, Dossier
      versions, Golden Thread review and risk bands.
 

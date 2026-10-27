@@ -4,7 +4,7 @@
 // document_library is an INDEX: a row records where a file is and what it is
 // attached to. It holds no foreign key to either, so a row can outlive both —
 // its file deleted from Drive, or the record it was attached to deleted — and
-// nothing lists it any differently. Admin → Document Demo showed two such rows
+// nothing lists it any differently. Admin → Records → Document library showed two such rows
 // on prod as if they were ordinary documents. This asks, per row:
 //
 //   owner — does the record it is attached to still exist?

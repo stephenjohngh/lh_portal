@@ -82,7 +82,7 @@ export async function GET({ params, request }) {
       file_size:        f.file_size,
     })),
     // The notice that travels with the material — the same words the recipient
-    // sees, an admin setting (Admin → Other Config → Wording). An archive is
+    // sees, an admin setting (Admin → Portal settings → Wording). An archive is
     // the copy most likely to outlive the link and be passed on, so it must
     // not be the copy that arrives without terms.
     notice: await serverWording('dossierConfidentialityNotice'),

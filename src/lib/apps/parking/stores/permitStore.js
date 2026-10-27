@@ -169,7 +169,7 @@ function createPermitStore() {
     try { await deleteDocument(oldId); return null; }
     catch (/** @type {any} */ err) {
       logger('⚠ the replaced image could not be deleted:', err);
-      return `The new image is in use. The old one could not be deleted (${err.message}); remove it from Admin → Document Demo.`;
+      return `The new image is in use. The old one could not be deleted (${err.message}); remove it from Admin → Records → Document library.`;
     }
   }
 
@@ -188,7 +188,7 @@ function createPermitStore() {
     try { await deleteDocument(oldId); return null; }
     catch (/** @type {any} */ err) {
       logger('⚠ the removed image could not be deleted:', err);
-      return `The image is no longer used, but its file could not be deleted (${err.message}); remove it from Admin → Document Demo.`;
+      return `The image is no longer used, but its file could not be deleted (${err.message}); remove it from Admin → Records → Document library.`;
     }
   }
 

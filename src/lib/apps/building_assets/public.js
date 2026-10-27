@@ -166,7 +166,7 @@ export function updateFloor(id, fields) {
 
 // -- Space types (admin-configurable list driving the space type pickers) ------
 // `spaces.type` is free text; this list just supplies the options + the register
-// filter. Managed from the Admin app (Other Config → Space Types).
+// filter. Managed from the Admin app (Building → Space types).
 
 /** List configured space types in display order. */
 export function listSpaceTypes() {

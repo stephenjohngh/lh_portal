@@ -1,5 +1,5 @@
 <!-- src/lib/apps/admin/components/IdentityPanel.svelte -->
-<!-- Admin → Other Config → Building & business: the building's name and address,
+<!-- Admin → Building → Building & business: the building's name and address,
      the business that runs it, and who signs the letters to residents.
 
      These used to be written into the code — the building as "Lonsdale House" in

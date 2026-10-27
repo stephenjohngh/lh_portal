@@ -18,7 +18,7 @@ export const IMPACT_LABELS     = { 1: 'Negligible', 2: 'Minor', 3: 'Moderate', 4
 /**
  * RAG bands by (residual/inherent) score. Ordered ascending by `max`; the band
  * order also defines escalation steps. ⭐ The score thresholds are an admin
- * policy (Admin → Other Config → Policies: 4 / 9 / 15 shipped), read when the
+ * policy (Admin → Portal settings → Policies: 4 / 9 / 15 shipped), read when the
  * bands are asked for — riskBands() — never captured once at module scope.
  */
 export function riskBands() {

@@ -1,5 +1,5 @@
 // src/lib/server/documentCheck.test.js
-// Check files (Admin → Document Demo, 2026-09-27): does each document_library
+// Check files (Admin → Records → Document library, 2026-09-27): does each document_library
 // row still have its record and its file? It must report, never guess — a
 // failed lookup is not "deleted", and a storage it cannot ask is not "fine".
 import { describe, it, expect, vi } from 'vitest';

@@ -122,7 +122,7 @@
   <!-- Header -->
   <div class="flex items-start justify-between gap-4">
     <div>
-      <h3 class="text-lg font-semibold text-slate-100">Document Demo</h3>
+      <h3 class="text-lg font-semibold text-slate-100">Document library</h3>
       <p class="text-sm text-slate-400">
         A global, admin-only view of the shared document library index.
       </p>

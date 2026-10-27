@@ -1,5 +1,5 @@
 // src/lib/utils/policies.test.js
-// The policy numbers are admin settings (Admin → Other Config → Policies,
+// The policy numbers are admin settings (Admin → Portal settings → Policies,
 // 2026-10-04). Pins: the shipped defaults ARE the numbers the code used, so
 // nothing changes until an admin chooses; bounds keep a control a control;
 // banded groups stay in order; and the module rule — read when used, never

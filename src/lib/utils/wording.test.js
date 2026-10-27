@@ -1,5 +1,5 @@
 // src/lib/utils/wording.test.js
-// The wording is an admin setting (Admin → Other Config → Wording, 2026-10-04).
+// The wording is an admin setting (Admin → Portal settings → Wording, 2026-10-04).
 // Pins: what ships is in force until an admin changes it, only changes are
 // stored, a text with a token it does not understand is refused, the letter
 // rules (an empty token drops its paragraph, an emptied heading goes), and that

@@ -68,6 +68,6 @@ describe('no model is named in code', () => {
     const bad = walk(root)
       .map((p) => relative(root, p).replace(/\\/g, '/'))
       .filter((rel) => /['"`]claude-[a-z]+-\d/.test(readFileSync(join(root, rel), 'utf8')));
-    expect(bad, 'the admin chooses the model (Admin → Other Config → Portal); name none in code').toEqual([]);
+    expect(bad, 'the admin chooses the model (Admin → Portal settings → AI assistant); name none in code').toEqual([]);
   });
 });

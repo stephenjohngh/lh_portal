@@ -1,7 +1,7 @@
 // src/lib/utils/policies.js
 //
 // The portal's POLICY numbers in ONE list, each an admin setting: Admin →
-// Other Config → Policies (2026-10-04, PROJECT_STATUS §6ccc item 10, B).
+// Portal settings → Policies (2026-10-04, PROJECT_STATUS §6ccc item 10, B).
 // User, 2026-10-03: "things that can change … should have an admin parameter".
 //
 // Each entry is the SHIPPED DEFAULT — the number the code used when they were

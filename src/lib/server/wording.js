@@ -1,6 +1,6 @@
 // src/lib/server/wording.js
 //
-// The wording an admin set (Admin → Other Config → Wording), for documents and
+// The wording an admin set (Admin → Portal settings → Wording), for documents and
 // pages built on the server: the MOR letters, the Dossier confidentiality
 // notice. See #lib/utils/wording.js; the cache is #lib/server/settingsCache.js.
 

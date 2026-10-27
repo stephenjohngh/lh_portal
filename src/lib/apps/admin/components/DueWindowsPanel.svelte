@@ -1,5 +1,5 @@
 <!-- src/lib/apps/admin/components/DueWindowsPanel.svelte -->
-<!-- Admin → Other Config → Due windows: how many days before something is due
+<!-- Admin → Portal settings → Due windows: how many days before something is due
      each app starts to show it as due soon.
 
      The windows, their defaults and what each one governs are declared once,

@@ -1,6 +1,6 @@
 // src/lib/server/policies.js
 //
-// The policy numbers an admin set (Admin → Other Config → Policies), for code
+// The policy numbers an admin set (Admin → Portal settings → Policies), for code
 // that runs on the server: sign-in lockout, rate limits, the file pass, the
 // public MOR form. See #lib/utils/policies.js; the one-minute cache, and why a
 // failed read keeps what is in force, are in #lib/server/settingsCache.js.

@@ -50,7 +50,7 @@ const WINDOWS = {
   },
   documentExpiry: {
     days: 30, app: 'Documents', label: 'A library document expiring',
-    where: 'Attached documents and Admin → Document Demo.',
+    where: 'Attached documents and Admin → Document library.',
   },
   plannedObligation: {
     days: 14, app: 'Compliance', label: 'A planned obligation falling due',

@@ -107,7 +107,7 @@ describe('deleteFile with the guard on', () => {
   });
 });
 
-// Check files (Admin → Document Demo, 2026-09-27): a file's state, changing
+// Check files (Admin → Records → Document library, 2026-09-27): a file's state, changing
 // nothing — and a failure to find out is thrown, never reported as "missing".
 describe('fileStatus', () => {
   beforeEach(() => { h.parents = {}; h.deleted = []; h.gone = new Set(); h.binned = new Set(); h.failing = new Set(); });

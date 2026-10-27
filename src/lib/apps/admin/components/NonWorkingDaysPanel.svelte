@@ -1,5 +1,5 @@
 <!-- src/lib/apps/admin/components/NonWorkingDaysPanel.svelte -->
-<!-- Admin → Other Config → Non-working days: the bank holidays and any day the
+<!-- Admin → Portal settings → Non-working days: the bank holidays and any day the
      office is closed. ONE list for the whole portal (table non_working_days,
      migration 248): a working-day deadline in any workflow skips these, and the
      Planner shades each one and names it. It lived inside Admin → Workflows

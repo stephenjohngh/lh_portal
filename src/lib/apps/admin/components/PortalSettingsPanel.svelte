@@ -20,6 +20,9 @@
 
   const logger = getLogger('PortalSettingsPanel');
 
+  /** Which sections to show: 'apps' (top bar + order), 'ai', or 'all'. Admin lists them as two entries. */
+  export let part = 'all';
+
   // Working copy of selected IDs — initialised once the store is loaded
   let topbarIds = null;   // null = still loading
   let saving    = false;
@@ -239,6 +242,7 @@
 <div class="space-y-6">
 
   <!-- ── Section: top-bar apps ───────────────────────────────────────── -->
+  {#if part !== 'ai'}
   <div class="bg-slate-800 rounded-xl border border-slate-700 p-6">
     <div class="mb-5">
       <h3 class="text-base font-semibold text-slate-100">Top-bar apps</h3>
@@ -384,7 +388,10 @@
     </div>
   </div>
 
+  {/if}
+
   <!-- ── Section: AI assistant ───────────────────────────────────────── -->
+  {#if part !== 'apps'}
   <div class="bg-slate-800 rounded-xl border border-slate-700 p-6">
     <div class="mb-5">
       <h3 class="text-base font-semibold text-slate-100">AI assistant</h3>
@@ -477,5 +484,6 @@
       </div>
     {/if}
   </div>
+  {/if}
 
 </div>

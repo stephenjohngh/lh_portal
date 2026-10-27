@@ -27,8 +27,8 @@
   import DocumentCategoriesPanel from './components/DocumentCategoriesPanel.svelte';
   import NonWorkingDaysPanel from './components/NonWorkingDaysPanel.svelte';
   import DocumentsTab    from './components/DocumentsTab.svelte';
-  import TabDropdown     from './components/TabDropdown.svelte';
-  import TabBar          from '#lib/components/common/TabBar.svelte';
+  import AdminNav        from './components/AdminNav.svelte';
+  import { NEEDS_BUILDING_DATA } from './utils/adminSections.js';
   import Button from '#lib/components/common/Button.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
@@ -39,29 +39,9 @@
   let activeTab = 'users';
   let assetsStoreLoaded = false;   // lazy — load buildingAssetsStore only when a building assets tab is first opened
 
-  // Grouped tabs — collapsed into dropdowns so the top bar stays short.
-  // The ids match the activeTab values handled in the content section below.
-  // (The capital-planning tabs — Maintenance Groups + 10-Year Plan — now live in
-  // the Maintenance app; see MaintenanceApp.svelte.)
-  $: TABS = [
-    { key: 'users', icon: '👥', label: 'Users', count: users.length },
-    { key: 'audit', icon: '📋', label: 'Audit Logs',      adminOnly: true },
-    { key: 'types', icon: '🗂', label: 'Component Types', adminOnly: true },
-    { key: 'workflows', icon: '🔀', label: 'Workflows',   adminOnly: true },
-  ];
-  const otherConfigTabs = [
-    { id: 'floors',    icon: '🏢', label: 'Floors' },
-    { id: 'space-types', icon: '🏷', label: 'Space Types' },
-    { id: 'identity',  icon: '🏠', label: 'Building & business' },
-    { id: 'portal',    icon: '⚙',  label: 'Portal' },
-    { id: 'non-working-days', icon: '📅', label: 'Non-working days' },
-    { id: 'due-windows', icon: '⏳', label: 'Due windows' },
-    { id: 'policies',  icon: '📏', label: 'Policies' },
-    { id: 'wording',   icon: '✍', label: 'Wording' },
-    { id: 'doc-categories', icon: '🗃', label: 'Document categories' },
-    { id: 'documents', icon: '📁', label: 'Document Demo' },
-  ];
-  
+  // The sections and their groups are in utils/adminSections.js (left-hand list).
+  // ⚠ Components for the capital-planning screens live in the Maintenance app.
+
   // Modal states
   let showCreateModal = false;
   let showPasswordResetModal = false;
@@ -134,7 +114,7 @@
   // hierarchy and nothing more.
   async function activateTab(id) {
     activeTab = id;
-    if ((id === 'types' || id === 'floors' || id === 'space-types') && !assetsStoreLoaded) {
+    if (NEEDS_BUILDING_DATA.includes(id) && !assetsStoreLoaded) {
       assetsStoreLoaded = true;
       await buildingAssetsStore.load();
     }
@@ -176,7 +156,7 @@
     <div class="flex-start mb-4">
       <div>
         <h2 class="heading-page">Admin Portal</h2>
-        <p class="text-muted">User management and activity monitoring</p>
+        <p class="text-muted">People, the building, how the portal behaves, and the record of what was done</p>
       </div>
       {#if $permissions.isAdmin && activeTab === 'users'}
         <Button
@@ -190,28 +170,14 @@
       {/if}
     </div>
 
-    <!-- Tab Navigation -->
-    <!-- ⚠ The compliance obligations register and this building's planned
-         obligations USED TO LEAD THIS BAR. They are now their own app — they
-         were never portal administration, and they sat here only because they
-         grew out of `inspection_definitions` CRUD. ⛔ THE BSA s.82 DISPLAY
-         REGISTER HAS GONE THE SAME WAY (C3) — it is a statutory duty
-         discharged on a notice board, which is unlike everything else in the
-         Compliance app and still not portal administration. See
-         docs/design/compliance_app_design.md. ⛔ Do not bring any of them
-         back. -->
-    <TabBar tabs={TABS} active={activeTab} on:select={(e) => activateTab(e.detail)}>
-      {#if $permissions.isAdmin}
-        <TabDropdown
-          label="Other Config"
-          icon="🛠"
-          items={otherConfigTabs}
-          {activeTab}
-          on:select={(e) => activateTab(e.detail)}
-        />
-      {/if}
-    </TabBar>
   </div>
+
+  <div class="flex flex-col md:flex-row gap-6 md:items-start">
+    {#if $permissions.isAdmin}
+      <AdminNav active={activeTab} isAdmin={$permissions.isAdmin} userCount={users.length}
+                on:select={(e) => activateTab(e.detail)} />
+    {/if}
+    <div class="flex-1 min-w-0">
 
   <!-- Tab Content (NEW) -->
   {#if activeTab === 'users'}
@@ -293,8 +259,11 @@
       />
     {/if}
 
-  {:else if activeTab === 'portal'}
-    <PortalSettingsPanel />
+  {:else if activeTab === 'apps'}
+    <PortalSettingsPanel part="apps" />
+
+  {:else if activeTab === 'ai'}
+    <PortalSettingsPanel part="ai" />
 
   {:else if activeTab === 'identity'}
     <IdentityPanel />
@@ -321,6 +290,8 @@
     <DocumentsTab />
 
   {/if}
+    </div>
+  </div>
 </div>
 
 <!-- Modals -->

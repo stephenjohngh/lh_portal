@@ -1,7 +1,7 @@
 // src/lib/utils/identity.js
 //
 // Who the portal is FOR — the building and the business running it — as an
-// admin sets them (Admin → Other Config → Building & business), never as code.
+// admin sets them (Admin → Building → Building & business), never as code.
 // User, 2026-10-03: "things that can change e.g. business address, ai models,
 // management preferences should have an admin parameter". Logo and colours are
 // deployment branding and are NOT here (#lib/branding.js, #lib/theme.js).

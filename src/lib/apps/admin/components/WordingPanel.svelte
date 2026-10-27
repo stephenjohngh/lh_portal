@@ -1,5 +1,5 @@
 <!-- src/lib/apps/admin/components/WordingPanel.svelte -->
-<!-- Admin → Other Config → Wording: the portal's own words that an operator
+<!-- Admin → Portal settings → Wording: the portal's own words that an operator
      will need to change — the MOR draft letters and the Dossier
      confidentiality notice.
 

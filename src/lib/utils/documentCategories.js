@@ -2,7 +2,7 @@
 //
 // The document library's categories — what a document IS to this building (an
 // EICR, a fire risk assessment, a safety case) — as an admin setting: Admin →
-// Other Config → Document categories (2026-10-04, PROJECT_STATUS §6ccc item
+// Portal settings → Document categories (2026-10-04, PROJECT_STATUS §6ccc item
 // 10, C). They used to be a list in code, so a building with no gas supply was
 // offered "Gas Safety" on every upload and could add nothing of its own.
 //

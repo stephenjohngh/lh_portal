@@ -65,7 +65,7 @@ export async function load({ params, request, setHeaders, cookies }) {
     // hold; the manifest check happens server-side on every request.
     assetBase:   `/api/pack/${params.token}/file/`,
     // Shown on screen and on the printed cover. An admin setting (Admin →
-    // Other Config → Wording), read here because the recipient is not signed
+    // Portal settings → Wording), read here because the recipient is not signed
     // in and cannot read portal_settings themselves.
     notice:      await serverWording('dossierConfidentialityNotice'),
   };

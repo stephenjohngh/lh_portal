@@ -94,7 +94,7 @@ export async function POST({ request }) {
       return json({ error: 'body must be under 4000 characters' }, { status: 400 });
     }
 
-    // ── Switched off by an admin (Admin → Other Config → Portal) ──────
+    // ── Switched off by an admin (Admin → Portal settings → AI assistant) ──────
     // Checked before the rate limit, so a refused call costs nothing.
     if (!(await aiSwitchedOn())) {
       return json({ error: 'AI suggestions are switched off by an administrator.' }, { status: 403 });

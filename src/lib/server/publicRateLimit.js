@@ -15,7 +15,7 @@ import { serverRateLimit } from '#lib/server/policies.js';
 
 const logger = getLogger('publicRateLimit');
 
-// The limits are admin policies (Admin → Other Config → Policies): the number
+// The limits are admin policies (Admin → Portal settings → Policies): the number
 // allowed per window, with the window fixed, declared in #lib/utils/policies.js
 // (RATE_LIMIT_WINDOWS) and read fresh here (serverRateLimit). Each action is
 // also in public_upload_attempts' CHECK — dbRulesParity.test.js holds the two

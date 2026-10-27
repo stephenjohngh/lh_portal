@@ -45,7 +45,7 @@ describe('MOR letters', () => {
     expect(text).toContain('[Building Safety Manager name]');
   });
 
-  // The words are an admin setting (Admin → Other Config → Wording, 2026-10-04).
+  // The words are an admin setting (Admin → Portal settings → Wording, 2026-10-04).
   describe('wording', () => {
     afterEach(() => setWording(null));
 
