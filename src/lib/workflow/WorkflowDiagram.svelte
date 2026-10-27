@@ -12,6 +12,7 @@
   import { describeDeadline } from './workflowDeadlines.js';
   import { timerPhrase } from './workflowModel.js';
   import { ACCENT } from '#lib/theme.js';
+  import { getPref, setPref } from '#lib/utils/prefs.js';
 
   /** @type {Array<{ key: string, name: string, kind: string, position?: number, deadline_days?: number|string|null, deadline_basis?: string, deadline_from?: string }>} */
   export let steps = [];
@@ -20,6 +21,16 @@
   /** @type {ReturnType<typeof import('./workflowStats.js').workflowStats> | null} */
   export let stats = null;
   export let title = 'Workflow diagram';
+
+  // Drawn at its own size, scrolling sideways when it is wider than the room — or
+  // scaled down to fit the window, at the cost of smaller text. The choice is the
+  // person's, and is remembered in this browser.
+  const FIT_PREF = 'workflow.diagramFit';
+  let fit = getPref(FIT_PREF) === 'true';
+  function toggleFit() {
+    fit = !fit;
+    setPref(FIT_PREF, String(fit));
+  }
 
   $: layout = layoutWorkflow(steps, moves);
   $: stepOf = new Map(steps.map((s) => [s.key, s]));
@@ -37,8 +48,17 @@
   const fmtDays = (/** @type {number|null} */ d) => (d == null ? '' : `${Number.isInteger(d) ? d : d.toFixed(1)} d`);
 </script>
 
+<div class="flex justify-end mb-1">
+  <button type="button" class="text-xs px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:text-white hover:border-slate-400"
+          aria-pressed={fit} data-testid="workflow-diagram-fit" on:click={toggleFit}
+          title={fit ? 'Draw the diagram at full size, scrolling sideways if it is wider than the window' : 'Shrink the diagram so all of it fits across the window'}>
+    {fit ? 'Actual size' : 'Fit to window'}
+  </button>
+</div>
 <div class="overflow-x-auto rounded-lg border border-slate-700 bg-slate-900/60 p-2" data-testid="workflow-diagram">
-  <svg role="img" aria-label={title} width={layout.width} height={layout.height} viewBox="0 0 {layout.width} {layout.height}" class="block">
+  <svg role="img" aria-label={title} width={fit ? '100%' : layout.width} height={fit ? undefined : layout.height}
+       style={fit ? `max-width:${layout.width}px;height:auto` : undefined}
+       viewBox="0 0 {layout.width} {layout.height}" class="block">
     <defs>
       <marker id="wf-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
         <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8" />

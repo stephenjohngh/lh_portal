@@ -30,6 +30,7 @@
   import AdminNav        from './components/AdminNav.svelte';
   import { NEEDS_BUILDING_DATA, leavesOf, sectionOf } from './utils/adminSections.js';
   import TabBar from '#lib/components/common/TabBar.svelte';
+  import { getPref, setPref } from '#lib/utils/prefs.js';
   import Button from '#lib/components/common/Button.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
@@ -113,6 +114,25 @@
   // obligations scope editor ever needed it, and that moved to the Compliance
   // app with the rest of the register — so the tabs left here need the type
   // hierarchy and nothing more.
+  // The section list can be hidden to give a screen more width. It hides itself
+  // on Workflows, whose diagrams are the widest thing in Admin, unless the person
+  // has opened it there; the person's own choice is remembered in this browser.
+  const NAV_PREF = 'admin.navCollapsed';
+  let navPref = getPref(NAV_PREF) === 'true';
+  let openedOnWorkflows = false;
+  $: if (activeTab !== 'workflows') openedOnWorkflows = false;
+  $: navCollapsed = navPref || (activeTab === 'workflows' && !openedOnWorkflows);
+  function toggleNav() {
+    if (navCollapsed) {
+      navPref = false;
+      if (activeTab === 'workflows') openedOnWorkflows = true;
+    } else {
+      navPref = true;
+      openedOnWorkflows = false;
+    }
+    setPref(NAV_PREF, String(navPref));
+  }
+
   // Opening a section shows the screen last used in it, or its first.
   /** @type {Record<string, string>} */
   const lastScreen = {};
@@ -187,7 +207,7 @@
   <div class="flex flex-col md:flex-row gap-6 md:items-start">
     {#if $permissions.isAdmin}
       <AdminNav active={activeTab} isAdmin={$permissions.isAdmin} userCount={users.length}
-                on:select={(e) => openSection(e.detail)} />
+                collapsed={navCollapsed} on:toggle={toggleNav} on:select={(e) => openSection(e.detail)} />
     {/if}
     <div class="flex-1 min-w-0">
       {#if screens.length > 1}

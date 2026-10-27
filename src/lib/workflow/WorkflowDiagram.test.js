@@ -5,7 +5,7 @@
 // pair (the editor says that is a problem; it is still on screen meanwhile)
 // threw and blanked the whole Admin page.
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import WorkflowDiagram from './WorkflowDiagram.svelte';
 
 const steps = [
@@ -25,5 +25,22 @@ describe('WorkflowDiagram', () => {
     const svg = screen.getByRole('img', { name: 'Test — diagram' });
     expect(svg.textContent).toContain('Start');
     expect(svg.textContent).toContain('Finish');
+  });
+
+  it('can be drawn at its own size or scaled to fit the window, and remembers the choice', async () => {
+    const moves = [{ from_key: 'a', to_key: 'b', label: 'Start' }];
+    try { localStorage.removeItem('workflow.diagramFit'); } catch { /* none */ }
+    const { unmount } = render(WorkflowDiagram, { steps, moves, title: 'Fit — diagram' });
+    const svg = () => screen.getByRole('img', { name: 'Fit — diagram' });
+    const fixedWidth = svg().getAttribute('width');
+    expect(fixedWidth).not.toBe('100%');
+    await fireEvent.click(screen.getByTestId('workflow-diagram-fit'));
+    expect(svg().getAttribute('width')).toBe('100%');
+    expect(svg().getAttribute('viewBox')).toBeTruthy();     // so it scales, never crops
+    unmount();
+    render(WorkflowDiagram, { steps, moves, title: 'Fit — diagram' });
+    expect(svg().getAttribute('width')).toBe('100%');         // remembered
+    await fireEvent.click(screen.getByTestId('workflow-diagram-fit'));
+    expect(svg().getAttribute('width')).toBe(fixedWidth);
   });
 });
