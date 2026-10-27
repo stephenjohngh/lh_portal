@@ -20,6 +20,9 @@
 
   const dispatch = createEventDispatcher();
 
+  /** Puts the cursor in the box when the form opens. */
+  function focusOnMount(node) { node.focus(); }
+
   let open = false;
   let label = '';
   let colour = 'rose';
@@ -40,17 +43,21 @@
   $: own = fromAdmin ? null : mark;
   $: style = markStyle(mark);
 
+  /** A shaded day needs a name; with none typed it is simply "Shaded", rather than Save doing nothing. */
+  const DEFAULT_LABEL = 'Shaded';
+
   function save() {
-    if (!label.trim()) return;
-    dispatch('set', { date, label: label.trim(), colour });
+    dispatch('set', { date, label: label.trim() || DEFAULT_LABEL, colour });
+    open = false;
+  }
+
+  function remove() {
+    dispatch('clear', { date });
     open = false;
   }
 </script>
 
 <div class="flex items-center gap-2 flex-wrap">
-  {#if fromAdmin}
-    <span class="text-[11px] text-slate-500">Not a working day (Admin → Portal settings → Non-working days).</span>
-  {/if}
   {#if style}
     <span class="text-[11px] px-1.5 py-0.5 rounded {style.wash} text-slate-200">
       {style.label}
@@ -63,15 +70,12 @@
               on:click={() => open = true}>
         {own ? 'Change shading' : 'Shade this day'}
       </button>
-      {#if own}
-        <button type="button" class="text-[11px] text-slate-600 hover:text-red-400"
-                on:click={() => dispatch('clear', { date })}>Remove</button>
-      {/if}
     {:else}
       <div class="flex items-center gap-2 flex-wrap">
         <input
           bind:value={label}
           placeholder="e.g. Bank holiday"
+          use:focusOnMount
           on:keydown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') open = false; }}
           class="px-2 py-0.5 text-xs bg-slate-900 border border-slate-600 rounded
                  text-white placeholder-slate-500 focus:outline-none
@@ -99,6 +103,10 @@
                 on:click={save}>Save</Button>
         <button type="button" class="text-[11px] text-slate-500 hover:text-slate-300"
                 on:click={() => open = false}>Cancel</button>
+        {#if own}
+          <button type="button" class="text-[11px] text-slate-500 hover:text-red-400"
+                  on:click={remove}>Remove shading</button>
+        {/if}
       </div>
     {/if}
   {/if}

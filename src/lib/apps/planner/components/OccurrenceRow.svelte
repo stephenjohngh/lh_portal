@@ -77,12 +77,12 @@
         type="button"
         class="w-5 h-5 shrink-0 rounded border-2 {category.edge} flex items-center justify-center
                text-xs transition-colors
-               {done ? category.dot + ' text-white' : 'text-transparent hover:bg-slate-700'}
+               {done || skipped ? category.dot + ' text-white' : 'text-transparent hover:bg-slate-700'}
                {canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}"
         disabled={!canEdit}
-        title={done ? 'Mark as not done' : 'Mark as done'}
+        title={done ? 'Mark as not done' : skipped ? `${notDoneWord} — mark as done instead` : 'Mark as done'}
         on:click={() => dispatch('toggle', occurrence)}
-      >✓</button>
+      >{skipped ? '✕' : '✓'}</button>
     {/if}
 
     <!-- Clicking the text (not the tick or the pencil) opens everything about it,
@@ -91,13 +91,10 @@
          title="Show the details"
          on:click={() => dispatch('open', occurrence)}
          on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dispatch('open', occurrence); } }}>
-      <span class="text-sm leading-5 text-white {done ? 'line-through' : ''}">{series?.title}</span>
+      <span class="text-sm leading-5 text-white {done || skipped ? 'line-through' : ''}">{series?.title}</span>
 
       {#if linked}
         <span class="text-[10px] px-1 rounded border {category.chip}">{occurrence.sourceLabel}</span>
-      {/if}
-      {#if skipped}
-        <span class="text-[10px] uppercase tracking-wide text-slate-500">{notDoneWord}</span>
       {/if}
       {#if occurrence.moved}
         <span class="text-[10px] text-amber-400"

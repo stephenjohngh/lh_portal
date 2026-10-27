@@ -98,7 +98,7 @@
                          {mark ? mark.wash
                            : cell.weekend ? 'bg-sky-500/10' : 'bg-slate-800/80'}
                          {cell.today ? 'ring-2 ring-inset ring-purple-400 z-10 relative' : ''}
-                         {selected === cell.date ? 'bg-purple-500/40' : ''}">
+                         {selected === cell.date ? 'ring-2 ring-inset ring-white z-10 relative' : ''}">
                 <button
                   type="button"
                   class="w-full h-full px-0.5 pt-0.5 flex flex-col items-center

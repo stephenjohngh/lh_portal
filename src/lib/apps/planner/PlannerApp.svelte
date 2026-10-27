@@ -741,7 +741,7 @@
       {/if}
     </div>
 
-    <aside class="w-full lg:w-60 shrink-0 space-y-3" aria-label="The selected day">
+    <aside class="w-full lg:w-[15.75rem] shrink-0 space-y-3" aria-label="The selected day">
       {#if selectedDay}
         <div class="border border-slate-700 rounded p-3 bg-slate-800/40">
           <div class="flex items-center gap-2 mb-2">
