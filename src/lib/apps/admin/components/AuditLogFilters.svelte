@@ -6,14 +6,11 @@
   import FormInput from '#lib/components/common/FormInput.svelte';
   import FormSelect from '#lib/components/common/FormSelect.svelte';
   import Button from '#lib/components/common/Button.svelte';
-  import { auditAppOptions } from '../utils/auditApps.js';
 
   export let filters;
 
   const dispatch = createEventDispatcher();
 
-  // One list for every audit surface (see auditApps.js).
-  const apps = auditAppOptions('All Apps');
 
   const eventTypes = [
     { value: null,                 label: 'All Event Types' },
@@ -91,7 +88,6 @@
       }
       case 'auth':     filters.eventCategory = 'auth';     break;
       case 'critical': filters.severity      = 'critical'; break;
-      case 'flagged':  filters.flaggedOnly   = true;       break;
     }
     dispatch('change');
   }
@@ -113,31 +109,12 @@
     <span class="text-muted mx-1">|</span>
     <Button variant="secondary" size="small" on:click={() => setQuickFilter('auth')}>🔐 Auth</Button>
     <Button variant="secondary" size="small" on:click={() => setQuickFilter('critical')}>🔴 Critical</Button>
-    <Button variant="secondary" size="small" on:click={() => setQuickFilter('flagged')}>🚩 Flagged</Button>
   </div>
 
-  <!-- Advanced Filters -->
+  <!-- Advanced filters. Search, App and Flagged are in the toolbar above (AuditLogsView), not repeated here. -->
   <!-- Compact: each control is about 8rem wide, as many per row as fit (four or
        more), so the filters take a row or two and the results stay in view. -->
   <div class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));">
-    <div>
-      <FormInput
-        label="Search"
-        type="text"
-        bind:value={filters.search}
-        placeholder="User or target…"
-        on:input={handleApply}
-      />
-    </div>
-
-    <!-- App filter -->
-    <FormSelect
-      label="App"
-      bind:value={filters.appId}
-      options={apps}
-      on:change={handleApply}
-    />
-
     <!-- Event Type -->
     <FormSelect
       label="Event Type"
@@ -161,18 +138,6 @@
       options={severities}
       on:change={handleApply}
     />
-
-    <!-- Flagged Only -->
-    <div class="flex items-center space-x-2 pt-6">
-      <input
-        type="checkbox"
-        id="flagged-only"
-        bind:checked={filters.flaggedOnly}
-        on:change={handleApply}
-        class="checkbox"
-      />
-      <label for="flagged-only" class="text-label cursor-pointer">🚩 Flagged Only</label>
-    </div>
 
     <!-- Date Range -->
     <FormInput label="Start Date" type="date" bind:value={filters.startDate} on:change={handleApply} />
