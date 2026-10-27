@@ -6,24 +6,14 @@
   import FormInput from '#lib/components/common/FormInput.svelte';
   import FormSelect from '#lib/components/common/FormSelect.svelte';
   import Button from '#lib/components/common/Button.svelte';
+  import { auditAppOptions } from '../utils/auditApps.js';
 
   export let filters;
 
   const dispatch = createEventDispatcher();
 
-  // App filter values must match `appId` strings actually written by logAudit() across
-  // the codebase. Keep legacy values ('users', 'plans') so historical rows are still filterable.
-  const apps = [
-    { value: null,              label: 'All Apps' },
-    { value: 'admin',           label: '👥 Admin / Users' },
-    { value: 'management',      label: '📋 Management' },
-    { value: 'building_assets', label: '🏢 Building Assets' },
-    { value: 'inspection',      label: '🚶 Inspection' },
-    { value: 'maintenance',     label: '🔧 Maintenance' },
-    { value: 'mobileplan',      label: '📱 Schematics (M)' },
-    { value: 'users',           label: '👥 Users (legacy)' },
-    { value: 'plans',           label: '🗺 Floor Schematics (legacy)' }
-  ];
+  // One list for every audit surface (see auditApps.js).
+  const apps = auditAppOptions('All Apps');
 
   const eventTypes = [
     { value: null,                 label: 'All Event Types' },

@@ -4,6 +4,7 @@
      so results are visible immediately. The most-used controls (search, app,
      flagged) live in an always-visible toolbar; advanced filters expand on demand. -->
 <script>
+  import { auditAppOptions } from '../utils/auditApps.js';
   import { onMount } from 'svelte';
   import { auditLogsStore } from '../stores/auditLogsStore';
   import AuditLogFilters from './AuditLogFilters.svelte';
@@ -35,18 +36,8 @@
   let showBulkActions = false;
   let localError      = '';
 
-  // Quick app dropdown — kept in sync with AuditLogFilters' canonical list
-  const quickApps = [
-    { value: null,              label: 'All apps' },
-    { value: 'admin',           label: '👥 Admin / Users' },
-    { value: 'management',      label: '📋 Management' },
-    { value: 'building_assets', label: '🏢 Building Assets' },
-    { value: 'inspection',      label: '🚶 Inspection' },
-    { value: 'maintenance',     label: '🔧 Maintenance' },
-    { value: 'mobileplan',      label: '📱 Schematics (M)' },
-    { value: 'users',           label: '👥 Users (legacy)' },
-    { value: 'plans',           label: '🗺 Floor Schematics (legacy)' }
-  ];
+  // Quick app dropdown — the same list as AuditLogFilters (auditApps.js)
+  const quickApps = auditAppOptions('All apps');
 
   $: ({ logs, loading, error, totalCount, hasMore } = $auditLogsStore);
   $: showBulkActions = selectedLogs.size > 0;

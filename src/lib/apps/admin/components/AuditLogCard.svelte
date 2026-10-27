@@ -1,6 +1,7 @@
 <!-- src/lib/apps/admin/components/AuditLogCard.svelte -->
 <!-- Individual audit log card with expandable details -->
 <script>
+  import { auditAppBadge } from '../utils/auditApps.js';
   import { createEventDispatcher } from 'svelte';
   import Icon from '#lib/components/icons/Icon.svelte';
   import Badge from '#lib/components/common/Badge.svelte';
@@ -50,19 +51,7 @@
     suspicious_activity: 'text-red-400'
   };
 
-  // Keep in sync with logAudit() appId values across the codebase + legacy values.
-  const appLabels = {
-    admin:           { label: '👥 Admin',           color: 'bg-purple-600/20 text-purple-400' },
-    users:           { label: '👥 Users',           color: 'bg-purple-600/20 text-purple-400' },
-    issues:          { label: '📋 Issues',          color: 'bg-green-600/20 text-green-400' },
-    building_assets: { label: '🏢 Building Assets', color: 'bg-blue-600/20 text-blue-400' },
-    inspection:     { label: '🚶 Inspection',       color: 'bg-orange-600/20 text-orange-400' },
-    maintenance:    { label: '🔧 Maintenance',      color: 'bg-yellow-600/20 text-yellow-400' },
-    mobileplan:     { label: '📱 Schematics (M)',      color: 'bg-teal-600/20 text-teal-400' },
-    plans:          { label: '🗺 Floor Schematics',      color: 'bg-amber-600/20 text-amber-400' }
-  };
-
-  $: appMeta = log.app_id ? appLabels[log.app_id] : null;
+  $: appMeta = auditAppBadge(log.app_id);
 
   function handleSelect() { dispatch('select'); }
   function handleDelete() { dispatch('delete'); }
