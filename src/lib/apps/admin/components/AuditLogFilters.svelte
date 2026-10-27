@@ -125,14 +125,15 @@
   </div>
 
   <!-- Advanced Filters -->
-  <div class="grid-form">
-    <!-- Search — full width -->
-    <div class="col-span-2">
+  <!-- Compact: each control is about 8rem wide, as many per row as fit (four or
+       more), so the filters take a row or two and the results stay in view. -->
+  <div class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));">
+    <div>
       <FormInput
         label="Search"
         type="text"
         bind:value={filters.search}
-        placeholder="Search by user email or target name..."
+        placeholder="User or target…"
         on:input={handleApply}
       />
     </div>
