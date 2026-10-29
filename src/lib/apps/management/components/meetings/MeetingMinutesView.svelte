@@ -140,7 +140,7 @@
                   <ul class="space-y-2">
                     {#each m.comments as c (c.id)}
                       <li class="flex items-start gap-2 text-sm">
-                        <span class="text-blue-400 shrink-0 mt-0.5">•</span>
+                        <span class="shrink-0 mt-0.5">💬</span>
                         <div class="flex-1 min-w-0">
                           {#if c.fields?.summary}<p class="text-slate-100 text-sm font-semibold">{c.fields.summary}</p>{/if}
                           {#if c.body?.startsWith('<')}
@@ -169,7 +169,7 @@
                   <ul class="space-y-2">
                     {#each m.decisions as d (d.id)}
                       <li class="flex items-start gap-2 text-sm">
-                        <span class="text-violet-400 shrink-0 mt-0.5">•</span>
+                        <span class="shrink-0 mt-0.5">✅</span>
                         <div class="flex-1 min-w-0">
                           {#if d.fields?.summary}<p class="text-slate-100 text-sm font-semibold">{d.fields.summary}</p>{/if}
                           {#if d.body?.startsWith('<')}
