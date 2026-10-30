@@ -27,24 +27,19 @@
 </script>
 
 <div class="relative">
-  <Button variant="plain" type="button" aria-haspopup="menu" aria-expanded={open} title="Settings only an admin can change" on:click={() => dispatch('toggle')} className="bg-slate-700 border border-slate-600 hover:border-slate-500 rounded
-           px-3 py-1.5 text-xs text-white flex items-center gap-1.5
-           focus:outline-none transition-colors">
-Admin
-    <span class="text-slate-500 text-[10px]">▾</span>
-</Button>
+  <Button admin size="small" type="button" aria-haspopup="menu" aria-expanded={open} title="Settings only an admin can change" on:click={() => dispatch('toggle')}>Admin <span class="ml-1 text-[10px] opacity-70">▾</span></Button>
 
   {#if open}
     <!-- Right-aligned: the menu sits near the end of the toolbar, and a
          left-aligned one would hang off the edge on a narrow screen. -->
     <div role="menu"
          class="absolute top-full right-0 mt-1 z-50 min-w-max py-1
-                bg-slate-800 border border-slate-600 rounded-lg shadow-xl">
+                admin-only-solid rounded-lg shadow-xl">
       {#each items as item (item.id)}
-        <Button variant="plain" type="button" role="menuitem" on:click={() => choose(item.id)} className="w-full text-left px-3 py-1.5 hover:bg-slate-700/80 transition-colors">
-<span class="block text-xs text-slate-200 whitespace-nowrap">{item.label}</span>
+        <Button variant="plain" type="button" role="menuitem" on:click={() => choose(item.id)} className="w-full text-left px-3 py-1.5 hover:bg-amber-900/40 transition-colors">
+<span class="block text-xs text-amber-200 whitespace-nowrap">{item.label}</span>
           {#if item.hint}
-            <span class="block text-[10px] text-slate-500 whitespace-nowrap">{item.hint}</span>
+            <span class="block text-[10px] text-amber-200/60 whitespace-nowrap">{item.hint}</span>
           {/if}
 </Button>
       {/each}

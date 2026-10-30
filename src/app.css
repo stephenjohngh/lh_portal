@@ -561,5 +561,12 @@ npx tailwindcss -i src/app.css -o dist/app.css --watch --watch-stats
   border: 1px solid rgb(180 83 9 / 0.5);        /* amber-700 */
   color: rgb(253 230 138);                      /* amber-200 */
 }
+/* A FLOATING admin panel (a menu, a popover) must be opaque: the translucent look above lets whatever is
+   behind it show through. Same hue, solid. */
+.admin-only-solid {
+  background-color: rgb(58 36 18);
+  border: 1px solid rgb(180 83 9 / 0.6);
+  color: rgb(253 230 138);
+}
 .admin-only:focus { outline: none; box-shadow: 0 0 0 1px rgb(245 158 11); }
 .admin-only-label { color: rgb(252 211 77 / 0.8); }  /* amber-300 */

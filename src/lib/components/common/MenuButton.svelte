@@ -34,7 +34,7 @@
   {#if open}
     <div
       class="absolute left-0 top-full mt-1 z-50 min-w-[10rem] rounded-lg shadow-xl flex flex-col py-1 text-xs
-             {admin ? 'admin-only' : 'bg-slate-800 border border-slate-600'}"
+             {admin ? 'admin-only-solid' : 'bg-slate-800 border border-slate-600'}"
     >
       {#each items as it (it.key)}
         <button
