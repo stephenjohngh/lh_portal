@@ -149,27 +149,23 @@
 
     {#if issue && $permissions.isAdmin}
       <div class="border-t border-slate-600 pt-4">
-        <div class="flex items-start gap-2 px-3 py-2 rounded bg-amber-900/20 border border-amber-700/40 text-xs text-amber-200 mb-3">
-          <span class="shrink-0">⚠️</span>
-          <span><strong>Admin only — record timestamps.</strong> In normal use leave these as their automatic values. Only edit to correct a historical data-entry error.</span>
-        </div>
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label for="issue-admin-created" class="block text-xs font-medium text-slate-400 mb-1">Created</label>
+            <label for="issue-admin-created" class="block text-xs font-medium admin-only-label mb-1">Created</label>
             <input
               id="issue-admin-created"
               type="datetime-local"
               bind:value={adminCreatedAt}
-              class="w-full px-3 py-1.5 text-sm bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+              class="admin-only w-full px-3 py-1.5 text-sm rounded"
             />
           </div>
           <div>
-            <label for="issue-admin-updated" class="block text-xs font-medium text-slate-400 mb-1">Modified</label>
+            <label for="issue-admin-updated" class="block text-xs font-medium admin-only-label mb-1">Modified</label>
             <input
               id="issue-admin-updated"
               type="datetime-local"
               bind:value={adminUpdatedAt}
-              class="w-full px-3 py-1.5 text-sm bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+              class="admin-only w-full px-3 py-1.5 text-sm rounded"
             />
           </div>
         </div>

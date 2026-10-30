@@ -114,7 +114,7 @@
 
     {#if isAdmin}
       <div class="border-t border-slate-700 pt-3">
-        <Button variant="danger" size="small" disabled={!!busy} on:click={() => (confirmDelete = true)}>Delete case</Button>
+        <Button admin variant="danger" size="small" disabled={!!busy} on:click={() => (confirmDelete = true)}>Delete case</Button>
       </div>
     {/if}
   </aside>

@@ -13,6 +13,8 @@
   export let fullWidth = false;
   export let className = ''; // Additional custom classes
   export let title = '';
+  /** Only an administrator sees this: drawn amber on brown whatever the variant. */
+  export let admin = false;
 
   // Color variant styles. `purple-*` IS the portal accent (teal, via
   // tailwind.config.js and theme.js). Every variant carries a border so an
@@ -45,6 +47,13 @@
     danger: 'border-red-500/70 bg-transparent text-red-400 hover:bg-red-600/20 hover:text-red-300 disabled:opacity-50'
   };
 
+  // ⭐ Admin-only buttons (user, 2026-10-30): amber on brown, the same look as the
+  // `.admin-only` class in app.css. Overrides the variant, so a delete button an
+  // admin alone can press reads as admin first; its icon and its confirmation say
+  // what it does.
+  const adminOnlyStyle = 'border-amber-700/50 bg-amber-900/25 text-amber-200 hover:bg-amber-900/45 hover:text-amber-100 '
+    + 'disabled:border-slate-600 disabled:bg-transparent disabled:text-slate-500';
+
   // Size styles
   const sizeStyles = {
     xs: 'px-2 py-0.5 text-xs',
@@ -69,7 +78,7 @@
     'focus:outline-none',
     'disabled:cursor-not-allowed',
     fullWidth ? 'w-full' : '',
-    variantStyles[variant] || variantStyles.primary,
+    admin ? adminOnlyStyle : (variantStyles[variant] || variantStyles.primary),
     sizeStyles[size] || sizeStyles.medium,
     className
   ].filter(Boolean).join(' ');

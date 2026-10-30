@@ -85,7 +85,7 @@
       <FormInput label="Due" type="date" bind:value={due} />
     </div>
     <div class="flex items-center gap-2">
-      <Button variant="secondary" size="small" disabled={!changed || saving} on:click={save}>
+      <Button admin variant="secondary" size="small" disabled={!changed || saving} on:click={save}>
         {saving ? 'Saving…' : 'Save owner and due date'}
       </Button>
       {#if done}<span class="text-xs text-slate-400">{done}</span>{/if}

@@ -86,7 +86,7 @@
       <div class="flex items-center justify-between">
         <h3 class="text-sm font-semibold text-slate-200">{row.size}</h3>
         {#if $permissions.isAdmin}
-          <Button variant="tertiary" size="xs" on:click={() => openForm(row.size)}>+ Price for {row.size}</Button>
+          <Button admin variant="tertiary" size="xs" on:click={() => openForm(row.size)}>+ Price for {row.size}</Button>
         {/if}
       </div>
       {#if !row.current.length && !row.upcoming.length}

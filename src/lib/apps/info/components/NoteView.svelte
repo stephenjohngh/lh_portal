@@ -76,7 +76,7 @@
       <!-- Publish (admin only — internal notes get an explicit publish action;
            published notes change visibility via Edit) -->
       {#if $permissions.isAdmin && !isPublished}
-        <Button variant="primary" size="small" icon="upload"
+        <Button admin variant="primary" size="small" icon="upload"
                 on:click={() => dispatch('edit', note)}
                 title="Publish this note to /info">Publish</Button>
       {/if}

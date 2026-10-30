@@ -124,20 +124,16 @@
         </div>
         {#if action && $permissions.isAdmin}
           <div class="border-t border-slate-600 pt-3">
-            <div class="flex items-start gap-2 px-2 py-1.5 rounded bg-amber-900/20 border border-amber-700/40 text-xs text-amber-200 mb-2">
-              <span class="shrink-0">⚠️</span>
-              <span><strong>Admin only — record timestamps.</strong> Leave as automatic values in normal use. Only change to correct a historical data-entry error.</span>
-            </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label for="action-admin-created" class="block text-xs text-slate-400 mb-1">Created</label>
+                <label for="action-admin-created" class="block text-xs admin-only-label mb-1">Created</label>
                 <input id="action-admin-created" type="datetime-local" bind:value={override_created_at}
-                       class="w-full px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-amber-500" />
+                       class="admin-only w-full px-2 py-1 text-xs rounded" />
               </div>
               <div>
-                <label for="action-admin-updated" class="block text-xs text-slate-400 mb-1">Modified</label>
+                <label for="action-admin-updated" class="block text-xs admin-only-label mb-1">Modified</label>
                 <input id="action-admin-updated" type="datetime-local" bind:value={override_updated_at}
-                       class="w-full px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-amber-500" />
+                       class="admin-only w-full px-2 py-1 text-xs rounded" />
               </div>
             </div>
           </div>

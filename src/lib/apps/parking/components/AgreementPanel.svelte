@@ -299,7 +299,7 @@
               <Button size="small" variant="danger" disabled={busy} on:click={() => askEnd('terminated')}>Terminate</Button>
             {/if}
             {#if agreement.status === 'draft' && $permissions.isAdmin}
-              <Button size="small" variant="danger" disabled={busy} on:click={() => confirmDelete = true}>Delete draft</Button>
+              <Button admin size="small" variant="danger" disabled={busy} on:click={() => confirmDelete = true}>Delete draft</Button>
             {/if}
           </div>
         {/if}

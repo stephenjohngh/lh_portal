@@ -550,3 +550,16 @@ npx tailwindcss -i src/app.css -o dist/app.css --watch --watch-stats
     font-size: max(16px, 1em) !important;
   }
 }
+
+/* ⭐ ADMIN-ONLY controls (user, 2026-10-30): amber on brown, so an administrator
+   can tell at a glance that a button or box is not one an ordinary user has.
+   Button.svelte's `admin` prop (ProtectedButton sets it for requireAdmin) is the
+   same look for buttons; this class is for inputs, panels and anything else.
+   Change the colours here and in Button.svelte's `adminOnly` style together. */
+.admin-only {
+  background-color: rgb(120 53 15 / 0.25);      /* amber-900 */
+  border: 1px solid rgb(180 83 9 / 0.5);        /* amber-700 */
+  color: rgb(253 230 138);                      /* amber-200 */
+}
+.admin-only:focus { outline: none; box-shadow: 0 0 0 1px rgb(245 158 11); }
+.admin-only-label { color: rgb(252 211 77 / 0.8); }  /* amber-300 */

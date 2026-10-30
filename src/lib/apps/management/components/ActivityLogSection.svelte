@@ -692,21 +692,21 @@
         <div class="border-t border-slate-600 pt-2 mt-2">
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label for="modal-edit-admin-created-{viewingItem.id}" class="block text-xs text-slate-400 mb-0.5">Created</label>
+              <label for="modal-edit-admin-created-{viewingItem.id}" class="block text-xs admin-only-label mb-0.5">Created</label>
               <input
                 id="modal-edit-admin-created-{viewingItem.id}"
                 type="datetime-local"
                 bind:value={editingActivity.override_created_at}
-                class="w-full px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                class="admin-only w-full px-2 py-1 text-xs rounded"
               />
             </div>
             <div>
-              <label for="modal-edit-admin-updated-{viewingItem.id}" class="block text-xs text-slate-400 mb-0.5">Modified</label>
+              <label for="modal-edit-admin-updated-{viewingItem.id}" class="block text-xs admin-only-label mb-0.5">Modified</label>
               <input
                 id="modal-edit-admin-updated-{viewingItem.id}"
                 type="datetime-local"
                 bind:value={editingActivity.override_updated_at}
-                class="w-full px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                class="admin-only w-full px-2 py-1 text-xs rounded"
               />
             </div>
           </div>

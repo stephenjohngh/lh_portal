@@ -91,7 +91,7 @@
                 <Button variant="tertiary" size="xs" disabled={busy} on:click={() => setStatus(a, 'open')}>Reopen</Button>
               {/if}
               {#if isAdmin}
-                <Button variant="tertiary" size="xs" disabled={busy} on:click={() => removing = a}>Remove</Button>
+                <Button admin variant="tertiary" size="xs" disabled={busy} on:click={() => removing = a}>Remove</Button>
               {/if}
             </div>
           {/if}

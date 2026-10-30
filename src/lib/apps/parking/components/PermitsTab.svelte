@@ -357,7 +357,7 @@
                         on:click={() => pendingEnd = p}>End</Button>
                     {/if}
                     {#if $permissions.isAdmin}
-                      <Button size="small" variant="danger" on:click={() => pendingDelete = p}>Delete</Button>
+                      <Button admin size="small" variant="danger" on:click={() => pendingDelete = p}>Delete</Button>
                     {/if}
                   </td>
                 </tr>

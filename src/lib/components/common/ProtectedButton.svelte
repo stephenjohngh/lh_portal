@@ -39,6 +39,7 @@
       {fullWidth}
       className={className}
       {title}
+      admin={requireAdmin}
       on:click
     >
       <slot />

@@ -103,7 +103,7 @@
                 <td class="px-3 py-2 text-slate-300">{nameOf($profiles.list, s.created_by) || '—'}</td>
                 <td class="px-3 py-2 text-right">
                   {#if $permissions.isAdmin}
-                    <Button variant="danger" size="xs" on:click={() => (pendingDelete = s)}>Delete</Button>
+                    <Button admin variant="danger" size="xs" on:click={() => (pendingDelete = s)}>Delete</Button>
                   {/if}
                 </td>
               </tr>

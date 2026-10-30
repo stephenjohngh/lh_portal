@@ -284,7 +284,7 @@
     </div>
     {#if isAdmin}
       <div class="flex flex-col items-end gap-1">
-        <Button variant="secondary" loading={packRunning} disabled={packRunning} on:click={downloadSharePack}>
+        <Button admin variant="secondary" loading={packRunning} disabled={packRunning} on:click={downloadSharePack}>
           ⬇ BSR share pack
         </Button>
         {#if packError}<p class="text-xs text-red-400 max-w-xs text-right">{packError}</p>{/if}
