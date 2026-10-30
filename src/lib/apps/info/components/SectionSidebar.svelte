@@ -45,7 +45,7 @@
   }
 </script>
 
-<aside class="w-52 shrink-0 border-r border-slate-700 bg-slate-800/40
+<aside class="w-[17rem] shrink-0 border-r border-slate-700 bg-slate-800/40
               flex flex-col h-full overflow-y-auto">
 
   <!-- All Notes -->
