@@ -3,32 +3,28 @@
   Single activity row. Handles all activity types:
   comment, decision, note, email, call, letter.
 
-  Two render modes per item:
-    - Edit mode (when editingActivity.id matches): inline edit form.
-    - Display mode: type badge + optional structured fields header +
-                    body text + action buttons + metadata.
+  Display only: type badge + optional structured fields header + body text +
+  action buttons + metadata. Editing is the parent's modal dialog — the pencil
+  (and a click on the text) dispatch 'editStart' / 'viewFull' and the parent
+  opens it, so an edit looks the same here as anywhere else in the app.
 
   For comment-type activities only: a suggestion panel (CommentSuggestionPanel)
   appears below when the user clicks the "linked action" toggle.
 
   All state is owned by ActivityLogSection; this file is mostly markup +
   event dispatch. Bindable props:
-    - editingActivity  (so the edit form's textarea/checkbox/fields bind back up)
     - suggestionDraft  (so the panel's draft text binds back up)
 
   Left-border colour by activity_type — see ACTIVITY_TYPE_CONFIG.
 -->
 <script>
-  import { portalSettings } from '#lib/stores/portalSettings.js';
   import { fileViewUrl } from '#lib/utils/driveUtils.js';
   import { createEventDispatcher } from 'svelte';
   import { sanitizeHtml }         from '#lib/utils/sanitizeHtml.js';
   import { fmtBytes, mimeIcon }   from '#lib/utils/files.js';
   import { fmtDateTime, fmtDate, wasModified } from '#lib/utils/dates.js';
-  import { ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPES, getActionStatusLabel } from '#lib/utils/constants.js';
-  import { parseEmailPaste }   from '#lib/utils/emailParser.js';
+  import { ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG, getActionStatusLabel } from '#lib/utils/constants.js';
   import { canDeleteOwn }      from '#lib/utils/permissions.js';
-  import { postJson }          from '#lib/utils/request.js';
   import { buildFieldSummary } from './reports/reportUtils';
   import { permissions }    from '#lib/stores/permissions.js';
   import { auth }           from '#lib/stores/auth.js';
@@ -37,13 +33,9 @@
   import MeetingBadge       from './meetings/MeetingBadge.svelte';
   import { currentMeeting } from '../stores/meetingsStore';
   import CommentSuggestionPanel from './CommentSuggestionPanel.svelte';
-  import RichTextEditor         from '#lib/components/common/LazyRichTextEditor.svelte';
 
   // -- Props -----------------------------------------------------------
   export let activity;
-  export let editingActivity   = null;   // bindable — when .id matches, edit mode
-  export let saving            = false;  // edit-form save flag from parent
-  export let dirty             = false;  // parent-computed: edit form has unsaved changes
 
   // Suggestion panel props (only used for comment-type activities)
   export let panelOpen         = false;
@@ -61,10 +53,6 @@
   // -- Type config -----------------------------------------------------
   $: typeConfig = ACTIVITY_TYPE_CONFIG[activity.activity_type]
                     ?? ACTIVITY_TYPE_CONFIG[ACTIVITY_TYPE.COMMENT];
-
-  $: editTypeConfig = editingActivity
-    ? (ACTIVITY_TYPE_CONFIG[editingActivity.activity_type] ?? ACTIVITY_TYPE_CONFIG[ACTIVITY_TYPE.COMMENT])
-    : typeConfig;
 
   // Types that support linked actions / the AI suggestion panel.
   $: canLink = activity.activity_type === ACTIVITY_TYPE.COMMENT  ||
@@ -86,297 +74,17 @@
     if (hasSummary) bodyExpanded = !bodyExpanded;
   }
 
-  // -- Edit field helpers ----------------------------------------------
-  // Reassign editingActivity (not just mutate) so Svelte propagates up.
-  function setEditField(key, value) {
-    editingActivity = {
-      ...editingActivity,
-      fields: { ...(editingActivity.fields ?? {}), [key]: value }
-    };
-  }
-
-  function changeEditType(type) {
-    editingActivity = { ...editingActivity, activity_type: type, fields: {} };
-  }
-
-  function cancelEdit() {
-    dispatch('editCancel');
-  }
-
-  // Update is enabled only when there's an unsaved change and a body (non-doc).
-  $: editIsDoc   = editingActivity?.activity_type === ACTIVITY_TYPE.DOCUMENT;
-  $: canSaveEdit = dirty && !saving && (editIsDoc || !!editingActivity?.body?.trim());
-
-  // -- Email paste parsing (edit mode) ---------------------------------
-  // Passed as onPaste to RichTextEditor; returns HTML for the editor to
-  // display, or null to let Tiptap handle the paste normally.
-  let parseNotice = '';
-  let parseNoticeTimer;
-
-  function handleBodyPasteForEditor(rawText) {
-    if (editingActivity?.activity_type !== ACTIVITY_TYPE.EMAIL) return null;
-
-    const parsed = parseEmailPaste(rawText);
-    if (!parsed) return null;
-
-    const fields = { ...(editingActivity.fields || {}) };
-    if (parsed.from)       fields.from       = parsed.from;
-    if (parsed.to)         fields.to         = parsed.to;
-    if (parsed.subject)    fields.subject    = parsed.subject;
-    if (parsed.email_date) fields.email_date = parsed.email_date;
-
-    editingActivity = { ...editingActivity, fields };
-
-    clearTimeout(parseNoticeTimer);
-    parseNotice = parsed.wasThread
-      ? '✓ Thread detected — showing latest message only'
-      : '✓ Email fields extracted from paste';
-    parseNoticeTimer = setTimeout(() => { parseNotice = ''; }, 5000);
-
-    // Convert plain-text body to HTML paragraphs for the editor.
-    // Normalise CRLF → LF first (Windows clipboard uses \r\n).
-    // Split on blank lines (paragraph breaks); within each paragraph,
-    // join soft-wrapped lines with <br> so they appear as a single block.
-    const normBody = parsed.body.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    return normBody
-      .split(/\n\n+/)
-      .map(para => {
-        const trimmed = para.trim();
-        if (!trimmed) return null;
-        const inner = trimmed
-          .split('\n')
-          .map(l => l.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'))
-          .join('<br>');
-        return `<p>${inner}</p>`;
-      })
-      .filter(Boolean)
-      .join('') || '<p></p>';
-  }
-
-  // -- AI summary generation (edit form) --------------------------------
-  let summaryGenerating = false;
-  let summaryError      = '';
-
-  async function generateSummary() {
-    if (!editingActivity?.body?.trim()) return;
-    summaryGenerating = true;
-    summaryError      = '';
-    try {
-      const data = await postJson('/api/management/suggest-summary', {
-        body:          editingActivity.body,
-        activity_type: editingActivity.activity_type,
-      });
-      setEditField('summary', data.summary || '');
-    } catch (/** @type {any} */ e) {
-      summaryError = e.message || 'Could not generate summary';
-    } finally {
-      summaryGenerating = false;
-    }
-  }
-
   // -- Summary / body expand state -------------------------------------
   // When an activity has a summary (structured fields OR a free-text
   // summary field), the body is collapsed by default.  Clicking "expand"
   // reveals it; clicking "collapse" hides it again.
   let bodyExpanded = false;
-  $: hasSummary = !!buildFieldSummary(activity.activity_type, activity.fields);
+  $: fieldSummary = buildFieldSummary(activity.activity_type, activity.fields);
+  $: hasSummary = !!fieldSummary;
   // Reset whenever the activity being displayed changes.
   $: activity.id, bodyExpanded = false;
 </script>
 
-{#if editingActivity?.id === activity.id}
-  <!-- ─── Edit mode ──────────────────────────────────────────── -->
-  <div class="bg-slate-700/50 rounded p-3 border {editTypeConfig.borderEdit}">
-
-    <!-- Type picker -->
-    <div class="flex flex-wrap gap-1 mb-3">
-      {#each ACTIVITY_TYPES as t}
-        <button
-          type="button"
-          class="text-xs px-2.5 py-1 rounded-full border transition-colors
-                 {editingActivity.activity_type === t.value
-                   ? t.color + ' border-current bg-slate-600/80 text-white font-semibold'
-                   : 'border-slate-600 text-slate-400 hover:border-slate-500 hover:text-slate-300'}"
-          on:click={() => changeEditType(t.value)}
-        >
-          {t.icon} {t.label}
-        </button>
-      {/each}
-    </div>
-
-    <!-- Structured fields (email / call / letter) -->
-    {#if editTypeConfig.fields.length > 0}
-      <div class="grid grid-cols-2 gap-2 mb-3">
-        {#each editTypeConfig.fields as field}
-          <div class={field.span === 2 ? 'col-span-2' : ''}>
-            <label
-              for="edit-field-{activity.id}-{field.key}"
-              class="block text-[10px] text-slate-400 mb-0.5"
-            >{field.label}</label>
-            {#if field.type === 'select'}
-              <select
-                id="edit-field-{activity.id}-{field.key}"
-                value={editingActivity.fields?.[field.key] || ''}
-                on:change={(e) => setEditField(field.key, e.currentTarget.value)}
-                class="w-full px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white focus:outline-none focus:ring-1 {editTypeConfig.ringClass}"
-              >
-                {#each (field.options || []) as opt}<option value={opt}>{opt}</option>{/each}
-              </select>
-            {:else if field.key === 'summary' && (editingActivity?.activity_type === ACTIVITY_TYPE.NOTE || editingActivity?.activity_type === ACTIVITY_TYPE.COMMENT)}
-              <!-- Summary field with AI-generate button + optional sequence -->
-              <div class="flex gap-1">
-                <input
-                  id="edit-field-{activity.id}-{field.key}"
-                  type="text"
-                  value={editingActivity.fields?.[field.key] || ''}
-                  placeholder={field.placeholder || ''}
-                  on:input={(e) => setEditField(field.key, e.currentTarget.value)}
-                  class="flex-1 min-w-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 {editTypeConfig.ringClass}"
-                />
-                {#if $portalSettings.aiEnabled}
-                <button
-                  type="button"
-                  on:click={generateSummary}
-                  disabled={summaryGenerating || !editingActivity?.body?.trim()}
-                  title="Generate one-line summary with AI"
-                  class="px-2 py-1 text-xs bg-slate-700 hover:bg-purple-800/60 text-slate-300 hover:text-purple-200 rounded border border-slate-600 hover:border-purple-600/50 shrink-0 transition-colors disabled:opacity-40"
-                >{summaryGenerating ? '…' : '✨'}</button>
-                {/if}
-                <input
-                  type="number"
-                  value={editingActivity.sequence ?? ''}
-                  min="1"
-                  placeholder="#"
-                  title="Optional sequence number"
-                  on:input={(e) => { const v = e.currentTarget.value; editingActivity = { ...editingActivity, sequence: v === '' ? null : (parseInt(v, 10) || null) }; }}
-                  class="w-[4.375rem] shrink-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
-                />
-              </div>
-              {#if summaryError}
-                <p class="text-[10px] text-red-400 mt-0.5">{summaryError}</p>
-              {/if}
-            {:else if field.key === 'summary'}
-              <!-- Summary field (non-note/comment types) + optional sequence -->
-              <div class="flex gap-1">
-                <input
-                  id="edit-field-{activity.id}-{field.key}"
-                  type="text"
-                  value={editingActivity.fields?.[field.key] || ''}
-                  placeholder={field.placeholder || ''}
-                  on:input={(e) => setEditField(field.key, e.currentTarget.value)}
-                  class="flex-1 min-w-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 {editTypeConfig.ringClass}"
-                />
-                <input
-                  type="number"
-                  value={editingActivity.sequence ?? ''}
-                  min="1"
-                  placeholder="#"
-                  title="Optional sequence number"
-                  on:input={(e) => { const v = e.currentTarget.value; editingActivity = { ...editingActivity, sequence: v === '' ? null : (parseInt(v, 10) || null) }; }}
-                  class="w-[4.375rem] shrink-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
-                />
-              </div>
-            {:else}
-              <input
-                id="edit-field-{activity.id}-{field.key}"
-                type={field.type}
-                value={editingActivity.fields?.[field.key] || ''}
-                placeholder={field.placeholder || ''}
-                on:input={(e) => setEditField(field.key, e.currentTarget.value)}
-                class="w-full px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 {editTypeConfig.ringClass}"
-              />
-            {/if}
-          </div>
-        {/each}
-      </div>
-    {/if}
-
-    <RichTextEditor
-      value={editingActivity.body}
-      placeholder={editTypeConfig.placeholder}
-      ringClass={editTypeConfig.ringClass}
-      onPaste={handleBodyPasteForEditor}
-      markdown={true}
-      on:change={(e) => { editingActivity = { ...editingActivity, body: e.detail }; }}
-    />
-
-    {#if parseNotice}
-      <p class="text-xs text-cyan-400 mt-1 flex items-center gap-1.5">
-        <span>{parseNotice}</span>
-        <button type="button" class="text-cyan-600 hover:text-cyan-400 leading-none" on:click={() => parseNotice = ''}>✕</button>
-      </p>
-    {/if}
-
-    <!-- Document: show existing file as read-only (file cannot be changed; re-add to replace) -->
-    {#if editingActivity.activity_type === ACTIVITY_TYPE.DOCUMENT && editingActivity.fields?.doc_id}
-      <div class="flex items-center gap-3 mt-2 px-3 py-2 rounded border border-slate-700 bg-slate-800/40 text-xs">
-        <span class="text-base shrink-0">{mimeIcon(editingActivity.fields.mime_type)}</span>
-        <div class="flex-1 min-w-0">
-          <p class="text-slate-300 truncate">
-            {editingActivity.fields.display_name || editingActivity.fields.filename}
-          </p>
-          <p class="text-slate-600 text-[10px]">To replace the file, delete this activity and re-add it.</p>
-        </div>
-        {#if editingActivity.fields.web_view_url}
-          <a
-            href={fileViewUrl(editingActivity.fields.web_view_url)}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-purple-400 hover:text-purple-300 transition-colors shrink-0 p-1"
-            title="Open file"
-            on:click|stopPropagation
-          >↗</a>
-        {/if}
-      </div>
-    {/if}
-
-    <label class="flex items-center gap-2 mt-2 text-sm cursor-pointer">
-      <input type="checkbox" bind:checked={editingActivity.historic} class="rounded" />
-      <span class="text-gray-400">Mark as historic</span>
-    </label>
-
-    {#if $permissions.isAdmin}
-      <div class="border-t border-slate-600 pt-2 mt-2">
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label for="activity-admin-created-{activity.id}" class="block text-xs text-slate-400 mb-0.5">Created</label>
-            <input
-              id="activity-admin-created-{activity.id}"
-              type="datetime-local"
-              bind:value={editingActivity.override_created_at}
-              class="w-full px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
-            />
-          </div>
-          <div>
-            <label for="activity-admin-updated-{activity.id}" class="block text-xs text-slate-400 mb-0.5">Modified</label>
-            <input
-              id="activity-admin-updated-{activity.id}"
-              type="datetime-local"
-              bind:value={editingActivity.override_updated_at}
-              class="w-full px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
-            />
-          </div>
-        </div>
-      </div>
-    {/if}
-
-    <div class="flex justify-end gap-2 mt-2">
-      <Button variant="secondary" size="small" on:click={cancelEdit}>{dirty ? 'Cancel' : 'Close'}</Button>
-      <ProtectedButton
-        action="modify"
-        variant="blue"
-        size="small"
-        icon="edit"
-        disabled={!canSaveEdit}
-        on:click={() => dispatch('editSave')}
-      >
-        {saving ? 'Saving…' : 'Update'}
-      </ProtectedButton>
-    </div>
-  </div>
-
-{:else}
-  {@const fieldSummary = buildFieldSummary(activity.activity_type, activity.fields)}
   <!-- ─── Display mode ───────────────────────────────────────── -->
   <div
     id={`activity-${activity.id}`}
@@ -570,4 +278,3 @@
       />
     {/if}
   </div>
-{/if}

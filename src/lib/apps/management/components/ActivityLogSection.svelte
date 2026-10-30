@@ -240,18 +240,6 @@
     await issuesStore.fetchIssues();
   }
 
-  function startEdit(activity) {
-    mutationError = '';
-    editingActivity = {
-      ...activity,
-      fields: activity.fields ?? {},
-      override_created_at: toDateTimeLocal(activity.created_at),
-      override_updated_at: ''   // blank = server sets updated_at to now on save
-    };
-    editBaseline = editSnapshot(editingActivity);
-    viewingItem = null;
-  }
-
   // -- Suggestion panel handlers (comment activities only) -----------
   function toggleSuggestion(activity) {
     if (suggestionForId === activity.id) {
@@ -510,9 +498,6 @@
       {#each visibleItems as activity (activity.id)}
         <ActivityItem
           {activity}
-          bind:editingActivity
-          {saving}
-          dirty={editDirty}
           panelOpen={suggestionForId === activity.id}
           panelMode={suggestionSource}
           linkedAction={linkedActionByActivityId[activity.id] ?? null}
@@ -523,9 +508,7 @@
           {suggestionSaving}
           {linkedDeleteError}
           on:togglePanel={(e) => toggleSuggestion(e.detail)}
-          on:editStart={(e) => startEdit(e.detail)}
-          on:editCancel={() => requestClose(() => (editingActivity = null))}
-          on:editSave={updateActivity}
+          on:editStart={(e) => openEditModal(e.detail)}
           on:deleteRequest={(e) => { pendingDeleteId = e.detail.id; showDeleteConfirm = true; }}
           on:viewFull={(e) => {
             if ($permissions.isAdmin || $permissions.canModify) {

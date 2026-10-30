@@ -6,8 +6,8 @@
   import { permissions }   from '#lib/stores/permissions.js';
   import { auth }          from '#lib/stores/auth.js';
   import { canDeleteOwn }  from '#lib/utils/permissions.js';
-  import { fmtDate, fmtDateTime, isOverdue, wasModified, toDateTimeLocal } from '#lib/utils/dates.js';
-  import { ACTION_STATUS, ACTION_STATUS_OPTIONS, getActionStatusLabel } from '#lib/utils/constants.js';
+  import { fmtDate, fmtDateTime, isOverdue, wasModified } from '#lib/utils/dates.js';
+  import { ACTION_STATUS, getActionStatusLabel } from '#lib/utils/constants.js';
   import Icon from '#lib/components/icons/Icon.svelte';
   import Button from '#lib/components/common/Button.svelte';
   import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
@@ -22,7 +22,10 @@
   const dispatch = createEventDispatcher();
 
   let showAddModal = false;
-  let editingAction = null;
+  // The dialog edits the action in the store, so it follows a refresh and stays
+  // open after Update (save, then carry on); Close shuts it.
+  let editingActionId = null;
+  $: editingAction = editingActionId ? actions.find(a => a.id === editingActionId) ?? null : null;
   let showDeleteConfirm = false;
   let pendingDeleteId = null;
   let showAllActions = false;
@@ -83,22 +86,20 @@
     showAddModal = false;
   }
 
-  async function updateAction() {
-    if (!editingAction) return;
+  async function updateAction({ detail }) {
     saving = true;
     mutationError = '';
-    const result = await issuesStore.updateAction(editingAction.id, {
-      ...editingAction,
-      override_created_at: $permissions.isAdmin && editingAction.override_created_at
-                             ? new Date(editingAction.override_created_at).toISOString()
+    const result = await issuesStore.updateAction(detail.id, {
+      ...detail,
+      override_created_at: $permissions.isAdmin && detail.override_created_at
+                             ? new Date(detail.override_created_at).toISOString()
                              : null,
-      override_updated_at: $permissions.isAdmin && editingAction.override_updated_at
-                             ? new Date(editingAction.override_updated_at).toISOString()
+      override_updated_at: $permissions.isAdmin && detail.override_updated_at
+                             ? new Date(detail.override_updated_at).toISOString()
                              : null
     });
     saving = false;
     if (!result.success) { mutationError = result.error ?? 'Failed to update action'; return; }
-    editingAction = null;
   }
 
   function confirmDeleteAction(actionId) {
@@ -187,111 +188,6 @@
           id={`action-${action.id}`}
           class="bg-slate-700/50 rounded p-2 border-l-2 border-amber-400 {action.status === ACTION_STATUS.COMPLETED ? 'opacity-60' : ''}"
         >
-          {#if editingAction?.id === action.id}
-            <div class="space-y-3">
-              <div>
-                <label for="edit-action-text" class="block text-sm font-medium mb-1 text-gray-300">
-                  Action Description
-                </label>
-                <textarea
-                  id="edit-action-text"
-                  bind:value={editingAction.action_text}
-                  class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white"
-                  placeholder="Action description"
-                  rows="3"
-                ></textarea>
-              </div>
-              <div class="grid grid-cols-3 gap-3">
-                <div>
-                  <label for="edit-action-assignee" class="block text-sm font-medium mb-1 text-gray-300">
-                    Assigned To
-                  </label>
-                  <select
-                    id="edit-action-assignee"
-                    bind:value={editingAction.name_text}
-                    class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white"
-                  >
-                    {#each $assigneeOptionsStore as option}
-                      <option value={option.value}>{option.label}</option>
-                    {/each}
-                  </select>
-                </div>
-                <div>
-                  <label for="edit-action-deadline" class="block text-sm font-medium mb-1 text-gray-300">
-                    Deadline
-                  </label>
-                  <input
-                    id="edit-action-deadline"
-                    type="date"
-                    bind:value={editingAction.date_deadline}
-                    class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white"
-                  />
-                </div>
-                <div>
-                  <label for="edit-action-status" class="block text-sm font-medium mb-1 text-gray-300">
-                    Status
-                  </label>
-                  <select
-                    id="edit-action-status"
-                    bind:value={editingAction.status}
-                    class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white"
-                  >
-                    {#each ACTION_STATUS_OPTIONS as statusOption}
-                      <option value={statusOption.value}>{statusOption.label}</option>
-                    {/each}
-                  </select>
-                </div>
-              </div>
-              {#if $permissions.isAdmin}
-                <div class="border-t border-slate-500 pt-3">
-                  <div class="flex items-start gap-2 px-2 py-1.5 rounded bg-amber-900/20 border border-amber-700/40 text-xs text-amber-200 mb-2">
-                    <span class="shrink-0">⚠️</span>
-                    <span><strong>Admin only — record timestamps.</strong> Leave as automatic values in normal use. Only change to correct a historical data-entry error.</span>
-                  </div>
-                  <div class="grid grid-cols-2 gap-3">
-                    <div>
-                      <label for="action-admin-created-{action.id}" class="block text-xs text-slate-400 mb-1">Created</label>
-                      <input
-                        id="action-admin-created-{action.id}"
-                        type="datetime-local"
-                        bind:value={editingAction.override_created_at}
-                        class="w-full px-2 py-1 text-xs bg-slate-600 border border-slate-500 rounded text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
-                      />
-                    </div>
-                    <div>
-                      <label for="action-admin-updated-{action.id}" class="block text-xs text-slate-400 mb-1">Modified</label>
-                      <input
-                        id="action-admin-updated-{action.id}"
-                        type="datetime-local"
-                        bind:value={editingAction.override_updated_at}
-                        class="w-full px-2 py-1 text-xs bg-slate-600 border border-slate-500 rounded text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-              {/if}
-
-              <div class="flex justify-end gap-2">
-                <Button
-                  variant="secondary"
-                  size="small"
-                  on:click={() => editingAction = null}
-                >
-                  Cancel
-                </Button>
-                <ProtectedButton
-                  action="modify"
-                  variant="amber"
-                  size="small"
-                  icon="edit"
-                  disabled={saving}
-                  on:click={updateAction}
-                >
-                  {saving ? 'Saving…' : 'Update'}
-                </ProtectedButton>
-              </div>
-            </div>
-          {:else}
             <div class="flex justify-between items-start">
               <div class="flex-1">
                 <p class="font-medium whitespace-pre-wrap {action.status === ACTION_STATUS.COMPLETED ? 'text-gray-500' : 'text-gray-200'}">
@@ -349,11 +245,7 @@
                   size="small"
                   icon="edit"
                   iconPosition="only"
-                  on:click={() => editingAction = {
-                    ...action,
-                    override_created_at: toDateTimeLocal(action.created_at),
-                    override_updated_at: toDateTimeLocal(action.updated_at)
-                  }}
+                  on:click={() => { mutationError = ''; editingActionId = action.id; }}
                   title="Edit action"
                 />
                 <!-- Delete: admin anytime; creator within 2h of creation. Mirrors
@@ -370,7 +262,6 @@
                 {/if}
               </div>
             </div>
-          {/if}
         </div>
       {/each}
     </div>
@@ -379,13 +270,16 @@
   {/if}
 </div>
 
-<!-- Add Action Modal -->
+<!-- Add / edit action dialog -->
 <ActionForm
-  show={showAddModal}
+  show={showAddModal || !!editingAction}
+  action={editingAction}
+  error={showAddModal || editingAction ? mutationError : ''}
   assigneeOptions={$assigneeOptionsStore}
   {saving}
   on:submit={addAction}
-  on:cancel={() => { showAddModal = false; mutationError = ''; }}
+  on:update={updateAction}
+  on:cancel={() => { showAddModal = false; editingActionId = null; mutationError = ''; }}
 />
 
 <!-- Delete Confirmation Dialog -->
