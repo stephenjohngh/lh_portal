@@ -42,7 +42,7 @@
           <li class="rounded-lg border border-slate-700 bg-slate-800/60 p-3 flex items-center gap-3">
             <div class="flex-1 min-w-0">
               <p class="text-white font-medium truncate">{g.title}</p>
-              <p class="text-xs text-slate-400">{g.status}{g.version > 0 ? ` · v${g.version}` : ''}</p>
+              <p class="text-xs text-slate-400">{g.status}{g.version > 0 ? ` · v${g.version}` : ''}{(g.targets ?? []).length ? ` · for ${g.targets.join(', ')}` : ''}</p>
             </div>
             <Button variant="secondary" size="xs" on:click={() => (open = g)}>Edit</Button>
           </li>

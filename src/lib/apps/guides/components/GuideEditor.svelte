@@ -36,9 +36,14 @@
   let pendingDeleteGuide = false;
   let pendingRetire = false;
   let tagsText = '';
+  let newTarget = '';
 
   $: s = $guidesStore;
   $: categoryOptions = s.categories.filter((c) => !c.retired).map((c) => ({ value: c.key, label: c.name }));
+  // Targets already used on any guide, offered as one-click additions (free text is still allowed).
+  $: knownTargets = [...new Map(s.guides.flatMap((g) => g.targets ?? []).map((t) => [t.trim().toLowerCase(), t.trim()])).values()]
+    .filter((t) => !(guide.targets ?? []).some((x) => x.trim().toLowerCase() === t.toLowerCase()))
+    .sort((a, b) => a.localeCompare(b));
   $: latest = versions[0] ?? null;
   $: withPhotos = steps.map((st) => ({ ...st, photos: photos[st.id] ?? [] }));
   $: problems = publishProblems(guide, withPhotos);
@@ -69,6 +74,14 @@
 
   const saveField = (patch) => run(async () => { await guidesStore.updateGuide(guide.id, patch); await reloadAll(); });
   const saveTags = () => saveField({ tags: tagsText.split(',').map((t) => t.trim()).filter(Boolean) });
+  function addTarget(text) {
+    const t = String(text ?? '').trim().replace(/\s+/g, ' ');
+    newTarget = '';
+    if (!t) return;
+    if ((guide.targets ?? []).some((x) => x.toLowerCase() === t.toLowerCase())) return;
+    return saveField({ targets: [...(guide.targets ?? []), t] });
+  }
+  const removeTarget = (t) => saveField({ targets: (guide.targets ?? []).filter((x) => x !== t) });
   const saveMinutes = (e) => {
     const v = e.target.value === '' ? null : Number(e.target.value);
     return saveField({ minutes: v });
@@ -152,6 +165,30 @@
       <FormInput label="You will need (one line)" bind:value={guide.you_need} placeholder="e.g. gloves, the bin-store key"
         on:blur={() => saveField({ you_need: guide.you_need || null })} />
       <FormInput label="Tags (comma separated)" bind:value={tagsText} on:blur={saveTags} />
+      <div data-testid="targets">
+        <p class="text-sm text-slate-300 mb-1">Who it is for — e.g. weekend cleaner, holiday cleaner</p>
+        <div class="flex flex-wrap gap-1 mb-2">
+          {#each guide.targets ?? [] as t (t)}
+            <span class="inline-flex items-center gap-1 rounded-full bg-teal-900/60 text-teal-100 text-xs pl-2 pr-1 py-0.5">
+              {t}
+              <Button variant="plain" size="xs" ariaLabel={`Remove ${t}`} className="!px-1 !py-0" on:click={() => removeTarget(t)}>✕</Button>
+            </span>
+          {/each}
+        </div>
+        <div class="flex gap-2 items-end">
+          <div class="flex-1"><FormInput label="" compact placeholder="Type a target and press Add" maxlength={60} bind:value={newTarget}
+            on:keydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTarget(newTarget); } }} /></div>
+          <Button variant="secondary" size="small" disabled={!newTarget.trim() || busy} on:click={() => addTarget(newTarget)}>Add</Button>
+        </div>
+        {#if knownTargets.length}
+          <div class="flex flex-wrap gap-1 mt-2">
+            <span class="text-xs text-slate-400">Already used:</span>
+            {#each knownTargets as t (t)}
+              <Button variant="tertiary" size="xs" on:click={() => addTarget(t)}>+ {t}</Button>
+            {/each}
+          </div>
+        {/if}
+      </div>
       <Checkbox label="Staff only — hide from contractor accounts" checked={guide.staff_only}
         on:change={(e) => saveField({ staff_only: e.target.checked })} />
     </section>

@@ -15,6 +15,7 @@
   import TabBar from '#lib/components/common/TabBar.svelte';
   import FormInput from '#lib/components/common/FormInput.svelte';
   import ToggleChip from '#lib/components/common/ToggleChip.svelte';
+  import GuidebookPanel from './components/GuidebookPanel.svelte';
   import ManageGuides from './components/ManageGuides.svelte';
   import { guidesStore } from './stores/guidesStore.js';
   import { permissions } from '#lib/stores/permissions.js';
@@ -53,6 +54,7 @@
     {/if}
 
     {#if tab === 'library'}
+      <GuidebookPanel />
       <div class="flex flex-wrap items-center gap-2">
         <div class="w-64"><FormInput compact label="" placeholder="Search guides…" bind:value={search} /></div>
         {#each usedCategories as c (c.key)}

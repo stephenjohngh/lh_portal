@@ -121,6 +121,15 @@ const AS_ADMIN = [
   ['a list that is not exactly the guide steps is refused', `
     perform guide_reorder_steps('00000000-0000-4000-8000-0000000000c1',
       array['00000000-0000-4000-8000-0000000000d3', '00000000-0000-4000-8000-0000000000d1']::uuid[]);`, 'not exactly this guide'],
+  ['a guide carries free-text targets (migration 270)', `
+    insert into guides (id, title, targets) values ('00000000-0000-4000-8000-0000000000e1', 'DBT targets', array['weekend cleaner', 'holiday cleaner']);
+    if (select count(*) from guides where targets @> array['weekend cleaner']) < 1 then raise exception 'not found by target'; end if;`, null],
+  ['a blank target is refused', `
+    update guides set targets = array['ok', '  '] where id = '00000000-0000-4000-8000-0000000000e1';`, 'guides_targets_shape'],
+  ['a target longer than 60 characters is refused', `
+    update guides set targets = array[repeat('x', 61)] where id = '00000000-0000-4000-8000-0000000000e1';`, 'guides_targets_shape'],
+  ['more than twelve targets are refused', `
+    update guides set targets = (select array_agg('t' || g) from generate_series(1, 13) g) where id = '00000000-0000-4000-8000-0000000000e1';`, 'guides_targets_shape'],
   ['a staff-only guide is made for the contractor test', `
     insert into guides (id, title, staff_only) values ('00000000-0000-4000-8000-0000000000a5', 'DBT staff only', true);
     insert into guide_steps (guide_id, position, title) values ('00000000-0000-4000-8000-0000000000a5', 1, 'Step');

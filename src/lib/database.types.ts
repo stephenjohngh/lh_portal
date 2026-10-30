@@ -2752,6 +2752,7 @@ export type Database = {
           summary: string | null
           category_key: string | null
           tags: string[]
+          targets: string[]
           audience: string
           staff_only: boolean
           you_need: string | null
@@ -2773,6 +2774,7 @@ export type Database = {
           summary?: string | null
           category_key?: string | null
           tags?: string[]
+          targets?: string[]
           audience?: string
           staff_only?: boolean
           you_need?: string | null
@@ -2794,6 +2796,7 @@ export type Database = {
           summary?: string | null
           category_key?: string | null
           tags?: string[]
+          targets?: string[]
           audience?: string
           staff_only?: boolean
           you_need?: string | null

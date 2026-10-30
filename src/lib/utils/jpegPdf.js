@@ -21,26 +21,52 @@ const enc = new TextEncoder();
  * @returns {Uint8Array}        the PDF file
  */
 export function jpegToPdf(jpeg, widthPx, heightPx, opts = {}) {
-  if (!(jpeg instanceof Uint8Array) || jpeg.length < 4 || jpeg[0] !== 0xFF || jpeg[1] !== 0xD8) {
-    throw new Error('jpegToPdf: not a JPEG');
-  }
-  if (!(widthPx > 0) || !(heightPx > 0)) throw new Error('jpegToPdf: the image size is missing');
+  return jpegsToPdf([{ jpeg, widthPx, heightPx }], opts);
+}
 
-  const content = enc.encode(`q ${A4.w} 0 0 ${A4.h} 0 0 cm /Im0 Do Q\n`);
+/**
+ * Several A4 pages, each one JPEG filling it (a guidebook drawn page by page on a canvas).
+ * @param {Array<{ jpeg: Uint8Array, widthPx: number, heightPx: number }>} pages
+ * @param {{ title?: string }} [opts]
+ * @returns {Uint8Array}
+ */
+export function jpegsToPdf(pages, opts = {}) {
+  if (!pages.length) throw new Error('jpegsToPdf: no pages');
+  for (const { jpeg, widthPx, heightPx } of pages) {
+    if (!(jpeg instanceof Uint8Array) || jpeg.length < 4 || jpeg[0] !== 0xFF || jpeg[1] !== 0xD8) {
+      throw new Error('jpegToPdf: not a JPEG');
+    }
+    if (!(widthPx > 0) || !(heightPx > 0)) throw new Error('jpegToPdf: the image size is missing');
+  }
+
+  const content = enc.encode(`q ${A4.w} 0 0 ${A4.h} 0 0 cm /Im0 Do Q
+`);
   const title = pdfString(opts.title ?? '');
+  // Objects: 1 catalog, 2 pages, then page / image / content for each page, then Info.
+  const kids = pages.map((_, i) => `${3 + i * 3} 0 R`).join(' ');
 
   /** @type {(string|Uint8Array)[][]} one entry per object, its parts in order */
   const objects = [
     [`<< /Type /Catalog /Pages 2 0 R >>`],
-    [`<< /Type /Pages /Kids [3 0 R] /Count 1 >>`],
-    [`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${A4.w} ${A4.h}] ` +
-      `/Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`],
-    [`<< /Type /XObject /Subtype /Image /Width ${Math.round(widthPx)} /Height ${Math.round(heightPx)} ` +
-      `/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`,
-      jpeg, `\nendstream`],
-    [`<< /Length ${content.length} >>\nstream\n`, content, `endstream`],
-    [`<< /Title ${title} >>`],
+    [`<< /Type /Pages /Kids [${kids}] /Count ${pages.length} >>`],
   ];
+  pages.forEach(({ jpeg, widthPx, heightPx }, i) => {
+    const page = 3 + i * 3;
+    objects.push(
+      [`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${A4.w} ${A4.h}] ` +
+        `/Resources << /XObject << /Im0 ${page + 1} 0 R >> >> /Contents ${page + 2} 0 R >>`],
+      [`<< /Type /XObject /Subtype /Image /Width ${Math.round(widthPx)} /Height ${Math.round(heightPx)} ` +
+        `/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>
+stream
+`,
+        jpeg, `
+endstream`],
+      [`<< /Length ${content.length} >>
+stream
+`, content, `endstream`],
+    );
+  });
+  objects.push([`<< /Title ${title} >>`]);
 
   /** @type {Uint8Array[]} */
   const chunks = [];
