@@ -119,6 +119,10 @@
             "under_review",
             "withdrawn"
         ],
+        "guide_links.show_on": [
+            "always",
+            "fail"
+        ],
         "mor_cases.mechanism": [
             "both",
             "fire_smoke",
@@ -606,6 +610,10 @@
         "parking_agreements.notice_served_by": [
             "holder",
             "licensor"
+        ],
+        "statutory_obligations.fail_response": [
+            "collect",
+            "immediate"
         ],
         "gt_documents.security_classification": [
             "official",
