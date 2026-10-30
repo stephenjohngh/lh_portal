@@ -6,6 +6,7 @@
        annotationDragController — annotation drag-to-reposition
        spaceEditController      — space drawing buffer, vertex drag, polygon move  -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { matchesSearch } from '#lib/utils/textSearch.js';
   import { buildingAssetsStore }                 from '../stores/buildingAssetsStore.js';
   import { typeByCode, checkableDefs, resolveComponentHalo } from '../lookups.js';
@@ -582,7 +583,7 @@
     <div class="px-4 py-2 rounded-lg bg-red-500/20 border border-red-500/30 text-sm text-red-400
                 flex justify-between items-center">
       {errorMsg}
-      <button on:click={() => errorMsg = ''} class="text-red-600 hover:text-red-400 ml-3">✕</button>
+      <Button variant="danger" size="xs" on:click={() => errorMsg = ''}>✕</Button>
     </div>
   {/if}
 
@@ -650,8 +651,7 @@
                 </p>
               {/if}
             </div>
-            <button on:click={() => { sidebarMode = 'none'; newPos = null; }}
-              class="text-slate-500 hover:text-white transition-colors">✕</button>
+            <Button variant="tertiary" size="xs" on:click={() => { sidebarMode = 'none'; newPos = null; }}>✕</Button>
           </div>
           <QuickAddForm
             {saving}

@@ -597,7 +597,7 @@
 {#if errorMsg}
   <div class="mb-4 px-4 py-2 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 text-sm">
     {errorMsg}
-    <button class="ml-2 underline" on:click={() => errorMsg = ''}>dismiss</button>
+    <Button variant="tertiary" size="xs" on:click={() => errorMsg = ''}>dismiss</Button>
   </div>
 {/if}
 
@@ -887,8 +887,7 @@
         <div class="px-4 py-2 border-b border-slate-700/60 bg-green-500/10
                     flex items-start gap-2">
           <p class="text-xs text-green-200 flex-1">{worksNotice}</p>
-          <button class="text-xs text-green-200/70 hover:text-green-100"
-                  on:click={() => worksNotice = ''}>Dismiss</button>
+          <Button variant="tertiary" size="xs" on:click={() => worksNotice = ''}>Dismiss</Button>
         </div>
       {/if}
 

@@ -16,6 +16,7 @@
   below the "+ Add filter" anchor in ComponentsTab.
 -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { matchesSearch } from '#lib/utils/textSearch.js';
   import { createEventDispatcher, onMount } from 'svelte';
   import { defaultFilterFor, OP_SYMBOL } from '../utils/attrFilters.js';
@@ -159,21 +160,13 @@
   <div class="flex items-center justify-between px-3 py-2 border-b border-slate-700 bg-slate-800/50">
     <div class="text-xs font-semibold text-slate-200 uppercase tracking-wider">
       {#if chosenDef}
-        <button
-          on:click={backToPicker}
-          class="text-slate-400 hover:text-white mr-1"
-          aria-label="Back to attribute list"
-        >‹</button>
+        <Button variant="tertiary" size="xs" ariaLabel="Back to attribute list" on:click={backToPicker}>‹</Button>
         {chosenDef.name}
       {:else}
         {className || 'Filter'} — pick an attribute
       {/if}
     </div>
-    <button
-      on:click={cancel}
-      class="text-slate-500 hover:text-white text-sm"
-      aria-label="Close"
-    >✕</button>
+    <Button variant="secondary" size="small" ariaLabel="Close" on:click={cancel}>✕</Button>
   </div>
 
   <!-- ── Step 1: attribute picker ─────────────────────────────────────────── -->
@@ -320,15 +313,8 @@
 
     <!-- Footer -->
     <div class="flex items-center justify-end gap-2 px-3 py-2 border-t border-slate-700 bg-slate-800/50">
-      <button
-        on:click={cancel}
-        class="px-3 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-300"
-      >Cancel</button>
-      <button
-        on:click={apply}
-        disabled={!applyEnabled}
-        class="px-3 py-1 text-xs rounded bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium"
-      >{existing ? 'Update' : 'Add filter'}</button>
+      <Button variant="tertiary" size="xs" on:click={cancel}>Cancel</Button>
+      <Button variant="primary" size="xs" disabled={!applyEnabled} on:click={apply}>{existing ? 'Update' : 'Add filter'}</Button>
     </div>
   {/if}
 </div>

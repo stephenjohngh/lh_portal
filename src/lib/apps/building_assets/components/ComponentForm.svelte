@@ -3,6 +3,7 @@
      hierarchy) rather than by graphical plan. The plan is an optional secondary
      field — it is needed only when placing the component on a drawing. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import AttrField from './AttrField.svelte';
   import { inp } from '../ui.js';
@@ -231,19 +232,7 @@
 
   <!-- -- Actions ------------------------------------------------ -->
   <div class="flex justify-end gap-3 pt-2 border-t border-slate-700">
-    <button
-      on:click={handleCancel}
-      class="px-4 py-1.5 text-sm rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
-    >
-      Cancel
-    </button>
-    <button
-      on:click={handleSubmit}
-      disabled={!selectedFloorId || !selectedTypeId || saving}
-      class="px-4 py-1.5 text-sm rounded-lg bg-purple-600 hover:bg-purple-500
-             disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors"
-    >
-      {saving ? 'Saving…' : 'Create Component'}
-    </button>
+    <Button variant="secondary" size="small" on:click={handleCancel}>Cancel</Button>
+    <Button variant="primary" size="small" disabled={!selectedFloorId || !selectedTypeId || saving} on:click={handleSubmit}>{saving ? 'Saving…' : 'Create Component'}</Button>
   </div>
 </div>

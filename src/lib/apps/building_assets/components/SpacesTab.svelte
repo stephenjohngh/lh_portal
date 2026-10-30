@@ -102,10 +102,7 @@
 {#if selectedSpace}
   <!-- Detail / edit panel (click a register row) — mirrors the Components tab -->
   <div class="max-w-md">
-    <button
-      on:click={() => selectedSpace = null}
-      class="mb-3 text-xs text-slate-400 hover:text-white transition-colors"
-    >← Back to register</button>
+    <Button variant="tertiary" size="xs" on:click={() => selectedSpace = null}>← Back to register</Button>
     <SpaceDetailSidebar
       space={selectedSpace}
       floors={store.floors}

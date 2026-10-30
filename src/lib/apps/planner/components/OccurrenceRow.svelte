@@ -5,6 +5,7 @@
      and sits where the eye starts. Everything else — the note, the move, the
      skip — is behind the row rather than in front of it. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { fmtDate } from '#lib/utils/dates.js';
   import { STATUS, firstLine } from '../utils/agenda.js';
@@ -106,9 +107,7 @@
          are inside the edit dialog, with the series, rather than a row of small
          glyphs to tell apart. -->
     {#if canEdit && !linked}
-      <button type="button" title={recurring ? 'Edit — this date or the series' : 'Edit this event'}
-              class="shrink-0 text-slate-500 hover:text-purple-300 text-sm px-1 leading-5"
-              on:click={() => dispatch('edit', occurrence)}>✎</button>
+      <Button variant="tertiary" size="xs" title={recurring ? 'Edit — this date or the series' : 'Edit this event'} on:click={() => dispatch('edit', occurrence)}>✎</Button>
     {/if}
   </div>
 

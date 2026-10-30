@@ -1,6 +1,7 @@
 ﻿<!-- src/lib/apps/admin/components/SystemPanel.svelte -->
 <!-- Panel 1 of 4: Building Systems list with inline add / edit. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '#lib/apps/building_assets/stores/buildingAssetsStore.js';
   import { inp } from '#lib/apps/building_assets/ui.js';
@@ -136,16 +137,8 @@
             </label>
           </div>
           <div class="flex gap-2 mt-3">
-            <button
-              on:click={save}
-              disabled={saving}
-              class="flex-1 py-1.5 text-xs rounded bg-purple-600 hover:bg-purple-500
-                     disabled:opacity-50 text-white transition-colors"
-            >{saving ? 'Saving…' : 'Save'}</button>
-            <button
-              on:click={cancel}
-              class="px-3 py-1.5 text-xs rounded bg-slate-600 hover:bg-slate-500 text-white transition-colors"
-            >✕</button>
+            <Button variant="primary" size="xs" disabled={saving} on:click={save}>{saving ? 'Saving…' : 'Save'}</Button>
+            <Button variant="tertiary" size="xs" on:click={cancel}>✕</Button>
           </div>
         </div>
 
@@ -173,18 +166,8 @@
               </p>
             </div>
             <div class="flex gap-1  shrink-0 mt-0.5">
-              <button
-                class="text-xs px-1.5 py-0.5 rounded text-slate-500
-                       hover:text-white hover:bg-slate-600 transition-colors"
-                on:click|stopPropagation={() => startEdit(sys)}
-              >Edit</button>
-              <button
-                class="text-xs px-1.5 py-0.5 rounded text-slate-500
-                       hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                disabled={deletingId === sys.id}
-                on:click|stopPropagation={() => deleteRow(sys.id)}
-                title="Delete system"
-              >{deletingId === sys.id ? '…' : '✕'}</button>
+              <Button variant="tertiary" size="xs" on:click={(e) => { e.stopPropagation(); (() => startEdit(sys))(e); }}>Edit</Button>
+              <Button variant="danger" size="xs" title="Delete system" disabled={deletingId === sys.id} on:click={(e) => { e.stopPropagation(); (() => deleteRow(sys.id))(e); }}>{deletingId === sys.id ? '…' : '✕'}</Button>
             </div>
           </div>
         </div>
@@ -220,16 +203,8 @@
           </label>
         </div>
         <div class="flex gap-2 mt-3">
-          <button
-            on:click={save}
-            disabled={saving}
-            class="flex-1 py-1.5 text-xs rounded bg-green-600 hover:bg-green-500
-                   disabled:opacity-50 text-white transition-colors"
-          >{saving ? 'Creating…' : 'Create'}</button>
-          <button
-            on:click={cancel}
-            class="px-3 py-1.5 text-xs rounded bg-slate-600 hover:bg-slate-500 text-white transition-colors"
-          >✕</button>
+          <Button variant="green" size="xs" disabled={saving} on:click={save}>{saving ? 'Creating…' : 'Create'}</Button>
+          <Button variant="tertiary" size="xs" on:click={cancel}>✕</Button>
         </div>
       </div>
     {/if}
@@ -239,11 +214,7 @@
   <!-- Footer: Add button -->
   {#if editingId !== 'new'}
     <div class="px-3 py-2.5 border-t border-slate-700">
-      <button
-        on:click={startNew}
-        class="w-full py-1.5 text-xs rounded border border-dashed border-slate-600
-               text-slate-400 hover:text-white hover:border-purple-500 transition-colors"
-      >+ Add System</button>
+      <Button variant="tertiary" size="xs" on:click={startNew}>+ Add System</Button>
     </div>
   {/if}
 

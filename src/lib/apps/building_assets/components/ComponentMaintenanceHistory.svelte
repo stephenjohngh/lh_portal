@@ -2,6 +2,7 @@
 <!-- Compact maintenance job history for a component, shown inside ComponentDetailPanel/View.
      Queries maintenance_jobs WHERE scope_type='component' AND scope_id=componentId. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { onMount }    from 'svelte';
   import { api }        from '#lib/utils/api.js';
   import { jobRag, ragConfig, resultConfig } from '#lib/apps/maintenance/utils/maintenanceHelpers.js';
@@ -89,12 +90,7 @@
       {/each}
 
       {#if jobs.length > PREVIEW}
-        <button
-          on:click={() => showAll = !showAll}
-          class="text-xs text-purple-400 hover:text-purple-300 mt-1 transition-colors"
-        >
-          {showAll ? 'Show fewer' : `Show all ${jobs.length} jobs`}
-        </button>
+        <Button variant="tertiary" size="xs" on:click={() => showAll = !showAll}>{showAll ? 'Show fewer' : `Show all ${jobs.length} jobs`}</Button>
       {/if}
     </div>
   {/if}

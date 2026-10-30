@@ -3,6 +3,7 @@
      buttons) because they contain action buttons; nesting interactive elements
      is a Svelte a11y compile error. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
   import LoadingSpinner  from '#lib/components/common/LoadingSpinner.svelte';
@@ -32,21 +33,12 @@
     <div class="flex-1"></div>
 
     {#if archivedCount > 0 || showArchived}
-      <button
-        class="text-xs text-slate-400 hover:text-slate-200 underline underline-offset-2"
-        on:click={() => showArchived = !showArchived}
-      >
-        {showArchived ? '← Back to active' : `Archived (${archivedCount})`}
-      </button>
+      <Button variant="tertiary" size="xs" on:click={() => showArchived = !showArchived}>{showArchived ? '← Back to active' : `Archived (${archivedCount})`}</Button>
     {/if}
 
     <!-- Not a filter on this list: it shows PUBLICATIONS, of which one pack can
          have several, and the question it answers spans every pack. -->
-    <button
-      class="text-xs text-slate-400 hover:text-slate-200 underline underline-offset-2"
-      title="Every link issued from every pack"
-      on:click={() => dispatch('showPublished')}
-    >Published links</button>
+    <Button variant="tertiary" size="xs" title="Every link issued from every pack" on:click={() => dispatch('showPublished')}>Published links</Button>
 
     <ProtectedButton action="modify" variant="primary" size="small" on:click={() => dispatch('new')}>
       + New Pack

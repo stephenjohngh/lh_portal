@@ -181,9 +181,7 @@
 </script>
 
 <div class="space-y-5">
-  <button type="button" class="text-sm text-slate-400 hover:text-slate-200" on:click={() => dispatch('back')}>
-    ← Back to register
-  </button>
+  <Button variant="secondary" size="small" on:click={() => dispatch('back')}>← Back to register</Button>
 
   <!-- Header -->
   <div class="flex flex-wrap items-start justify-between gap-3">

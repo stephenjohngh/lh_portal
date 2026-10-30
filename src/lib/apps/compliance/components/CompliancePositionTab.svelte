@@ -381,7 +381,7 @@
         </select>
         <input class="search" placeholder="Search name, reference, owner" bind:value={search} />
         {#if fGroups.length || fBases.length || fStatuses.length || search}
-          <button class="chip clear" on:click={clearFilters}>Clear</button>
+          <Button variant="tertiary" size="xs" on:click={clearFilters}>Clear</Button>
         {/if}
         <span class="count">{rows.length} of {allRows.length}</span>
       </div>

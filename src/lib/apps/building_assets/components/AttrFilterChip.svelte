@@ -3,6 +3,7 @@
      Click the body of the chip → emit 'edit' (parent re-opens the popover).
      Click the ✕                  → emit 'remove'. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { OP_SYMBOL } from '../utils/attrFilters.js';
 
@@ -52,10 +53,5 @@
       <span class="text-[10px] text-purple-400/70" title="Also includes components with no value">+∅</span>
     {/if}
   </button>
-  <button
-    on:click={() => dispatch('remove')}
-    class="text-purple-400/70 hover:text-red-400 ml-0.5"
-    title="Remove this filter"
-    aria-label="Remove filter on {def?.name}"
-  >✕</button>
+  <Button variant="danger" size="xs" title="Remove this filter" ariaLabel="Remove filter on {def?.name}" on:click={() => dispatch('remove')}>✕</Button>
 </div>

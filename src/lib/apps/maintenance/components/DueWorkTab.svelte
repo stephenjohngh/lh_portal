@@ -5,6 +5,7 @@
      different things is the one-word-two-objects fault. This is a work list,
      so it is named for what it holds. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { maintenanceStore } from '../stores/maintenanceStore.js';
   import { jobStage } from '../utils/maintenanceJobWorkflow.js';
   import { dueSoonDays } from '#lib/utils/dueWindows.js';
@@ -192,12 +193,7 @@
                   </div>
 
                   {#if canEdit && (job.rag === 'overdue' || job.rag === 'due_soon' || job.rag === 'scheduled' || job.rag === 'in_progress')}
-                    <button
-                      class="complete-btn flex-shrink-0"
-                      on:click|stopPropagation={() => completeJob = job}
-                    >
-                      ✓
-                    </button>
+                    <Button variant="tertiary" size="xs" on:click={(e) => { e.stopPropagation(); (() => completeJob = job)(e); }}>✓</Button>
                   {/if}
                 </div>
               {/each}

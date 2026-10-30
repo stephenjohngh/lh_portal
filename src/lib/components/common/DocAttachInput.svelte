@@ -3,6 +3,7 @@
      Bind to `file` to get the selected File object.
      Call the exported reset() method (or set file = null from outside) to clear. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { fmtBytes, mimeIcon } from '#lib/utils/files.js';
 
   /** @type {File|null} */
@@ -46,12 +47,7 @@
       <p class="text-sm text-slate-200 truncate">{file.name}</p>
       <p class="text-xs text-slate-500">{fmtBytes(file.size)}</p>
     </div>
-    <button
-      type="button"
-      class="text-xs text-slate-500 hover:text-red-400 transition-colors shrink-0
-             px-2 py-0.5 rounded border border-slate-600 hover:border-red-500/50"
-      on:click={reset}
-    >Remove</button>
+    <Button variant="danger" size="xs" on:click={reset}>Remove</Button>
   </div>
 {:else}
   <!-- Drop-zone. role=button + tabindex makes it keyboard-accessible. -->

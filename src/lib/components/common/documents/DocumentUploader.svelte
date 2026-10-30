@@ -1,4 +1,5 @@
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { documentsStore } from '#lib/stores/documentsStore.js';
   import { docTypeFromMime, categoryFromFilename, formatFileSize, DOC_TYPES, documentCategories } from '#lib/utils/documentUtils.js';
@@ -234,16 +235,8 @@
     {/if}
 
     <div class="flex gap-2 justify-end">
-      <button
-        class="px-3 py-1.5 text-sm text-slate-300 hover:text-white border border-slate-600 rounded hover:border-slate-400"
-        on:click={reset}
-        disabled={uploading}
-      >Cancel</button>
-      <button
-        class="px-4 py-1.5 text-sm bg-teal-600 hover:bg-teal-500 text-white rounded disabled:opacity-50"
-        on:click={handleUpload}
-        disabled={uploading || !files.length}
-      >{uploading ? 'Uploading…' : `Upload ${files.length > 1 ? `${files.length} files` : 'file'}`}</button>
+      <Button variant="secondary" size="medium" disabled={uploading} on:click={reset}>Cancel</Button>
+      <Button variant="primary" size="small" disabled={uploading || !files.length} on:click={handleUpload}>{uploading ? 'Uploading…' : `Upload ${files.length > 1 ? `${files.length} files` : 'file'}`}</Button>
     </div>
   {/if}
 </div>

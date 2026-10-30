@@ -33,11 +33,5 @@
     <option value="created_at">Created</option>
     <option value="sequence">Sequence</option>
   </select>
-  <button
-    on:click={toggleSortDir}
-    class="text-xs px-2 py-1 bg-slate-700 border border-slate-600 rounded text-gray-300 hover:bg-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500 leading-none"
-    title={sortDir === 'desc' ? 'Newest first — click for oldest first' : 'Oldest first — click for newest first'}
-  >
-    {sortDir === 'desc' ? '↓' : '↑'}
-  </button>
+  <Button variant="tertiary" size="xs" title={sortDir === 'desc' ? 'Newest first — click for oldest first' : 'Oldest first — click for newest first'} on:click={toggleSortDir}>{sortDir === 'desc' ? '↓' : '↑'}</Button>
 </div>

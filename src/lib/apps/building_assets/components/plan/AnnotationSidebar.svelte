@@ -2,6 +2,7 @@
 <!-- Edit / delete a text annotation placed on a plan.
      Owns its own form state; dispatches 'saved', 'deleted', 'close' to parent. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '../../stores/buildingAssetsStore.js';
   import { inp } from '../../ui.js';
@@ -92,10 +93,7 @@
   <!-- Header -->
   <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700">
     <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Annotation</p>
-    <button
-      on:click={() => dispatch('close')}
-      class="text-slate-500 hover:text-white transition-colors"
-    >✕</button>
+    <Button variant="tertiary" size="xs" on:click={() => dispatch('close')}>✕</Button>
   </div>
 
   <div class="p-4 flex flex-col gap-3">
@@ -170,20 +168,8 @@
     <!-- Actions — hidden when readOnly (View mode or read-only user) -->
     {#if !readOnly}
       <div class="flex gap-2 pt-1">
-        <button
-          on:click={save}
-          disabled={saving || !dirty}
-          class="flex-1 py-2 text-sm rounded-lg bg-purple-600 hover:bg-purple-500
-                 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium
-                 transition-colors"
-        >{saving ? 'Saving…' : 'Save'}</button>
-        <button
-          on:click={requestDeleteAnnotation}
-          disabled={deleting}
-          class="px-3 py-2 text-sm rounded-lg bg-red-900/40 hover:bg-red-800/50
-                 disabled:opacity-40 text-red-400 border border-red-800/40 transition-colors"
-          title="Delete annotation"
-        >{deleting ? '…' : '🗑'}</button>
+        <Button variant="primary" size="small" disabled={saving || !dirty} on:click={save}>{saving ? 'Saving…' : 'Save'}</Button>
+        <Button variant="danger" size="medium" title="Delete annotation" disabled={deleting} on:click={requestDeleteAnnotation}>{deleting ? '…' : '🗑'}</Button>
       </div>
     {/if}
 

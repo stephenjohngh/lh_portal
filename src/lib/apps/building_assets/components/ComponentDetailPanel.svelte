@@ -228,11 +228,7 @@
       <p class="text-sm text-slate-500 mt-0.5">{origType?.name ?? component.type_code}</p>
     </div>
 
-    <button
-      on:click={() => dispatch('close')}
-      class="text-slate-500 hover:text-white transition-colors text-xl leading-none shrink-0"
-      title="Close"
-    >✕</button>
+    <Button variant="tertiary" size="xs" title="Close" on:click={() => dispatch('close')}>✕</Button>
   </div>
 
   <!-- -- Scrollable body ------------------------------------------- -->
@@ -241,7 +237,7 @@
     {#if errorMsg}
       <div class="px-4 py-2.5 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 text-sm flex justify-between items-start gap-2">
         <span>{errorMsg}</span>
-        <button on:click={() => errorMsg = ''} class="shrink-0 text-red-500 hover:text-red-300">✕</button>
+        <Button variant="danger" size="xs" on:click={() => errorMsg = ''}>✕</Button>
       </div>
     {/if}
 
@@ -501,17 +497,9 @@
       {/if}
 
       <div class="ml-auto flex gap-2">
-        <button
-          on:click={() => dispatch('close')}
-          class="px-4 py-1.5 text-sm rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
-        >{readOnly ? 'Close' : 'Cancel'}</button>
+        <Button variant="secondary" size="small" on:click={() => dispatch('close')}>{readOnly ? 'Close' : 'Cancel'}</Button>
         {#if !readOnly}
-          <button
-            on:click={handleSave}
-            disabled={saving || !dirty}
-            class="px-5 py-1.5 text-sm rounded-lg bg-purple-600 hover:bg-purple-500
-                   disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors"
-          >{saving ? 'Saving…' : 'Save Changes'}</button>
+          <Button variant="primary" size="small" disabled={saving || !dirty} on:click={handleSave}>{saving ? 'Saving…' : 'Save Changes'}</Button>
         {/if}
       </div>
     </div>

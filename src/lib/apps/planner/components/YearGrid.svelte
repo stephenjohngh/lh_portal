@@ -14,6 +14,7 @@
 
      Layout logic is pure and tested — utils/yearGrid.js. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { buildYearGrid, cellMarks, columnWeekdays, WEEKDAY_SHORT } from '../utils/yearGrid.js';
   import { categoryOf, markStyle, WEEKEND_WASH } from '../utils/categories.js';
@@ -75,11 +76,7 @@
             <!-- The month name opens the month. A wallplanner shows the shape of
                  a year; the question it prompts is "what IS that in March", and
                  the answer needs words. -->
-            <button type="button"
-                    class="month-name w-full text-left px-1 py-1 font-semibold
-                           text-slate-100 hover:bg-slate-600 transition-colors"
-                    title="Open {month.label}"
-                    on:click={() => dispatch('selectMonth', month.month)}>{month.short}</button>
+            <Button variant="tertiary" size="xs" title="Open {month.label}" on:click={() => dispatch('selectMonth', month.month)}>{month.short}</Button>
           </th>
 
           {#each month.slots as cell, column}

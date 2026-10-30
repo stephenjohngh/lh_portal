@@ -147,9 +147,7 @@
              Display register is where the board is recorded. -->
         <p class="display-link">
           What is on the notice board is recorded on the Display register.
-          <button type="button" class="link" on:click|stopPropagation={() => dispatch('showDisplayRegister')}>
-            Open the Display register →
-          </button>
+          <Button variant="tertiary" size="xs" on:click={(e) => { e.stopPropagation(); (() => dispatch('showDisplayRegister'))(e); }}>Open the Display register →</Button>
         </p>
       {/if}
 

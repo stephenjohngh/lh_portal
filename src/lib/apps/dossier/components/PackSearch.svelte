@@ -12,6 +12,7 @@
      Merge doc D7: within a pack, never across publications. This component is
      handed content and cannot reach anything else. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { searchPack, describeResults, MIN_QUERY } from '../utils/packSearch.js';
 
@@ -64,13 +65,7 @@
   {#if query}
     <!-- The panel sits over the page tree, so there must be a way out of it
          that is not "select all and delete". Escape does the same. -->
-    <button
-      class="absolute right-1 top-1/2 -translate-y-1/2 px-1.5 text-slate-500
-             hover:text-slate-200 transition-colors"
-      title="Clear search (Esc)"
-      aria-label="Clear search"
-      on:click={clear}
-    >×</button>
+    <Button variant="tertiary" size="xs" title="Clear search (Esc)" ariaLabel="Clear search" on:click={clear}>×</Button>
   {/if}
 
   {#if open}
@@ -80,10 +75,7 @@
     >
       <div class="flex items-center gap-2 px-3 py-2 border-b border-slate-700/70">
         <p class="text-[11px] text-slate-500 flex-1">{summary}</p>
-        <button
-          class="text-[11px] text-slate-500 hover:text-slate-200 transition-colors shrink-0"
-          on:click={clear}
-        >Clear</button>
+        <Button variant="tertiary" size="xs" on:click={clear}>Clear</Button>
       </div>
 
       {#each results as result, i (result.kind + (result.docId ?? result.datasetId) + i)}

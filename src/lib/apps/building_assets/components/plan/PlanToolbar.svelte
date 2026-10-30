@@ -3,6 +3,7 @@
      All state is owned by PlanViewTab; this component is purely presentational.
      Search has moved to FilterSidebar. -->
 <script>
+  import SegmentedControl from '#lib/components/common/SegmentedControl.svelte';
   import MenuButton from '#lib/components/common/MenuButton.svelte';
   import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
@@ -31,7 +32,7 @@
 
   const MODES = [
     { mode: 'off',        label: '👁 View',        title: 'View only',                           activeClass: 'bg-slate-600'  },
-    { mode: 'component',  label: '✏️ Edit',         title: 'Place and reposition components',     activeClass: 'bg-amber-600'  },
+    { mode: 'component',  label: '✏️ Edit',         title: 'Place and reposition components',     activeClass: 'bg-purple-600'  },
     { mode: 'space',      label: '⬡ Spaces',       title: 'Draw space polygons',                 activeClass: 'bg-purple-700' },
     { mode: 'scale',      label: '📏 Scale',        title: 'Set scale reference for measurement', activeClass: 'bg-teal-700'   },
     { mode: 'annotation', label: '🏷 Annotate',      title: 'Place text annotations on the schematic',  activeClass: 'bg-sky-700'    },
@@ -85,20 +86,14 @@
     </div>
   {/if}
 
-  <!-- 4-way mode toggle -->
-  <div class="flex rounded-lg overflow-hidden border border-slate-600 text-sm shrink-0">
-    {#each availableModes as btn, i (btn.mode)}
-      <button
-        on:click={() => dispatch('modechange', { mode: btn.mode })}
-        title={btn.title}
-        class="px-3 py-1.5 transition-colors
-               {i > 0 ? 'border-l border-slate-600' : ''}
-               {drawingMode === btn.mode
-                 ? btn.activeClass + ' text-white font-medium'
-                 : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}"
-      >{btn.label}</button>
-    {/each}
-  </div>
+  <!-- Mode toggle: spaces, scale and annotate are admin-only options (amber) -->
+  <SegmentedControl
+    label="Schematic mode"
+    options={availableModes.map(m => ({ value: m.mode, label: m.label, title: m.title,
+                                        admin: ADMIN_ONLY_MODES.has(m.mode), activeClass: m.activeClass }))}
+    value={drawingMode}
+    on:change={(e) => dispatch('modechange', { mode: e.detail })}
+  />
 
   <!-- Scale indicator — always visible; clear button admin-only -->
   {#if hasScale && metresPerUnit}

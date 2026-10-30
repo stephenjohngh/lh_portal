@@ -3,6 +3,7 @@
      Name / type / colour state is owned by PlanViewTab via bind: so that the
      parent can also call finish when the user closes the polygon on the canvas. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { SPACE_COLOURS } from './planMeasure.js';
   import { typesForKind } from '../../utils/spaceTypeOptions.js';
@@ -51,11 +52,7 @@
         {vertices.length} {vertices.length === 1 ? 'vertex' : 'vertices'} added
       </p>
     </div>
-    <button
-      on:click={() => dispatch('cancel')}
-      class="text-slate-500 hover:text-white transition-colors"
-      title="Cancel drawing"
-    >✕</button>
+    <Button variant="tertiary" size="xs" title="Cancel drawing" on:click={() => dispatch('cancel')}>✕</Button>
   </div>
 
   <!-- ID (the bay number, say): set this first and the label and name follow it -->
@@ -164,25 +161,9 @@
 
   <!-- Actions -->
   <div class="flex gap-2">
-    <button
-      on:click={() => dispatch('undo')}
-      disabled={vertices.length === 0}
-      class="px-3 py-1.5 text-xs rounded-lg bg-slate-700 hover:bg-slate-600
-             text-slate-300 disabled:opacity-40 transition-colors"
-      title="Remove last vertex"
-    >↩ Undo</button>
-    <button
-      on:click={() => dispatch('cancel')}
-      class="flex-1 py-1.5 text-sm rounded-lg bg-slate-700 hover:bg-slate-600
-             text-slate-300 transition-colors"
-    >Cancel</button>
-    <button
-      on:click={() => dispatch('finish')}
-      disabled={!canFinish || saving}
-      class="flex-1 py-1.5 text-sm rounded-lg bg-purple-600 hover:bg-purple-500
-             disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium
-             transition-colors"
-    >{saving ? 'Saving…' : 'Finish'}</button>
+    <Button variant="tertiary" size="xs" title="Remove last vertex" disabled={vertices.length === 0} on:click={() => dispatch('undo')}>↩ Undo</Button>
+    <Button variant="secondary" size="small" on:click={() => dispatch('cancel')}>Cancel</Button>
+    <Button variant="primary" size="small" disabled={!canFinish || saving} on:click={() => dispatch('finish')}>{saving ? 'Saving…' : 'Finish'}</Button>
   </div>
 
 </div>

@@ -153,16 +153,9 @@
           <option value="updated_at">Modified</option>
           <option value="created_at">Created</option>
         </select>
-        <button
-          on:click={toggleSortDir}
-          disabled={sortField === 'smart'}
-          class="text-xs px-2 py-1 bg-slate-700 border border-slate-600 rounded text-gray-300 hover:bg-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-500 leading-none disabled:opacity-40 disabled:cursor-not-allowed"
-          title={sortField === 'smart'
+        <Button variant="tertiary" size="xs" title={sortField === 'smart'
             ? 'Smart sort uses a fixed order (status → deadline → created)'
-            : (sortDir === 'desc' ? 'Newest first — click for oldest first' : 'Oldest first — click for newest first')}
-        >
-          {sortDir === 'desc' ? '↓' : '↑'}
-        </button>
+            : (sortDir === 'desc' ? 'Newest first — click for oldest first' : 'Oldest first — click for newest first')} disabled={sortField === 'smart'} on:click={toggleSortDir}>{sortDir === 'desc' ? '↓' : '↑'}</Button>
       </div>
 
       <ProtectedButton

@@ -125,14 +125,7 @@
             </div>
           </div>
           <GtRegisterButton {doc} />
-          <button
-            class="text-slate-600 hover:text-red-400 transition-colors text-sm px-1"
-            disabled={deleting[doc.id]}
-            on:click={() => deleteDoc(doc)}
-            aria-label="Delete document"
-          >
-            {deleting[doc.id] ? '…' : '✕'}
-          </button>
+          <Button variant="danger" size="xs" disabled={deleting[doc.id]} ariaLabel="Delete document" on:click={() => deleteDoc(doc)}>{deleting[doc.id] ? '…' : '✕'}</Button>
         </div>
       {/each}
     </div>

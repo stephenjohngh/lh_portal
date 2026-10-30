@@ -319,22 +319,8 @@
           <div class="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-slate-700/40 border border-slate-700/60">
             <!-- Up / Down arrows -->
             <div class="flex flex-col gap-0.5 shrink-0">
-              <button
-                class="w-6 h-5 flex items-center justify-center rounded text-slate-400
-                       hover:bg-slate-600 hover:text-white transition-colors disabled:opacity-25
-                       disabled:cursor-not-allowed text-xs leading-none"
-                disabled={i === 0}
-                on:click={() => moveUp(i)}
-                aria-label="Move {app.name} up"
-              >▲</button>
-              <button
-                class="w-6 h-5 flex items-center justify-center rounded text-slate-400
-                       hover:bg-slate-600 hover:text-white transition-colors disabled:opacity-25
-                       disabled:cursor-not-allowed text-xs leading-none"
-                disabled={i === orderedApps.length - 1}
-                on:click={() => moveDown(i)}
-                aria-label="Move {app.name} down"
-              >▼</button>
+              <Button variant="tertiary" size="xs" disabled={i === 0} ariaLabel="Move {app.name} up" on:click={() => moveUp(i)}>▲</Button>
+              <Button variant="tertiary" size="xs" disabled={i === orderedApps.length - 1} ariaLabel="Move {app.name} down" on:click={() => moveDown(i)}>▼</Button>
             </div>
 
             <!-- Position number -->

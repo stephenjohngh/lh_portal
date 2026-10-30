@@ -3,6 +3,7 @@
      P0: internal authoring only. Nothing published, nothing leaves the portal.
      Plan: docs/requirements/build_plans/Dossier_P0_Build_Plan.md -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { errMessage } from '#lib/utils/errors.js';
   import { onMount, onDestroy } from 'svelte';
   import { auth }        from '#lib/stores/auth.js';
@@ -251,8 +252,7 @@
       <div class="flex items-start gap-2 p-3 rounded border border-amber-500/40
                   bg-amber-500/10">
         <p class="text-xs text-amber-200 flex-1">{duplicateNotice}</p>
-        <button class="text-xs text-amber-200/70 hover:text-amber-100"
-                on:click={() => duplicateNotice = ''}>Dismiss</button>
+        <Button variant="tertiary" size="xs" on:click={() => duplicateNotice = ''}>Dismiss</Button>
       </div>
     </div>
   {/if}

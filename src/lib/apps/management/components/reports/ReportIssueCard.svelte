@@ -1,5 +1,6 @@
 <!-- src/lib/apps/management/components/reports/ReportIssueCard.svelte -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { sanitizeHtml } from '#lib/utils/sanitizeHtml.js';
   import { getPriorityLabel, getActionStatusLabel, ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG } from '#lib/utils/constants.js';
   import { fmtDate, isOverdue, wasModified } from '#lib/utils/dates.js';
@@ -111,10 +112,7 @@
                   {/if}
                 </div>
                 {#if summaryOnly && hasSummary}
-                  <button type="button" class="text-[10px] text-amber-600 hover:text-amber-800 underline shrink-0"
-                    on:click={() => toggleExpand(activity.id)}>
-                    {isExpanded ? 'collapse' : 'expand'}
-                  </button>
+                  <Button variant="tertiary" size="xs" on:click={() => toggleExpand(activity.id)}>{isExpanded ? 'collapse' : 'expand'}</Button>
                 {/if}
               </div>
               {#if showBody}
@@ -141,10 +139,7 @@
                   {/if}
                 </div>
                 {#if summaryOnly && hasSummary}
-                  <button type="button" class="text-[10px] text-gray-400 hover:text-gray-600 underline shrink-0"
-                    on:click={() => toggleExpand(activity.id)}>
-                    {isExpanded ? 'collapse' : 'expand'}
-                  </button>
+                  <Button variant="tertiary" size="xs" on:click={() => toggleExpand(activity.id)}>{isExpanded ? 'collapse' : 'expand'}</Button>
                 {/if}
               </div>
               {#if showBody}

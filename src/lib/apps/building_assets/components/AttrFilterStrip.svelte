@@ -6,6 +6,7 @@
      (add/edit/remove/apply/cancel). Used twice (Fixed, Condition). See
      CLAUDE.md "Testing". -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import AttrFilterChip    from './AttrFilterChip.svelte';
   import AttrFilterPopover from './AttrFilterPopover.svelte';
@@ -38,13 +39,7 @@
     {/each}
   </div>
   <div class="relative shrink-0">
-    <button
-      on:click={() => dispatch('add')}
-      class="px-2 py-0.5 text-xs rounded-full border border-dashed border-slate-600 text-slate-400
-             hover:text-white hover:border-purple-500 whitespace-nowrap transition-colors"
-      disabled={availableDefs.length === 0}
-      title={availableDefs.length === 0 ? `No ${lower} attributes available` : `Add a ${lower}-attribute filter`}
-    >+ Add filter</button>
+    <Button variant="tertiary" size="xs" title={availableDefs.length === 0 ? `No ${lower} attributes available` : `Add a ${lower}-attribute filter`} disabled={availableDefs.length === 0} on:click={() => dispatch('add')}>+ Add filter</Button>
     {#if popoverOpen}
       <div class="absolute top-full left-0 mt-1 z-50">
         <AttrFilterPopover

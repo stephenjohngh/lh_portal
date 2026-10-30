@@ -5,6 +5,7 @@
      they vary over time and are recorded per inspection. Stored as JSONB on
      component_inspections.checklist_results. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
   import { conditionChecklistDisplay } from '../lookups.js';
@@ -99,11 +100,7 @@
         {/if}
       </div>
     </div>
-    <button
-      on:click={() => dispatch('close')}
-      class="text-slate-500 hover:text-white transition-colors shrink-0 text-xl leading-none"
-      title="Close"
-    >✕</button>
+    <Button variant="tertiary" size="xs" title="Close" on:click={() => dispatch('close')}>✕</Button>
   </div>
 
   {#if error}
@@ -135,10 +132,7 @@
           </span>
         </p>
         {#if !allChecked}
-          <button
-            on:click={checkAll}
-            class="text-xs text-slate-500 hover:text-green-400 transition-colors"
-          >Check all</button>
+          <Button variant="tertiary" size="xs" on:click={checkAll}>Check all</Button>
         {/if}
       </div>
 
@@ -204,17 +198,8 @@
 
   <!-- Actions -->
   <div class="flex gap-3">
-    <button
-      on:click={save}
-      disabled={saving}
-      class="flex-1 py-2 rounded-lg text-sm font-medium text-white transition-colors
-             bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-    >{saving ? 'Saving…' : 'Save Inspection'}</button>
-    <button
-      on:click={() => dispatch('close')}
-      class="px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white
-             bg-slate-700 hover:bg-slate-600 transition-colors"
-    >Cancel</button>
+    <Button variant="primary" size="small" disabled={saving} on:click={save}>{saving ? 'Saving…' : 'Save Inspection'}</Button>
+    <Button variant="secondary" size="large" on:click={() => dispatch('close')}>Cancel</Button>
   </div>
 
 </div>

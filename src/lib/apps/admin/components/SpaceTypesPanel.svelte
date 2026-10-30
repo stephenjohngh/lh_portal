@@ -179,12 +179,7 @@
                   <Button variant="primary" size="sm" loading={row._saving} disabled={row._saving}
                     on:click={() => saveRow(row)}>Save</Button>
                 {/if}
-                <button
-                  on:click={() => requestDelete(row)}
-                  class="ml-2 px-2 py-1 text-xs rounded bg-red-900/40 hover:bg-red-800/50
-                         text-red-400 border border-red-800/40 transition-colors"
-                  title="Delete type"
-                >Delete</button>
+                <Button variant="danger" size="xs" title="Delete type" on:click={() => requestDelete(row)}>Delete</Button>
               </td>
             </tr>
           {/each}

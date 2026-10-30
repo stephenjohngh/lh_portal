@@ -37,11 +37,7 @@
       >
         <!-- Expand / collapse -->
         {#if node.children.length}
-          <button
-            class="w-4 h-4 shrink-0 text-slate-500 hover:text-slate-200 text-[10px] leading-none"
-            title={collapsed[node.id] ? 'Expand' : 'Collapse'}
-            on:click|stopPropagation={() => toggle(node.id)}
-          >{collapsed[node.id] ? '▶' : '▼'}</button>
+          <Button variant="tertiary" size="xs" title={collapsed[node.id] ? 'Expand' : 'Collapse'} on:click={(e) => { e.stopPropagation(); (() => toggle(node.id))(e); }}>{collapsed[node.id] ? '▶' : '▼'}</Button>
         {:else}
           <span class="w-4 shrink-0"></span>
         {/if}
@@ -61,18 +57,12 @@
                        flex items-center gap-0.5 rounded px-0.5
                        bg-slate-700 shadow-sm
                       ">
-            <button class="w-5 h-5 text-slate-400 hover:text-white text-xs" title="Move up"
-                    on:click|stopPropagation={() => dispatch('move', { node, kind: 'up' })}>↑</button>
-            <button class="w-5 h-5 text-slate-400 hover:text-white text-xs" title="Move down"
-                    on:click|stopPropagation={() => dispatch('move', { node, kind: 'down' })}>↓</button>
-            <button class="w-5 h-5 text-slate-400 hover:text-white text-xs" title="Indent"
-                    on:click|stopPropagation={() => dispatch('move', { node, kind: 'indent' })}>→</button>
-            <button class="w-5 h-5 text-slate-400 hover:text-white text-xs" title="Outdent"
-                    on:click|stopPropagation={() => dispatch('move', { node, kind: 'outdent' })}>←</button>
-            <button class="w-5 h-5 text-slate-400 hover:text-white text-xs" title="New child page"
-                    on:click|stopPropagation={() => dispatch('newChild', node)}>+</button>
-            <button class="w-5 h-5 text-slate-400 hover:text-white text-xs" title="Rename"
-                    on:click|stopPropagation={() => dispatch('rename', node)}>✎</button>
+            <Button variant="tertiary" size="xs" title="Move up" on:click={(e) => { e.stopPropagation(); (() => dispatch('move', { node, kind: 'up' }))(e); }}>↑</Button>
+            <Button variant="tertiary" size="xs" title="Move down" on:click={(e) => { e.stopPropagation(); (() => dispatch('move', { node, kind: 'down' }))(e); }}>↓</Button>
+            <Button variant="tertiary" size="xs" title="Indent" on:click={(e) => { e.stopPropagation(); (() => dispatch('move', { node, kind: 'indent' }))(e); }}>→</Button>
+            <Button variant="tertiary" size="xs" title="Outdent" on:click={(e) => { e.stopPropagation(); (() => dispatch('move', { node, kind: 'outdent' }))(e); }}>←</Button>
+            <Button variant="tertiary" size="xs" title="New child page" on:click={(e) => { e.stopPropagation(); (() => dispatch('newChild', node))(e); }}>+</Button>
+            <Button variant="tertiary" size="xs" title="Rename" on:click={(e) => { e.stopPropagation(); (() => dispatch('rename', node))(e); }}>✎</Button>
             {#if $permissions.isAdmin}
               <Button admin size="xs" title="Delete page" on:click={e => { e.stopPropagation(); dispatch('delete', node); }}>×</Button>
             {/if}

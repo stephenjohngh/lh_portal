@@ -2,6 +2,7 @@
 <!-- Sidebar panel for entering the real-world distance between the two
      scale reference points the user clicked on the plan. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { inp } from '../../ui.js';
 
@@ -26,10 +27,7 @@
       <p class="font-semibold text-white text-sm">Set Scale</p>
       <p class="text-xs text-slate-500 mt-0.5">Enter the real-world distance between your two points</p>
     </div>
-    <button
-      on:click={() => dispatch('cancel')}
-      class="text-slate-500 hover:text-white transition-colors"
-    >✕</button>
+    <Button variant="tertiary" size="xs" on:click={() => dispatch('cancel')}>✕</Button>
   </div>
 
   <!-- Coordinate readout -->
@@ -61,24 +59,9 @@
 
   <!-- Actions -->
   <div class="flex gap-2">
-    <button
-      on:click={() => dispatch('repick')}
-      class="px-3 py-1.5 text-xs rounded-lg bg-slate-700 hover:bg-slate-600
-             text-slate-300 transition-colors"
-      title="Re-pick the second point"
-    >↩ Re-pick</button>
-    <button
-      on:click={() => dispatch('cancel')}
-      class="flex-1 py-1.5 text-sm rounded-lg bg-slate-700 hover:bg-slate-600
-             text-slate-300 transition-colors"
-    >Cancel</button>
-    <button
-      on:click={() => dispatch('apply', { metres: parsedMetres })}
-      disabled={!valid || saving}
-      class="flex-1 py-1.5 text-sm rounded-lg bg-teal-600 hover:bg-teal-500
-             disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium
-             transition-colors"
-    >{saving ? 'Saving…' : 'Apply'}</button>
+    <Button variant="tertiary" size="xs" title="Re-pick the second point" on:click={() => dispatch('repick')}>↩ Re-pick</Button>
+    <Button variant="secondary" size="small" on:click={() => dispatch('cancel')}>Cancel</Button>
+    <Button variant="primary" size="small" disabled={!valid || saving} on:click={() => dispatch('apply', { metres: parsedMetres })}>{saving ? 'Saving…' : 'Apply'}</Button>
   </div>
 
 </div>

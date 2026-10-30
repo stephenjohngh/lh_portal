@@ -15,6 +15,7 @@
      editing a multi-type rule from a single type's panel is a footgun — you
      would be changing something for types you cannot see from here. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher, onMount } from 'svelte';
   // ⛔ THROUGH THE OWNING APP'S public.js, not its store. `statutory_obligations`
   // belongs to the Compliance app now; an app must not write another app's data
@@ -137,18 +138,14 @@
       </p>
     </div>
     {#if editingId !== 'new'}
-      <button
-        on:click={startNew}
-        class="ml-4 shrink-0 px-3 py-1.5 text-xs rounded bg-purple-600 hover:bg-purple-500
-               text-white transition-colors"
-      >+ Add obligation</button>
+      <Button variant="primary" size="xs" on:click={startNew}>+ Add obligation</Button>
     {/if}
   </div>
 
   {#if error}
     <div class="mx-4 mt-3 px-3 py-2 rounded bg-red-500/10 border border-red-500/30 text-xs text-red-400">
       {error}
-      <button class="ml-2 underline" on:click={() => error = ''}>dismiss</button>
+      <Button variant="tertiary" size="xs" on:click={() => error = ''}>dismiss</Button>
     </div>
   {/if}
 
@@ -185,15 +182,8 @@
         </div>
       </div>
       <div class="flex gap-2 mt-3">
-        <button on:click={save} disabled={saving}
-          class="px-4 py-1.5 text-xs rounded bg-green-600 hover:bg-green-500
-                 disabled:opacity-50 text-white transition-colors">
-          {saving ? 'Creating…' : 'Create obligation'}
-        </button>
-        <button on:click={cancel}
-          class="px-4 py-1.5 text-xs rounded bg-slate-600 hover:bg-slate-500 text-white transition-colors">
-          Cancel
-        </button>
+        <Button variant="green" size="xs" disabled={saving} on:click={save}>{saving ? 'Creating…' : 'Create obligation'}</Button>
+        <Button variant="tertiary" size="xs" on:click={cancel}>Cancel</Button>
       </div>
     </div>
   {/if}
@@ -235,15 +225,8 @@
               </div>
             </div>
             <div class="flex gap-2 mt-3">
-              <button on:click={save} disabled={saving}
-                class="px-4 py-1.5 text-xs rounded bg-purple-600 hover:bg-purple-500
-                       disabled:opacity-50 text-white transition-colors">
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-              <button on:click={cancel}
-                class="px-4 py-1.5 text-xs rounded bg-slate-600 hover:bg-slate-500 text-white transition-colors">
-                Cancel
-              </button>
+              <Button variant="primary" size="xs" disabled={saving} on:click={save}>{saving ? 'Saving…' : 'Save'}</Button>
+              <Button variant="tertiary" size="xs" on:click={cancel}>Cancel</Button>
             </div>
           </div>
 
@@ -267,13 +250,8 @@
             </div>
             {#if row.editableHere}
               <div class="flex gap-1.5 shrink-0">
-                <button on:click={() => startEdit(row)}
-                  class="px-2.5 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
-                >Edit</button>
-                <button on:click={() => requestDelete(row)} disabled={deletingId === row.id}
-                  class="px-2.5 py-1 text-xs rounded bg-red-900/40 hover:bg-red-800/50 text-red-400
-                         border border-red-800/40 disabled:opacity-40 transition-colors"
-                >Delete</button>
+                <Button variant="tertiary" size="xs" on:click={() => startEdit(row)}>Edit</Button>
+                <Button variant="danger" size="xs" disabled={deletingId === row.id} on:click={() => requestDelete(row)}>Delete</Button>
               </div>
             {/if}
           </div>

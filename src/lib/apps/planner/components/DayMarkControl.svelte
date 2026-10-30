@@ -66,10 +66,7 @@
 
   {#if canEdit}
     {#if !open}
-      <button type="button" class="text-[11px] text-slate-500 hover:text-slate-300"
-              on:click={() => open = true}>
-        {own ? 'Change shading' : 'Shade this day'}
-      </button>
+      <Button variant="tertiary" size="xs" on:click={() => open = true}>{own ? 'Change shading' : 'Shade this day'}</Button>
     {:else}
       <div class="flex items-center gap-2 flex-wrap">
         <input
@@ -101,11 +98,9 @@
 
         <Button variant="tertiary" size="xs"
                 on:click={save}>Save</Button>
-        <button type="button" class="text-[11px] text-slate-500 hover:text-slate-300"
-                on:click={() => open = false}>Cancel</button>
+        <Button variant="tertiary" size="xs" on:click={() => open = false}>Cancel</Button>
         {#if own}
-          <button type="button" class="text-[11px] text-slate-500 hover:text-red-400"
-                  on:click={remove}>Remove shading</button>
+          <Button variant="danger" size="xs" on:click={remove}>Remove shading</Button>
         {/if}
       </div>
     {/if}

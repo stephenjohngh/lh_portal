@@ -4,6 +4,7 @@
      Writes via store CRUD methods (addComponentLink / updateComponentLink / deleteComponentLink).
      readOnly prop hides all mutating controls. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
   import { inp, sec }                      from '../ui.js';
   import { permissions }                   from '#lib/stores/permissions.js';
@@ -139,13 +140,7 @@
       {/if}
     </p>
     {#if canModify && !showAddForm}
-      <button
-        on:click={() => { showAddForm = true; addRef = ''; addLinkType = ''; addError = ''; }}
-        class="text-xs px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300
-               border border-slate-600 transition-colors"
-      >
-        + Add Link
-      </button>
+      <Button variant="tertiary" size="xs" on:click={() => { showAddForm = true; addRef = ''; addLinkType = ''; addError = ''; }}>+ Add Link</Button>
     {/if}
   </div>
 
@@ -185,16 +180,8 @@
         <p class="text-xs text-red-400">{addError}</p>
       {/if}
       <div class="flex gap-2 justify-end pt-1">
-        <button
-          on:click={() => { showAddForm = false; addRef = ''; addLinkType = ''; addError = ''; }}
-          class="text-xs px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
-        >Cancel</button>
-        <button
-          on:click={handleAdd}
-          disabled={!addRef.trim() || addSaving}
-          class="text-xs px-3 py-1.5 rounded bg-purple-600 hover:bg-purple-500 disabled:opacity-40
-                 disabled:cursor-not-allowed text-white transition-colors"
-        >{addSaving ? 'Adding…' : 'Add Link'}</button>
+        <Button variant="tertiary" size="xs" on:click={() => { showAddForm = false; addRef = ''; addLinkType = ''; addError = ''; }}>Cancel</Button>
+        <Button variant="primary" size="xs" disabled={!addRef.trim() || addSaving} on:click={handleAdd}>{addSaving ? 'Adding…' : 'Add Link'}</Button>
       </div>
     </div>
   {/if}
@@ -210,15 +197,8 @@
         {#if confirmDeleteId === link.id}
           <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-900/20 border border-red-800/40 text-xs text-red-300">
             <span class="flex-1">Delete this link?</span>
-            <button
-              on:click={handleDelete}
-              disabled={deleting}
-              class="px-2 py-1 rounded bg-red-700 hover:bg-red-600 text-white disabled:opacity-50"
-            >{deleting ? '…' : 'Delete'}</button>
-            <button
-              on:click={() => confirmDeleteId = null}
-              class="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300"
-            >Cancel</button>
+            <Button variant="danger" size="xs" disabled={deleting} on:click={handleDelete}>{deleting ? '…' : 'Delete'}</Button>
+            <Button variant="tertiary" size="xs" on:click={() => confirmDeleteId = null}>Cancel</Button>
           </div>
 
         <!-- Inline edit row -->
@@ -233,17 +213,8 @@
                 class="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs
                        text-white focus:outline-none focus:border-purple-500"
               />
-              <button
-                on:click={handleEditSave}
-                disabled={editSaving}
-                class="text-xs px-2.5 py-1 rounded bg-purple-600 hover:bg-purple-500
-                       disabled:opacity-40 text-white transition-colors"
-              >{editSaving ? '…' : 'Save'}</button>
-              <button
-                on:click={() => editingId = null}
-                class="text-xs px-2.5 py-1 rounded bg-slate-700 hover:bg-slate-600
-                       text-slate-300 transition-colors"
-              >Cancel</button>
+              <Button variant="primary" size="xs" disabled={editSaving} on:click={handleEditSave}>{editSaving ? '…' : 'Save'}</Button>
+              <Button variant="tertiary" size="xs" on:click={() => editingId = null}>Cancel</Button>
             </div>
           </div>
 
@@ -253,12 +224,7 @@
                       border border-slate-700/60 group">
             <span class="text-slate-400 mt-0.5 shrink-0">🔗</span>
             <div class="flex-1 min-w-0">
-              <button
-                on:click={() => openLinkedComponent(link.to_component_ref)}
-                class="text-sm font-mono text-purple-300 hover:text-purple-200
-                       hover:underline transition-colors truncate block text-left w-full"
-                title="View component detail"
-              >{fmtComponentRef(link.to_component_ref, types)}</button>
+              <Button variant="secondary" size="small" title="View component detail" on:click={() => openLinkedComponent(link.to_component_ref)}>{fmtComponentRef(link.to_component_ref, types)}</Button>
               {#if link.link_type}
                 <span class="inline-block mt-0.5 text-xs px-1.5 py-0.5 rounded
                              bg-slate-600/60 text-slate-300 border border-slate-600">
@@ -270,18 +236,8 @@
             </div>
             {#if canModify}
               <div class="flex gap-1 shrink-0 ">
-                <button
-                  on:click={() => startEdit(link)}
-                  class="text-xs px-1.5 py-0.5 rounded text-slate-400 hover:text-white
-                         hover:bg-slate-600 transition-colors"
-                  title="Edit link type"
-                >✎</button>
-                <button
-                  on:click={() => confirmDeleteId = link.id}
-                  class="text-xs px-1.5 py-0.5 rounded text-slate-400 hover:text-red-400
-                         hover:bg-red-900/20 transition-colors"
-                  title="Delete link"
-                >✕</button>
+                <Button variant="tertiary" size="xs" title="Edit link type" on:click={() => startEdit(link)}>✎</Button>
+                <Button variant="danger" size="xs" title="Delete link" on:click={() => confirmDeleteId = link.id}>✕</Button>
               </div>
             {/if}
           </div>

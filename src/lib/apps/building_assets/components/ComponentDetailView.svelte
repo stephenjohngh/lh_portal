@@ -5,6 +5,7 @@
      Used wherever the current user has read-only access to Building Assets. -->
 
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher }   from 'svelte';
   import { buildingAssetsStore }     from '../stores/buildingAssetsStore.js';
   import { typeByCode, conditionChecklistDisplay } from '../lookups.js';
@@ -98,11 +99,7 @@
       <p class="font-semibold text-slate-400 text-base mt-0.5">{type?.name ?? component.type_code}</p>
     </div>
 
-    <button
-      on:click={() => dispatch('close')}
-      class="text-slate-500 hover:text-white transition-colors text-xl leading-none shrink-0"
-      title="Close"
-    >✕</button>
+    <Button variant="tertiary" size="xs" title="Close" on:click={() => dispatch('close')}>✕</Button>
   </div>
 
   <!-- -- Scrollable body ----------------------------------------------- -->
@@ -250,10 +247,7 @@
 
   <!-- -- Footer: close only ---------------------------------------------- -->
   <div class="p-5 pt-4 border-t border-slate-700 shrink-0 flex justify-end">
-    <button
-      on:click={() => dispatch('close')}
-      class="px-4 py-1.5 text-sm rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
-    >Close</button>
+    <Button variant="secondary" size="small" on:click={() => dispatch('close')}>Close</Button>
   </div>
 
 </div>

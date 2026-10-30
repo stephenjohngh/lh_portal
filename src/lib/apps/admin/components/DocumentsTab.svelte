@@ -10,6 +10,7 @@
      links them (2026-09-27). "Check files" asks, per row shown, and changes
      nothing: #lib/server/documentCheck.js. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { onMount }        from 'svelte';
   import { documentsStore } from '#lib/stores/documentsStore.js';
   import DocumentUploader   from '#lib/components/common/documents/DocumentUploader.svelte';
@@ -225,10 +226,7 @@
       </select>
     </div>
     {#if filterDocType || filterCategory || filterSearch}
-      <button
-        class="text-xs text-slate-400 hover:text-white underline self-end pb-1.5"
-        on:click={clearFilters}
-      >Clear filters</button>
+      <Button variant="tertiary" size="xs" on:click={clearFilters}>Clear filters</Button>
     {/if}
   </div>
 
@@ -239,11 +237,7 @@
   <!-- Check files -->
   {#if !loading && docs.length}
     <div class="flex flex-wrap items-center gap-3 text-sm" data-testid="check-bar">
-      <button
-        class="px-3 py-1.5 rounded border border-slate-600 text-slate-200 hover:border-teal-500 hover:text-teal-300 disabled:opacity-50"
-        on:click={runCheck}
-        disabled={checking}
-      >{checking ? `Checking ${docs.length}…` : `Check files (${docs.length} shown)`}</button>
+      <Button variant="secondary" size="medium" disabled={checking} on:click={runCheck}>{checking ? `Checking ${docs.length}…` : `Check files (${docs.length} shown)`}</Button>
       {#if summary.checked}
         <span class="text-slate-300" data-testid="check-summary">
           Checked {summary.checked}{checkedAt ? ` at ${fmtTime(checkedAt)}` : ''}:

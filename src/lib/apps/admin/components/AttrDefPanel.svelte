@@ -1,6 +1,7 @@
 <!-- src/lib/apps/admin/components/AttrDefPanel.svelte -->
 <!-- Panel 3 of 4: Attribute Definitions for the selected Type. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '#lib/apps/building_assets/stores/buildingAssetsStore.js';
   import { inp } from '#lib/apps/building_assets/ui.js';
@@ -280,15 +281,8 @@
                 placeholder="Help notes shown to inspector in walk checklist (optional)"></textarea>
             </div>
             <div class="flex gap-2 mt-3">
-              <button on:click={save} disabled={saving}
-                class="flex-1 py-1.5 text-xs rounded bg-purple-600 hover:bg-purple-500
-                       disabled:opacity-50 text-white transition-colors">
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-              <button on:click={cancel}
-                class="px-3 py-1.5 text-xs rounded bg-slate-600 hover:bg-slate-500 text-white transition-colors">
-                ✕
-              </button>
+              <Button variant="primary" size="xs" disabled={saving} on:click={save}>{saving ? 'Saving…' : 'Save'}</Button>
+              <Button variant="tertiary" size="xs" on:click={cancel}>✕</Button>
             </div>
           </div>
 
@@ -347,41 +341,18 @@
               {#if !isInherited(def)}
                 <!-- Type-own attr: full edit / delete -->
                 <div class="flex gap-1 shrink-0 mt-0.5">
-                  <button
-                    class="text-xs px-1.5 py-0.5 rounded text-slate-500
-                           hover:text-white hover:bg-slate-600 transition-colors"
-                    on:click|stopPropagation={() => startEdit(def)}
-                  >Edit</button>
-                  <button
-                    class="text-xs px-1.5 py-0.5 rounded text-slate-500
-                           hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                    disabled={deletingId === def.id}
-                    on:click|stopPropagation={() => deleteRow(def.id)}
-                    title="Delete attribute"
-                  >{deletingId === def.id ? '…' : '✕'}</button>
+                  <Button variant="tertiary" size="xs" on:click={(e) => { e.stopPropagation(); (() => startEdit(def))(e); }}>Edit</Button>
+                  <Button variant="danger" size="xs" title="Delete attribute" disabled={deletingId === def.id} on:click={(e) => { e.stopPropagation(); (() => deleteRow(def.id))(e); }}>{deletingId === def.id ? '…' : '✕'}</Button>
                 </div>
               {:else if def._defaultOverride}
                 <!-- Inherited + has override: edit/remove override -->
                 <div class="flex gap-1 shrink-0 mt-0.5">
-                  <button
-                    class="text-xs px-1.5 py-0.5 rounded text-amber-500/70
-                           hover:text-amber-300 hover:bg-amber-800/20 transition-colors"
-                    on:click|stopPropagation={() => startOverride(def)}
-                    title="Edit default value override">Edit</button>
-                  <button
-                    class="text-xs px-1.5 py-0.5 rounded text-slate-500
-                           hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                    on:click|stopPropagation={() => removeOverride(def)}
-                    title="Remove override — revert to system default">✕</button>
+                  <Button variant="tertiary" size="xs" title="Edit default value override" on:click={(e) => { e.stopPropagation(); (() => startOverride(def))(e); }}>Edit</Button>
+                  <Button variant="danger" size="xs" title="Remove override — revert to system default" on:click={(e) => { e.stopPropagation(); (() => removeOverride(def))(e); }}>✕</Button>
                 </div>
               {:else}
                 <!-- Inherited, no override: offer Override button on hover -->
-                <button
-                  class="shrink-0 text-xs px-1.5 py-0.5 rounded text-slate-600
-                         hover:text-amber-300 hover:bg-amber-800/20 transition-colors  mt-0.5"
-                  on:click|stopPropagation={() => startOverride(def)}
-                  title="Override the default value for this type only"
-                >Override →</button>
+                <Button variant="tertiary" size="xs" title="Override the default value for this type only" on:click={(e) => { e.stopPropagation(); (() => startOverride(def))(e); }}>Override →</Button>
               {/if}
             </div>
 
@@ -402,17 +373,8 @@
                     class="{inp} flex-1 text-xs"
                     placeholder="New default value (empty = blank)"
                   />
-                  <button
-                    on:click={() => saveOverride(def)}
-                    disabled={savingOverride}
-                    class="px-2 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500
-                           disabled:opacity-50 text-white transition-colors shrink-0"
-                  >{savingOverride ? '…' : '✓'}</button>
-                  <button
-                    on:click={cancelOverride}
-                    class="px-2 py-1 text-xs rounded bg-slate-600 hover:bg-slate-500
-                           text-white transition-colors shrink-0"
-                  >✕</button>
+                  <Button variant="amber" size="xs" disabled={savingOverride} on:click={() => saveOverride(def)}>{savingOverride ? '…' : '✓'}</Button>
+                  <Button variant="tertiary" size="xs" on:click={cancelOverride}>✕</Button>
                 </div>
               </div>
             {/if}
@@ -472,15 +434,8 @@
               placeholder="Help notes shown to inspector in walk checklist (optional)"></textarea>
           </div>
           <div class="flex gap-2 mt-3">
-            <button on:click={save} disabled={saving}
-              class="flex-1 py-1.5 text-xs rounded bg-green-600 hover:bg-green-500
-                     disabled:opacity-50 text-white transition-colors">
-              {saving ? 'Creating…' : 'Create'}
-            </button>
-            <button on:click={cancel}
-              class="px-3 py-1.5 text-xs rounded bg-slate-600 hover:bg-slate-500 text-white transition-colors">
-              ✕
-            </button>
+            <Button variant="green" size="xs" disabled={saving} on:click={save}>{saving ? 'Creating…' : 'Create'}</Button>
+            <Button variant="tertiary" size="xs" on:click={cancel}>✕</Button>
           </div>
         </div>
       {/if}

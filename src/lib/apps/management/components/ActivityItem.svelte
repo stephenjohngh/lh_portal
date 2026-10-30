@@ -229,16 +229,7 @@
           on:click={(e) => dispatch('meetingFilter', e.detail)}
         />
         {#if $currentMeeting && activity.meeting_id === $currentMeeting.id}
-          <button
-            type="button"
-            class="text-[10px] px-1.5 py-0.5 rounded border border-amber-700/30
-                   text-amber-500/70 hover:text-red-400 hover:bg-red-900/20
-                   hover:border-red-700/40 transition-colors leading-none"
-            on:click|stopPropagation={() => dispatch('untagMeeting', activity)}
-            title="Remove this activity from the current meeting"
-          >
-            × remove from meeting
-          </button>
+          <Button variant="danger" size="xs" title="Remove this activity from the current meeting" on:click={(e) => { e.stopPropagation(); (() => dispatch('untagMeeting', activity))(e); }}>× remove from meeting</Button>
         {/if}
       {/if}
     </div>

@@ -206,12 +206,7 @@
         title={confirming ? 'Click again to confirm delete' : 'Remove preset'}
       >{confirming ? 'Delete?' : '✕'}</button>
       {#if confirming}
-        <button
-          on:click={cancelDelete}
-          class="px-1.5 py-0.5 text-[10px] border-l border-red-500/40
-                 text-red-400/70 hover:text-slate-300 transition-colors"
-          title="Cancel"
-        >✕</button>
+        <Button variant="danger" size="xs" title="Cancel" on:click={cancelDelete}>✕</Button>
       {/if}
     </div>
   {/each}
@@ -247,23 +242,10 @@
           <FormInput admin compact bind:value={sortOrderInput} on:keydown={onKeydown} placeholder="Order #" />
         </div>
       {/if}
-      <button
-        on:click={confirmSave}
-        disabled={!savingName.trim() || saving}
-        class="px-2 py-0.5 rounded text-[11px] bg-purple-600 hover:bg-purple-500
-               text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-      >{saving ? 'Saving…' : 'Save'}</button>
-      <button
-        on:click={cancelSave}
-        class="px-1.5 py-0.5 text-[11px] text-slate-500 hover:text-slate-300 transition-colors"
-      >Cancel</button>
+      <Button variant="primary" size="xs" disabled={!savingName.trim() || saving} on:click={confirmSave}>{saving ? 'Saving…' : 'Save'}</Button>
+      <Button variant="tertiary" size="xs" on:click={cancelSave}>Cancel</Button>
     {:else}
-      <button
-        on:click={startSave}
-        class="px-2.5 py-0.5 rounded text-[11px] border border-slate-600
-               bg-transparent text-slate-500 hover:text-slate-300 hover:border-slate-500
-               transition-colors"
-      >+ Save as…</button>
+      <Button variant="tertiary" size="xs" on:click={startSave}>+ Save as…</Button>
     {/if}
   </div>
 

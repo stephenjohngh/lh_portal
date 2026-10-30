@@ -828,12 +828,7 @@
     {#if broken.length}
       <!-- A pack about to be handed to someone outside the portal should not
            contain references that go nowhere. -->
-      <button
-        class="text-xs px-2 py-1 rounded bg-amber-500/15 text-amber-300
-               hover:bg-amber-500/25 transition-colors shrink-0"
-        title="Show which references no longer resolve"
-        on:click={() => showBroken = !showBroken}
-      >⚠ {describeBrokenReferences(broken)}</button>
+      <Button variant="tertiary" size="xs" title="Show which references no longer resolve" on:click={() => showBroken = !showBroken}>⚠ {describeBrokenReferences(broken)}</Button>
     {/if}
 
     {#if canEdit}
@@ -863,9 +858,7 @@
         <div class="flex-1 min-w-0 space-y-1">
           {#each broken as ref}
             <p class="text-xs text-slate-300">
-              <button
-                class="text-amber-300 hover:text-amber-200 underline underline-offset-2"
-                on:click={() => {
+              <Button variant="tertiary" size="xs" on:click={() => {
                   // A broken reference lives on a page or in a table; open
                   // whichever it is rather than assuming a page.
                   if (ref.origin.type === 'table') {
@@ -875,8 +868,7 @@
                     selectPage(ref.origin.id);
                   }
                   showBroken = false;
-                }}
-              >{ref.origin.title}</button>
+                }}>{ref.origin.title}</Button>
               <span class="text-slate-500">
                 {ref.kind === 'doc' ? 'links to' : 'shows'}
               </span>
@@ -884,8 +876,7 @@
             </p>
           {/each}
         </div>
-        <button class="text-xs text-slate-500 hover:text-slate-300 shrink-0"
-                on:click={() => showBroken = false}>Hide</button>
+        <Button variant="tertiary" size="xs" on:click={() => showBroken = false}>Hide</Button>
       </div>
     </div>
   {/if}
@@ -903,8 +894,7 @@
       <div class="flex items-center gap-2 px-3 py-2 border-b border-slate-700/50 shrink-0">
         <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide flex-1">Pages</p>
         {#if canEdit}
-          <button class="text-xs text-slate-400 hover:text-white px-1"
-                  title="New top-level page" on:click={() => openNewDoc(null)}>+ New</button>
+          <Button variant="tertiary" size="xs" title="New top-level page" on:click={() => openNewDoc(null)}>+ New</Button>
         {/if}
       </div>
 
@@ -976,13 +966,7 @@
           {#if available.length}
             <div class="flex flex-wrap gap-1 px-3 pb-2">
               {#each available as key}
-                <button
-                  class="text-xs px-1.5 py-0.5 rounded border border-slate-700
-                         text-slate-500 hover:text-white hover:border-slate-600
-                         transition-colors whitespace-nowrap"
-                  title="Add a {DATASET_TEMPLATES[key].title.toLowerCase()} to this pack"
-                  on:click={() => addDataset(key)}
-                >+ {DATASET_TEMPLATES[key].title}</button>
+                <Button variant="tertiary" size="xs" title="Add a {DATASET_TEMPLATES[key].title.toLowerCase()} to this pack" on:click={() => addDataset(key)}>+ {DATASET_TEMPLATES[key].title}</Button>
               {/each}
             </div>
           {/if}
@@ -1107,11 +1091,7 @@
             <span class="hidden lg:flex items-center gap-1.5 text-xs min-w-0 shrink">
               <span class="text-slate-600 shrink-0">↩</span>
               {#each backlinks.slice(0, 3) as link (link.doc_id)}
-                <button
-                  class="text-slate-400 hover:text-white underline underline-offset-2 truncate"
-                  title="Referenced from {link.title} — go there"
-                  on:click={() => { selectedId = link.doc_id; notice = ''; }}
-                >{link.title}</button>
+                <Button variant="tertiary" size="xs" title="Referenced from {link.title} — go there" on:click={() => { selectedId = link.doc_id; notice = ''; }}>{link.title}</Button>
               {/each}
               {#if backlinks.length > 3}
                 <span class="text-slate-600 shrink-0"

@@ -3,6 +3,7 @@
      Only captures type, label, asset_id, and the primary attribute.
      floor_id / schematic_id / x_position / y_position are injected by PlanViewTab. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher }    from 'svelte';
   import { buildingAssetsStore }      from '../stores/buildingAssetsStore.js';
   import { inp }                      from '../ui.js';
@@ -176,17 +177,7 @@
 
   <!-- Actions -->
   <div class="flex gap-2 pt-1">
-    <button
-      on:click={() => dispatch('cancel')}
-      class="flex-1 py-1.5 text-sm rounded-lg bg-slate-700 hover:bg-slate-600
-             text-slate-300 transition-colors"
-    >Cancel</button>
-    <button
-      on:click={handleSubmit}
-      disabled={!selectedTypeId || saving}
-      class="flex-1 py-1.5 text-sm rounded-lg bg-purple-600 hover:bg-purple-500
-             disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium
-             transition-colors"
-    >{saving ? 'Placing…' : 'Place'}</button>
+    <Button variant="secondary" size="small" on:click={() => dispatch('cancel')}>Cancel</Button>
+    <Button variant="primary" size="small" disabled={!selectedTypeId || saving} on:click={handleSubmit}>{saving ? 'Placing…' : 'Place'}</Button>
   </div>
 </div>

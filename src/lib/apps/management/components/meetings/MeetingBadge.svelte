@@ -11,6 +11,7 @@
     rowTable   — optional: 'activities' | 'actions' | 'issues'
 -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { meetingsStore } from '../../stores/meetingsStore';
   import { issuesStore }   from '../../stores/issuesStore';
@@ -80,23 +81,9 @@
                bg-slate-800 border border-slate-600 rounded shadow-xl overflow-hidden"
         on:click|stopPropagation
       >
-        <button
-          type="button"
-          class="w-full text-left px-3 py-2 text-sm text-slate-200
-                 hover:bg-slate-700 flex items-center gap-2"
-          on:click={handleJump}
-        >
-          🗓 Jump to meeting
-        </button>
+        <Button variant="secondary" size="medium" on:click={handleJump}>🗓 Jump to meeting</Button>
         {#if canUntag}
-          <button
-            type="button"
-            class="w-full text-left px-3 py-2 text-sm text-red-300
-                   hover:bg-red-900/30 border-t border-slate-700 flex items-center gap-2"
-            on:click={handleUntag}
-          >
-            ✕ Remove tag
-          </button>
+          <Button variant="danger" size="medium" on:click={handleUntag}>✕ Remove tag</Button>
         {/if}
       </div>
     {/if}

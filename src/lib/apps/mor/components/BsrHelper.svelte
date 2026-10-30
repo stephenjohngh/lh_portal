@@ -169,13 +169,7 @@ INTERNAL CASE REF: ${c.reference}
             {isNotice ? 'Notice content' : 'Report content'}
             <span class="text-xs text-slate-500 font-normal ml-1">— copy and paste into the BSR portal</span>
           </p>
-          <button
-            type="button"
-            on:click={copyContent}
-            class="text-xs px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
-          >
-            {copied ? '✓ Copied' : 'Copy'}
-          </button>
+          <Button variant="tertiary" size="xs" on:click={copyContent}>{copied ? '✓ Copied' : 'Copy'}</Button>
         </div>
         <pre class="bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs text-slate-300
                     overflow-auto max-h-80 whitespace-pre-wrap font-mono leading-relaxed">{content}</pre>

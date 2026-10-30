@@ -261,23 +261,8 @@
 
 <!-- ── Back button + export ─────────────────────────────────────────────── -->
 <div class="mb-4 flex items-center justify-between gap-2">
-  <button
-    type="button"
-    on:click={() => dispatch('back')}
-    class="text-sm text-slate-400 hover:text-white flex items-center gap-1 transition-colors"
-  >
-    ← Cases
-  </button>
-  <button
-    type="button"
-    on:click={exportCaseRecord}
-    disabled={exporting}
-    class="text-xs px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-50
-           disabled:cursor-not-allowed text-slate-200 transition-colors"
-    title="Download full case record as a Word document"
-  >
-    {exporting ? 'Generating…' : '📄 Export case record (.docx)'}
-  </button>
+  <Button variant="secondary" size="small" on:click={() => dispatch('back')}>← Cases</Button>
+  <Button variant="tertiary" size="xs" title="Download full case record as a Word document" disabled={exporting} on:click={exportCaseRecord}>{exporting ? 'Generating…' : '📄 Export case record (.docx)'}</Button>
 </div>
 {#if exportError}
   <p class="text-red-400 text-xs mb-3 text-right">{exportError}</p>
@@ -560,16 +545,8 @@
                   </div>
                   {#if canEdit && mit.status !== 'complete'}
                     <div class="flex gap-1 shrink-0">
-                      <button type="button"
-                        class="text-xs text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded
-                               hover:bg-emerald-900/30 transition-colors"
-                        on:click={() => doMarkMitComplete(mit)}
-                      >✓ Complete</button>
-                      <button type="button"
-                        class="text-xs text-slate-400 hover:text-white px-2 py-1 rounded
-                               hover:bg-slate-600 transition-colors"
-                        on:click={() => { editingMit = mit; showMitForm = true; }}
-                      >Edit</button>
+                      <Button variant="tertiary" size="xs" on:click={() => doMarkMitComplete(mit)}>✓ Complete</Button>
+                      <Button variant="tertiary" size="xs" on:click={() => { editingMit = mit; showMitForm = true; }}>Edit</Button>
                     </div>
                   {/if}
                   {#if isAdmin}

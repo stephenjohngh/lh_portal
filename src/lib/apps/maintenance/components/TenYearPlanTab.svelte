@@ -403,10 +403,7 @@
               {fmtCost(g.expected_cost)}
             </td>
             <td class="px-4 py-3 text-right">
-              <button
-                on:click={() => openEdit(g)}
-                class="px-2.5 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
-              >Edit</button>
+              <Button variant="tertiary" size="xs" on:click={() => openEdit(g)}>Edit</Button>
             </td>
           </tr>
         {/each}

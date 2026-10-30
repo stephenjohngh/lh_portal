@@ -370,12 +370,7 @@
                 <div class="flex items-center gap-1 
                             {inDel && $permissions.isAdmin ? '!opacity-100' : ''}">
                   {#if !inDel && !readOnly}
-                    <button
-                      on:click|stopPropagation={() => dispatch('inspect', { component: c })}
-                      class="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600
-                             text-slate-300 hover:text-white transition-colors text-[10px]"
-                      title="Inspect"
-                    >🔍</button>
+                    <Button variant="tertiary" size="xs" title="Inspect" on:click={(e) => { e.stopPropagation(); (() => dispatch('inspect', { component: c }))(e); }}>🔍</Button>
                   {/if}
                   {#if $permissions.isAdmin}
                     {#if inDel}

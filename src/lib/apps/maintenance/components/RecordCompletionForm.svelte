@@ -185,10 +185,7 @@
             {/if}
           </p>
           {#if scopeComponents.length > 0}
-            <button class="text-xs text-green-400 hover:text-green-300 transition-colors"
-              on:click={setAllComponentsPass}>
-              Set all Pass
-            </button>
+            <Button variant="tertiary" size="xs" on:click={setAllComponentsPass}>Set all Pass</Button>
           {/if}
         </div>
 

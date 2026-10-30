@@ -9,6 +9,7 @@
      Scoped by RLS, not by a filter here: publications inherit their pack's
      owner test, so this shows the caller's own and an admin sees all. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
   import { createEventDispatcher } from 'svelte';
   import Badge from '#lib/components/common/Badge.svelte';
@@ -33,11 +34,7 @@
 
   <div class="px-5 py-3 border-b border-slate-700 shrink-0">
     <div class="flex items-center gap-3">
-      <button
-        class="text-xs px-2 py-1 rounded bg-slate-700 hover:bg-slate-600
-               text-slate-200 transition-colors shrink-0"
-        on:click={() => dispatch('back')}
-      >← Packs</button>
+      <Button variant="tertiary" size="xs" on:click={() => dispatch('back')}>← Packs</Button>
       <h2 class="text-sm font-semibold text-white">Published links</h2>
       {#if !loading}<span class="text-xs text-slate-500">{rows.length}</span>{/if}
     </div>
@@ -81,11 +78,7 @@
           {#each rows as pub (pub.id)}
             <tr class="border-t border-slate-700/50 hover:bg-slate-800/40 transition-colors">
               <td class="px-4 py-2">
-                <button
-                  class="text-left text-slate-200 hover:text-purple-300 transition-colors"
-                  title="Open this pack"
-                  on:click={() => dispatch('openPack', pub.pack_id)}
-                >{packTitle.get(pub.pack_id) ?? 'A pack you can no longer see'}</button>
+                <Button variant="tertiary" size="xs" title="Open this pack" on:click={() => dispatch('openPack', pub.pack_id)}>{packTitle.get(pub.pack_id) ?? 'A pack you can no longer see'}</Button>
                 <span class="block text-xs text-slate-500">
                   v{pub.version} · {pub.title}
                 </span>

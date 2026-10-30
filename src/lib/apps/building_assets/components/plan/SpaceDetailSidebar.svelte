@@ -4,6 +4,7 @@
      Measurements (perimeter, area, volume) shown when plan is scaled.
      Save / Cancel / Delete footer. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { SPACE_LABEL_SIZES, spaceLabelSizeName } from '../../utils/spaceLabelSize.js';
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore }          from '../../stores/buildingAssetsStore.js';
@@ -233,11 +234,7 @@
         </span>
       {/if}
     </div>
-    <button
-      on:click={() => dispatch('close')}
-      class="text-slate-500 hover:text-white transition-colors ml-2 shrink-0"
-      title="Close"
-    >✕</button>
+    <Button variant="tertiary" size="xs" title="Close" on:click={() => dispatch('close')}>✕</Button>
   </div>
 
   <!-- -- Scrollable body --------------------------------------------- -->
@@ -373,11 +370,9 @@
               {/if}
               {#if canManage}
                 {#if overrideModeFor(c.id) === 'include'}
-                  <button on:click={() => clearOverride(c.id)} title="Unpin from this space"
-                    class="text-slate-500 hover:text-white shrink-0 text-xs">unpin</button>
+                  <Button variant="tertiary" size="xs" title="Unpin from this space" on:click={() => clearOverride(c.id)}>unpin</Button>
                 {:else}
-                  <button on:click={() => setOverride(c.id, 'exclude')} title="Exclude from this space"
-                    class="text-slate-500 hover:text-red-400 shrink-0 text-xs">✕</button>
+                  <Button variant="danger" size="xs" title="Exclude from this space" on:click={() => setOverride(c.id, 'exclude')}>✕</Button>
                 {/if}
               {/if}
             </div>
@@ -394,8 +389,7 @@
           {#each excludedComponents as c (c.id)}
             <div class="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-800/60 border border-slate-700/40">
               <span class="text-xs font-mono text-slate-500 line-through truncate flex-1">{buildComponentRef(c, floors, $buildingAssetsStore.types)}</span>
-              <button on:click={() => clearOverride(c.id)} title="Restore to this space"
-                class="text-slate-500 hover:text-green-400 shrink-0 text-xs">restore</button>
+              <Button variant="tertiary" size="xs" title="Restore to this space" on:click={() => clearOverride(c.id)}>restore</Button>
             </div>
           {/each}
         </div>
@@ -600,11 +594,7 @@
         <p class="text-xs text-slate-600">Floor: {floor.name}</p>
       {/if}
       {#if canManage && allowShapeEdit && canSplitIntoBays({ ...space, polygon: poly }) && !vertexEditingActive}
-        <button
-          on:click={() => { splitDone = ''; splitOpen = true; }}
-          class="mt-1 text-xs px-2 py-1 rounded bg-slate-700 text-slate-200 hover:bg-slate-600 text-left"
-          title="Draw a row once as a four-cornered outline, then cut it into numbered parking bays"
-        >▦ Split into a row of parking bays…</button>
+        <Button variant="tertiary" size="xs" title="Draw a row once as a four-cornered outline, then cut it into numbered parking bays" on:click={() => { splitDone = ''; splitOpen = true; }}>▦ Split into a row of parking bays…</Button>
       {/if}
       {#if splitDone}<p class="text-xs text-green-400">{splitDone}</p>{/if}
       <p class="text-xs text-slate-700 font-mono">id: {space.id.slice(0, 8)}…</p>
@@ -616,43 +606,16 @@
   <div class="px-4 py-3 border-t border-slate-700 flex gap-2">
 
     {#if readOnly}
-      <button
-        on:click={() => dispatch('close')}
-        class="flex-1 py-1.5 text-sm rounded-lg bg-slate-700 hover:bg-slate-600
-               text-slate-300 transition-colors"
-      >Close</button>
+      <Button variant="secondary" size="small" on:click={() => dispatch('close')}>Close</Button>
 
     {:else if confirming}
-      <button
-        on:click={() => confirming = false}
-        class="px-3 py-1.5 text-xs rounded-lg bg-slate-700 hover:bg-slate-600
-               text-slate-300 transition-colors"
-      >Keep</button>
-      <button
-        on:click={handleDelete}
-        class="flex-1 py-1.5 text-xs rounded-lg bg-red-700 hover:bg-red-600
-               text-white font-medium transition-colors"
-      >Confirm delete</button>
+      <Button variant="tertiary" size="xs" on:click={() => confirming = false}>Keep</Button>
+      <Button variant="danger" size="xs" on:click={handleDelete}>Confirm delete</Button>
 
     {:else}
-      <button
-        on:click={handleDelete}
-        class="px-3 py-1.5 text-xs rounded-lg bg-red-900/40 hover:bg-red-800/50
-               text-red-400 border border-red-800/40 transition-colors"
-      >Delete</button>
-      <button
-        on:click={() => { dispatch('close'); }}
-        disabled={saving}
-        class="flex-1 py-1.5 text-sm rounded-lg bg-slate-700 hover:bg-slate-600
-               text-slate-300 disabled:opacity-40 transition-colors"
-      >Cancel</button>
-      <button
-        on:click={handleSave}
-        disabled={!dirty || saving || !editName.trim()}
-        class="flex-1 py-1.5 text-sm rounded-lg bg-purple-600 hover:bg-purple-500
-               disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium
-               transition-colors"
-      >{saving ? 'Saving…' : 'Save'}</button>
+      <Button variant="danger" size="xs" on:click={handleDelete}>Delete</Button>
+      <Button variant="secondary" size="small" disabled={saving} on:click={() => { dispatch('close'); }}>Cancel</Button>
+      <Button variant="primary" size="small" disabled={!dirty || saving || !editName.trim()} on:click={handleSave}>{saving ? 'Saving…' : 'Save'}</Button>
     {/if}
 
   </div>

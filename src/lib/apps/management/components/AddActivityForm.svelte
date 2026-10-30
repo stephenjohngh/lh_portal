@@ -229,13 +229,7 @@
                 class="flex-1 min-w-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 {newTypeConfig.ringClass}"
               />
               {#if $portalSettings.aiEnabled}
-              <button
-                type="button"
-                on:click={generateNewSummary}
-                disabled={newSummaryGenerating || !newActivity.body.trim()}
-                title="Generate one-line summary with AI"
-                class="px-2 py-1 text-xs bg-slate-700 hover:bg-purple-800/60 text-slate-300 hover:text-purple-200 rounded border border-slate-600 hover:border-purple-600/50 shrink-0 transition-colors disabled:opacity-40"
-              >{newSummaryGenerating ? '…' : '✨'}</button>
+              <Button variant="primary" size="xs" title="Generate one-line summary with AI" disabled={newSummaryGenerating || !newActivity.body.trim()} on:click={generateNewSummary}>{newSummaryGenerating ? '…' : '✨'}</Button>
               {/if}
               <input
                 type="number"
@@ -299,7 +293,7 @@
   {#if parseNotice}
     <p class="text-xs text-cyan-400 mt-1 flex items-center gap-1.5">
       <span>{parseNotice}</span>
-      <button type="button" class="text-cyan-600 hover:text-cyan-400 leading-none" on:click={() => parseNotice = ''}>✕</button>
+      <Button variant="tertiary" size="xs" on:click={() => parseNotice = ''}>✕</Button>
     </p>
   {/if}
 

@@ -278,11 +278,7 @@
                   on:click={() => { if (canEdit) editingCatId = doc.id; }}
                 >{categoryLabel(doc.category)}</button>
               {:else if canEdit}
-                <button
-                  class="shrink-0 text-[11px] text-slate-600 hover:text-purple-300 transition-colors"
-                  title="Set a category"
-                  on:click={() => editingCatId = doc.id}
-                >+ category</button>
+                <Button variant="tertiary" size="xs" title="Set a category" on:click={() => editingCatId = doc.id}>+ category</Button>
               {/if}
             </div>
             {#if editingId === doc.id}
@@ -306,11 +302,7 @@
                 {#if doc.file_size}{fmtBytes(doc.file_size)} · {/if}
                 {fmtDate(doc.created_at)}
                 {#if canEdit}
-                  <button
-                    class="ml-1 text-slate-600 hover:text-purple-300 transition-colors"
-                    title={doc.description ? 'Edit the description' : 'Add a description'}
-                    on:click={() => startEdit(doc)}
-                  >✎</button>
+                  <Button variant="tertiary" size="xs" title={doc.description ? 'Edit the description' : 'Add a description'} on:click={() => startEdit(doc)}>✎</Button>
                 {/if}
               </p>
             {/if}
@@ -325,13 +317,7 @@
             <Icon name="download" size={4} />
           </a>
           {#if canDelete}
-            <button
-              class="p-1.5 rounded text-slate-600 hover:text-red-400 transition-colors shrink-0 "
-              title="Delete document"
-              on:click={() => pendingDelete = doc}
-            >
-              <Icon name="delete" size={4} />
-            </button>
+            <Button variant="danger" size="xs" title="Delete document" on:click={() => pendingDelete = doc}><Icon name="delete" size={4} /></Button>
           {/if}
         </div>
       {/each}

@@ -13,6 +13,10 @@
   export let fullWidth = false;
   export let className = ''; // Additional custom classes
   export let title = '';
+  /** Passed straight to the <button>: the accessible name of an icon-only button, a test hook, an id. */
+  export let ariaLabel = undefined;
+  export let testid = undefined;
+  export let id = undefined;
   /** Only an administrator sees this: drawn amber on brown whatever the variant. */
   export let admin = false;
 
@@ -93,6 +97,9 @@
   {type}
   {disabled}
   {title}
+  {id}
+  aria-label={ariaLabel}
+  data-testid={testid}
   class={buttonClasses}
   on:click
   on:mousedown

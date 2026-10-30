@@ -58,9 +58,7 @@
   <!-- Toolbar -->
   <div class="flex items-center justify-between gap-3 flex-wrap">
     {#if canEdit}
-      <button class="new-btn" on:click={() => showCreate = true}>
-        + New Job
-      </button>
+      <Button variant="tertiary" size="xs" on:click={() => showCreate = true}>+ New Job</Button>
     {:else}
       <div></div>
     {/if}
@@ -161,13 +159,7 @@
           </div>
 
           {#if canEdit && (job.rag === 'overdue' || job.rag === 'due_soon' || job.rag === 'scheduled' || job.rag === 'in_progress')}
-            <button
-              class="complete-btn flex-shrink-0"
-              on:click|stopPropagation={() => completeJob = job}
-              aria-label="Mark complete"
-            >
-              ✓
-            </button>
+            <Button variant="tertiary" size="xs" ariaLabel="Mark complete" on:click={(e) => { e.stopPropagation(); (() => completeJob = job)(e); }}>✓</Button>
           {/if}
         </div>
       {/each}

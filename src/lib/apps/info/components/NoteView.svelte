@@ -96,13 +96,7 @@
 
       <!-- Archive / Unarchive -->
       {#if $permissions.canModify}
-        <button
-          class="p-1.5 rounded text-slate-500 hover:text-slate-300 transition-colors"
-          title="{note.status === 'archived' ? 'Unarchive' : 'Archive'} note"
-          on:click={() => dispatch('archive', note)}
-        >
-          <Icon name="archive" size={4} />
-        </button>
+        <Button variant="tertiary" size="xs" title="{note.status === 'archived' ? 'Unarchive' : 'Archive'} note" on:click={() => dispatch('archive', note)}><Icon name="archive" size={4} /></Button>
       {/if}
 
       <!-- Edit -->

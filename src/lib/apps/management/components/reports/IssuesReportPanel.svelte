@@ -155,14 +155,8 @@
       <div class="flex items-center justify-between mb-3">
         <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">Activity types</p>
         <div class="flex gap-2">
-          <button type="button"
-            class="text-[10px] text-slate-400 hover:text-slate-200 underline"
-            on:click={() => { typeNote = typeDecision = typeComment = typeEmail = typeLetter = typeDocument = typeMeeting = true; }}
-          >All</button>
-          <button type="button"
-            class="text-[10px] text-slate-400 hover:text-slate-200 underline"
-            on:click={() => { typeNote = typeDecision = typeComment = typeEmail = typeLetter = typeDocument = typeMeeting = false; }}
-          >None</button>
+          <Button variant="tertiary" size="xs" on:click={() => { typeNote = typeDecision = typeComment = typeEmail = typeLetter = typeDocument = typeMeeting = true; }}>All</Button>
+          <Button variant="tertiary" size="xs" on:click={() => { typeNote = typeDecision = typeComment = typeEmail = typeLetter = typeDocument = typeMeeting = false; }}>None</Button>
         </div>
       </div>
       <div class="flex flex-col gap-2">
@@ -185,13 +179,7 @@
         class="w-full px-2.5 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm"
       />
       {#if filterDate}
-        <button
-          type="button"
-          class="mt-1.5 text-xs text-slate-400 hover:text-slate-200 underline"
-          on:click={() => filterDate = ''}
-        >
-          Show all dates
-        </button>
+        <Button variant="tertiary" size="xs" on:click={() => filterDate = ''}>Show all dates</Button>
       {/if}
     </div>
 

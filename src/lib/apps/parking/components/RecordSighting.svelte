@@ -4,6 +4,7 @@
      It works with no signal (2026-10-17): Save keeps the record and photo on
      the phone and they are sent when there is a signal (parkingQueue.js). -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { online } from '#lib/stores/online.js';
   import { compressImage } from '#lib/apps/inspection/utils/imageCompression.js';
@@ -72,11 +73,8 @@
   {#if error}<p class="text-sm text-amber-300" role="alert">{error}</p>{/if}
 
   <div class="flex gap-2">
-    <button type="button" on:click={save} disabled={saving || !place}
-      class="flex-1 min-h-[52px] rounded-lg bg-purple-600 text-white text-lg font-semibold disabled:opacity-40">
-      {saving ? 'Saving…' : 'Save'}</button>
-    <button type="button" on:click={() => dispatch('cancel')} disabled={saving}
-      class="min-h-[52px] px-4 rounded-lg border border-slate-500 text-slate-200">Cancel</button>
+    <Button variant="primary" size="large" disabled={saving || !place} on:click={save}>{saving ? 'Saving…' : 'Save'}</Button>
+    <Button variant="tertiary" size="xs" disabled={saving} on:click={() => dispatch('cancel')}>Cancel</Button>
   </div>
   <p class="text-xs text-slate-400">The date and time are added when you press Save.</p>
 </div>

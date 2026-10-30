@@ -197,11 +197,7 @@
       🚩 Flagged
     </label>
     {#if hasAnyFilter}
-      <button
-        on:click={clearAllFilters}
-        class="text-xs text-gray-400 hover:text-white underline px-1"
-        title="Clear all filters"
-      >Clear</button>
+      <Button variant="tertiary" size="xs" title="Clear all filters" on:click={clearAllFilters}>Clear</Button>
     {/if}
   </div>
 

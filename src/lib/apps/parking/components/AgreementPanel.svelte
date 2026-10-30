@@ -200,7 +200,7 @@
           {BASIS_LABEL[agreement.basis]} · <span class="text-slate-200">{STATUS_LABEL[agreement.status]}</span>
         </p>
       </div>
-      <button class="text-slate-500 hover:text-white" title="Close" on:click={() => dispatch('close')}>✕</button>
+      <Button variant="tertiary" size="xs" title="Close" on:click={() => dispatch('close')}>✕</Button>
     </div>
 
     <dl class="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-1.5 text-sm">
@@ -445,8 +445,7 @@
             <div class="pb-2"><Checkbox bind:checked={newVehicle.is_ev} label="EV" /></div>
             <div class="ml-auto flex items-center gap-2 pb-1">
               {#if changingFrom}
-                <button class="text-xs text-slate-400 hover:text-red-400" disabled={busy}
-                  on:click={removeWithoutReplacing}>Remove without replacing</button>
+                <Button variant="danger" size="xs" disabled={busy} on:click={removeWithoutReplacing}>Remove without replacing</Button>
                 <Button size="small" variant="secondary" disabled={busy} on:click={cancelChange}>Cancel</Button>
                 <Button size="small" variant="primary" disabled={busy} on:click={saveChange}>Save new vehicle</Button>
               {:else}
@@ -472,7 +471,7 @@
           </span>
           {#if canEdit && !d.returned_on}
             <!-- A flat's own fob is not handed back to us: it just stops being used. -->
-            <button class="text-xs text-slate-400 hover:text-white" disabled={busy} on:click={() => returnDevice(d.id)}>{isReturnable(d) ? 'Returned' : 'No longer used'}</button>
+            <Button variant="tertiary" size="xs" disabled={busy} on:click={() => returnDevice(d.id)}>{isReturnable(d) ? 'Returned' : 'No longer used'}</Button>
           {/if}
         </div>
       {:else}

@@ -19,6 +19,7 @@
      "Allowed" offers Record this car — where, a photo, a note — and every answer
      shows the car's earlier sightings. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { onMount, tick } from 'svelte';
   import AppGate from '#lib/components/common/AppGate.svelte';
   import TextScanner from '#lib/components/common/TextScanner.svelte';
@@ -214,17 +215,14 @@
         </div>
       </fieldset>
 
-      <button type="button" on:click={scanAgain} disabled={!place}
-        class="w-full min-h-[64px] rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-lg font-semibold disabled:opacity-40">
-        📷 {result ? 'Scan another' : 'Scan a number plate'}</button>
+      <Button variant="primary" size="large" disabled={!place} on:click={scanAgain}>📷 {result ? 'Scan another' : 'Scan a number plate'}</Button>
 
       <form class="flex gap-2" on:submit|preventDefault={() => check(q)}>
         <label for="car-check-reg" class="sr-only">Registration</label>
         <input id="car-check-reg" bind:value={q} placeholder="Or type it"
           enterkeyhint="search" autocapitalize="characters" autocomplete="off" spellcheck="false"
           class="flex-1 min-w-0 min-h-[48px] px-3 text-lg bg-slate-800 border border-slate-600 rounded-lg font-mono uppercase" />
-        <button type="submit" disabled={checking || !place || normaliseReg(q).length < 2}
-          class="min-h-[48px] px-4 rounded-lg border border-purple-500 text-purple-200 disabled:opacity-40">Check</button>
+        <Button variant="tertiary" size="xs" disabled={checking || !place || normaliseReg(q).length < 2} type="submit">Check</Button>
       </form>
 
       {#if checking}<p class="text-sm text-slate-400">Checking…</p>{/if}
@@ -284,9 +282,7 @@
             <RecordSighting registration={result.q} {place} prefillNotes={reportNotes || verdict.elsewhere}
               on:recorded={recorded} on:cancel={() => (recording = false)} />
           {:else if verdict.tone !== 'ok'}
-            <button type="button" on:click={() => (recording = true)}
-              class="w-full min-h-[56px] rounded-xl border-2 border-red-400 text-red-200 text-lg font-semibold">
-              Record this car</button>
+            <Button variant="secondary" size="large" on:click={() => (recording = true)}>Record this car</Button>
           {/if}
         {/if}
       {/if}

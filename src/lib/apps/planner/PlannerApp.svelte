@@ -516,15 +516,9 @@
 
     {#if view === 'month'}
       <div class="flex items-center gap-1 shrink-0">
-        <button type="button" title="Previous month"
-                class="px-1.5 py-1 text-xs text-slate-400 hover:text-white
-                       border border-slate-600 rounded"
-                on:click={() => goMonth(-1)}>←</button>
+        <Button variant="tertiary" size="xs" title="Previous month" on:click={() => goMonth(-1)}>←</Button>
         <span class="text-xs text-slate-300 w-28 text-center">{monthLabel}</span>
-        <button type="button" title="Next month"
-                class="px-1.5 py-1 text-xs text-slate-400 hover:text-white
-                       border border-slate-600 rounded"
-                on:click={() => goMonth(1)}>→</button>
+        <Button variant="tertiary" size="xs" title="Next month" on:click={() => goMonth(1)}>→</Button>
       </div>
     {/if}
 
@@ -570,38 +564,23 @@
            in fullscreen and a year-only button would take the way out with it,
            leaving Escape as the only exit and nothing on screen saying so. -->
       {#if canFullscreen && (view === 'year' || isFullscreen)}
-        <button
-          type="button"
-          class="bg-slate-700 border border-slate-600 hover:border-slate-500 rounded
-                 px-2.5 py-1.5 text-xs text-white transition-colors"
-          title={isFullscreen
+        <Button variant="tertiary" size="xs" title={isFullscreen
             ? 'Leave fullscreen (or press Esc)'
-            : 'Fill the screen — the whole planner, without the browser or the portal nav'}
-          on:click={toggleFullscreen}
-        >{isFullscreen ? '⤡ Exit' : '⤢ Fullscreen'}</button>
+            : 'Fill the screen — the whole planner, without the browser or the portal nav'} on:click={toggleFullscreen}>{isFullscreen ? '⤡ Exit' : '⤢ Fullscreen'}</Button>
       {/if}
 
       <!-- Year and month only: the agenda is a list, and the portal already
            makes Word documents for lists. -->
       {#if view === 'year' || view === 'month'}
-        <button
-          type="button"
-          class="bg-slate-700 border border-slate-600 hover:border-slate-500 rounded
-                 px-2.5 py-1.5 text-xs text-white transition-colors"
-          title="Print the year, or a run of months — as filtered"
-          on:click={() => {
+        <Button variant="tertiary" size="xs" title="Print the year, or a run of months — as filtered" on:click={() => {
             // The month view opens on the month being looked at.
             if (view === 'month') { printLayout = 'months'; printFrom = month; printTo = month; }
             printOpen = true;
-          }}
-        >Print</button>
+          }}>Print</Button>
       {/if}
 
       {#if archivedCount}
-        <button type="button"
-          class="bg-slate-700 border border-slate-600 hover:border-slate-500 rounded px-2.5 py-1.5 text-xs text-white transition-colors"
-          title="Events taken off the planner with Archive — restore one from here"
-          on:click={() => (archivedOpen = true)}>Archived ({archivedCount})</button>
+        <Button variant="tertiary" size="xs" title="Events taken off the planner with Archive — restore one from here" on:click={() => (archivedOpen = true)}>Archived ({archivedCount})</Button>
       {/if}
 
       {#if $permissions.isAdmin}
@@ -676,8 +655,7 @@
               <Button variant="tertiary" size="xs"
                       on:click={newEvent}>+ Add event</Button>
             {/if}
-            <button class="text-xs text-slate-500 hover:text-slate-300"
-                    on:click={() => selectedDay = null}>Close</button>
+            <Button variant="tertiary" size="xs" on:click={() => selectedDay = null}>Close</Button>
           </div>
 
           {#if dayItems.length}
@@ -817,10 +795,7 @@
         {/if}
       {/each}
 
-      <button type="button" class="text-xs text-slate-500 hover:text-slate-300"
-              on:click={() => showDone = !showDone}>
-        {showDone ? 'Hide' : 'Show'} what is done ({groups.done.length})
-      </button>
+      <Button variant="tertiary" size="xs" on:click={() => showDone = !showDone}>{showDone ? 'Hide' : 'Show'} what is done ({groups.done.length})</Button>
     </div>
   {/if}
 </div>

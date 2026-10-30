@@ -368,7 +368,7 @@
       </div>
 
       {#if hasFilters}
-        <button class="clear-btn" on:click={clearFilters}>Clear filters</button>
+        <Button variant="tertiary" size="xs" on:click={clearFilters}>Clear filters</Button>
       {/if}
     </div>
 

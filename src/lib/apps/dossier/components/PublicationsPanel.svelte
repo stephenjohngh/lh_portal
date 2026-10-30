@@ -78,11 +78,7 @@
         {/if}
 
         {#if canEdit}
-          <button
-            class="text-[11px] text-slate-500 hover:text-slate-300 transition-colors"
-            disabled={verifyingId === publication.id}
-            on:click={() => dispatch('verify', publication)}
-          >{verifyingId === publication.id ? 'Checking files…' : 'Check files'}</button>
+          <Button variant="tertiary" size="xs" disabled={verifyingId === publication.id} on:click={() => dispatch('verify', publication)}>{verifyingId === publication.id ? 'Checking files…' : 'Check files'}</Button>
 
           {#if $permissions.isAdmin}
             <!-- Admin only, matching the RLS policy. Revoke is the everyday

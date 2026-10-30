@@ -514,8 +514,7 @@
     <div class="mb-3 p-3 rounded border border-green-500/40 bg-green-500/10
                 flex items-start gap-2">
       <p class="text-xs text-green-200 flex-1">{applyNotice}</p>
-      <button class="text-xs text-green-200/70 hover:text-green-100"
-              on:click={() => applyNotice = ''}>Dismiss</button>
+      <Button variant="tertiary" size="xs" on:click={() => applyNotice = ''}>Dismiss</Button>
     </div>
   {/if}
 
@@ -526,12 +525,7 @@
     <div class="flex items-center gap-1.5 mb-3 text-xs">
       <span class="text-slate-500">Set every line to</span>
       {#each WORKS_ACTIONS as a}
-        <button
-          class="px-2 py-0.5 rounded border border-slate-700 text-slate-400
-                 hover:border-slate-500 hover:text-slate-200 transition-colors"
-          title="Set all {items.length} lines to {a.label} — {a.describe.toLowerCase()}"
-          on:click={() => setAllActions(a.value)}
-        >{a.label}</button>
+        <Button variant="tertiary" size="xs" title="Set all {items.length} lines to {a.label} — {a.describe.toLowerCase()}" on:click={() => setAllActions(a.value)}>{a.label}</Button>
       {/each}
     </div>
   {/if}
@@ -601,21 +595,15 @@
               </td>
 
               <td class="px-2 py-1.5">
-                <button
-                  class="text-slate-600 hover:text-purple-300 transition-colors"
-                  title={item.component?.schematic_id
+                <Button variant="tertiary" size="xs" title={item.component?.schematic_id
                     ? 'Show where this is on the floor schematic'
-                    : 'Not placed on a floor schematic'}
-                  on:click|stopPropagation={() => peekAt(item)}
-                >&#9678;</button>
+                    : 'Not placed on a floor schematic'} on:click={(e) => { e.stopPropagation(); (() => peekAt(item))(e); }}>&#9678;</Button>
               </td>
 
               {#if canEdit}
                 <td class="px-2 py-1.5">
                   {#if !item.applied_at}
-                    <button class="text-slate-600 hover:text-red-400 transition-colors"
-                            title="Remove this line"
-                            on:click|stopPropagation={() => pendingLineDelete = item}>×</button>
+                    <Button variant="danger" size="xs" title="Remove this line" on:click={(e) => { e.stopPropagation(); (() => pendingLineDelete = item)(e); }}>×</Button>
                   {/if}
                 </td>
               {/if}

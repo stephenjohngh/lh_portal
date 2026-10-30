@@ -1,4 +1,5 @@
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { fileViewUrl } from '#lib/utils/driveUtils.js';
   import { createEventDispatcher } from 'svelte';
   import { mimeIcon, formatFileSize, docTypeLabel, categoryLabel, getExpiryStatus,
@@ -71,11 +72,7 @@
             <td class="py-2 pr-4 max-w-xs">
               <div class="flex items-center gap-2">
                 <span class="text-lg flex-shrink-0" aria-hidden="true">{mimeIcon(doc.mime_type)}</span>
-                <button
-                  class="text-slate-100 hover:text-teal-300 text-left truncate"
-                  on:click={() => openDoc(doc)}
-                  title={doc.display_name ?? doc.filename}
-                >{doc.display_name ?? doc.filename}</button>
+                <Button variant="tertiary" size="xs" title={doc.display_name ?? doc.filename} on:click={() => openDoc(doc)}>{doc.display_name ?? doc.filename}</Button>
                 {#if checks?.[doc.id] && !checkProblems(checks[doc.id]).length}
                   <span class="text-xs text-green-400 flex-shrink-0" data-testid="check-ok"
                     title="Its record and its file were both found">✓</span>
@@ -132,15 +129,9 @@
             <!-- Actions -->
             <td class="py-2 whitespace-nowrap">
               <div class="flex gap-1 ">
-                <button
-                  class="px-2 py-0.5 text-xs text-slate-400 hover:text-teal-300 border border-slate-700 rounded hover:border-slate-500"
-                  on:click={() => openDoc(doc)}
-                >Open ↗</button>
+                <Button variant="tertiary" size="xs" on:click={() => openDoc(doc)}>Open ↗</Button>
                 {#if canDelete}
-                  <button
-                    class="px-2 py-0.5 text-xs text-red-400 hover:text-red-300 border border-slate-700 rounded hover:border-red-800"
-                    on:click={() => dispatch('delete', doc)}
-                  >Delete</button>
+                  <Button variant="danger" size="xs" on:click={() => dispatch('delete', doc)}>Delete</Button>
                 {/if}
               </div>
             </td>

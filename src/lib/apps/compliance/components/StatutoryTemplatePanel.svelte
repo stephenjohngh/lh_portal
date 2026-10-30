@@ -654,7 +654,7 @@
         <div class="diff-wrap">
           <RegisterImportDiff {diff} busy={diffBusy}
             on:apply={applyDiff} on:edit={editFromDiff} />
-          <button class="diff-close" on:click={() => diff = null}>Close</button>
+          <Button variant="tertiary" size="xs" on:click={() => diff = null}>Close</Button>
         </div>
       {/if}
 

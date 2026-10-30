@@ -3,6 +3,7 @@
      Only meaningful when attrDef.display_type is 'dropdown' or 'radio'.
      Each option can carry a priority_override. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '#lib/apps/building_assets/stores/buildingAssetsStore.js';
   import { inp } from '#lib/apps/building_assets/ui.js';
@@ -173,15 +174,8 @@
               </label>
             </div>
             <div class="flex gap-2 mt-3">
-              <button on:click={save} disabled={saving}
-                class="flex-1 py-1.5 text-xs rounded bg-purple-600 hover:bg-purple-500
-                       disabled:opacity-50 text-white transition-colors">
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-              <button on:click={cancel}
-                class="px-3 py-1.5 text-xs rounded bg-slate-600 hover:bg-slate-500 text-white transition-colors">
-                ✕
-              </button>
+              <Button variant="primary" size="xs" disabled={saving} on:click={save}>{saving ? 'Saving…' : 'Save'}</Button>
+              <Button variant="tertiary" size="xs" on:click={cancel}>✕</Button>
             </div>
           </div>
 
@@ -202,18 +196,8 @@
               <span class="text-xs text-slate-600 italic">hidden</span>
             {/if}
             <div class="flex gap-1  shrink-0">
-              <button
-                class="text-xs px-1.5 py-0.5 rounded text-slate-500
-                       hover:text-white hover:bg-slate-600 transition-colors"
-                on:click={() => startEdit(opt)}
-              >Edit</button>
-              <button
-                class="text-xs px-1.5 py-0.5 rounded text-slate-500
-                       hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                disabled={deletingId === opt.id}
-                on:click|stopPropagation={() => deleteRow(opt.id)}
-                title="Delete option"
-              >{deletingId === opt.id ? '…' : '✕'}</button>
+              <Button variant="tertiary" size="xs" on:click={() => startEdit(opt)}>Edit</Button>
+              <Button variant="danger" size="xs" title="Delete option" disabled={deletingId === opt.id} on:click={(e) => { e.stopPropagation(); (() => deleteRow(opt.id))(e); }}>{deletingId === opt.id ? '…' : '✕'}</Button>
             </div>
           </div>
         {/if}
@@ -247,15 +231,8 @@
             </label>
           </div>
           <div class="flex gap-2 mt-3">
-            <button on:click={save} disabled={saving}
-              class="flex-1 py-1.5 text-xs rounded bg-green-600 hover:bg-green-500
-                     disabled:opacity-50 text-white transition-colors">
-              {saving ? 'Creating…' : 'Create'}
-            </button>
-            <button on:click={cancel}
-              class="px-3 py-1.5 text-xs rounded bg-slate-600 hover:bg-slate-500 text-white transition-colors">
-              ✕
-            </button>
+            <Button variant="green" size="xs" disabled={saving} on:click={save}>{saving ? 'Creating…' : 'Create'}</Button>
+            <Button variant="tertiary" size="xs" on:click={cancel}>✕</Button>
           </div>
         </div>
       {/if}
@@ -266,11 +243,7 @@
   <!-- Footer: Add button -->
   {#if isActive && editingId !== 'new'}
     <div class="px-3 py-2.5 border-t border-slate-700">
-      <button
-        on:click={startNew}
-        class="w-full py-1.5 text-xs rounded border border-dashed border-slate-600
-               text-slate-400 hover:text-white hover:border-purple-500 transition-colors"
-      >+ Add Option</button>
+      <Button variant="tertiary" size="xs" on:click={startNew}>+ Add Option</Button>
     </div>
   {/if}
 

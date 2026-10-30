@@ -122,19 +122,9 @@
       </p>
       <div class="flex items-center gap-1.5 shrink-0">
         {#if !loading && $portalSettings.aiEnabled}
-          <button
-            type="button"
-            on:click={() => dispatch('suggestAI')}
-            class="text-[10px] px-2 py-0.5 rounded bg-slate-700 hover:bg-purple-800/60 text-slate-300 hover:text-purple-200 border border-slate-600 hover:border-purple-600/50 transition-colors"
-            title="Ask AI to suggest an action based on this activity"
-          >✨ Suggest with AI</button>
+          <Button variant="primary" size="xs" title="Ask AI to suggest an action based on this activity" on:click={() => dispatch('suggestAI')}>✨ Suggest with AI</Button>
         {/if}
-        <button
-          on:click={() => dispatch('dismiss')}
-          class="text-gray-400 hover:text-white text-sm leading-none"
-          title="Dismiss"
-          aria-label="Dismiss panel"
-        >✕</button>
+        <Button variant="secondary" size="small" title="Dismiss" ariaLabel="Dismiss panel" on:click={() => dispatch('dismiss')}>✕</Button>
       </div>
     </div>
 

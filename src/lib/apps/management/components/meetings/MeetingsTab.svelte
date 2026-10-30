@@ -418,8 +418,7 @@
                  flex-1 min-w-0"
         />
         {#if meetingSearch}
-          <button class="text-xs text-slate-400 hover:text-white shrink-0"
-                  on:click={() => meetingSearch = ''}>Clear</button>
+          <Button variant="tertiary" size="xs" on:click={() => meetingSearch = ''}>Clear</Button>
         {/if}
       </div>
       {#if meetingSummary}

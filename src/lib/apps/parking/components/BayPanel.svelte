@@ -99,7 +99,7 @@
           <span class="text-slate-300">{BAY_STATE[bay.state]?.label}</span>
         </span>
       </p>
-      <button class="text-slate-500 hover:text-white" title="Close" on:click={() => dispatch('close')}>✕</button>
+      <Button variant="tertiary" size="xs" title="Close" on:click={() => dispatch('close')}>✕</Button>
     </div>
 
     <!-- 1. The space -->

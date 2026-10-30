@@ -347,13 +347,11 @@
                   ></textarea>
                   {#if canExpand(record, field)}
                     <!-- Only when the cell is genuinely cut off. -->
-                    <button
-                      type="button"
-                      class="text-[11px] text-slate-500 hover:text-slate-300 transition-colors"
-                      on:click={() => toggleExpanded(record, field)}
-                    >{expanded.has(cellKey(record, field))
+                    <Button variant="tertiary" size="xs" on:click={() => toggleExpanded(record, field)}>
+{expanded.has(cellKey(record, field))
                         ? '▾ show less'
-                        : '▸ show full text'}</button>
+                        : '▸ show full text'}
+</Button>
                   {/if}
                 {:else}
                   <input
@@ -385,31 +383,19 @@
                     on:click={() => dispatch('openTarget', record)}
                   >{linkTargets.get(record.id).label}</button>
                   {#if canEdit}
-                    <button class="shrink-0 text-slate-600 hover:text-red-400"
-                            title="Remove this link"
-                            on:click={() => dispatch('clearLink', record)}>×</button>
+                    <Button variant="danger" size="xs" title="Remove this link" on:click={() => dispatch('clearLink', record)}>×</Button>
                   {/if}
                 </span>
               {:else if canEdit}
                 <span class="flex items-center gap-2 ">
-                  <button class="text-slate-500 hover:text-white"
-                          title="Link this entry to a page"
-                          on:click={() => dispatch('linkPage', record)}>¶ Page</button>
-                  <button class="text-slate-500 hover:text-white"
-                          title="Link this entry to a file"
-                          on:click={() => dispatch('linkFile', record)}>📎 File</button>
+                  <Button variant="tertiary" size="xs" title="Link this entry to a page" on:click={() => dispatch('linkPage', record)}>¶ Page</Button>
+                  <Button variant="tertiary" size="xs" title="Link this entry to a file" on:click={() => dispatch('linkFile', record)}>📎 File</Button>
                 </span>
               {/if}
             </td>
             <td class="py-1">
               {#if canEdit}
-                <button
-                  class="w-6 h-6 rounded text-slate-600 hover:text-red-400 text-xs
-                         opacity-60 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                  title="Delete this entry"
-                  aria-label="Delete this entry"
-                  on:click={() => dispatch('deleteRecord', record)}
-                >×</button>
+                <Button variant="danger" size="xs" title="Delete this entry" ariaLabel="Delete this entry" on:click={() => dispatch('deleteRecord', record)}>×</Button>
               {/if}
             </td>
           </tr>
@@ -446,13 +432,11 @@
                         on:blur={(e) => commitCell(record, field, e.currentTarget.value)}
                       ></textarea>
                       {#if canExpand(record, field)}
-                        <button
-                          type="button"
-                          class="text-[11px] text-slate-500 hover:text-slate-300 transition-colors"
-                          on:click={() => toggleExpanded(record, field)}
-                        >{expanded.has(cellKey(record, field))
+                        <Button variant="tertiary" size="xs" on:click={() => toggleExpanded(record, field)}>
+{expanded.has(cellKey(record, field))
                             ? '▾ show less'
-                            : '▸ show full text'}</button>
+                            : '▸ show full text'}
+</Button>
                       {/if}
                     {:else}
                       <p class="text-sm text-slate-300 whitespace-pre-wrap">

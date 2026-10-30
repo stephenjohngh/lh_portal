@@ -262,13 +262,7 @@
           {#each extras as name}
             <span class="text-xs px-2 py-1 rounded bg-slate-700 border border-slate-600 text-gray-300 flex items-center gap-1.5">
               {name}
-              <button
-                type="button"
-                on:click={() => removeExtra(name)}
-                class="text-gray-500 hover:text-red-400 leading-none"
-                title="Remove"
-                aria-label={`Remove ${name}`}
-              >✕</button>
+              <Button variant="danger" size="xs" title="Remove" ariaLabel={`Remove ${name}`} on:click={() => removeExtra(name)}>✕</Button>
             </span>
           {/each}
         </div>

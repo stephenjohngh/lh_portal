@@ -16,6 +16,7 @@
      on the home screen. A new tab, because in this one it would leave the portal,
      which warns and restarts the app on Back. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { parkingStore } from '../stores/parkingStore.js';
   import { normaliseReg, formatReg, STATUS_LABEL } from '../utils/agreementModel.js';
@@ -116,7 +117,7 @@
           </button>
         {/each}
       {/if}
-      <button class="w-full text-right text-xs text-slate-500 hover:text-white mt-1" on:click={close}>Close</button>
+      <Button variant="tertiary" size="xs" on:click={close}>Close</Button>
     </div>
   {/if}
 </div>

@@ -217,24 +217,12 @@
             </td>
             <td class="px-4 py-3">
               <div class="flex gap-1.5 justify-end">
-                <button
-                  on:click={() => openEdit(g)}
-                  class="px-2.5 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
-                >Edit</button>
+                <Button variant="tertiary" size="xs" on:click={() => openEdit(g)}>Edit</Button>
                 {#if confirmId === g.id}
-                  <button
-                    on:click={() => confirmId = null}
-                    class="px-2 py-1 text-xs rounded bg-slate-700 text-slate-400 transition-colors"
-                  >Keep</button>
-                  <button
-                    on:click={() => handleDelete(g.id)}
-                    class="px-2.5 py-1 text-xs rounded bg-red-700 hover:bg-red-600 text-white font-medium transition-colors"
-                  >Confirm</button>
+                  <Button variant="tertiary" size="xs" on:click={() => confirmId = null}>Keep</Button>
+                  <Button variant="danger" size="xs" on:click={() => handleDelete(g.id)}>Confirm</Button>
                 {:else}
-                  <button
-                    on:click={() => handleDelete(g.id)}
-                    class="px-2.5 py-1 text-xs rounded bg-red-900/40 hover:bg-red-800/50 text-red-400 border border-red-800/40 transition-colors"
-                  >Delete</button>
+                  <Button variant="danger" size="xs" on:click={() => handleDelete(g.id)}>Delete</Button>
                 {/if}
               </div>
             </td>

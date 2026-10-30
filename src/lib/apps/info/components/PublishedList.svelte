@@ -10,6 +10,7 @@
      a note that reaches beyond the portal, and it cuts across the way notes are
      filed. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher, onMount } from 'svelte';
   import Icon from '#lib/components/icons/Icon.svelte';
   import { fmtDate } from '#lib/utils/dates.js';
@@ -83,10 +84,7 @@
             {@const badge = VISIBILITY_BADGES[note.visibility]}
             <tr class="border-t border-slate-700/50 hover:bg-slate-800/40 transition-colors">
               <td class="px-4 py-2">
-                <button
-                  class="text-left text-slate-200 hover:text-purple-300 transition-colors"
-                  on:click={() => dispatch('select', note)}
-                >{note.title}</button>
+                <Button variant="tertiary" size="xs" on:click={() => dispatch('select', note)}>{note.title}</Button>
                 {#if note.status === 'archived'}
                   <!-- Archiving hides a note from the working list; it does NOT
                        unpublish it. An archived public note is still a live
