@@ -5,6 +5,7 @@
      is the one thing worth keeping after the link stops working. (Delete exists
      at RLS, admin-only, for genuine mistakes.) -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import Badge          from '#lib/components/common/Badge.svelte';
   import { permissions } from '#lib/stores/permissions.js';
@@ -87,11 +88,8 @@
             <!-- Admin only, matching the RLS policy. Revoke is the everyday
                  action and keeps the record that a link was issued; this
                  discards it, and takes the pinned copies of the files with it. -->
-            <button
-              class="ml-2 text-[11px] text-slate-600 hover:text-red-400 transition-colors"
-              disabled={busyId === publication.id}
-              on:click={() => dispatch('deletePublication', publication)}
-            >Delete</button>
+            <span class="ml-2"><Button admin size="xs" disabled={busyId === publication.id}
+              on:click={() => dispatch('deletePublication', publication)}>Delete</Button></span>
           {/if}
 
           {#if verifyResult?.id === publication.id}

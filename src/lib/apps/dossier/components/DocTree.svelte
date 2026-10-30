@@ -3,6 +3,7 @@
      All structural intent is dispatched upward — this component never touches
      the store, so the move guards in utils/docTree.js stay authoritative. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { permissions } from '#lib/stores/permissions.js';
 
@@ -73,8 +74,7 @@
             <button class="w-5 h-5 text-slate-400 hover:text-white text-xs" title="Rename"
                     on:click|stopPropagation={() => dispatch('rename', node)}>✎</button>
             {#if $permissions.isAdmin}
-              <button class="w-5 h-5 text-slate-500 hover:text-red-400 text-xs" title="Delete page"
-                      on:click|stopPropagation={() => dispatch('delete', node)}>×</button>
+              <Button admin size="xs" title="Delete page" on:click={e => { e.stopPropagation(); dispatch('delete', node); }}>×</Button>
             {/if}
           </span>
         {/if}

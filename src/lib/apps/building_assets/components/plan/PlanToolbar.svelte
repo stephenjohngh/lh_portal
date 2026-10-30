@@ -3,6 +3,8 @@
      All state is owned by PlanViewTab; this component is purely presentational.
      Search has moved to FilterSidebar. -->
 <script>
+  import MenuButton from '#lib/components/common/MenuButton.svelte';
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { permissions }          from '#lib/stores/permissions.js';
 
@@ -107,84 +109,30 @@
       <span>📏</span>
       <span class="font-mono">{(1 / metresPerUnit).toFixed(2)} u/m</span>
       {#if $permissions.isAdmin}
-        <button
-          on:click={() => dispatch('clearscale')}
-          class="text-teal-700 hover:text-teal-500 transition-colors ml-0.5"
-          title="Remove scale calibration (admin)"
-        >✕</button>
+        <Button admin size="xs" title="Remove scale calibration (admin)" on:click={() => dispatch('clearscale')}>✕</Button>
       {/if}
     </div>
   {/if}
 
   <!-- Plan Admin dropdown (admin-only) -->
   {#if $permissions.isAdmin}
-    <div class="relative shrink-0">
-      <button
-        on:click={() => adminOpen = !adminOpen}
-        class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg
-               bg-slate-700 hover:bg-slate-600 text-slate-300 border border-slate-600
-               transition-colors"
-      >
-        ⚙ Schematic Admin
-        <span class="text-slate-500 text-[10px]">{adminOpen ? '▲' : '▼'}</span>
-      </button>
-
-      {#if adminOpen}
-        <!-- svelte-ignore a11y-no-static-element-interactions -->
-        <div
-          class="absolute left-0 top-full mt-1 z-50 min-w-[10rem]
-                 bg-slate-800 border border-slate-600 rounded-lg shadow-xl
-                 flex flex-col py-1 text-xs"
-          on:mouseleave={() => adminOpen = false}
-        >
-          <button
-            on:click={() => adminAction('new')}
-            class="flex items-center gap-2 px-3 py-2 text-left text-slate-300
-                   hover:bg-slate-700 transition-colors"
-          >
-            <span class="w-4 text-center">⊕</span> New Schematic
-          </button>
-          {#if hasPlan}
-            <button
-              on:click={() => adminAction('edit')}
-              class="flex items-center gap-2 px-3 py-2 text-left text-slate-300
-                     hover:bg-slate-700 transition-colors"
-            >
-              <span class="w-4 text-center">✎</span> Edit Info / Image
-            </button>
-            <button
-              on:click={() => adminAction('copy')}
-              class="flex items-center gap-2 px-3 py-2 text-left text-slate-300
-                     hover:bg-slate-700 transition-colors"
-            >
-              <span class="w-4 text-center">⎘</span> Copy Schematic
-            </button>
-            <button
-              on:click={() => adminAction('import')}
-              class="flex items-center gap-2 px-3 py-2 text-left text-slate-300
-                     hover:bg-slate-700 transition-colors"
-            >
-              <span class="w-4 text-center">⇶</span> Copy Components to Schematic
-            </button>
-            <button
-              on:click={() => adminAction('importSpaces')}
-              class="flex items-center gap-2 px-3 py-2 text-left text-slate-300
-                     hover:bg-slate-700 transition-colors"
-            >
-              <span class="w-4 text-center">⬡</span> Copy Spaces to Schematic
-            </button>
-            <!-- Clears the way for a fresh copy; parking bays are kept (PlanViewTab). -->
-            <button
-              on:click={() => adminAction('deleteSpaces')}
-              class="flex items-center gap-2 px-3 py-2 text-left text-red-400
-                     hover:bg-slate-700 transition-colors"
-            >
-              <span class="w-4 text-center">✕</span> Delete Spaces on Schematic
-            </button>
-          {/if}
-        </div>
-      {/if}
-    </div>
+    <MenuButton
+      admin
+      size="small"
+      label="⚙ Schematic Admin"
+      items={[
+        { key: 'new', icon: '⊕', label: 'New Schematic' },
+        ...(hasPlan ? [
+          { key: 'edit', icon: '✎', label: 'Edit Info / Image' },
+          { key: 'copy', icon: '⎘', label: 'Copy Schematic' },
+          { key: 'import', icon: '⇶', label: 'Copy Components to Schematic' },
+          { key: 'importSpaces', icon: '⬡', label: 'Copy Spaces to Schematic' },
+          // Clears the way for a fresh copy; parking bays are kept (PlanViewTab).
+          { key: 'deleteSpaces', icon: '✕', label: 'Delete Spaces on Schematic', danger: true },
+        ] : []),
+      ]}
+      on:select={(e) => adminAction(e.detail)}
+    />
   {/if}
 
   <!-- Stats (right-aligned) -->

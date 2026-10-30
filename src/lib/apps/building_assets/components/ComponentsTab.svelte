@@ -903,27 +903,17 @@
 
         <!-- Toggle row — always visible -->
         <div class="px-4 py-2 flex items-center gap-3 flex-wrap">
-          <button
-            on:click={() => showReportPanel = !showReportPanel}
-            class="flex items-center gap-1.5 text-xs font-semibold transition-colors
-                   {showReportPanel ? 'text-purple-300' : 'text-slate-300 hover:text-white'}"
-          >
-            <span class="text-[10px]">{showReportPanel ? '▾' : '▸'}</span>
-            📄 Report Options
-            <span class="text-slate-500 tabular-nums font-normal">({filteredComponents.length})</span>
-          </button>
+          <Button admin size="xs" on:click={() => showReportPanel = !showReportPanel}>
+            {showReportPanel ? '▾' : '▸'} 📄 Report Options ({filteredComponents.length})
+          </Button>
 
           <!-- The filtered list is already "the assets this is about" — failed
                items, or a type due for replacement. Starting a works schedule
                here means the author sends exactly what they were looking at,
                rather than rebuilding the filter somewhere else. -->
           {#if $permissions.isAdmin && filteredComponents.length > 0}
-            <button
-              on:click={() => showWorksModal = true}
-              class="flex items-center gap-1.5 text-xs font-semibold text-slate-300
-                     hover:text-white transition-colors"
-              title="Create a works schedule from these {filteredComponents.length} components"
-            >🛠 Works schedule</button>
+            <Button admin size="xs" on:click={() => showWorksModal = true}
+                    title="Create a works schedule from these {filteredComponents.length} components">🛠 Works schedule</Button>
           {/if}
 
           {#if showReportPanel}

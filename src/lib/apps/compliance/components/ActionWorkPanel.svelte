@@ -80,9 +80,9 @@
 <div class="space-y-3 mt-3" data-testid="action-work">
   {#if isAdmin}
     <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-      <FormInput label="Owner" bind:value={owner} placeholder="Who answers for it — a role or a party" />
-      <FormInput label="Technical authority" bind:value={authority} placeholder="Who can settle it technically" />
-      <FormInput label="Due" type="date" bind:value={due} />
+      <FormInput admin label="Owner" bind:value={owner} placeholder="Who answers for it — a role or a party" />
+      <FormInput admin label="Technical authority" bind:value={authority} placeholder="Who can settle it technically" />
+      <FormInput admin label="Due" type="date" bind:value={due} />
     </div>
     <div class="flex items-center gap-2">
       <Button admin variant="secondary" size="small" disabled={!changed || saving} on:click={save}>

@@ -6,6 +6,7 @@
      time from the store (membership + area), reusing buildSpacesRegister() +
      spaceReport.js — the same helpers the sidebar used to expose as CSV. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { matchesSearch } from '#lib/utils/textSearch.js';
   import { today } from '#lib/utils/dates.js';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
@@ -128,13 +129,9 @@
     </span>
     <!-- Admins only, as the Components report (user, 2026-10-10). -->
     {#if $permissions.isAdmin}
-    <button
-      on:click={exportCsv}
-      disabled={filteredRows.length === 0}
-      class="ml-auto text-xs px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-600
-             text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed
-             transition-colors shrink-0"
-    >⬇ CSV</button>
+    <span class="ml-auto shrink-0">
+      <Button admin size="xs" disabled={filteredRows.length === 0} on:click={exportCsv}>⬇ CSV</Button>
+    </span>
     {/if}
   </div>
 
@@ -229,12 +226,7 @@
               <td class="px-3 py-2 text-right {r.inactive > 0 ? 'text-slate-400' : 'text-slate-800'}">{r.inactive || '—'}</td>
               {#if $permissions.isAdmin}
                 <td class="px-3 py-2 text-right whitespace-nowrap" on:click|stopPropagation>
-                  <button
-                    on:click|stopPropagation={() => requestDelete(r)}
-                    class="px-2 py-0.5 rounded bg-red-900/40 hover:bg-red-800/50
-                           text-red-400 border border-red-800/40 transition-colors text-[11px]"
-                    title="Delete space (admin)"
-                  >🗑</button>
+                  <Button admin size="xs" title="Delete space (admin)" on:click={e => { e.stopPropagation(); requestDelete(r); }}>🗑</Button>
                 </td>
               {/if}
             </tr>

@@ -14,6 +14,10 @@
   export let maxlength = null;
   export let pattern = null;
   export let inputClass = '';
+  /** Only an administrator sees this field: amber on brown. */
+  export let admin = false;
+  /** For an in-line field with no label above it: no bottom margin, smaller. */
+  export let compact = false;
   /**
    * id of a <datalist> to offer as suggestions — a native combobox: the field
    * stays free text, but values already used are one keystroke away. The
@@ -37,11 +41,11 @@
   $: elementId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
 </script>
 
-<div class="mb-4">
+<div class={compact ? '' : 'mb-4'}>
   {#if label}
     <label 
       for={elementId} 
-      class="block text-sm font-medium mb-2 text-gray-200"
+      class="block text-sm font-medium mb-2 {admin ? 'admin-only-label' : 'text-gray-200'}"
     >
       {label}
       {#if required}
@@ -65,9 +69,10 @@
     {min}
     {max}
     {step}
-    class="w-full px-3 py-2 bg-slate-700 border rounded-lg text-white placeholder-gray-400 
+    class="w-full {compact ? 'px-2 py-0.5 text-[11px]' : 'px-3 py-2'} rounded-lg placeholder-gray-400
            focus:outline-none focus:ring-2 transition-all
-           {error ? 'border-red-500 focus:ring-red-500' : 'border-slate-600 focus:ring-purple-500'}
+           {admin ? 'admin-only' : 'bg-slate-700 border text-white'}
+           {error ? 'border-red-500 focus:ring-red-500' : admin ? '' : 'border-slate-600 focus:ring-purple-500'}
            {disabled ? 'opacity-50 cursor-not-allowed' : ''}
            {inputClass}"
     on:input

@@ -261,6 +261,7 @@
 
         {#if visibility !== 'internal'}
           <FormInput
+            admin
             label="URL slug"
             value={slug}
             on:input={onSlugInput}
@@ -275,6 +276,7 @@
           {/if}
 
           <FormInput
+            admin
             label="Summary"
             bind:value={summary}
             placeholder="Short blurb shown in the public list"

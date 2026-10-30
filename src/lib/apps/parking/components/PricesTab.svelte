@@ -103,8 +103,7 @@
             {#if t.notes}<p class="text-xs text-slate-500">{t.notes}</p>{/if}
           </div>
           {#if $permissions.isAdmin && !usedBy(t.id) && when !== 'Ended'}
-            <button class="text-xs text-slate-500 hover:text-red-400" title="Remove a price added in error"
-              on:click={() => pendingDelete = t}>Remove</button>
+            <Button admin size="xs" title="Remove a price added in error" on:click={() => pendingDelete = t}>Remove</Button>
           {:else}<span></span>{/if}
         </div>
       {/each}

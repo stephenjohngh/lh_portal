@@ -20,6 +20,8 @@
        deletepreset — { id } -->
 
 <script>
+  import FormInput from '#lib/components/common/FormInput.svelte';
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher, tick } from 'svelte';
   import { configMatches }   from '../componentPresets.js';
   import { permissions }     from '#lib/stores/permissions.js';
@@ -156,23 +158,10 @@
       >{p.name}</button>
       <!-- Delete only for admins on standard presets -->
       {#if $permissions.isAdmin}
-        <button
-          on:click={e => armDelete(p.id, e)}
-          class="px-1.5 py-0.5 text-[10px] border-l transition-colors
-                 {confirming
-                   ? 'border-red-500/40 bg-red-700/60 text-white font-semibold'
-                   : active
-                     ? 'border-purple-500/40 text-purple-400 hover:text-red-400 hover:bg-purple-900/40'
-                     : 'border-slate-600/40 text-slate-600 hover:text-red-400 hover:bg-slate-700'}"
-          title={confirming ? 'Click again to confirm delete' : 'Remove standard preset'}
-        >{confirming ? 'Delete?' : '✕'}</button>
+        <Button admin size="xs" title={confirming ? 'Click again to confirm delete' : 'Remove standard preset'}
+                on:click={e => armDelete(p.id, e)}>{confirming ? 'Delete?' : '✕'}</Button>
         {#if confirming}
-          <button
-            on:click={cancelDelete}
-            class="px-1.5 py-0.5 text-[10px] border-l border-red-500/40
-                   text-red-400/70 hover:text-slate-300 transition-colors"
-            title="Cancel"
-          >✕</button>
+          <Button admin size="xs" title="Cancel" on:click={cancelDelete}>✕</Button>
         {/if}
       {/if}
     </div>
@@ -254,17 +243,9 @@
       />
       <!-- Order # (admin only) -->
       {#if $permissions.isAdmin}
-        <input
-          type="text"
-          inputmode="numeric"
-          bind:value={sortOrderInput}
-          on:keydown={onKeydown}
-          placeholder="Order #"
-          title="Set a display order to make this a standard report visible to all users. Leave blank to save as a personal preset."
-          class="bg-slate-700 border border-slate-600 rounded px-2 py-0.5 text-[11px]
-                 text-white placeholder:text-slate-500
-                 focus:outline-none focus:border-purple-400 w-20"
-        />
+        <div class="w-20" title="Set a display order to make this a standard report visible to all users. Leave blank to save as a personal preset.">
+          <FormInput admin compact bind:value={sortOrderInput} on:keydown={onKeydown} placeholder="Order #" />
+        </div>
       {/if}
       <button
         on:click={confirmSave}

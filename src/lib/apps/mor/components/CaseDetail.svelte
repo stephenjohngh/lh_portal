@@ -573,11 +573,7 @@
                     </div>
                   {/if}
                   {#if isAdmin}
-                    <button type="button"
-                      class="text-xs text-red-500 hover:text-red-400 px-1 py-1 ml-1"
-                      title="Delete mitigation"
-                      on:click={() => requestDeleteMit(mit)}
-                    >✕</button>
+                    <span class="ml-1"><Button admin size="xs" title="Delete mitigation" on:click={() => requestDeleteMit(mit)}>✕</Button></span>
                   {/if}
                 </div>
               </div>

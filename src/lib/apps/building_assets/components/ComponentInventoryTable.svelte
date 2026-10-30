@@ -15,6 +15,7 @@
      ComponentInventory leaves it empty. -->
 
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { typeByCode, defsForType, systemById, attrValue as lookupAttrValue } from '../lookups.js';
   import { componentAttrPairs, attrPairsText } from '../utils/attrDisplay.js';
@@ -378,24 +379,10 @@
                   {/if}
                   {#if $permissions.isAdmin}
                     {#if inDel}
-                      <button
-                        on:click|stopPropagation={e => cancelDelete(c.id, e)}
-                        class="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600
-                               text-slate-400 transition-colors text-[10px]"
-                        title="Cancel"
-                      >✕</button>
-                      <button
-                        on:click|stopPropagation={e => startDelete(c, e)}
-                        class="px-1.5 py-0.5 rounded bg-red-700 hover:bg-red-600
-                               text-white font-medium transition-colors text-[10px]"
-                      >Delete?</button>
+                      <Button admin size="xs" title="Cancel" on:click={e => cancelDelete(c.id, e)}>✕</Button>
+                      <Button admin size="xs" on:click={e => startDelete(c, e)}>Delete?</Button>
                     {:else}
-                      <button
-                        on:click|stopPropagation={e => startDelete(c, e)}
-                        class="px-1.5 py-0.5 rounded bg-red-900/40 hover:bg-red-800/50
-                               text-red-500 border border-red-900/40 transition-colors text-[10px]"
-                        title="Delete (admin · click twice)"
-                      >🗑</button>
+                      <Button admin size="xs" title="Delete (admin · click twice)" on:click={e => startDelete(c, e)}>🗑</Button>
                     {/if}
                   {/if}
                 </div>

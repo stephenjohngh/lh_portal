@@ -1,5 +1,6 @@
 <!-- src/lib/apps/info/components/SectionSidebar.svelte -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { permissions }  from '#lib/stores/permissions.js';
   import Icon             from '#lib/components/icons/Icon.svelte';
@@ -107,20 +108,10 @@
 
       {#if $permissions.isAdmin}
         <div class="flex items-center gap-0.5">
-          <button
-            class="p-0.5 rounded text-slate-500 hover:text-purple-300 transition-colors"
-            title="Edit section"
-            on:click|stopPropagation={() => dispatch('edit', section)}
-          >
-            <Icon name="edit" size={3} />
-          </button>
-          <button
-            class="p-0.5 rounded text-slate-500 hover:text-red-400 transition-colors"
-            title="Delete section"
-            on:click|stopPropagation={(e) => requestDelete(section, e)}
-          >
-            <Icon name="delete" size={3} />
-          </button>
+          <Button admin size="xs" icon="edit" iconPosition="only" title="Edit section"
+                  on:click={e => { e.stopPropagation(); dispatch('edit', section); }} />
+          <Button admin size="xs" icon="delete" iconPosition="only" title="Delete section"
+                  on:click={(e) => { e.stopPropagation(); requestDelete(section, e); }} />
         </div>
       {/if}
     </div>
@@ -158,14 +149,7 @@
   <!-- New Section (admin only) -->
   {#if $permissions.isAdmin}
     <div class="mt-auto px-3 py-3 border-t border-slate-700">
-      <button
-        class="w-full flex items-center gap-1.5 text-xs text-slate-500
-               hover:text-purple-300 transition-colors"
-        on:click={() => dispatch('newSection')}
-      >
-        <Icon name="plus" size={3} />
-        New Section
-      </button>
+      <Button admin size="xs" icon="plus" fullWidth on:click={() => dispatch('newSection')}>New Section</Button>
     </div>
   {/if}
 </aside>

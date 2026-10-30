@@ -47,14 +47,8 @@
         <span class="w-3 h-3 rounded-full shrink-0" style="background:{section.colour}"></span>
         <h2 class="text-sm font-semibold text-white flex-1 truncate">{section.name}</h2>
         {#if $permissions.isAdmin}
-          <button
-            class="flex items-center gap-1 px-1.5 py-0.5 text-xs rounded text-slate-500
-                   hover:text-purple-300 transition-colors"
-            title="Edit this section"
-            on:click={() => dispatch('editSection', section)}
-          >
-            <Icon name="edit" size={3} /> Edit section
-          </button>
+          <Button admin size="xs" icon="edit" title="Edit this section"
+                  on:click={() => dispatch('editSection', section)}>Edit section</Button>
         {/if}
       </div>
       {#if section.description}

@@ -3,6 +3,7 @@
      Shows every field, all attribute values, last inspection summary,
      and allows editing and saving. Calls the store directly. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
   import { typeByCode, conditionChecklistDisplay } from '../lookups.js';
@@ -486,16 +487,8 @@
           Linked references from other components will be cleared.
         </p>
         <div class="flex gap-2">
-          <button
-            on:click={handleDelete}
-            disabled={deleting}
-            class="px-3 py-1.5 text-sm rounded bg-red-600 hover:bg-red-500 text-white font-medium
-                   disabled:opacity-50"
-          >{deleting ? 'Deleting…' : 'Yes, delete'}</button>
-          <button
-            on:click={() => confirmDel = false}
-            class="px-3 py-1.5 text-sm rounded bg-slate-700 hover:bg-slate-600 text-slate-300"
-          >Cancel</button>
+          <Button admin size="small" disabled={deleting} on:click={handleDelete}>{deleting ? 'Deleting…' : 'Yes, delete'}</Button>
+          <Button variant="secondary" size="small" on:click={() => confirmDel = false}>Cancel</Button>
         </div>
       </div>
     {/if}
@@ -504,13 +497,7 @@
       <!-- Component delete: admin only (schema-level entity).
            Matches the design decision logged in CLAUDE.md. -->
       {#if $permissions.isAdmin}
-        <button
-          on:click={() => confirmDel = true}
-          class="text-sm px-3 py-1.5 rounded-lg text-slate-500 hover:text-red-400
-                 hover:bg-red-900/20 transition-colors border border-transparent
-                 hover:border-red-900/30"
-          title="Delete component (admin)"
-        >Delete</button>
+        <Button admin size="small" title="Delete component (admin)" on:click={() => confirmDel = true}>Delete</Button>
       {/if}
 
       <div class="ml-auto flex gap-2">
