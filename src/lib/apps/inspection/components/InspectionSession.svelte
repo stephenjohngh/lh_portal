@@ -10,6 +10,7 @@
   import { syncState, retryErrors } from '../utils/syncRunner.js';
   import { online } from '#lib/stores/online.js';
   import InspectionPanel             from './InspectionPanel.svelte';
+  import GuideHowTo                  from './GuideHowTo.svelte';
   import InspectionComponentEditor   from './InspectionComponentEditor.svelte';
   import InspectionJumpList          from './InspectionJumpList.svelte';
   import InspectionComponentPlanViewer from './InspectionComponentPlanViewer.svelte';
@@ -282,6 +283,15 @@
       problemCount={statsProblem}
       inactiveCount={statsInactive}
       noAccessCount={statsNoAccess}
+    />
+  {/if}
+
+  <!-- Guides for this walk and this component (Guides app, S3a) — card view only; the
+       inspect view carries its own bar. What was shown is recorded when the walk closes. -->
+  {#if !isRepair && view === 'card' && currentComponent}
+    <GuideHowTo
+      context={{ obligation_id: session?.definition_id, component_type_id: currentType?.id, component_id: currentComponent.id }}
+      on:shown={(e) => inspectionStore.noteGuidesShown(e.detail)}
     />
   {/if}
 

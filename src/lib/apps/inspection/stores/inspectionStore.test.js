@@ -519,6 +519,23 @@ describe('completeSession', () => {
   });
 });
 
+describe('guide versions on close (Guides S3a)', () => {
+  it('writes the versions the walk was shown, and nothing when none was', async () => {
+    const shown = await startWalk();
+    inspectionStore.noteGuidesShown({ g1: 2 });
+    inspectionStore.noteGuidesShown({ g2: 1 });
+    await inspectionStore.completeSession(shown.id);
+    expect(h.api.update).toHaveBeenLastCalledWith('walk_sessions', shown.id,
+      expect.objectContaining({ guide_versions: { g1: 2, g2: 1 } }), false);
+
+    h.api.update.mockClear();
+    const none = await startWalk();
+    await inspectionStore.completeSession(none.id);
+    const fields = h.api.update.mock.calls.find((c) => c[0] === 'walk_sessions')[2];
+    expect('guide_versions' in fields).toBe(false);     // a walk that showed none writes what it always did
+  });
+});
+
 describe('deleteSession', () => {
   it('clears the walk state when the ACTIVE session is deleted', async () => {
     const session = await startWalk();

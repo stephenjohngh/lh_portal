@@ -5803,6 +5803,7 @@ export type Database = {
           floor_id: string | null
           session_name: string | null
           total_components_count: number
+          guide_versions: Json | null
           inspected_components_count: number
           status: string
           started_at: string
@@ -5827,6 +5828,7 @@ export type Database = {
           floor_id?: string | null
           session_name?: string | null
           total_components_count?: number
+          guide_versions?: Json | null
           inspected_components_count?: number
           status?: string
           started_at?: string
@@ -5851,6 +5853,7 @@ export type Database = {
           floor_id?: string | null
           session_name?: string | null
           total_components_count?: number
+          guide_versions?: Json | null
           inspected_components_count?: number
           status?: string
           started_at?: string

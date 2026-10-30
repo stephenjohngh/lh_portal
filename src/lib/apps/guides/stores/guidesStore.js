@@ -193,6 +193,26 @@ function createGuidesStore() {
     await api.update('guides', guide.id, { updated_by: userId }, false);
   }
 
+  // ── Links: where a guide is offered (pointers — ids of other apps' records) ───
+
+  /** @param {string} guideId */
+  const listLinks = (guideId) => api.getAll('guide_links', { filters: { guide_id: guideId }, orderBy: 'created_at', tiebreak: false });
+
+  /** @param {string} guideId @param {{ obligation_id?: string|null, component_type_id?: string|null }} target */
+  async function addLink(guideId, target) {
+    const userId = await requireUserId();
+    const row = { guide_id: guideId, created_by: userId, ...target };
+    const link = await api.create('guide_links', row, true);
+    await api.update('guides', guideId, { updated_by: userId }, false);
+    return link;
+  }
+
+  /** @param {string} guideId @param {string} linkId */
+  async function deleteLink(guideId, linkId) {
+    await api.delete('guide_links', linkId);
+    await api.update('guides', guideId, { updated_by: await requireUserId() }, false);
+  }
+
   /** Published versions of a guide, newest first (an admin sees them all). @param {string} guideId */
   const listVersions = (guideId) =>
     api.getAll('guide_versions', { select: 'id, version, published_at, published_by, snapshot', filters: { guide_id: guideId }, orderBy: 'version', ascending: false, tiebreak: false });
@@ -212,6 +232,7 @@ function createGuidesStore() {
     subscribe, load, reload, ensureDefaultCategories,
     createGuide, updateGuide, retireGuide, deleteGuide, publish,
     listSteps, photosByStep, addStep, updateStep, deleteStep, reorderSteps, addPhoto, removePhoto,
+    listLinks, addLink, deleteLink,
     listVersions, readVersion,
   };
 }

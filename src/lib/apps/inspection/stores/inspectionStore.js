@@ -190,6 +190,7 @@ const INITIAL_STATE = {
   buildingFloors:   [],      // ordered floor objects for building-wide sessions
   currentFloor:     null,    // active floor object (building-wide)
   floorProgress:    {},      // { floorId: { inspected, total } }
+  guideVersions:    {},      // { guideId: version } of every guide this walk showed (written on close)
 
   // Offline read cache signalling (P1). usingCache = data came from the IndexedDB
   // fallback, not a fresh fetch; cachedAt = when that cache was written.
@@ -209,6 +210,7 @@ const RESET_SESSION_STATE = {
   buildingFloors: [],
   currentFloor:   null,
   floorProgress:  {},
+  guideVersions:  {},
 };
 
 // -- Auth helpers --------------------------------------------------------------
@@ -793,6 +795,17 @@ function createInspectionStore() {
   // Close a session. The inspected count is the single source of completeness
   // (total_components_count set at start vs this) and drives the schedule — a
   // finished-early run must not reset the due clock (see inspectionSchedule.js).
+  /** Record the guide versions the walker was shown (guides/public.js), to be written on close. */
+  function noteGuidesShown(/** @type {Record<string, number>} */ shown) {
+    update((s) => ({ ...s, guideVersions: { ...(s.guideVersions ?? {}), ...shown } }));
+  }
+
+  // Only present when a guide was shown, so a walk that showed none writes what it always did.
+  const guideFields = () => {
+    const gv = getState().guideVersions ?? {};
+    return Object.keys(gv).length ? { guide_versions: gv } : {};
+  };
+
   async function completeSession(sessionId, notes = '') {
     const userId     = await getCurrentUserId();
     const closedAt   = new Date().toISOString();
@@ -806,7 +819,7 @@ function createInspectionStore() {
       let inspectedCount = localCount;
       try { inspectedCount = await api.count('component_inspections', { walk_session_id: sessionId }); }
       catch (/** @type {any} */ e) { logger('⚠ completeSession count (using local):', e.message); }
-      const fields = { status: 'closed', closed_at: closedAt, inspected_components_count: inspectedCount, notes: notes || null, updated_by: userId };
+      const fields = { status: 'closed', closed_at: closedAt, inspected_components_count: inspectedCount, notes: notes || null, updated_by: userId, ...guideFields() };
       try {
         await api.update('walk_sessions', sessionId, fields, false);
       } catch (/** @type {any} */ e) {
@@ -818,7 +831,7 @@ function createInspectionStore() {
     } else {
       // Offline: queue the completion with the local count. FIFO puts it behind
       // this session's create + inspection ops, so it applies in the right order.
-      const fields = { status: 'closed', closed_at: closedAt, inspected_components_count: localCount, notes: notes || null, updated_by: userId };
+      const fields = { status: 'closed', closed_at: closedAt, inspected_components_count: localCount, notes: notes || null, updated_by: userId, ...guideFields() };
       await enqueueSessionComplete(sessionId, fields);
     }
 
@@ -1279,6 +1292,7 @@ function createInspectionStore() {
     resumeSession,
     pauseSession,
     completeSession,
+    noteGuidesShown,
     closeSession,
     deleteSession,
     goToIndex,

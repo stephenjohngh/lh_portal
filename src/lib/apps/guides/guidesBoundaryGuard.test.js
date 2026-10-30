@@ -1,7 +1,8 @@
 // The Guides app is a hub other apps READ through guides/public.js (build plan §0).
 //   · nothing outside guides/ imports a file inside it except public.js;
 //   · nothing outside guides/ names a guide table (no reading or writing around the interface);
-//   · guides/ never imports another app (it reads none of them: links are pointers).
+//   · guides/ reads another app only through that app's public.js (a link is a pointer by id;
+//     the editor's picker asks the owner for names and never writes there).
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -41,11 +42,11 @@ describe('Guides boundary', () => {
     expect(bad).toEqual([]);
   });
 
-  it('guides/ imports no other app', () => {
+  it('guides/ reaches another app only through its public.js (to name a record in a link picker)', () => {
     const bad = [];
     for (const f of files.filter((x) => inside(x) && !x.endsWith('.test.js'))) {
-      for (const m of fs.readFileSync(f, 'utf8').matchAll(/from\s+['"]#lib\/apps\/([a-z_]+)\//g)) {
-        if (m[1] !== 'guides') bad.push(`${f} → ${m[1]}`);
+      for (const m of fs.readFileSync(f, 'utf8').matchAll(/from\s+['"]#lib\/apps\/([a-z_]+)\/([^'"]+)['"]/g)) {
+        if (m[1] !== 'guides' && m[2] !== 'public.js') bad.push(`${f} → ${m[1]}/${m[2]}`);
       }
     }
     expect(bad).toEqual([]);

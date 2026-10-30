@@ -14,6 +14,7 @@
   import { applyChecklistMode } from '../utils/checklistRules.js';
   import { fmtDate, fmtTime } from '#lib/utils/dates.js';
   import InspectionResultSection from './InspectionResultSection.svelte';
+  import GuideHowTo from './GuideHowTo.svelte';
   import WalkButton         from '#lib/apps/inspection/components/common/WalkButton.svelte';
   import WalkSpinner        from '#lib/apps/inspection/components/common/WalkSpinner.svelte';
   import WalkBadge          from '#lib/apps/inspection/components/common/WalkBadge.svelte';
@@ -152,6 +153,11 @@
       📍
     </button>
   </div>
+
+  <GuideHowTo
+    context={{ obligation_id: session?.definition_id, component_type_id: type?.id, component_id: component?.id }}
+    on:shown={(e) => inspectionStore.noteGuidesShown(e.detail)}
+  />
 
   <div class="ip-body">
     <InspectionResultSection

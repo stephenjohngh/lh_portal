@@ -14,6 +14,7 @@
   import FormSelect from '#lib/components/common/FormSelect.svelte';
   import Checkbox from '#lib/components/common/Checkbox.svelte';
   import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
+  import GuideLinks from './GuideLinks.svelte';
   import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
   import { guidesStore } from '../stores/guidesStore.js';
   import { STEP_KINDS, KIND_LABEL, AUDIENCES, LIMITS, publishProblems, stepProblems, hasUnpublishedChanges } from '../utils/guideModel.js';
@@ -231,6 +232,8 @@
       {/each}
       <Button variant="secondary" disabled={busy} on:click={() => addStep('step')}>+ Add a step</Button>
     </section>
+
+    <GuideLinks guideId={guide.id} />
 
     <section class="rounded-lg border border-slate-700 bg-slate-800/60 p-3 space-y-2">
       {#if problems.length}

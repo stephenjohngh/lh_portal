@@ -169,6 +169,11 @@ const AS_CONTRACTOR = [
 ];
 
 const SETUP_ONLY = [
+  ['a walk can record the guide versions it showed, as an object only (migration 271)', `
+    if not exists (select 1 from information_schema.columns where table_name = 'walk_sessions' and column_name = 'guide_versions')
+      then raise exception 'no guide_versions column'; end if;
+    if (select pg_get_constraintdef(oid) from pg_constraint where conname = 'walk_sessions_guide_versions_object') not like '%object%'
+      then raise exception 'not restricted to an object'; end if;`, null],
   ['the guides app id is accepted by app_permissions', `
     if (select pg_get_constraintdef(oid) from pg_constraint where conname = 'app_permissions_app_id_check') not like '%guides%'
       then raise exception 'guides is not registered'; end if;`, null],

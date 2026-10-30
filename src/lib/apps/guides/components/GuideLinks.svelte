@@ -1,0 +1,92 @@
+<!-- src/lib/apps/guides/components/GuideLinks.svelte -->
+<!-- Where a guide is offered (admins). A link names a planned obligation, a type of
+     component, or both: a guide linked to both shows only on that type's components
+     inside that walk; a guide linked to the obligation alone shows for the whole walk.
+     The most specific guide is offered first. The pickers read the owning apps only
+     through their public interfaces / shared reference data; a link stores ids only. -->
+<script>
+  import { onMount } from 'svelte';
+  import Button from '#lib/components/common/Button.svelte';
+  import FormSelect from '#lib/components/common/FormSelect.svelte';
+  import { api } from '#lib/utils/api.js';
+  import { listPlannedObligations } from '#lib/apps/compliance/public.js';
+  import { guidesStore } from '../stores/guidesStore.js';
+  import { specificity } from '../utils/guideModel.js';
+  import { errMessage } from '#lib/utils/errors.js';
+
+  /** @type {string} */
+  export let guideId;
+
+  /** @type {any[]} */ let links = [];
+  /** @type {any[]} */ let obligations = [];
+  /** @type {any[]} */ let types = [];
+  let obligationId = '';
+  let typeId = '';
+  let error = '';
+  let busy = false;
+  let loaded = false;
+
+  $: obName = (/** @type {string} */ id) => obligations.find((o) => o.id === id)?.name ?? 'a planned obligation that is no longer there';
+  $: tyName = (/** @type {string} */ id) => types.find((t) => t.id === id)?.name ?? 'a type that is no longer there';
+  $: describe = (/** @type {any} */ l) => [l.obligation_id && `walk: ${obName(l.obligation_id)}`, l.component_type_id && `type: ${tyName(l.component_type_id)}`]
+    .filter(Boolean).join(' · ') || 'somewhere else (set by another screen)';
+
+  onMount(async () => {
+    try {
+      [links, obligations, types] = await Promise.all([
+        guidesStore.listLinks(guideId),
+        listPlannedObligations(),
+        api.getAll('component_types', { orderBy: 'name' }),
+      ]);
+    } catch (e) { error = errMessage(e); }
+    finally { loaded = true; }
+  });
+
+  async function add() {
+    if (!obligationId && !typeId) return;
+    busy = true; error = '';
+    try {
+      const l = await guidesStore.addLink(guideId, { obligation_id: obligationId || null, component_type_id: typeId || null });
+      links = [...links, l]; obligationId = ''; typeId = '';
+    } catch (e) { error = errMessage(e); }
+    finally { busy = false; }
+  }
+
+  async function remove(/** @type {any} */ l) {
+    busy = true; error = '';
+    try { await guidesStore.deleteLink(guideId, l.id); links = links.filter((x) => x.id !== l.id); }
+    catch (e) { error = errMessage(e); }
+    finally { busy = false; }
+  }
+</script>
+
+<section class="rounded-lg border border-slate-700 bg-slate-800/60 p-3 space-y-2" data-testid="guide-links">
+  <h3 class="text-sm font-semibold text-white">Where it is offered</h3>
+  <p class="text-xs text-slate-400">
+    In an inspection walk. Choose a planned obligation (the whole walk), a type of component, or both (that type, in that walk).
+   
+  </p>
+  {#if error}<p class="text-red-400 text-sm" role="alert">{error}</p>{/if}
+  {#if !loaded}
+    <p class="text-sm text-slate-400">Loading…</p>
+  {:else}
+    {#if links.length === 0}
+      <p class="text-sm text-slate-400" data-testid="no-links">Not offered anywhere yet.</p>
+    {/if}
+    <ul class="space-y-1">
+      {#each links as l (l.id)}
+        <li class="flex items-center gap-2 text-sm text-slate-200">
+          <span class="flex-1">{describe(l)} <span class="text-xs text-slate-500">({specificity(l) === 2 ? 'specific' : 'general'})</span></span>
+          <Button variant="danger" size="xs" disabled={busy} on:click={() => remove(l)}>Remove</Button>
+        </li>
+      {/each}
+    </ul>
+    <div class="grid gap-2 sm:grid-cols-[1fr_1fr_auto] items-end">
+      <FormSelect label="Planned obligation" placeholder="— any —" bind:value={obligationId}
+        options={obligations.map((o) => ({ value: o.id, label: o.name }))} />
+      <FormSelect label="Type of component" placeholder="— any —" bind:value={typeId}
+        options={types.map((t) => ({ value: t.id, label: t.name }))} />
+      <Button variant="secondary" disabled={busy || (!obligationId && !typeId)} on:click={add}>Add</Button>
+    </div>
+  {/if}
+</section>
