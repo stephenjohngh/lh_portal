@@ -4,6 +4,7 @@
      page can link straight here. The resident still has to enter their
      verification code, which acts as a bearer token. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { fmtDateTime } from '#lib/utils/dates.js';
   import { onMount } from 'svelte';
   import { page }     from '$app/state';
@@ -170,9 +171,7 @@
           <div class="submit-error">{lookupError}</div>
         {/if}
 
-        <button type="submit" class="submit-btn" disabled={loading}>
-          {loading ? 'Looking up…' : 'Check status'}
-        </button>
+        <Button variant="public" size="large" type="submit" fullWidth disabled={loading}>{loading ? 'Looking up…' : 'Check status'}</Button>
 
         <p class="lost-code">
           Lost your reference or code? Please contact the building office.
@@ -257,9 +256,7 @@
       </p>
 
       <div class="actions">
-        <button type="button" class="secondary-btn" on:click={lookupAnother}>
-          ← Check another report
-        </button>
+        <Button variant="plain" type="button" on:click={lookupAnother} className="secondary-btn">← Check another report</Button>
       </div>
 
     {/if}
@@ -343,7 +340,7 @@
     color: #991b1b;
   }
 
-  .submit-btn {
+  :global(.submit-btn) {
     width: 100%;
     padding: 0.875rem;
     background: #1e293b;
@@ -357,8 +354,8 @@
     font-family: inherit;
     min-height: 44px;
   }
-  .submit-btn:hover:not(:disabled) { background: #0f172a; }
-  .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  :global(.submit-btn):hover:not(:disabled) { background: #0f172a; }
+  :global(.submit-btn):disabled { opacity: 0.6; cursor: not-allowed; }
 
   .lost-code {
     font-size: 0.8125rem;
@@ -537,7 +534,7 @@
   }
 
   .actions { display: flex; gap: 0.75rem; }
-  .secondary-btn {
+  :global(.secondary-btn) {
     flex: 1;
     padding: 0.75rem;
     background: #fff;
@@ -551,7 +548,7 @@
     min-height: 44px;
     transition: background 0.15s, border-color 0.15s;
   }
-  .secondary-btn:hover { background: #f1f5f9; border-color: #94a3b8; }
+  :global(.secondary-btn):hover { background: #f1f5f9; border-color: #94a3b8; }
 
   @media (max-width: 480px) {
     .step { min-width: 3.5rem; }

@@ -3,7 +3,7 @@
   import Icon from '#lib/components/icons/Icon.svelte';
 
   // Props
-  export let variant = 'primary'; // 'primary', 'amber', 'blue', 'green', 'secondary', 'tertiary', 'danger', 'plain'
+  export let variant = 'primary'; // 'primary', 'amber', 'blue', 'green', 'secondary', 'tertiary', 'danger', 'plain', 'public'
   export let size = 'medium'; // 'xs', 'small', 'medium', 'large'
   export let icon = ''; // Icon name from Icon.svelte
   export let iconPosition = 'left'; // 'left', 'right', 'only'
@@ -48,6 +48,8 @@
       + 'hover:text-purple-200 disabled:border-slate-700 disabled:text-slate-500 disabled:hover:bg-transparent',
     // Red outline, matching secondary's teal outline (user, 2026-10-10:
     // "can the terminate button also have an outline in red").
+    // The solid teal of the PUBLIC pages (light background; see PublicShell).
+    public: 'border-transparent bg-teal-700 hover:bg-teal-800 text-white disabled:opacity-50',
     danger: 'border-red-500/70 bg-transparent text-red-400 hover:bg-red-600/20 hover:text-red-300 disabled:opacity-50'
   };
 

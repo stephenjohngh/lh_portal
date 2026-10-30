@@ -6,6 +6,7 @@
      its OWN saving/mutationError — the parent's are shared with the edit/
      delete/move flows. See CLAUDE.md "Testing". -->
 <script>
+  import ToggleChip from '#lib/components/common/ToggleChip.svelte';
   import { portalSettings } from '#lib/stores/portalSettings.js';
   import { createEventDispatcher } from 'svelte';
   import { issuesStore }      from '../stores/issuesStore';
@@ -186,10 +187,7 @@
   <!-- Type picker pills -->
   <div class="flex flex-wrap gap-1 mb-3">
     {#each ACTIVITY_TYPES as t}
-      <Button variant="plain" type="button" on:click={() => selectType(t.value)} className="text-xs px-2.5 py-1 rounded-full border transition-colors
-               {newActivity.activity_type === t.value
-                 ? t.color + ' border-current bg-slate-600/80 text-white font-semibold'
-                 : 'border-slate-600 text-slate-400 hover:border-slate-500 hover:text-slate-300'}">{t.icon} {t.label}</Button>
+      <ToggleChip size="small" active={newActivity.activity_type === t.value} activeClass="{t.color} border-current bg-slate-600/80 text-white font-semibold" on:click={() => selectType(t.value)}>{t.icon} {t.label}</ToggleChip>
     {/each}
   </div>
 

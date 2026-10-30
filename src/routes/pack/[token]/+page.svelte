@@ -10,6 +10,7 @@
      the only path from a token to content. There is no client-side query here,
      no Supabase client, and no store import. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import BlockContent from '#lib/apps/dossier/components/BlockContent.svelte';
   import PackSearch   from '#lib/apps/dossier/components/PackSearch.svelte';
   import { pageShowingFile } from '#lib/apps/dossier/utils/packSearch.js';
@@ -285,12 +286,8 @@
         <p class="text-xs text-amber-300 text-center">{unlockError}</p>
       {/if}
 
-      <button
-        type="submit"
-        disabled={!passphrase || unlocking}
-        class="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-50
-               text-white text-sm rounded px-3 py-2 transition-colors"
-      >{unlocking ? 'Checking…' : 'Open the pack'}</button>
+      <Button variant="plain" type="submit" disabled={!passphrase || unlocking} className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-50
+               text-white text-sm rounded px-3 py-2 transition-colors">{unlocking ? 'Checking…' : 'Open the pack'}</Button>
 
       <p class="text-[11px] text-slate-600 text-center">
         The passphrase is not in this link. It should have reached you
@@ -334,20 +331,11 @@
             {#if packReading}· {packReading}{/if}
           </p>
         </div>
-        <button
-          class="pack-print-button text-xs px-2 py-1 rounded border border-slate-700
+        <Button variant="plain" title="Print the whole pack" disabled={preparing} on:click={printPack} className="pack-print-button text-xs px-2 py-1 rounded border border-slate-700
                  text-slate-300 hover:text-white hover:border-slate-500
-                 transition-colors shrink-0"
-          title="Print the whole pack"
-          disabled={preparing}
-          on:click={printPack}
-        >{preparing ? 'Preparing…' : 'Print'}</button>
-        <button
-          class="md:hidden text-xs px-2 py-1 rounded border border-slate-700
-                 text-slate-300"
-          aria-expanded={navOpen}
-          on:click={() => navOpen = !navOpen}
-        >Contents</button>
+                 transition-colors shrink-0">{preparing ? 'Preparing…' : 'Print'}</Button>
+        <Button variant="plain" aria-expanded={navOpen} on:click={() => navOpen = !navOpen} className="md:hidden text-xs px-2 py-1 rounded border border-slate-700
+                 text-slate-300">Contents</Button>
       </div>
     </header>
 
@@ -385,23 +373,16 @@
             <ul class="space-y-0.5">
               {#if showContents}
                 <li>
-                  <button
-                    class="w-full text-left text-sm px-2 py-1 rounded transition-colors
+                  <Button variant="plain" on:click={() => openDoc(null)} className="w-full text-left text-sm px-2 py-1 rounded transition-colors
                            {selectedId === null
-                             ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}"
-                    on:click={() => openDoc(null)}
-                  >Contents</button>
+                             ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}">Contents</Button>
                 </li>
               {/if}
               {#each navDocs as node (node.id)}
                 <li>
-                  <button
-                    class="w-full text-left text-sm px-2 py-1 rounded transition-colors truncate
+                  <Button variant="plain" style="padding-left: {0.5 + node.depth * 0.75}rem" on:click={() => openDoc(node.id)} className="w-full text-left text-sm px-2 py-1 rounded transition-colors truncate
                            {selectedId === node.id
-                             ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}"
-                    style="padding-left: {0.5 + node.depth * 0.75}rem"
-                    on:click={() => openDoc(node.id)}
-                  >{node.title}</button>
+                             ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}">{node.title}</Button>
 
                   <!-- The open page's own headings, in place. Nested under the
                        page rather than in a panel of its own so the reader has
@@ -410,12 +391,8 @@
                     <ul class="mt-0.5 mb-1 space-y-0.5 border-l border-slate-700 ml-3">
                       {#each outline as head, i (head.uid ?? i)}
                         <li>
-                          <button
-                            class="w-full text-left text-xs py-0.5 text-slate-500
-                                   hover:text-slate-200 transition-colors truncate"
-                            style="padding-left: {0.5 + head.depth * 0.6}rem"
-                            on:click={() => reveal(head.uid)}
-                          >{head.text}</button>
+                          <Button variant="plain" style="padding-left: {0.5 + head.depth * 0.6}rem" on:click={() => reveal(head.uid)} className="w-full text-left text-xs py-0.5 text-slate-500
+                                   hover:text-slate-200 transition-colors truncate">{head.text}</Button>
                         </li>
                       {/each}
                     </ul>
@@ -462,8 +439,7 @@
           <ul class="space-y-1 mb-8">
             {#each navDocs as node (node.id)}
               <li style="padding-left: {node.depth * 0.75}rem">
-                <button class="text-sm text-purple-400 hover:underline text-left"
-                        on:click={() => openDoc(node.id)}>{node.title}</button>
+                <Button variant="plain" on:click={() => openDoc(node.id)} className="text-sm text-purple-400 hover:underline text-left">{node.title}</Button>
               </li>
             {/each}
           </ul>

@@ -5,6 +5,7 @@
   soft-warn on an under-competent reviewer. Editor-gated.
 -->
 <script>
+  import ToggleChip from '#lib/components/common/ToggleChip.svelte';
   import { gtStore } from '#lib/apps/golden_thread/stores/gtStore.js';
   import { PERSON_ROLES } from '#lib/apps/golden_thread/utils/gtConstants.js';
   import { COMPETENCIES, COMPETENCE_LABELS, competenceExpired } from '#lib/apps/golden_thread/utils/gtCompetence.js';
@@ -84,7 +85,7 @@
       <p class="text-xs text-slate-400 mb-1">Competencies</p>
       <div class="flex flex-wrap gap-1.5">
         {#each COMPETENCIES as c}
-          <Button variant="plain" type="button" on:click={() => newComp = toggle(newComp, c)} className="text-xs px-2 py-0.5 rounded-full border {newComp.has(c) ? 'bg-purple-600/30 border-purple-500 text-purple-200' : 'border-slate-600 text-slate-400'}">{COMPETENCE_LABELS[c]}</Button>
+          <ToggleChip active={newComp.has(c)} on:click={() => newComp = toggle(newComp, c)}>{COMPETENCE_LABELS[c]}</ToggleChip>
         {/each}
       </div>
     </div>
@@ -132,7 +133,7 @@
         <p class="text-xs text-slate-400 mb-1">Competencies</p>
         <div class="flex flex-wrap gap-1.5">
           {#each COMPETENCIES as c}
-            <Button variant="plain" type="button" on:click={() => editComp = toggle(editComp, c)} className="text-xs px-2 py-0.5 rounded-full border {editComp.has(c) ? 'bg-purple-600/30 border-purple-500 text-purple-200' : 'border-slate-600 text-slate-400'}">{COMPETENCE_LABELS[c]}</Button>
+            <ToggleChip active={editComp.has(c)} on:click={() => editComp = toggle(editComp, c)}>{COMPETENCE_LABELS[c]}</ToggleChip>
           {/each}
         </div>
       </div>

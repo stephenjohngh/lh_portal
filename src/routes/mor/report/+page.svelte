@@ -3,6 +3,7 @@
      Language is deliberately resident-friendly — residents report
      "a safety concern", not an "MOR". -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { onDestroy } from 'svelte';
   import { LOGO as lhLogo, LOGO_ALT } from '#lib/branding.js';
   import { POLICY_DEFAULTS } from '#lib/utils/policies.js';
@@ -274,12 +275,7 @@
                     <span class="status-error">{photo.error}</span>
                   {/if}
                 </div>
-                <button
-                  type="button"
-                  class="photo-remove"
-                  on:click={() => removePhoto(photo.id)}
-                  aria-label="Remove photo"
-                >✕</button>
+                <Button variant="plain" type="button" on:click={() => removePhoto(photo.id)} aria-label="Remove photo" className="photo-remove">✕</Button>
               </div>
             {/each}
           </div>
@@ -343,15 +339,15 @@
       {/if}
 
       <!-- Submit button -->
-      <button type="submit" class="submit-btn" disabled={!canSubmit}>
-        {#if submitting}
+      <Button variant="public" size="large" type="submit" fullWidth disabled={!canSubmit}>
+{#if submitting}
           Sending…
         {:else if uploadingCount > 0}
           Waiting for {uploadingCount} photo{uploadingCount > 1 ? 's' : ''}…
         {:else}
           Send report
         {/if}
-      </button>
+</Button>
 
     </form>
     {/if}
@@ -512,7 +508,7 @@
   .status-done      { color: #f8fafc; background: rgba(22,163,74,0.8); display: block; }
   .status-error     { color: #fef2f2; background: rgba(220,38,38,0.85); display: block; }
 
-  .photo-remove {
+  :global(.photo-remove) {
     position: absolute;
     top: 0.2rem;
     right: 0.2rem;
@@ -570,7 +566,7 @@
     color: #991b1b;
   }
 
-  .submit-btn {
+  :global(.submit-btn) {
     width: 100%;
     padding: 0.875rem;
     background: #1e293b;
@@ -584,8 +580,8 @@
     font-family: inherit;
     min-height: 44px; /* touch target */
   }
-  .submit-btn:hover:not(:disabled) { background: #0f172a; }
-  .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  :global(.submit-btn):hover:not(:disabled) { background: #0f172a; }
+  :global(.submit-btn):disabled { opacity: 0.6; cursor: not-allowed; }
 
   /* ── Confirmation ── */
   .confirm-box {

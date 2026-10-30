@@ -16,6 +16,7 @@
   below the "+ Add filter" anchor in ComponentsTab.
 -->
 <script>
+  import ToggleChip from '#lib/components/common/ToggleChip.svelte';
   import Button from '#lib/components/common/Button.svelte';
   import { matchesSearch } from '#lib/utils/textSearch.js';
   import { createEventDispatcher, onMount } from 'svelte';
@@ -229,10 +230,7 @@
           <div class="flex flex-wrap gap-1.5">
             {#each chosenOptions as opt (opt.id)}
               {@const selected = (draft?.values ?? []).includes(opt.value)}
-              <Button variant="plain" on:click={() => toggleValueInSet(opt.value)} className="px-2 py-1 text-xs rounded border transition-colors
-                       {selected
-                         ? 'bg-purple-600/30 border-purple-500/60 text-purple-200'
-                         : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-500'}">{opt.value}</Button>
+              <ToggleChip pill={false} active={selected} on:click={() => toggleValueInSet(opt.value)}>{opt.value}</ToggleChip>
             {/each}
           </div>
         {/if}

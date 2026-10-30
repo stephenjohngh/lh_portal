@@ -4,14 +4,15 @@
 // (Button, MenuButton, SegmentedControl, FormInput …), so a change of look is one
 // edit. ~300 raw buttons were converted; the rest are chips and toggles with a
 // computed class, listed in rawButtonBaseline.json with how many each file still
-// has. A file may only go DOWN. Phone apps, public pages and the common
-// components' own internals are out of scope (they own their look).
+// has. A file may only go DOWN. Only the phone apps and the common components'
+// own internals are out of scope (they own their look); public pages use
+// Button variant="public" / PublicShell.
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import baseline from './rawButtonBaseline.json';
 
-const SKIP_DIRS = ['apps/inspection/', 'apps/mobileplan/', 'apps/managementmobile/', 'src/routes/'];
+const SKIP_DIRS = ['apps/inspection/', 'apps/mobileplan/', 'apps/managementmobile/'];
 const SKIP_FILES = ['TextScanner', 'RichTextEditor', 'EditorFindBar', 'PhotoLightbox', 'ConfirmDialog', 'Modal.svelte',
   'MenuButton', 'SegmentedControl', 'TabBar', 'AppGate', 'common/Button', 'MultiSelectDropdown',
   'DocEditor', 'ScanButton', 'harness', '.test.'];

@@ -4,7 +4,8 @@
      given, and back the step's public name, the process and two dates.
      Nothing about the person. No login. -->
 <script>
-  import { LOGO as lhLogo, LOGO_ALT } from '#lib/branding.js';
+  import Button from '#lib/components/common/Button.svelte';
+  import PublicShell from '#lib/components/public/PublicShell.svelte';
   import { fmtDate } from '#lib/utils/dates.js';
 
   /** @type {{ intro: string }} */
@@ -41,9 +42,7 @@
   <meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="min-h-screen bg-slate-50 text-slate-900">
-  <header class="bg-slate-900 px-4 py-3"><img src={lhLogo} alt={LOGO_ALT} class="h-9 w-auto" /></header>
-  <main class="max-w-md mx-auto px-4 py-6 space-y-4">
+<PublicShell width="sm">
     <h1 class="text-2xl font-semibold">Where has it got to?</h1>
     {#if data.intro}<p class="text-slate-700" data-testid="status-intro">{data.intro}</p>{/if}
     <form class="space-y-3" on:submit|preventDefault={check}>
@@ -52,8 +51,7 @@
       <label class="block"><span class="font-medium">Code</span>
         <input class={field} bind:value={code} placeholder="R7P-QK2" autocomplete="off" /></label>
       {#if error}<p class="rounded-lg bg-red-50 border border-red-200 p-3 text-red-800" role="alert">{error}</p>{/if}
-      <button type="submit" disabled={checking}
-        class="w-full min-h-[48px] rounded-lg bg-teal-700 text-white font-semibold disabled:opacity-50">{checking ? 'Checking…' : 'Check'}</button>
+      <Button variant="public" size="large" type="submit" fullWidth disabled={checking}>{checking ? 'Checking…' : 'Check'}</Button>
     </form>
 
     {#if status}
@@ -64,5 +62,4 @@
         <p class="text-sm text-slate-600">Received {fmtDate(status.received)}{status.updated !== status.received ? ` · last changed ${fmtDate(status.updated)}` : ''}</p>
       </div>
     {/if}
-  </main>
-</div>
+</PublicShell>

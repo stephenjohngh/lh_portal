@@ -5,6 +5,7 @@
      Used wherever the current user has read-only access to Building Assets. -->
 
 <script>
+  import ToggleChip from '#lib/components/common/ToggleChip.svelte';
   import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher }   from 'svelte';
   import { buildingAssetsStore }     from '../stores/buildingAssetsStore.js';
@@ -144,10 +145,7 @@
             {type?.name ?? 'Type'} Attributes
           </p>
           {#if conditionDefs.length > 0}
-            <Button variant="plain" on:click={() => showConditionAttrs = !showConditionAttrs} className="text-xs px-2 py-0.5 rounded border transition-colors shrink-0
-                     {showConditionAttrs
-                       ? 'bg-purple-600/30 border-purple-500/50 text-purple-300'
-                       : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-300'}">Condition attrs ({conditionDefs.length})</Button>
+            <ToggleChip pill={false} active={showConditionAttrs} on:click={() => showConditionAttrs = !showConditionAttrs}>Condition attrs ({conditionDefs.length})</ToggleChip>
           {/if}
         </div>
 

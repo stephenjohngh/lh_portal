@@ -3,7 +3,8 @@
      and code given when it was sent, and the step's public name back — set in
      Admin → Workflows. Nothing about the applicant is shown. No login. -->
 <script>
-  import { LOGO as lhLogo, LOGO_ALT } from '#lib/branding.js';
+  import Button from '#lib/components/common/Button.svelte';
+  import PublicShell from '#lib/components/public/PublicShell.svelte';
   import { fmtDate } from '#lib/utils/dates.js';
 
   let reference = '';
@@ -37,9 +38,7 @@
   <meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="min-h-screen bg-slate-50 text-slate-900">
-  <header class="bg-slate-900 px-4 py-3"><img src={lhLogo} alt={LOGO_ALT} class="h-9 w-auto" /></header>
-  <main class="max-w-md mx-auto px-4 py-6 space-y-4">
+<PublicShell width="sm">
     <h1 class="text-2xl font-semibold">Your parking application</h1>
     <form class="space-y-3" on:submit|preventDefault={check}>
       <label class="block"><span class="font-medium">Reference</span>
@@ -47,8 +46,7 @@
       <label class="block"><span class="font-medium">Code</span>
         <input class={field} bind:value={code} placeholder="R7P-QK2" autocomplete="off" /></label>
       {#if error}<p class="rounded-lg bg-red-50 border border-red-200 p-3 text-red-800" role="alert">{error}</p>{/if}
-      <button type="submit" disabled={checking}
-        class="w-full min-h-[48px] rounded-lg bg-teal-700 text-white font-semibold disabled:opacity-50">{checking ? 'Checking…' : 'Check'}</button>
+      <Button variant="public" size="large" type="submit" fullWidth disabled={checking}>{checking ? 'Checking…' : 'Check'}</Button>
     </form>
 
     {#if status}
@@ -59,5 +57,4 @@
       </div>
     {/if}
     <p class="text-sm text-slate-600"><a class="underline text-teal-700" href="/parking/apply">Apply for a parking space</a></p>
-  </main>
-</div>
+</PublicShell>

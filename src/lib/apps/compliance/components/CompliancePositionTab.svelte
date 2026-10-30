@@ -25,6 +25,7 @@
      configuration makes it redundant, and §5 of the design doc leaves widening
      the app open. -->
 <script>
+  import ToggleChip from '#lib/components/common/ToggleChip.svelte';
   import SegmentedControl from '#lib/components/common/SegmentedControl.svelte';
   import { onMount } from 'svelte';
   import { listWalkSessions } from '#lib/apps/inspection/public.js';
@@ -354,14 +355,14 @@
       <div class="frow">
         <span class="fl">Category</span>
         {#each GROUPS as g (g)}
-          <Button variant="plain" on:click={() => (fGroups = toggle(fGroups, g))} className="chip {fGroups.includes(g) ? 'on' : ''}">{GROUP_LABEL[g]}</Button>
+          <ToggleChip active={fGroups.includes(g)} on:click={() => (fGroups = toggle(fGroups, g))}>{GROUP_LABEL[g]}</ToggleChip>
         {/each}
-        <Button variant="plain" on:click={() => (fGroups = toggle(fGroups, 'unlisted'))} className="chip {fGroups.includes('unlisted') ? 'on' : ''}">Not in the register</Button>
+        <ToggleChip active={fGroups.includes('unlisted')} on:click={() => (fGroups = toggle(fGroups, 'unlisted'))}>Not in the register</ToggleChip>
       </div>
       <div class="frow">
         <span class="fl">Source</span>
         {#each BASIS as b (b)}
-          <Button variant="plain" on:click={() => (fBases = toggle(fBases, b))} className="chip {fBases.includes(b) ? 'on' : ''}">{BASIS_LABEL[b]}</Button>
+          <ToggleChip active={fBases.includes(b)} on:click={() => (fBases = toggle(fBases, b))}>{BASIS_LABEL[b]}</ToggleChip>
         {/each}
       </div>
       <div class="frow">

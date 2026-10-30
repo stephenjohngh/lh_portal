@@ -16,7 +16,6 @@ const SKIP = /apps[\/](inspection|mobileplan|managementmobile)[\/]/;
 
 // Kept as links on purpose — each NAVIGATES to a thing rather than acting:
 const ALLOWED = {
-  'src/routes/pack/[token]/+page.svelte': 'the public pack’s document tree; titles open the document',
 };
 
 function svelteFiles(dir) {

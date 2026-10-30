@@ -7,7 +7,8 @@
      /parking/apply/status. The application then goes through the Parking
      application workflow (Parking → Applications). -->
 <script>
-  import { LOGO as lhLogo, LOGO_ALT } from '#lib/branding.js';
+  import Button from '#lib/components/common/Button.svelte';
+  import PublicShell from '#lib/components/public/PublicShell.svelte';
   import { APPLICANT_KINDS, applicationSizes, applicationProblems } from '#lib/apps/parking/utils/applicationForm.js';
 
   export let data;
@@ -49,10 +50,7 @@
   <meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="min-h-screen bg-slate-50 text-slate-900">
-  <header class="bg-slate-900 px-4 py-3"><img src={lhLogo} alt={LOGO_ALT} class="h-9 w-auto" /></header>
-
-  <main class="max-w-xl mx-auto px-4 py-6 space-y-5">
+<PublicShell width="md">
     {#if sent}
       <div class="rounded-xl bg-white border border-slate-200 p-5 space-y-3 text-center" data-testid="apply-sent">
         <p class="text-3xl text-green-600">✓</p>
@@ -136,12 +134,10 @@
 
           {#if sendError}<p class="rounded-lg bg-red-50 border border-red-200 p-3 text-red-800" role="alert">{sendError}</p>{/if}
 
-          <button type="submit" disabled={sending}
-            class="w-full min-h-[52px] rounded-lg bg-teal-700 text-white text-lg font-semibold disabled:opacity-50">
-            {sending ? 'Sending…' : 'Send application'}</button>
+          <Button variant="public" size="large" type="submit" fullWidth disabled={sending}>
+            {sending ? 'Sending…' : 'Send application'}</Button>
           <p class="text-sm text-slate-600 text-center">Already applied? <a class="underline text-teal-700" href="/parking/apply/status">Check where it has got to</a>.</p>
         </form>
       {/if}
     {/if}
-  </main>
-</div>
+</PublicShell>

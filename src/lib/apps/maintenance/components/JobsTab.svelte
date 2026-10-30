@@ -1,6 +1,7 @@
 <!-- src/lib/apps/maintenance/components/JobsTab.svelte -->
 <!-- Full filterable list of all maintenance jobs. -->
 <script>
+  import ToggleChip from '#lib/components/common/ToggleChip.svelte';
   import { maintenanceStore } from '../stores/maintenanceStore.js';
   import { jobStage } from '../utils/maintenanceJobWorkflow.js';
   import Button from '#lib/components/common/Button.svelte';
@@ -70,7 +71,7 @@
     <!-- Status chips -->
     <div class="flex flex-wrap gap-1.5">
       {#each STATUS_OPTS as opt}
-        <Button variant="plain" on:click={() => statusFilter = opt.value} className="filter-chip {statusFilter === opt.value ? 'filter-chip-active' : ''}">{opt.label}</Button>
+        <ToggleChip size="small" active={statusFilter === opt.value} on:click={() => statusFilter = opt.value}>{opt.label}</ToggleChip>
       {/each}
     </div>
     <!-- Search + scope row -->
