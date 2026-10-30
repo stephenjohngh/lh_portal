@@ -18,6 +18,7 @@
   import { spaceRollup } from '../../utils/spaceReport.js';
   import { typesForKind } from '../../utils/spaceTypeOptions.js';
   import RowOfBaysModal from './RowOfBaysModal.svelte';
+  import GuideHelp from '#lib/apps/guides/components/GuideHelp.svelte';
   import { canSplitIntoBays } from '../../utils/bayRow.js';
 
   // "Split into a row of parking bays": offered only for a four-cornered outline
@@ -591,6 +592,9 @@
       {#if splitDone}<p class="text-xs text-green-400">{splitDone}</p>{/if}
       <p class="text-xs text-slate-700 font-mono">id: {space.id.slice(0, 8)}…</p>
     </div>
+
+    <!-- A how-to guide linked to this space (the bin store → how to move the bins), via guides/public.js -->
+    <div class="px-4 pb-3"><GuideHelp context={{ space_id: space.id }} heading="How to" /></div>
 
   </div><!-- /.body -->
 

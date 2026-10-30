@@ -5,6 +5,9 @@
 // the text opens everything about it, read-only (2026-10-27).
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
+// The details modal embeds the Guides view, which reads the database; the row's own behaviour is tested here.
+vi.mock('#lib/apps/guides/public.js', () => ({ guidesFor: async () => [] }));
+
 import OccurrenceRow from './OccurrenceRow.svelte';
 import EventDetailsModal from './EventDetailsModal.svelte';
 

@@ -7,6 +7,7 @@
   import { createEventDispatcher } from 'svelte';
   import Modal  from '#lib/components/common/Modal.svelte';
   import Button from '#lib/components/common/Button.svelte';
+  import GuideHelp from '#lib/apps/guides/components/GuideHelp.svelte';
   import { fmtDateLong } from '#lib/utils/dates.js';
   import { STATUS } from '../utils/agenda.js';
   import { categoryOf } from '../utils/categories.js';
@@ -91,6 +92,10 @@
         </div>
       {/if}
     </dl>
+    {#if !linked && series.id}
+      <!-- A how-to guide linked to this event (bin day → how to move the bins), read through guides/public.js. -->
+      <div class="mt-3"><GuideHelp context={{ planner_series_id: series.id }} heading="How to" /></div>
+    {/if}
   {/if}
 
   <div slot="footer" class="flex items-center gap-2">

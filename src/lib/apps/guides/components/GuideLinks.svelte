@@ -11,6 +11,8 @@
   import FormSelect from '#lib/components/common/FormSelect.svelte';
   import { api } from '#lib/utils/api.js';
   import { listPlannedObligations } from '#lib/apps/compliance/public.js';
+  import { listPlannerEventsForPicker } from '#lib/apps/planner/public.js';
+  import { buildSpaceRef } from '#lib/utils/spaceRef.js';
   import { guidesStore } from '../stores/guidesStore.js';
   import { specificity } from '../utils/guideModel.js';
   import { buildComponentRef } from '#lib/utils/componentRef.js';
@@ -26,6 +28,10 @@
   /** @type {any[]} */ let attributes = [];
   /** @type {any[]} */ let components = [];
   /** @type {any[]} */ let floors = [];
+  /** @type {any[]} */ let spaces = [];
+  /** @type {any[]} */ let events = [];
+  let spaceId = '';
+  let eventId = '';
   let obligationId = '';
   let typeId = '';
   let attributeId = '';
@@ -41,6 +47,11 @@
     const c = components.find((x) => x.id === id);
     return c ? buildComponentRef(c, floors, types) : 'a component that is no longer there';
   };
+  $: spaceName = (/** @type {string} */ id) => {
+    const sp = spaces.find((x) => x.id === id);
+    return sp ? `${buildSpaceRef(sp, floors)}${sp.name ? ` — ${sp.name}` : ''}` : 'a space that is no longer there';
+  };
+  $: eventName = (/** @type {string} */ id) => events.find((e) => e.id === id)?.title ?? 'an event that is no longer there';
   $: attrName = (/** @type {string} */ id) => attributes.find((a) => a.id === id)?.name ?? 'a check that is no longer there';
   // A check belongs to a type, so it is chosen from the chosen type's condition checks.
   $: typeAttributes = typeId ? attributes.filter((a) => a.component_type_id === typeId && a.checkable) : [];
@@ -53,32 +64,37 @@
       l.component_type_id && `type: ${tyName(l.component_type_id)}`,
       l.type_attribute_id && `check: ${attrName(l.type_attribute_id)}`,
       l.component_id && `component: ${refOf(l.component_id)}`,
+      l.space_id && `space: ${spaceName(l.space_id)}`,
+      l.planner_series_id && `Planner event: ${eventName(l.planner_series_id)}`,
     ]
     .filter(Boolean).join(' · ') || 'somewhere else (set by another screen)';
 
   onMount(async () => {
     try {
-      [links, obligations, types, attributes, components, floors] = await Promise.all([
+      [links, obligations, types, attributes, components, floors, spaces, events] = await Promise.all([
         guidesStore.listLinks(guideId),
         listPlannedObligations(),
         api.getAll('component_types', { orderBy: 'name' }),
         api.getAll('type_attributes', { orderBy: 'presentation_order' }),
         api.getAll('components', { select: 'id, type_code, asset_id, label, floor_id' }),
         api.getAll('floors', { orderBy: 'id' }),
+        api.getAll('spaces', { select: 'id, name, kind, assigned_id, floor_id' }),
+        listPlannerEventsForPicker(),
       ]);
     } catch (e) { error = errMessage(e); }
     finally { loaded = true; }
   });
 
   async function add() {
-    if (!obligationId && !typeId && !attributeId && !componentId) return;
+    if (!obligationId && !typeId && !attributeId && !componentId && !spaceId && !eventId) return;
     busy = true; error = '';
     try {
       const l = await guidesStore.addLink(guideId, {
         obligation_id: obligationId || null, component_type_id: typeId || null,
         type_attribute_id: attributeId || null, component_id: componentId || null,
+        space_id: spaceId || null, planner_series_id: eventId || null,
       });
-      links = [...links, l]; obligationId = ''; typeId = ''; attributeId = ''; componentId = ''; componentSearch = '';
+      links = [...links, l]; obligationId = ''; typeId = ''; attributeId = ''; componentId = ''; componentSearch = ''; spaceId = ''; eventId = '';
     } catch (e) { error = errMessage(e); }
     finally { busy = false; }
   }
@@ -94,7 +110,7 @@
 <section class="rounded-lg border border-slate-700 bg-slate-800/60 p-3 space-y-2" data-testid="guide-links">
   <h3 class="text-sm font-semibold text-white">Where it is offered</h3>
   <p class="text-xs text-slate-400">
-    In an inspection walk. Choose a planned obligation (the whole walk), a type of component, a single check of that type, or one component — or combine them: the guide is offered only where everything you choose matches.
+    In an inspection walk, on a space, or on a Planner event. Choose a planned obligation (the whole walk), a type of component, a single check of that type, or one component — or combine them: the guide is offered only where everything you choose matches.
    
   </p>
   {#if error}<p class="text-red-400 text-sm" role="alert">{error}</p>{/if}
@@ -134,6 +150,12 @@
         {#if componentId}<p class="text-xs text-teal-300 mt-1">Chosen: {refOf(componentId)}</p>{/if}
       </div>
     </div>
-    <Button variant="secondary" disabled={busy || (!obligationId && !typeId && !attributeId && !componentId)} on:click={add}>Add link</Button>
+    <div class="grid gap-2 sm:grid-cols-2 items-end">
+      <FormSelect label="A space (e.g. the bin store)" placeholder="— none —" bind:value={spaceId}
+        options={spaces.map((sp) => ({ value: sp.id, label: spaceName(sp.id) }))} />
+      <FormSelect label="A Planner event (e.g. bin day)" placeholder="— none —" bind:value={eventId}
+        options={events.map((e) => ({ value: e.id, label: e.title }))} />
+    </div>
+    <Button variant="secondary" disabled={busy || (!obligationId && !typeId && !attributeId && !componentId && !spaceId && !eventId)} on:click={add}>Add link</Button>
   {/if}
 </section>
