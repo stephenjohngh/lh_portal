@@ -7,6 +7,7 @@
     Meeting Minutes    — per-meeting minutes with attendees and tagged items
 -->
 <script>
+  import TabBar from '#lib/components/common/TabBar.svelte';
   import Button from '#lib/components/common/Button.svelte';
   import IssuesReportPanel         from './IssuesReportPanel.svelte';
   import ActionsReportPanel        from './ActionsReportPanel.svelte';
@@ -26,14 +27,7 @@
 <div class="flex flex-col" style="height: calc(100vh - 260px); min-height: 500px;">
 
   <!-- Sub-tab bar -->
-  <div class="flex border-b border-slate-700 shrink-0">
-    {#each tabs as tab}
-      <Button variant="plain" on:click={() => activeReport = tab.id} className="px-4 py-2 text-sm font-medium border-b-2 transition-colors
-               {activeReport === tab.id
-                 ? 'text-white border-purple-500'
-                 : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}">{tab.label}</Button>
-    {/each}
-  </div>
+  <div class="shrink-0"><TabBar tabs={tabs.map(t => ({ key: t.id, label: t.label }))} active={activeReport} on:select={(e) => activeReport = e.detail} /></div>
 
   <!-- Active panel — fills remaining height with independent scrolling -->
   <div class="flex-1 min-h-0 overflow-hidden">

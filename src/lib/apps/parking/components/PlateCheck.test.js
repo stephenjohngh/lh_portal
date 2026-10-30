@@ -47,7 +47,7 @@ import PlateCheck from './PlateCheck.svelte';
 beforeEach(() => { cleanup(); localStorage.clear(); h.checked.length = 0; h.recorded.length = 0; h.online.set(true); h.sightings.set({ sightings: [], error: null }); });
 
 async function checkTyped(value, place = 'Car park') {
-  await fireEvent.click(await screen.findByRole('button', { name: place }));
+  await fireEvent.click(await screen.findByRole('radio', { name: place }));
   await fireEvent.input(await screen.findByPlaceholderText('Or type it'), { target: { value } });
   await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
   return screen.findByTestId('car-check-result');
@@ -58,7 +58,7 @@ describe('Car check', () => {
     render(PlateCheck);
     const scan = await screen.findByRole('button', { name: /Scan a number plate/ });
     expect(scan.hasAttribute('disabled')).toBe(true);              // where is the car, first
-    await fireEvent.click(screen.getByRole('button', { name: 'Side road' }));
+    await fireEvent.click(screen.getByRole('radio', { name: 'Side road' }));
     expect(scan.hasAttribute('disabled')).toBe(false);
     expect(screen.queryByTestId('text-scanner')).toBeNull();
     await fireEvent.click(scan);
@@ -173,7 +173,7 @@ describe('Car check', () => {
       bay: { ref: 'L/PK/22' }, agreement: { reference: 'PA-0001', status: 'active' }, holder: null }] };
     render(PlateCheck);
     expect((await checkTyped('AB12CDE', 'Car park')).dataset.tone).toBe('ok');
-    await fireEvent.click(screen.getByRole('button', { name: 'Side road' }));
+    await fireEvent.click(screen.getByRole('radio', { name: 'Side road' }));
     expect(screen.getByTestId('car-check-result').dataset.tone).toBe('none');
   });
 });

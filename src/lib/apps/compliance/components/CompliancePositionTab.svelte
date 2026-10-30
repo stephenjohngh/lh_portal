@@ -25,6 +25,7 @@
      configuration makes it redundant, and §5 of the design doc leaves widening
      the app open. -->
 <script>
+  import SegmentedControl from '#lib/components/common/SegmentedControl.svelte';
   import { onMount } from 'svelte';
   import { listWalkSessions } from '#lib/apps/inspection/public.js';
   import { listJobEvidence } from '#lib/apps/maintenance/public.js';
@@ -344,10 +345,7 @@
 
     <!-- Report switch + export -->
     <div class="bar">
-      <div class="views">
-        <Button variant="plain" on:click={() => (report = 'position')} className="view-btn {report === 'position' ? 'on' : ''}">Compliance position</Button>
-        <Button variant="plain" on:click={() => (report = 'history')} className="view-btn {report === 'history' ? 'on' : ''}">Evidence history</Button>
-      </div>
+      <SegmentedControl size="small" label="Report" options={[{ value: 'position', label: 'Compliance position' }, { value: 'history', label: 'Evidence history' }]} bind:value={report} />
       <Button variant="secondary" size="small" on:click={() => (showExport = true)}>⬇ Word report</Button>
     </div>
 

@@ -13,6 +13,7 @@
      table's RLS is gated on the grant too, so the gate below is the screen's
      courtesy, not the control. -->
 <script>
+  import SegmentedControl from '#lib/components/common/SegmentedControl.svelte';
   import { permissions } from '#lib/stores/permissions.js';
   import { hasAppAccess } from '#lib/utils/appAccess.js';
   import { permitStore } from './stores/permitStore.js';
@@ -219,10 +220,8 @@
     {:else}
       <!-- Level -->
       <div class="flex flex-wrap items-center gap-2">
-        {#each levels as f (f.id)}
-          <Button variant="plain" on:click={() => chooseLevel(f.id)} className="px-3 py-1.5 rounded text-sm border transition-colors
-                   {f.id === floorId ? 'bg-purple-600 border-purple-500 text-white' : 'border-slate-600 text-slate-300 hover:bg-slate-700'}">{f.name} <span class="opacity-70">({state.bays.filter(b => b.floor_id === f.id).length})</span></Button>
-        {/each}
+        <SegmentedControl size="small" label="Level" options={levels.map(f => ({ value: f.id, label: `${f.name} (${state.bays.filter(b => b.floor_id === f.id).length})` }))}
+          value={floorId} on:change={(e) => chooseLevel(e.detail)} />
         <span class="flex-1"></span>
         <Button size="small" variant="secondary" loading={printing} disabled={printing} on:click={printPlan}>
           ⬇ Print bay schematic (Word)

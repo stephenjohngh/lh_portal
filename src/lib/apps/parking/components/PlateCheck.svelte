@@ -19,6 +19,7 @@
      "Allowed" offers Record this car — where, a photo, a note — and every answer
      shows the car's earlier sightings. -->
 <script>
+  import SegmentedControl from '#lib/components/common/SegmentedControl.svelte';
   import Button from '#lib/components/common/Button.svelte';
   import { onMount, tick } from 'svelte';
   import AppGate from '#lib/components/common/AppGate.svelte';
@@ -206,12 +207,7 @@
 
       <fieldset class="space-y-1" data-testid="car-check-place">
         <legend class="text-sm text-slate-300">Where is the car?</legend>
-        <div class="flex gap-2">
-          {#each Object.entries(SIGHTING_PLACES) as [value, label]}
-            <Button variant="plain" type="button" on:click={() => choosePlace(value)} aria-pressed={place === value} className="flex-1 min-h-[48px] rounded-lg border text-base
-                {place === value ? 'border-purple-400 bg-purple-900/50 text-white font-semibold' : 'border-slate-600 text-slate-300'}">{label}</Button>
-          {/each}
-        </div>
+        <SegmentedControl size="medium" fullWidth label="Where is the car?" options={Object.entries(SIGHTING_PLACES).map(([value, label]) => ({ value, label }))} value={place} on:change={(e) => choosePlace(e.detail)} />
       </fieldset>
 
       <Button variant="primary" size="large" disabled={!place} on:click={scanAgain}>📷 {result ? 'Scan another' : 'Scan a number plate'}</Button>

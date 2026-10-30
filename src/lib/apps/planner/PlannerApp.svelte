@@ -6,6 +6,7 @@
      (P2) come next, and the model was built first on purpose — the hard part is
      series-versus-occurrence, and everything else depends on it being right. -->
 <script>
+  import SegmentedControl from '#lib/components/common/SegmentedControl.svelte';
   import { errMessage } from '#lib/utils/errors.js';
   import { onMount, tick } from 'svelte';
   import { auth } from '#lib/stores/auth.js';
@@ -504,13 +505,8 @@
       <p class="text-xs text-slate-500 mt-0.5">{summary}</p>
     </div>
 
-    <div class="flex rounded border border-slate-600 overflow-hidden text-xs shrink-0">
-      {#each [['year', 'Year'], ['month', 'Month'], ['agenda', 'Agenda']] as [key, label]}
-        <Button variant="plain" type="button" on:click={() => { view = key; selectedDay = null; }} className="px-2.5 py-1 transition-colors
-                       {view === key ? 'bg-purple-600 text-white'
-                                     : 'text-slate-400 hover:bg-slate-700'}">{label}</Button>
-      {/each}
-    </div>
+    <SegmentedControl size="xs" label="View" options={[{ value: 'year', label: 'Year' }, { value: 'month', label: 'Month' }, { value: 'agenda', label: 'Agenda' }]}
+      value={view} on:change={(e) => { view = e.detail; selectedDay = null; }} />
 
     {#if view === 'month'}
       <div class="flex items-center gap-1 shrink-0">

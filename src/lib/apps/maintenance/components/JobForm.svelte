@@ -1,6 +1,7 @@
 <!-- src/lib/apps/maintenance/components/JobForm.svelte -->
 <!-- Create or edit a maintenance job. -->
 <script>
+  import SegmentedControl from '#lib/components/common/SegmentedControl.svelte';
   import { createEventDispatcher } from 'svelte';
   import { maintenanceStore }      from '../stores/maintenanceStore.js';
   import { frequencyLabel, scopeTypeLabel, today } from '../utils/maintenanceHelpers.js';
@@ -144,11 +145,8 @@
     <!-- Scope type + selector -->
     <div>
       <p class="text-xs text-slate-400 mb-1.5">What this job covers</p>
-      <div class="flex gap-2 flex-wrap mb-3">
-        {#each ['building', 'system', 'type'] as st}
-          <Button variant="plain" on:click={() => { scopeType = st; onScopeTypeChange(); }} className="scope-btn {scopeType === st ? 'scope-btn-active' : ''}">{scopeTypeLabel(st)}</Button>
-        {/each}
-      </div>
+      <div class="mb-3"><SegmentedControl size="small" label="What this job covers" options={['building', 'system', 'type'].map(st => ({ value: st, label: scopeTypeLabel(st) }))}
+          value={scopeType} on:change={(e) => { scopeType = e.detail; onScopeTypeChange(); }} /></div>
 
       {#if scopeType !== 'building'}
         <select bind:value={scopeId}

@@ -1,4 +1,5 @@
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { LOGO as lhLogo, LOGO_ALT } from '#lib/branding.js';
   import { auth } from '#lib/stores/auth.js';
   import { goto } from '$app/navigation';
@@ -69,13 +70,7 @@
         <p class="text-red-400 text-sm">{error}</p>
       {/if}
 
-      <button
-        type="submit"
-        disabled={loading}
-        class="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white font-semibold py-3 rounded-lg transition-colors"
-      >
-        {loading ? 'Signing in...' : 'Sign In'}
-      </button>
+      <Button variant="primary" size="large" type="submit" fullWidth disabled={loading}>{loading ? 'Signing in...' : 'Sign In'}</Button>
     </form>
   </div>
 </div>

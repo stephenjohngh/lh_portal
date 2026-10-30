@@ -1,5 +1,6 @@
 <!-- src/lib/apps/mor/components/CaseList.svelte -->
 <script>
+  import SegmentedControl from '#lib/components/common/SegmentedControl.svelte';
   import Button from '#lib/components/common/Button.svelte';
   import { matchesSearch } from '#lib/utils/textSearch.js';
   import { createEventDispatcher } from 'svelte';
@@ -66,12 +67,7 @@
 <!-- Filter toolbar -->
 <div class="flex flex-wrap items-center gap-2 mb-4">
   <!-- Open / closed / all toggle -->
-  <div class="flex rounded-lg border border-slate-600 overflow-hidden text-xs">
-    {#each [['open','Open'], ['closed','Closed'], ['all','All']] as [val, label]}
-      <Button variant="plain" type="button" on:click={() => showFilter = val} className="px-3 py-1.5 transition-colors
-               {showFilter === val ? 'bg-slate-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}">{label}</Button>
-    {/each}
-  </div>
+  <SegmentedControl size="xs" label="Show" options={[{ value: 'open', label: 'Open' }, { value: 'closed', label: 'Closed' }, { value: 'all', label: 'All' }]} bind:value={showFilter} />
 
   <select bind:value={filterStatus}
     class="bg-slate-800 border border-slate-600 rounded-lg px-2 py-1.5 text-xs text-slate-300

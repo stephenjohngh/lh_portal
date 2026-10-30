@@ -275,37 +275,21 @@
       <div class="max-w-7xl mx-auto px-4">
         <div class="flex items-center justify-between h-16">
           <div class="flex items-center space-x-4">
-            <button
-              on:click={() => menuOpen = !menuOpen}
-              aria-label="Toggle menu"
-              class="p-2 hover:bg-purple-800/70 rounded-lg transition-colors lg:hidden"
-            >
-              <Icon name="menu" size={6} />
-            </button>
+            <Button variant="plain" on:click={() => menuOpen = !menuOpen} aria-label="Toggle menu" className="p-2 hover:bg-purple-800/70 rounded-lg transition-colors lg:hidden"><Icon name="menu" size={6} /></Button>
 
-            <button
-              on:click={() => activeApp = 'home'}
-              class="flex items-center space-x-2 hover:opacity-80 transition-opacity"
-              aria-label="Go to home"
-            >
-              <img src={lhLogo} alt={LOGO_ALT} class="h-12 w-auto" />
-                          </button>
+            <Button variant="plain" on:click={() => activeApp = 'home'} aria-label="Go to home" className="flex items-center space-x-2 hover:opacity-80 transition-opacity"><img src={lhLogo} alt={LOGO_ALT} class="h-12 w-auto" /></Button>
           </div>
 
           <div class="hidden lg:flex items-center space-x-1">
             {#each topbarApps as app}
-              <button
-                on:click={() => activeApp = app.id}
-                aria-label={app.name}
-                class={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+              <Button variant="plain" on:click={() => activeApp = app.id} aria-label={app.name} className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
                   activeApp === app.id
                     ? 'bg-purple-700 text-white'
                     : 'hover:bg-purple-800/70 text-purple-200'
-                }`}
-              >
-                <Icon name={app.icon} size={5} />
+                }`}>
+<Icon name={app.icon} size={5} />
                 <span>{app.name}</span>
-              </button>
+</Button>
             {/each}
           </div>
 
@@ -329,21 +313,17 @@
       {#if menuOpen}
         <div class="lg:hidden border-t border-purple-800/60 bg-purple-950">
           {#each topbarApps as app}
-            <button
-              on:click={() => {
+            <Button variant="plain" on:click={() => {
                 activeApp = app.id;
                 menuOpen = false;
-              }}
-              aria-label={app.name}
-              class={`flex items-center space-x-3 w-full px-4 py-3 transition-colors ${
+              }} aria-label={app.name} className={`flex items-center space-x-3 w-full px-4 py-3 transition-colors ${
                 activeApp === app.id
                   ? 'bg-purple-700 text-white'
                   : 'hover:bg-purple-800/70 text-purple-200'
-              }`}
-            >
-              <Icon name={app.icon} size={8} />
+              }`}>
+<Icon name={app.icon} size={8} />
               <span>{app.name}</span>
-            </button>
+</Button>
           {/each}
         </div>
       {/if}
@@ -386,17 +366,13 @@
           {:else}
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {#each displayedApps.filter(a => a.id !== 'home') as app}
-                <button
-                  on:click={() => activeApp = app.id}
-                  aria-label={`Open ${app.name}`}
-                  class="bg-slate-800 hover:bg-slate-700 p-6 rounded-xl transition-all hover:scale-105 border border-slate-700 hover:border-purple-500"
-                >
-                  <Icon name={app.icon} size={12} className="text-purple-400 mb-4" />
+                <Button variant="plain" on:click={() => activeApp = app.id} aria-label={`Open ${app.name}`} className="bg-slate-800 hover:bg-slate-700 p-6 rounded-xl transition-all hover:scale-105 border border-slate-700 hover:border-purple-500">
+<Icon name={app.icon} size={12} className="text-purple-400 mb-4" />
                   <h3 class="text-xl font-semibold">{app.name}</h3>
                   <p class="text-gray-400 mt-2 text-sm">
                     {app.description || 'Click to open'}
                   </p>
-                </button>
+</Button>
               {/each}
             </div>
           {/if}

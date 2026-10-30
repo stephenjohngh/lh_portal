@@ -8,6 +8,7 @@
      deletes a permit issued in error and sets the template
      (PermitTemplatePanel). -->
 <script>
+  import SegmentedControl from '#lib/components/common/SegmentedControl.svelte';
   import { onMount } from 'svelte';
   import { permitStore } from '../stores/permitStore.js';
   import { permissions } from '#lib/stores/permissions.js';
@@ -265,10 +266,7 @@
         <div>
           <p class="text-xs text-slate-400 mb-1">For</p>
           <div class="flex gap-2">
-            {#each PERMIT_DURATIONS as d}
-              <Button variant="plain" type="button" on:click={() => chooseDuration(d.key)} className="px-3 py-1.5 rounded text-sm border transition-colors
-                       {duration === d.key ? 'bg-purple-600 border-purple-500 text-white' : 'border-slate-600 text-slate-300 hover:bg-slate-700'}">{d.label}</Button>
-            {/each}
+            <SegmentedControl size="small" label="For" options={PERMIT_DURATIONS.map(d => ({ value: d.key, label: d.label }))} value={duration} on:change={(e) => chooseDuration(e.detail)} />
             {#if duration === 'custom'}<span class="text-xs text-slate-400 self-center">Dates set by hand</span>{/if}
           </div>
         </div>

@@ -5,6 +5,7 @@
      Floor presets: All · Residential (G–7) · Basement (X,L,G) · Single floor. -->
 
 <script>
+  import SegmentedControl from '#lib/components/common/SegmentedControl.svelte';
   import Button from '#lib/components/common/Button.svelte';
   import { buildingName } from '#lib/utils/identity.js';
   import { errMessage } from '#lib/utils/errors.js';
@@ -707,18 +708,8 @@
           <p class="text-[10px] text-slate-300 uppercase tracking-wide font-semibold">Floor</p>
           <div class="flex items-center gap-1.5">
             <!-- Named presets -->
-            <div class="flex rounded-lg overflow-hidden border border-slate-600 text-xs">
-              {#each [
-                { id: 'all',         label: 'All' },
-                { id: 'residential', label: 'Residential' },
-                { id: 'basement',    label: 'Basement' },
-              ] as p (p.id)}
-                <Button variant="plain" on:click={() => { floorPreset = p.id; filterFloorIds = new Set(); }} className="px-3 py-1.5 border-l border-slate-600 first:border-l-0 transition-colors
-                         {floorPreset === p.id
-                           ? 'bg-purple-600 text-white font-medium'
-                           : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}">{p.label}</Button>
-              {/each}
-            </div>
+            <SegmentedControl size="small" label="Floor group" options={[{ value: 'all', label: 'All' }, { value: 'residential', label: 'Residential' }, { value: 'basement', label: 'Basement' }]}
+                value={floorPreset} on:change={(e) => { floorPreset = e.detail; filterFloorIds = new Set(); }} />
             <!-- Individual floor multi-select -->
             <MultiSelectDropdown
               placeholder="Floors…" noun="floors" title="Select individual floors"

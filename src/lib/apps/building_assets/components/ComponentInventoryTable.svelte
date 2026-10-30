@@ -15,6 +15,7 @@
      ComponentInventory leaves it empty. -->
 
 <script>
+  import SegmentedControl from '#lib/components/common/SegmentedControl.svelte';
   import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { typeByCode, defsForType, systemById, attrValue as lookupAttrValue } from '../lookups.js';
@@ -169,12 +170,7 @@
   <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-700 flex-wrap">
     <p class="font-semibold text-white text-sm shrink-0">{title}</p>
 
-    <div class="flex rounded-lg overflow-hidden border border-slate-600 text-xs shrink-0">
-      <Button variant="plain" on:click={() => view = 'list'} className="px-3 py-1 transition-colors
-               {view === 'list' ? 'bg-purple-600 text-white font-medium' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}">List</Button>
-      <Button variant="plain" on:click={() => view = 'summary'} className="px-3 py-1 border-l border-slate-600 transition-colors
-               {view === 'summary' ? 'bg-purple-600 text-white font-medium' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}">Summary</Button>
-    </div>
+    <SegmentedControl size="xs" label="View" options={[{ value: 'list', label: 'List' }, { value: 'summary', label: 'Summary' }]} bind:value={view} />
 
     <span class="ml-auto text-xs text-slate-500 shrink-0">
       {components.length} component{components.length !== 1 ? 's' : ''}
