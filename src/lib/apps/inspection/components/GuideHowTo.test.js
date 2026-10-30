@@ -2,10 +2,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 
-const h = vi.hoisted(() => ({ result: /** @type {any} */ ([]), fail: false, calls: /** @type {any[]} */ ([]) }));
+const h = vi.hoisted(() => ({ result: /** @type {any} */ ([]), cached: false, fail: false, calls: /** @type {any[]} */ ([]) }));
 
 vi.mock('#lib/apps/guides/public.js', () => ({
-  guidesFor: vi.fn(async (ctx) => { h.calls.push(ctx); if (h.fail) throw new Error('read failed'); return h.result; }),
+  guidesForWalk: vi.fn(async (ctx) => { h.calls.push(ctx); if (h.fail) throw new Error('read failed'); return { guides: h.result, fromCache: h.cached }; }),
 }));
 vi.mock('#lib/utils/driveUtils.js', () => ({ normalisePhotoUrl: (u) => u }));
 
@@ -19,7 +19,7 @@ const guide = (o = {}) => ({
   ], ...o,
 });
 
-beforeEach(() => { h.result = []; h.fail = false; h.calls = []; });
+beforeEach(() => { h.result = []; h.cached = false; h.fail = false; h.calls = []; });
 
 describe('GuideHowTo (the walk skin)', () => {
   it('shows nothing when no guide applies', async () => {
@@ -51,6 +51,13 @@ describe('GuideHowTo (the walk skin)', () => {
     expect(screen.getByText('Press the button')).toBeTruthy();
     expect(screen.getByText(/STOP — CALL SOMEONE/)).toBeTruthy();
     expect(onShown).toHaveBeenCalledWith({ g1: 3 });
+  });
+
+  it('says when it is showing the copy saved on the phone', async () => {
+    h.result = [guide()]; h.cached = true;
+    render(GuideHowTo, { props: { context: { obligation_id: 'ob' } } });
+    await fireEvent.click(await screen.findByRole('button', { name: /how to/i }));
+    expect(screen.getByTestId('from-cache')).toBeTruthy();
   });
 
   it('does not re-fetch when the parent re-passes an equal context', async () => {

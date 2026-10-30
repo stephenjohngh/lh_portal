@@ -11,6 +11,7 @@
   import { online } from '#lib/stores/online.js';
   import InspectionPanel             from './InspectionPanel.svelte';
   import GuideHowTo                  from './GuideHowTo.svelte';
+  import { prepareGuidesForWalk } from '#lib/apps/guides/public.js';
   import InspectionComponentEditor   from './InspectionComponentEditor.svelte';
   import InspectionJumpList          from './InspectionJumpList.svelte';
   import InspectionComponentPlanViewer from './InspectionComponentPlanViewer.svelte';
@@ -53,6 +54,20 @@
   $: types        = $inspectionStore.types;
   $: floors       = $inspectionStore.floors;
   $: plans        = $inspectionStore.plans;
+
+  // "Get this walk ready" (Guides S3): with a signal, keep the guides this walk could show — and
+  // their photos — on the phone, once per walk. Says so, and says when it could not.
+  let readyFor = '';
+  /** @type {string} */ let guidesReady = '';
+  $: if (session?.id && components.length && $online && readyFor !== session.id) {
+    readyFor = session.id;
+    prepareGuidesForWalk({
+      obligationId: session.definition_id,
+      typeIds: [...new Set(types.filter((t) => components.some((c) => c.type_code === t.code)).map((t) => t.id))],
+      componentIds: components.map((c) => c.id),
+    }).then((r) => { guidesReady = r.guides ? `${r.guides} guide${r.guides === 1 ? '' : 's'} saved on this phone for use with no signal${r.photosMissed ? ` (${r.photosMissed} photo${r.photosMissed === 1 ? '' : 's'} could not be saved)` : ''}.` : ''; })
+      .catch(() => { guidesReady = 'Guides could not be saved for use with no signal.'; });
+  }
 
   $: currentComponent  = components[currentIndex];
   $: currentType       = currentComponent ? types.find(t => t.code === currentComponent.type_code) : null;
@@ -293,6 +308,7 @@
       context={{ obligation_id: session?.definition_id, component_type_id: currentType?.id, component_id: currentComponent.id }}
       on:shown={(e) => inspectionStore.noteGuidesShown(e.detail)}
     />
+    {#if guidesReady}<p class="guides-ready" data-testid="guides-ready">{guidesReady}</p>{/if}
   {/if}
 
   <!-- -- View router -------------------------------------------------------- -->
@@ -699,4 +715,5 @@
     .nav-btn { padding:0.75rem 0.4rem; font-size:0.72rem; min-height:44px; }
     .plan-btn { padding:0.75rem 0.5rem; font-size:0.7rem; min-height:44px; }
   }
+  .guides-ready { margin: 0.25rem 0.75rem; font-size: 0.7rem; color: #a0a0b8; font-family: 'DM Mono', 'Courier New', monospace; }
 </style>

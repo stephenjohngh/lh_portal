@@ -11,7 +11,15 @@ vi.mock('#lib/utils/api.js', () => ({
   },
 }));
 
-import { guidesFor } from './public.js';
+const o = vi.hoisted(() => ({ saved: /** @type {Record<string, any>} */ ({}), photos: /** @type {Record<string, string>} */ ({}), cachedUrls: /** @type {string[]} */ ([]) }));
+vi.mock('./utils/guideOffline.js', () => ({
+  saveBundle: async (k, b) => { o.saved[k] = b; },
+  loadBundle: async (k) => o.saved[k] ?? null,
+  cachePhotos: async (urls) => { o.cachedUrls = urls; return { saved: urls.length, missed: 0 }; },
+  cachedPhotoUrl: async (u) => o.photos[u] ?? null,
+}));
+
+import { guidesFor, guidesForWalk, prepareGuidesForWalk } from './public.js';
 
 const guide = (o) => ({ id: 'g1', title: 'Testing a luminaire', status: 'published', version: 2, summary: 's', ...o });
 const link = (o) => ({ id: `l-${Math.random()}`, guide_id: 'g1', step_ids: null, created_at: 'x', ...o });
@@ -26,7 +34,7 @@ const version = (o) => ({
   }, ...o,
 });
 
-beforeEach(() => { h.tables = {}; h.failOn = null; });
+beforeEach(() => { h.tables = {}; h.failOn = null; o.saved = {}; o.photos = {}; o.cachedUrls = []; });
 
 describe('guidesFor — what the walk is shown', () => {
   it('returns the matching guide with its steps from the latest published version', async () => {
@@ -70,5 +78,50 @@ describe('guidesFor — what the walk is shown', () => {
     h.failOn = 'guide_links';
     h.tables = { guide_links: [link({ obligation_id: 'ob' })] };
     await expect(guidesFor({ obligation_id: 'ob' })).rejects.toThrow('read failed');
+  });
+});
+
+describe('guides for a walk with no signal', () => {
+  const tables = () => ({ guide_links: [link({ obligation_id: 'ob' }), link({ guide_id: 'g2', obligation_id: 'ob', component_type_id: 'ty' })],
+    guides: [guide(), guide({ id: 'g2', title: 'Type guide' })], guide_versions: [version(), version({ guide_id: 'g2' })] });
+
+  it('reads live when it can, and says it is not a saved copy', async () => {
+    h.tables = tables();
+    const r = await guidesForWalk({ obligation_id: 'ob' });
+    expect(r.fromCache).toBe(false);
+    expect(r.guides.map((g) => g.guideId)).toEqual(['g1']);
+  });
+
+  it('"get ready" saves everything the walk could show, and its photos', async () => {
+    h.tables = tables();
+    const r = await prepareGuidesForWalk({ obligationId: 'ob', typeIds: ['ty'], componentIds: ['c1'] });
+    expect(r).toEqual({ guides: 2, photos: 1, photosMissed: 0 });
+    expect(o.cachedUrls).toEqual(['u1']);
+    expect(o.saved['walk:ob'].guides).toHaveLength(2);
+  });
+
+  it('with the live read failing, answers from the saved copy — per component, from one saved walk', async () => {
+    h.tables = tables();
+    await prepareGuidesForWalk({ obligationId: 'ob', typeIds: ['ty'], componentIds: ['c1'] });
+    h.failOn = 'guide_links';
+    const walk = await guidesForWalk({ obligation_id: 'ob' });
+    expect(walk.fromCache).toBe(true);
+    expect(walk.guides.map((g) => g.guideId)).toEqual(['g1']);
+    const comp = await guidesForWalk({ obligation_id: 'ob', component_type_id: 'ty', component_id: 'c1' });
+    expect(comp.guides.map((g) => g.guideId).sort()).toEqual(['g1', 'g2']);
+  });
+
+  it('uses a photo held on the device when it is there', async () => {
+    h.tables = tables();
+    await prepareGuidesForWalk({ obligationId: 'ob' });
+    o.photos.u1 = 'blob:local';
+    h.failOn = 'guide_links';
+    const r = await guidesForWalk({ obligation_id: 'ob' });
+    expect(r.guides[0].steps[0].photos[0].url).toBe('blob:local');
+  });
+
+  it('with no signal AND nothing saved, it fails — so the screen can say so', async () => {
+    h.failOn = 'guide_links';
+    await expect(guidesForWalk({ obligation_id: 'ob' })).rejects.toThrow('read failed');
   });
 });

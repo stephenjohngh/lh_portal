@@ -16,7 +16,10 @@
 // databases go regardless.
 
 /** Offline databases holding personal data, deleted at logout. */
-export const PERSONAL_DATABASES = Object.freeze(['lh_parking_offline']);
+export const PERSONAL_DATABASES = Object.freeze(['lh_parking_offline', 'lh_guides_offline']);
+
+/** Cache Storage caches deleted at logout (guide photos — a staff-only guide's pictures included). */
+export const PERSONAL_CACHES = Object.freeze(['lh-guide-photos']);
 
 /** @type {Set<() => Promise<void>>} */
 const beforeWipe = new Set();
@@ -52,4 +55,5 @@ export async function wipeOfflinePersonalData({ timeoutMs = 4000 } = {}) {
   const hooks = [...beforeWipe].map((fn) => Promise.resolve().then(fn).catch(() => {}));
   await Promise.race([Promise.all(hooks), new Promise((r) => setTimeout(r, timeoutMs))]);
   await Promise.all(PERSONAL_DATABASES.map(deleteDatabase));
+  if (typeof caches !== 'undefined' && caches) await Promise.all(PERSONAL_CACHES.map((c) => caches.delete(c).catch(() => false)));
 }

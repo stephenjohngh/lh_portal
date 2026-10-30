@@ -12,7 +12,7 @@
      so the walk can record it when it closes. -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import { guidesFor } from '#lib/apps/guides/public.js';
+  import { guidesForWalk } from '#lib/apps/guides/public.js';
   import { normalisePhotoUrl } from '#lib/utils/driveUtils.js';
 
   /** Link targets known on this screen (obligation_id, component_type_id, component_id …). */
@@ -21,9 +21,10 @@
 
   const dispatch = createEventDispatcher();
 
-  /** @type {Awaited<ReturnType<typeof guidesFor>>} */
+  /** @type {import('#lib/apps/guides/public.js').WalkGuide[]} */
   let guides = [];
   let failed = false;
+  let fromCache = false;
   let open = false;
   /** @type {string|null} */ let openGuide = null;
   let loadedFor = '';
@@ -38,10 +39,11 @@
     failed = false;
     try {
       const ctx = { ...context };
-      const found = await guidesFor(ctx);
+      const found = await guidesForWalk(ctx);
       if (forKey !== loadedFor) return;               // the screen moved on
-      guides = found;
-      openGuide = found.length === 1 ? found[0].guideId : null;
+      guides = found.guides;
+      fromCache = found.fromCache;
+      openGuide = found.guides.length === 1 ? found.guides[0].guideId : null;
     } catch {
       if (forKey !== loadedFor) return;
       guides = [];
@@ -72,6 +74,7 @@
 
     {#if open}
       <div class="gh-body">
+        {#if fromCache}<p class="gh-need" data-testid="from-cache">No signal — showing the copy saved on this phone.</p>{/if}
         {#each guides as g (g.guideId)}
           <section class="gh-guide">
             <button type="button" class="gh-title" aria-expanded={openGuide === g.guideId}
