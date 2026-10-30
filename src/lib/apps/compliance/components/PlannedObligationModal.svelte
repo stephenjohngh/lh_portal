@@ -15,6 +15,7 @@
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import { EVIDENCE_ROUTE_LABEL } from '#lib/utils/obligationEvidence.js';
   import ScopeEditor  from '#lib/apps/building_assets/components/ScopeEditor.svelte';
+  import GuideHelp    from '#lib/apps/guides/components/GuideHelp.svelte';
   import { templateEntry } from '#lib/utils/statutoryTemplate.js';
   import { applyInspectionScope } from '#lib/apps/building_assets/utils/inspectionScope.js';
   import { buildRotatingWalk } from '#lib/apps/inspection/utils/inspectionRotation.js';
@@ -479,6 +480,14 @@
         <p class="hint">Components with no pass/fail checks fall back to a manual result.</p>
       {/if}
     </div>
+    {#if isEdit && definition?.id}
+      <!-- What a walker is offered on this duty (Guides): the walk-level guides, read through guides/public.js. -->
+      <div class="block">
+        <p class="block-lbl">How-to guide</p>
+        <GuideHelp context={{ obligation_id: definition.id }} heading="Preview as inspector — offered for the whole walk" showWhenEmpty />
+        <p class="hint">Guides are linked to this duty on the Guides app's Manage tab.</p>
+      </div>
+    {/if}
   </div>
 
   <svelte:fragment slot="footer">

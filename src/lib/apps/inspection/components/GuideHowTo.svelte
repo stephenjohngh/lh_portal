@@ -18,6 +18,8 @@
   /** Link targets known on this screen (obligation_id, component_type_id, component_id …). */
   /** @type {Record<string, string|null|undefined>} */
   export let context = {};
+  /** Show only guides with a link that names this target (a check-level bar: 'type_attribute_id'). @type {string|null} */
+  export let requireTarget = null;
 
   const dispatch = createEventDispatcher();
 
@@ -39,7 +41,7 @@
     failed = false;
     try {
       const ctx = { ...context };
-      const found = await guidesForWalk(ctx);
+      const found = await guidesForWalk(ctx, { requireTarget });
       if (forKey !== loadedFor) return;               // the screen moved on
       guides = found.guides;
       fromCache = found.fromCache;

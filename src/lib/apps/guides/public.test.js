@@ -125,3 +125,31 @@ describe('guides for a walk with no signal', () => {
     await expect(guidesForWalk({ obligation_id: 'ob' })).rejects.toThrow('read failed');
   });
 });
+
+describe('check-level guides (S4)', () => {
+  const t = () => ({
+    guide_links: [link({ obligation_id: 'ob' }), link({ guide_id: 'g2', obligation_id: 'ob', component_type_id: 'ty', type_attribute_id: 'at' })],
+    guides: [guide(), guide({ id: 'g2', title: 'Check guide' })], guide_versions: [version(), version({ guide_id: 'g2' })],
+  });
+  const ctx = { obligation_id: 'ob', component_type_id: 'ty', type_attribute_id: 'at' };
+
+  it('a check-level bar shows only guides that name the check, not the walk-level ones', async () => {
+    h.tables = t();
+    expect((await guidesForWalk(ctx, { requireTarget: 'type_attribute_id' })).guides.map((g) => g.guideId)).toEqual(['g2']);
+    expect((await guidesForWalk(ctx)).guides.map((g) => g.guideId).sort()).toEqual(['g1', 'g2']);
+  });
+
+  it('a component-level screen (no check in its context) never gets a check-linked guide', async () => {
+    h.tables = t();
+    expect((await guidesForWalk({ obligation_id: 'ob', component_type_id: 'ty' })).guides.map((g) => g.guideId)).toEqual(['g1']);
+  });
+
+  it('answers a check from the saved walk copy without another read', async () => {
+    h.tables = t();
+    await prepareGuidesForWalk({ obligationId: 'ob', typeIds: ['ty'], attributeIds: ['at'] });
+    h.failOn = 'guide_links';                         // a live read would now fail
+    const r = await guidesForWalk(ctx, { requireTarget: 'type_attribute_id' });
+    expect(r.guides.map((g) => g.guideId)).toEqual(['g2']);
+    expect(r.fromCache).toBe(false);
+  });
+});

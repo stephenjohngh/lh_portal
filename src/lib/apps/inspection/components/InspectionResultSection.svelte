@@ -4,6 +4,7 @@
      Photo capture/display is delegated to PhotoPanel; this component owns
      pendingPhotos state so uploadAllPending() can run at save time. -->
 <script>
+  import GuideHowTo from './GuideHowTo.svelte';
   import { today } from '#lib/utils/dates.js';
   import { createEventDispatcher } from 'svelte';
   import { deriveChecklistOutcome } from '../utils/checklistRules.js';
@@ -211,6 +212,8 @@
               >✗ FAIL</button>
             </div>
           </div>
+          <GuideHowTo requireTarget="type_attribute_id"
+            context={{ obligation_id: session?.definition_id, component_type_id: type?.id, type_attribute_id: def.id }} />
           {#if def.help_notes && activeHelpId === def.id}
             <div class="cl-help-popup">{def.help_notes}</div>
           {/if}

@@ -64,6 +64,7 @@
     prepareGuidesForWalk({
       obligationId: session.definition_id,
       typeIds: [...new Set(types.filter((t) => components.some((c) => c.type_code === t.code)).map((t) => t.id))],
+      attributeIds: Object.values($inspectionStore.attrDefs ?? {}).flat().filter((/** @type {any} */ a) => a?.checkable).map((/** @type {any} */ a) => a.id),
       componentIds: components.map((c) => c.id),
     }).then((r) => { guidesReady = r.guides ? `${r.guides} guide${r.guides === 1 ? '' : 's'} saved on this phone for use with no signal${r.photosMissed ? ` (${r.photosMissed} photo${r.photosMissed === 1 ? '' : 's'} could not be saved)` : ''}.` : ''; })
       .catch(() => { guidesReady = 'Guides could not be saved for use with no signal.'; });

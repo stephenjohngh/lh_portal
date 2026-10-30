@@ -28,8 +28,8 @@ describe('Guides boundary', () => {
     for (const f of files.filter((x) => !inside(x) && !x.endsWith('.test.js'))) {
       for (const m of fs.readFileSync(f, 'utf8').matchAll(/from\s+['"]#lib\/apps\/guides\/([^'"]+)['"]|import\(\s*['"]#lib\/apps\/guides\/([^'"]+)['"]/g)) {
         const target = m[1] ?? m[2];
-        // the app shell is loaded by the router, once, by name
-        if (target !== 'public.js' && target !== 'GuidesApp.svelte') bad.push(`${f} → ${target}`);
+        // the app shell is loaded by the router, once, by name; GuideHelp is the one standard-theme view other apps may embed
+        if (target !== 'public.js' && target !== 'GuidesApp.svelte' && target !== 'components/GuideHelp.svelte') bad.push(`${f} → ${target}`);
       }
     }
     expect(bad).toEqual([]);

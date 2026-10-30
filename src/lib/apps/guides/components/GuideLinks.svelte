@@ -7,11 +7,14 @@
 <script>
   import { onMount } from 'svelte';
   import Button from '#lib/components/common/Button.svelte';
+  import FormInput from '#lib/components/common/FormInput.svelte';
   import FormSelect from '#lib/components/common/FormSelect.svelte';
   import { api } from '#lib/utils/api.js';
   import { listPlannedObligations } from '#lib/apps/compliance/public.js';
   import { guidesStore } from '../stores/guidesStore.js';
   import { specificity } from '../utils/guideModel.js';
+  import { buildComponentRef } from '#lib/utils/componentRef.js';
+  import { matchesSearch } from '#lib/utils/textSearch.js';
   import { errMessage } from '#lib/utils/errors.js';
 
   /** @type {string} */
@@ -20,34 +23,62 @@
   /** @type {any[]} */ let links = [];
   /** @type {any[]} */ let obligations = [];
   /** @type {any[]} */ let types = [];
+  /** @type {any[]} */ let attributes = [];
+  /** @type {any[]} */ let components = [];
+  /** @type {any[]} */ let floors = [];
   let obligationId = '';
   let typeId = '';
+  let attributeId = '';
+  let componentId = '';
+  let componentSearch = '';
   let error = '';
   let busy = false;
   let loaded = false;
 
   $: obName = (/** @type {string} */ id) => obligations.find((o) => o.id === id)?.name ?? 'a planned obligation that is no longer there';
   $: tyName = (/** @type {string} */ id) => types.find((t) => t.id === id)?.name ?? 'a type that is no longer there';
-  $: describe = (/** @type {any} */ l) => [l.obligation_id && `walk: ${obName(l.obligation_id)}`, l.component_type_id && `type: ${tyName(l.component_type_id)}`]
+  $: refOf = (/** @type {string} */ id) => {
+    const c = components.find((x) => x.id === id);
+    return c ? buildComponentRef(c, floors, types) : 'a component that is no longer there';
+  };
+  $: attrName = (/** @type {string} */ id) => attributes.find((a) => a.id === id)?.name ?? 'a check that is no longer there';
+  // A check belongs to a type, so it is chosen from the chosen type's condition checks.
+  $: typeAttributes = typeId ? attributes.filter((a) => a.component_type_id === typeId && a.checkable) : [];
+  $: if (attributeId && !typeAttributes.some((a) => a.id === attributeId)) attributeId = '';
+  $: componentMatches = componentSearch.trim().length >= 2
+    ? components.filter((c) => matchesSearch([buildComponentRef(c, floors, types), c.label, c.asset_id], componentSearch)).slice(0, 15)
+    : [];
+  $: describe = (/** @type {any} */ l) => [
+      l.obligation_id && `walk: ${obName(l.obligation_id)}`,
+      l.component_type_id && `type: ${tyName(l.component_type_id)}`,
+      l.type_attribute_id && `check: ${attrName(l.type_attribute_id)}`,
+      l.component_id && `component: ${refOf(l.component_id)}`,
+    ]
     .filter(Boolean).join(' · ') || 'somewhere else (set by another screen)';
 
   onMount(async () => {
     try {
-      [links, obligations, types] = await Promise.all([
+      [links, obligations, types, attributes, components, floors] = await Promise.all([
         guidesStore.listLinks(guideId),
         listPlannedObligations(),
         api.getAll('component_types', { orderBy: 'name' }),
+        api.getAll('type_attributes', { orderBy: 'presentation_order' }),
+        api.getAll('components', { select: 'id, type_code, asset_id, label, floor_id' }),
+        api.getAll('floors', { orderBy: 'id' }),
       ]);
     } catch (e) { error = errMessage(e); }
     finally { loaded = true; }
   });
 
   async function add() {
-    if (!obligationId && !typeId) return;
+    if (!obligationId && !typeId && !attributeId && !componentId) return;
     busy = true; error = '';
     try {
-      const l = await guidesStore.addLink(guideId, { obligation_id: obligationId || null, component_type_id: typeId || null });
-      links = [...links, l]; obligationId = ''; typeId = '';
+      const l = await guidesStore.addLink(guideId, {
+        obligation_id: obligationId || null, component_type_id: typeId || null,
+        type_attribute_id: attributeId || null, component_id: componentId || null,
+      });
+      links = [...links, l]; obligationId = ''; typeId = ''; attributeId = ''; componentId = ''; componentSearch = '';
     } catch (e) { error = errMessage(e); }
     finally { busy = false; }
   }
@@ -63,7 +94,7 @@
 <section class="rounded-lg border border-slate-700 bg-slate-800/60 p-3 space-y-2" data-testid="guide-links">
   <h3 class="text-sm font-semibold text-white">Where it is offered</h3>
   <p class="text-xs text-slate-400">
-    In an inspection walk. Choose a planned obligation (the whole walk), a type of component, or both (that type, in that walk).
+    In an inspection walk. Choose a planned obligation (the whole walk), a type of component, a single check of that type, or one component — or combine them: the guide is offered only where everything you choose matches.
    
   </p>
   {#if error}<p class="text-red-400 text-sm" role="alert">{error}</p>{/if}
@@ -86,7 +117,23 @@
         options={obligations.map((o) => ({ value: o.id, label: o.name }))} />
       <FormSelect label="Type of component" placeholder="— any —" bind:value={typeId}
         options={types.map((t) => ({ value: t.id, label: t.name }))} />
-      <Button variant="secondary" disabled={busy || (!obligationId && !typeId)} on:click={add}>Add</Button>
     </div>
+    <div class="grid gap-2 sm:grid-cols-2 items-end">
+      <FormSelect label="A check of that type" placeholder={typeId ? '— any —' : 'choose a type first'} bind:value={attributeId}
+        disabled={!typeId} options={typeAttributes.map((a) => ({ value: a.id, label: a.name }))} />
+      <div>
+        <FormInput label="One component (type 2+ letters of its ref)" bind:value={componentSearch} placeholder="e.g. 7/E/12" />
+        {#if componentMatches.length}
+          <ul class="mt-1 max-h-40 overflow-y-auto rounded border border-slate-600 bg-slate-900">
+            {#each componentMatches as c (c.id)}
+              <li><Button variant="plain" size="xs" className="w-full !justify-start" on:click={() => { componentId = c.id; componentSearch = buildComponentRef(c, floors, types); }}>
+                {buildComponentRef(c, floors, types)}{c.label ? ` — ${c.label}` : ''}</Button></li>
+            {/each}
+          </ul>
+        {/if}
+        {#if componentId}<p class="text-xs text-teal-300 mt-1">Chosen: {refOf(componentId)}</p>{/if}
+      </div>
+    </div>
+    <Button variant="secondary" disabled={busy || (!obligationId && !typeId && !attributeId && !componentId)} on:click={add}>Add link</Button>
   {/if}
 </section>

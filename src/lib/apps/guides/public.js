@@ -49,12 +49,16 @@ async function fetchBundle(values) {
 /**
  * Decide which guides of a bundle apply to a context, and shape them for the screen.
  * @param {Bundle} bundle @param {Record<string, string|null|undefined>} context
+ * @param {{ requireTarget?: string|null }} [opts]
  * @returns {WalkGuide[]}
  */
-export function resolveGuides(bundle, context) {
-  if (!bundle.links.length) return [];
+export function resolveGuides(bundle, context, { requireTarget = null } = {}) {
+  // `requireTarget`: only guides with a link that NAMES that target (a check-level bar must not
+  // repeat the walk-level guides, which match the same context).
+  const links = requireTarget ? bundle.links.filter((l) => present(l[requireTarget])) : bundle.links;
+  if (!links.length) return [];
   const byId = Object.fromEntries(bundle.guides.map((g) => [g.id, g]));
-  const matches = matchGuides(bundle.links, context, byId);
+  const matches = matchGuides(links, context, byId);
   const latest = new Map(bundle.versions.map((v) => [`${v.guide_id}:${v.version}`, v]));
 
   /** @type {WalkGuide[]} */
@@ -104,21 +108,35 @@ const walkKey = (/** @type {string|null|undefined} */ obligationId) => `walk:${o
  * "guides are not available" rather than imply there are none.
  *
  * @param {Record<string, string|null|undefined>} context
+ * @param {{ requireTarget?: string|null }} [opts]
  * @returns {Promise<{ guides: WalkGuide[], fromCache: boolean }>}
  */
-export async function guidesForWalk(context) {
+export async function guidesForWalk(context, { requireTarget = null } = {}) {
+  // A check-level bar is asked for once per check on a screen: answer from the copy "get ready"
+  // saved (no read per check), and only go live when there is none.
+  if (requireTarget) {
+    const saved = await loadBundle(walkKey(context.obligation_id));
+    if (saved) return { guides: await withLocalPhotos(resolveGuides(saved, context, { requireTarget })), fromCache: false };
+  }
   try {
-    return { guides: await guidesFor(context), fromCache: false };
+    /** @type {Record<string, string[]>} */
+    const values = {};
+    for (const k of LINK_TARGETS) if (present(context[k])) values[k] = [/** @type {string} */ (context[k])];
+    return { guides: resolveGuides(await fetchBundle(values), context, { requireTarget }), fromCache: false };
   } catch (liveError) {
     const saved = await loadBundle(walkKey(context.obligation_id));
     if (!saved) throw liveError;
-    const guides = resolveGuides(saved, context);
-    for (const g of guides) for (const st of g.steps) for (const p of st.photos) {
-      const local = await cachedPhotoUrl(p.url);
-      if (local) p.url = local;
-    }
-    return { guides, fromCache: true };
+    return { guides: await withLocalPhotos(resolveGuides(saved, context, { requireTarget })), fromCache: true };
   }
+}
+
+/** Point each photo at the copy held on the device, where there is one. @param {WalkGuide[]} guides */
+async function withLocalPhotos(guides) {
+  for (const g of guides) for (const st of g.steps) for (const p of st.photos) {
+    const local = await cachedPhotoUrl(p.url);
+    if (local) p.url = local;
+  }
+  return guides;
 }
 
 /**
@@ -126,13 +144,14 @@ export async function guidesForWalk(context) {
  * walk (its obligation, the types of its components, its components) and keep them — and
  * their photos — on the device for a walk with no signal. Safe to repeat.
  *
- * @param {{ obligationId?: string|null, typeIds?: string[], componentIds?: string[] }} walk
+ * @param {{ obligationId?: string|null, typeIds?: string[], attributeIds?: string[], componentIds?: string[] }} walk
  * @returns {Promise<{ guides: number, photos: number, photosMissed: number }>}
  */
-export async function prepareGuidesForWalk({ obligationId = null, typeIds = [], componentIds = [] }) {
+export async function prepareGuidesForWalk({ obligationId = null, typeIds = [], attributeIds = [], componentIds = [] }) {
   const bundle = await fetchBundle({
     obligation_id: obligationId ? [obligationId] : [],
     component_type_id: [...new Set(typeIds.filter(present))],
+    type_attribute_id: [...new Set(attributeIds.filter(present))],
     component_id: [...new Set(componentIds.filter(present))],
   });
   await saveBundle(walkKey(obligationId), bundle);
