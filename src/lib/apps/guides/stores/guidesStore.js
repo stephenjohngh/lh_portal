@@ -299,15 +299,14 @@ function createGuidesStore() {
   async function addLink(guideId, target) {
     const userId = await requireUserId();
     const row = { guide_id: guideId, created_by: userId, ...target };
-    const link = await api.create('guide_links', row, true);
-    await api.update('guides', guideId, { updated_by: userId }, false);
-    return link;
+    // Links are live, not part of a published version, so they do not mark the guide
+    // "Unpublished changes".
+    return api.create('guide_links', row, true);
   }
 
   /** @param {string} guideId @param {string} linkId */
   async function deleteLink(guideId, linkId) {
     await api.delete('guide_links', linkId);
-    await api.update('guides', guideId, { updated_by: await requireUserId() }, false);
   }
 
   /** Published versions of a guide, newest first (an admin sees them all). @param {string} guideId */
