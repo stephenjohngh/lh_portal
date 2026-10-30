@@ -4,6 +4,7 @@
      space and a Planner event). It reads through guides/public.js only and writes nothing.
      Silent when none apply; a failed read says so. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { guidesFor } from '../public.js';
   import { normalisePhotoUrl } from '#lib/utils/driveUtils.js';
   import { KIND_LABEL } from '../utils/guideModel.js';
@@ -47,10 +48,9 @@
     {/if}
     {#each guides as g (g.guideId)}
       <div>
-        <button type="button" class="text-left text-sm text-teal-300 underline"
-          aria-expanded={open === g.guideId} on:click={() => (open = open === g.guideId ? null : g.guideId)}>
-          {g.title}{g.minutes ? ` · about ${g.minutes} min` : ''}
-        </button>
+        <Button variant="tertiary" size="xs" ariaLabel={g.title} on:click={() => (open = open === g.guideId ? null : g.guideId)}>
+          {open === g.guideId ? '▾' : '▸'} {g.title}{g.minutes ? ` · about ${g.minutes} min` : ''}
+        </Button>
         {#if open === g.guideId}
           <ol class="mt-2 space-y-2 list-decimal pl-5 text-sm text-slate-200">
             {#each g.steps as st (st.id)}
