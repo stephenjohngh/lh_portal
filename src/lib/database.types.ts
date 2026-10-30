@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema35.csv
+// Source: docs/ops/supabase_lhportal_schema36.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -2506,6 +2506,332 @@ export type Database = {
           notes?: string | null
         }
         Relationships: []
+      }
+      guide_categories: {
+        Row: {
+          key: string
+          name: string
+          position: number
+          retired: boolean
+          created_at: string
+        }
+        Insert: {
+          key: string
+          name: string
+          position?: number
+          retired?: boolean
+          created_at?: string
+        }
+        Update: {
+          key?: string
+          name?: string
+          position?: number
+          retired?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      guide_collection_items: {
+        Row: {
+          collection_id: string
+          guide_id: string
+          position: number
+        }
+        Insert: {
+          collection_id: string
+          guide_id: string
+          position?: number
+        }
+        Update: {
+          collection_id?: string
+          guide_id?: string
+          position?: number
+        }
+        Relationships: [
+            {
+              foreignKeyName: "guide_collection_items_collection_id_fkey"
+              columns: ["collection_id"]
+              isOneToOne: false
+              referencedRelation: "guide_collections"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "guide_collection_items_guide_id_fkey"
+              columns: ["guide_id"]
+              isOneToOne: false
+              referencedRelation: "guides"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      guide_collections: {
+        Row: {
+          id: string
+          title: string
+          summary: string | null
+          position: number
+          retired: boolean
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          title: string
+          summary?: string | null
+          position?: number
+          retired?: boolean
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          title?: string
+          summary?: string | null
+          position?: number
+          retired?: boolean
+          created_at?: string
+          created_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "guide_collections_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      guide_links: {
+        Row: {
+          id: string
+          guide_id: string
+          step_ids: string[] | null
+          obligation_id: string | null
+          component_type_id: string | null
+          type_attribute_id: string | null
+          component_id: string | null
+          space_id: string | null
+          planner_series_id: string | null
+          workflow_key: string | null
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          guide_id: string
+          step_ids?: string[] | null
+          obligation_id?: string | null
+          component_type_id?: string | null
+          type_attribute_id?: string | null
+          component_id?: string | null
+          space_id?: string | null
+          planner_series_id?: string | null
+          workflow_key?: string | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          guide_id?: string
+          step_ids?: string[] | null
+          obligation_id?: string | null
+          component_type_id?: string | null
+          type_attribute_id?: string | null
+          component_id?: string | null
+          space_id?: string | null
+          planner_series_id?: string | null
+          workflow_key?: string | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "guide_links_guide_id_fkey"
+              columns: ["guide_id"]
+              isOneToOne: false
+              referencedRelation: "guides"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "guide_links_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      guide_steps: {
+        Row: {
+          id: string
+          guide_id: string
+          position: number
+          kind: string
+          title: string
+          body: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          guide_id: string
+          position: number
+          kind?: string
+          title: string
+          body?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          guide_id?: string
+          position?: number
+          kind?: string
+          title?: string
+          body?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+            {
+              foreignKeyName: "guide_steps_guide_id_fkey"
+              columns: ["guide_id"]
+              isOneToOne: false
+              referencedRelation: "guides"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      guide_versions: {
+        Row: {
+          id: string
+          guide_id: string
+          version: number
+          snapshot: Json
+          published_by: string | null
+          published_at: string
+        }
+        Insert: {
+          id?: string
+          guide_id: string
+          version: number
+          snapshot: Json
+          published_by?: string | null
+          published_at?: string
+        }
+        Update: {
+          id?: string
+          guide_id?: string
+          version?: number
+          snapshot?: Json
+          published_by?: string | null
+          published_at?: string
+        }
+        Relationships: [
+            {
+              foreignKeyName: "guide_versions_guide_id_fkey"
+              columns: ["guide_id"]
+              isOneToOne: false
+              referencedRelation: "guides"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "guide_versions_published_by_fkey"
+              columns: ["published_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      guides: {
+        Row: {
+          id: string
+          title: string
+          summary: string | null
+          category_key: string | null
+          tags: string[]
+          audience: string
+          staff_only: boolean
+          you_need: string | null
+          minutes: number | null
+          status: string
+          version: number
+          reviewed_by: string | null
+          reviewed_at: string | null
+          reviewed_against: string | null
+          review_due: string | null
+          created_at: string
+          created_by: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          title: string
+          summary?: string | null
+          category_key?: string | null
+          tags?: string[]
+          audience?: string
+          staff_only?: boolean
+          you_need?: string | null
+          minutes?: number | null
+          status?: string
+          version?: number
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          reviewed_against?: string | null
+          review_due?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          title?: string
+          summary?: string | null
+          category_key?: string | null
+          tags?: string[]
+          audience?: string
+          staff_only?: boolean
+          you_need?: string | null
+          minutes?: number | null
+          status?: string
+          version?: number
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          reviewed_against?: string | null
+          review_due?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "guides_category_key_fkey"
+              columns: ["category_key"]
+              isOneToOne: false
+              referencedRelation: "guide_categories"
+              referencedColumns: ["key"]
+            },
+            {
+              foreignKeyName: "guides_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "guides_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
       }
       info_notes: {
         Row: {
@@ -5792,15 +6118,15 @@ export type Database = {
               foreignKeyName: "workflow_items_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
-              referencedRelation: "workflows"
-              referencedColumns: ["id"]
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
             },
             {
               foreignKeyName: "workflow_items_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
+              referencedRelation: "workflows"
+              referencedColumns: ["id"]
             },
             {
               foreignKeyName: "workflow_items_step_key_fkey"
@@ -5879,22 +6205,22 @@ export type Database = {
               foreignKeyName: "workflow_moves_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
+            },
+            {
+              foreignKeyName: "workflow_moves_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
+            },
+            {
+              foreignKeyName: "workflow_moves_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
               referencedRelation: "workflows"
               referencedColumns: ["id"]
-            },
-            {
-              foreignKeyName: "workflow_moves_workflow_id_fkey"
-              columns: ["workflow_id"]
-              isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
-            },
-            {
-              foreignKeyName: "workflow_moves_workflow_id_fkey"
-              columns: ["workflow_id"]
-              isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
             },
             {
               foreignKeyName: "workflow_moves_from_key_fkey"

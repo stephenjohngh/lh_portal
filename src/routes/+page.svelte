@@ -70,6 +70,7 @@
     'compliance':       () => import('#lib/apps/compliance/ComplianceApp.svelte'),
     'complaints':       () => import('#lib/apps/complaints/ComplaintsApp.svelte'),
     'cases':            () => import('#lib/apps/cases/CasesApp.svelte'),
+    'guides':           () => import('#lib/apps/guides/GuidesApp.svelte'),
     'parking':          () => import('#lib/apps/parking/ParkingApp.svelte'),
   };
 

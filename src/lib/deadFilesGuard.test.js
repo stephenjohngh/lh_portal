@@ -61,6 +61,10 @@ const KEPT = {
   'src/lib/index.js': "SvelteKit's #lib entry stub",
   'src/lib/apps/dossier/public.js':
     "the app's cross-app interface, deliberately empty until another app needs Dossier's data",
+  // ⏳ TEMPORARY: the inspection walk starts importing guidesFor in slice S3a
+  // (docs/requirements/build_plans/Guides_App_Build_Plan.md). Remove this line then.
+  'src/lib/apps/guides/public.js':
+    "the Guides interface; its first consumer, the inspection walk, arrives in slice S3a",
 };
 
 describe('every file under src/lib is used', () => {

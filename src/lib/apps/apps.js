@@ -164,7 +164,18 @@ export const AVAILABLE_APPS = [
     alwaysVisible: false,
     requiresPermission: true,
     description: 'Building processes set up by an administrator — open a case, move it through its steps'
+  },  {
+    // Migration 268: step-by-step how-to guides for a new caretaker or cleaner, shown
+    // inside inspection walks too. Reading needs NO grant (any signed-in user reads a
+    // published guide); the grant only puts the app in someone's menu.
+    id: 'guides',
+    name: 'Guides',
+    icon: 'book',
+    alwaysVisible: false,
+    requiresPermission: true,
+    description: 'Step-by-step how-to guides — bins, bulbs, the alarm panel and more'
   },
+
 
   {
     // The basement bays and, from P1, who holds them. Granted per user on

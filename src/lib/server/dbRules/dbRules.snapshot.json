@@ -4,6 +4,11 @@
             "slot",
             "space"
         ],
+        "guides.status": [
+            "draft",
+            "published",
+            "retired"
+        ],
         "issues.status": [
             "completed",
             "current",
@@ -30,9 +35,21 @@
             "monitored",
             "superseded"
         ],
+        "guides.audience": [
+            "anyone",
+            "caretaker",
+            "cleaner"
+        ],
         "meetings.status": [
             "closed",
             "open"
+        ],
+        "guide_steps.kind": [
+            "bad",
+            "caution",
+            "good",
+            "step",
+            "stop"
         ],
         "mor_cases.status": [
             "acknowledged",
@@ -175,6 +192,7 @@
             "compliance",
             "dossier",
             "golden_thread",
+            "guides",
             "info",
             "inspection",
             "maintenance",

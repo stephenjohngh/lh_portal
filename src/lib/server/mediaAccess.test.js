@@ -12,6 +12,18 @@ const U1 = '11111111-1111-4111-8111-111111111111';
 const U2 = '22222222-2222-4222-8222-222222222222';
 const none = { library: [], media: [], maintenance: [] };
 
+describe('a guide step photo (migration 268)', () => {
+  const photo = { library: [], media: [{ entity_type: 'guide_step', entity_id: 'st1', created_by: U1 }], maintenance: [] };
+  it('any signed-in user may view it — a guide is how-to help, not a record (no grant is needed)', () => {
+    expect(canViewFile(photo, { isAdmin: false, grants: new Set() })).toBe(true);
+  });
+  it('but only its author or an admin may delete the file', () => {
+    expect(canDeleteFile(photo, { userId: U2, isAdmin: false }).ok).toBe(false);
+    expect(canDeleteFile(photo, { userId: U1, isAdmin: false }).ok).toBe(true);
+    expect(canDeleteFile(photo, { userId: U2, isAdmin: true }).ok).toBe(true);
+  });
+});
+
 describe('the media session cookie', () => {
   const now = Date.UTC(2026, 8, 27, 12);
 
