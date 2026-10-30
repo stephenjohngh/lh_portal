@@ -3,12 +3,12 @@
 <!-- RLS returns the note only if visibility = 'public', or visibility =
      'registered' AND the caller is authenticated with Info app access, or admin. -->
 <script>
+  import PublicShell from '#lib/components/public/PublicShell.svelte';
   import { onMount }      from 'svelte';
   import { page }         from '$app/state';
   import { supabase }     from '#lib/supabaseClient.js';
   import { fmtDateLong }  from '#lib/utils/dates.js';
   import { sanitizeHtml } from '#lib/utils/sanitizeHtml.js';
-  import { LOGO as lhLogo, LOGO_ALT } from '#lib/branding.js';
 
   let article  = null;
   let loading  = true;
@@ -45,18 +45,8 @@
   {/if}
 </svelte:head>
 
-<div class="public-shell">
-
-  <!-- ── Header ── -->
-  <header class="pub-header">
-    <a href="/" class="pub-logo-link">
-      <img src={lhLogo} alt={LOGO_ALT} class="pub-logo" />
-    </a>
-    <a href="/info" class="pub-all-articles">All Articles</a>
-  </header>
-
-  <!-- ── Content ── -->
-  <main class="pub-main">
+<PublicShell width="xl" logoHref="/">
+  <a slot="nav" href="/info" class="text-sm font-medium text-slate-400 hover:text-slate-100 border border-slate-600 rounded-md px-3 py-1.5">All Articles</a>
     {#if loading}
       <p class="pub-loading">Loading…</p>
 
@@ -83,58 +73,16 @@
         {@html sanitizeHtml(article.body ?? '')}
       </div>
     {/if}
-  </main>
-
-</div>
+  </PublicShell>
 
 <style>
-  :global(body) { background: #f8fafc; }
 
-  .public-shell {
-    min-height: 100vh;
-    background: #f8fafc;
-    color: #1e293b;
-    font-family: ui-sans-serif, system-ui, sans-serif;
-    display: flex;
-    flex-direction: column;
-  }
 
   /* Header */
-  .pub-header {
-    background: #0f172a;
-    padding: 0.75rem 1.5rem;
-    border-bottom: 1px solid #1e293b;
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-  }
 
-  .pub-logo-link { display: flex; align-items: center; }
-  .pub-logo      { height: 40px; width: auto; display: block; }
 
-  .pub-all-articles {
-    color: #94a3b8;
-    text-decoration: none;
-    font-size: 0.875rem;
-    font-weight: 500;
-    padding: 0.375rem 0.875rem;
-    border: 1px solid #334155;
-    border-radius: 0.375rem;
-    transition: background 0.15s, color 0.15s;
-  }
-  .pub-all-articles:hover {
-    background: #1e293b;
-    color: #e2e8f0;
-  }
 
   /* Main */
-  .pub-main {
-    flex: 1;
-    max-width: 48rem;
-    width: 100%;
-    margin: 0 auto;
-    padding: 3rem 1.5rem;
-  }
 
   .pub-loading { color: #64748b; font-style: italic; }
   .pub-error   { color: #dc2626; }

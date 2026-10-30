@@ -4,11 +4,11 @@
      page can link straight here. The resident still has to enter their
      verification code, which acts as a bearer token. -->
 <script>
+  import PublicShell from '#lib/components/public/PublicShell.svelte';
   import Button from '#lib/components/common/Button.svelte';
   import { fmtDateTime } from '#lib/utils/dates.js';
   import { onMount } from 'svelte';
   import { page }     from '$app/state';
-  import { LOGO as lhLogo, LOGO_ALT } from '#lib/branding.js';
   import {
     normalizeVerificationCode,
     formatVerificationCode,
@@ -116,12 +116,7 @@
   <meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="shell">
-  <header class="hdr">
-    <img src={lhLogo} alt={LOGO_ALT} class="logo" />
-  </header>
-
-  <main class="main">
+<PublicShell width="lg">
 
     {#if !result}
       <!-- ── Lookup form ──────────────────────────────────────────────── -->
@@ -261,84 +256,17 @@
 
     {/if}
 
-  </main>
-</div>
+  </PublicShell>
 
 <style>
-  :global(body) { background: #f8fafc; margin: 0; }
 
-  .shell {
-    min-height: 100vh;
-    background: #f8fafc;
-    font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-    color: #1e293b;
-  }
 
-  .hdr {
-    background: #0f172a;
-    padding: 0.75rem 1.25rem;
-    border-bottom: 1px solid #1e293b;
-  }
-  .logo { height: 38px; width: auto; display: block; }
 
-  .main {
-    max-width: 40rem;
-    margin: 0 auto;
-    padding: 1.5rem 1.25rem 3rem;
-  }
 
   /* ── Lookup form ── */
-  .page-title {
-    font-size: 1.625rem;
-    font-weight: 700;
-    margin: 0 0 0.5rem;
-    color: #0f172a;
-    line-height: 1.25;
-  }
-  .page-subtitle {
-    color: #475569;
-    font-size: 0.9375rem;
-    margin: 0 0 1.75rem;
-    line-height: 1.6;
-  }
 
-  .form { display: flex; flex-direction: column; gap: 1.5rem; }
-  .field { display: flex; flex-direction: column; gap: 0.4rem; }
-  .label { font-size: 0.9375rem; font-weight: 600; color: #1e293b; }
-  .hint  { font-size: 0.8125rem; color: #64748b; margin: 0; line-height: 1.5; }
 
-  .input {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1.5px solid #cbd5e1;
-    border-radius: 0.5rem;
-    font-size: 1rem;
-    color: #1e293b;
-    background: #fff;
-    box-sizing: border-box;
-    font-family: inherit;
-    transition: border-color 0.15s;
-  }
-  .input.mono {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
-    letter-spacing: 0.05em;
-  }
-  .input:focus {
-    outline: none;
-    border-color: #3c9683;
-    box-shadow: 0 0 0 3px rgba(60, 150, 131, 0.15);
-  }
-  .error-border { border-color: #dc2626; }
-  .field-error  { font-size: 0.8125rem; color: #dc2626; margin: 0; }
 
-  .submit-error {
-    background: #fef2f2;
-    border: 1px solid #fca5a5;
-    border-radius: 0.5rem;
-    padding: 0.75rem 1rem;
-    font-size: 0.875rem;
-    color: #991b1b;
-  }
 
   :global(.submit-btn) {
     width: 100%;
