@@ -39,12 +39,8 @@
          bg-purple-600/15 text-purple-200 text-xs whitespace-nowrap shrink-0
          hover:bg-purple-600/25 transition-colors"
 >
-  <button
-    on:click={() => dispatch('edit')}
-    class="flex items-center gap-1 hover:text-white"
-    title="Click to edit this filter"
-  >
-    <span class="font-medium">{def?.name ?? '?'}</span>
+  <Button variant="plain" on:click={() => dispatch('edit')} title="Click to edit this filter" className="flex items-center gap-1 hover:text-white">
+<span class="font-medium">{def?.name ?? '?'}</span>
     {#if filter?.op !== 'in' && filter?.op !== 'is_true' && filter?.op !== 'is_false'}
       <span class="text-purple-400/80">{opText}</span>
     {/if}
@@ -52,6 +48,6 @@
     {#if filter?.includeUnset}
       <span class="text-[10px] text-purple-400/70" title="Also includes components with no value">+∅</span>
     {/if}
-  </button>
+</Button>
   <Button variant="danger" size="xs" title="Remove this filter" ariaLabel="Remove filter on {def?.name}" on:click={() => dispatch('remove')}>✕</Button>
 </div>

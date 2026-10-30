@@ -1,6 +1,7 @@
 <!-- src/lib/components/common/ErrorDisplay.svelte -->
 <!-- Standardized error display component with consistent styling -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import Icon from '#lib/components/icons/Icon.svelte';
   
   export let message = '';
@@ -52,14 +53,7 @@
     
     <!-- Dismiss Button -->
     {#if onDismiss}
-      <button
-        on:click={onDismiss}
-        class="{styles.text} hover:opacity-80 transition-opacity flex-shrink-0"
-        aria-label="Dismiss"
-        type="button"
-      >
-        <Icon name="close" size={5} />
-      </button>
+      <Button variant="plain" on:click={onDismiss} aria-label="Dismiss" type="button" className="{styles.text} hover:opacity-80 transition-opacity flex-shrink-0"><Icon name="close" size={5} /></Button>
     {/if}
   </div>
 {/if}

@@ -220,11 +220,8 @@
       <!-- Level -->
       <div class="flex flex-wrap items-center gap-2">
         {#each levels as f (f.id)}
-          <button
-            class="px-3 py-1.5 rounded text-sm border transition-colors
-                   {f.id === floorId ? 'bg-purple-600 border-purple-500 text-white' : 'border-slate-600 text-slate-300 hover:bg-slate-700'}"
-            on:click={() => chooseLevel(f.id)}
-          >{f.name} <span class="opacity-70">({state.bays.filter(b => b.floor_id === f.id).length})</span></button>
+          <Button variant="plain" on:click={() => chooseLevel(f.id)} className="px-3 py-1.5 rounded text-sm border transition-colors
+                   {f.id === floorId ? 'bg-purple-600 border-purple-500 text-white' : 'border-slate-600 text-slate-300 hover:bg-slate-700'}">{f.name} <span class="opacity-70">({state.bays.filter(b => b.floor_id === f.id).length})</span></Button>
         {/each}
         <span class="flex-1"></span>
         <Button size="small" variant="secondary" loading={printing} disabled={printing} on:click={printPlan}>

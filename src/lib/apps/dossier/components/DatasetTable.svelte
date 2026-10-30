@@ -373,15 +373,11 @@
                   <span class="shrink-0 text-slate-600">
                     {linkTargets.get(record.id).kind === 'doc' ? '¶' : '📎'}
                   </span>
-                  <button
-                    class="truncate underline underline-offset-2
-                           {linkTargets.get(record.id).missing
-                             ? 'text-amber-400' : 'text-slate-300 hover:text-white'}"
-                    title={linkTargets.get(record.id).missing
+                  <Button variant="plain" title={linkTargets.get(record.id).missing
                       ? 'What this pointed at is gone'
-                      : `Go to ${linkTargets.get(record.id).label}`}
-                    on:click={() => dispatch('openTarget', record)}
-                  >{linkTargets.get(record.id).label}</button>
+                      : `Go to ${linkTargets.get(record.id).label}`} on:click={() => dispatch('openTarget', record)} className="truncate underline underline-offset-2
+                           {linkTargets.get(record.id).missing
+                             ? 'text-amber-400' : 'text-slate-300 hover:text-white'}">{linkTargets.get(record.id).label}</Button>
                   {#if canEdit}
                     <Button variant="danger" size="xs" title="Remove this link" on:click={() => dispatch('clearLink', record)}>×</Button>
                   {/if}

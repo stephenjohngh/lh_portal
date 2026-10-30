@@ -206,7 +206,7 @@
     <dl class="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-1.5 text-sm">
       <dt class="text-slate-500">Bay</dt>
       <dd class="text-slate-200">
-        {#if bay}<button class="font-mono text-purple-300 hover:underline" on:click={() => dispatch('showBay', bay.space_id)}>{bay.ref}</button>
+        {#if bay}<Button variant="plain" on:click={() => dispatch('showBay', bay.space_id)} className="font-mono text-purple-300 hover:underline">{bay.ref}</Button>
           {#if bay.size}<span class="text-slate-500"> · {bay.size}</span>{/if}{:else}—{/if}
       </dd>
       <dt class="text-slate-500">Holder</dt>

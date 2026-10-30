@@ -90,8 +90,8 @@
     <!-- Header + sub-nav -->
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div class="flex gap-1">
-        <button class="px-3 py-1.5 text-sm rounded {view === 'register' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}" on:click={() => view = 'register'}>Register</button>
-        <button class="px-3 py-1.5 text-sm rounded {view === 'heatmap' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}" on:click={() => view = 'heatmap'}>Heat-map</button>
+        <Button variant="plain" on:click={() => view = 'register'} className="px-3 py-1.5 text-sm rounded {view === 'register' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}">Register</Button>
+        <Button variant="plain" on:click={() => view = 'heatmap'} className="px-3 py-1.5 text-sm rounded {view === 'heatmap' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}">Heat-map</Button>
       </div>
       {#if canEdit}<ProtectedButton action="modify" variant="primary" size="small" on:click={newRisk}>+ New risk</ProtectedButton>{/if}
     </div>

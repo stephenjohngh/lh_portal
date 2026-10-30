@@ -150,12 +150,8 @@
                   : active
                     ? 'border-purple-500/50 bg-purple-800/30'
                     : 'border-slate-600/40 bg-slate-700/50 hover:border-slate-500/60'}">
-      <button
-        on:click={() => apply(p)}
-        title={p.description || undefined}
-        class="px-2.5 py-0.5 text-[11px] font-medium transition-colors
-               {confirming ? 'text-red-300/70' : active ? 'text-purple-200' : 'text-slate-300 hover:text-white'}"
-      >{p.name}</button>
+      <Button variant="plain" on:click={() => apply(p)} title={p.description || undefined} className="px-2.5 py-0.5 text-[11px] font-medium transition-colors
+               {confirming ? 'text-red-300/70' : active ? 'text-purple-200' : 'text-slate-300 hover:text-white'}">{p.name}</Button>
       <!-- Delete only for admins on standard presets -->
       {#if $permissions.isAdmin}
         <Button admin size="xs" title={confirming ? 'Click again to confirm delete' : 'Remove standard preset'}
@@ -189,22 +185,14 @@
                   : active
                     ? 'border-purple-500/50 bg-purple-800/30'
                     : 'border-slate-600/50 bg-slate-700/60 hover:border-slate-500/60'}">
-      <button
-        on:click={() => apply(p)}
-        title={p.description || undefined}
-        class="px-2.5 py-0.5 text-[11px] transition-colors
-               {confirming ? 'text-red-300/70' : active ? 'text-purple-200 font-medium' : 'text-slate-300 hover:text-white'}"
-      >{p.name}</button>
-      <button
-        on:click={e => armDelete(p.id, e)}
-        class="px-1.5 py-0.5 text-[10px] border-l transition-colors
+      <Button variant="plain" on:click={() => apply(p)} title={p.description || undefined} className="px-2.5 py-0.5 text-[11px] transition-colors
+               {confirming ? 'text-red-300/70' : active ? 'text-purple-200 font-medium' : 'text-slate-300 hover:text-white'}">{p.name}</Button>
+      <Button variant="plain" on:click={e => armDelete(p.id, e)} title={confirming ? 'Click again to confirm delete' : 'Remove preset'} className="px-1.5 py-0.5 text-[10px] border-l transition-colors
                {confirming
                  ? 'border-red-500/40 bg-red-700/60 text-white font-semibold'
                  : active
                    ? 'border-purple-500/40 text-purple-400 hover:text-red-400 hover:bg-purple-900/40'
-                   : 'border-slate-600/50 text-slate-600 hover:text-red-400 hover:bg-slate-700'}"
-        title={confirming ? 'Click again to confirm delete' : 'Remove preset'}
-      >{confirming ? 'Delete?' : '✕'}</button>
+                   : 'border-slate-600/50 text-slate-600 hover:text-red-400 hover:bg-slate-700'}">{confirming ? 'Delete?' : '✕'}</Button>
       {#if confirming}
         <Button variant="danger" size="xs" title="Cancel" on:click={cancelDelete}>✕</Button>
       {/if}

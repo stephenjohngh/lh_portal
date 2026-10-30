@@ -144,13 +144,10 @@
             {type?.name ?? 'Type'} Attributes
           </p>
           {#if conditionDefs.length > 0}
-            <button
-              on:click={() => showConditionAttrs = !showConditionAttrs}
-              class="text-xs px-2 py-0.5 rounded border transition-colors shrink-0
+            <Button variant="plain" on:click={() => showConditionAttrs = !showConditionAttrs} className="text-xs px-2 py-0.5 rounded border transition-colors shrink-0
                      {showConditionAttrs
                        ? 'bg-purple-600/30 border-purple-500/50 text-purple-300'
-                       : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-300'}"
-            >Condition attrs ({conditionDefs.length})</button>
+                       : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-300'}">Condition attrs ({conditionDefs.length})</Button>
           {/if}
         </div>
 

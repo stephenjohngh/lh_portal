@@ -229,16 +229,10 @@
         {:else}
           {#each $profiles.list as p (p.id)}
             {@const selected = profile_ids.includes(p.id)}
-            <button
-              type="button"
-              on:click={() => toggleProfile(p.id)}
-              class="text-xs px-2 py-1 rounded border transition-colors
+            <Button variant="plain" type="button" on:click={() => toggleProfile(p.id)} className="text-xs px-2 py-1 rounded border transition-colors
                      {selected
                        ? 'bg-purple-600/30 border-purple-500/60 text-purple-200'
-                       : 'bg-slate-800 border-slate-600 text-gray-400 hover:border-slate-500 hover:text-gray-200'}"
-            >
-              {selected ? '✓ ' : ''}{p.full_name}
-            </button>
+                       : 'bg-slate-800 border-slate-600 text-gray-400 hover:border-slate-500 hover:text-gray-200'}">{selected ? '✓ ' : ''}{p.full_name}</Button>
           {/each}
         {/if}
       </div>

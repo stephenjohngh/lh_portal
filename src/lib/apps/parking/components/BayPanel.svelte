@@ -163,14 +163,13 @@
     <section class="border-t border-slate-700 pt-3 space-y-2" data-testid="bay-holders">
       <p class="text-sm font-semibold text-slate-200">Held by</p>
       {#each live as a (a.id)}
-        <button class="block w-full text-left rounded-lg bg-slate-900/50 hover:bg-slate-900 p-2 text-sm"
-          on:click={() => dispatch('showAgreement', a.id)}>
-          <span class="text-slate-200">{holderName(a.holder_id)}</span>{#if regsFor(a.id)}<span class="text-slate-500 mx-1.5">·</span><span class="font-mono text-slate-300">{regsFor(a.id)}</span>{/if}
+        <Button variant="plain" on:click={() => dispatch('showAgreement', a.id)} className="block w-full text-left rounded-lg bg-slate-900/50 hover:bg-slate-900 p-2 text-sm">
+<span class="text-slate-200">{holderName(a.holder_id)}</span>{#if regsFor(a.id)}<span class="text-slate-500 mx-1.5">·</span><span class="font-mono text-slate-300">{regsFor(a.id)}</span>{/if}
           <span class="block text-xs text-slate-400">
             <span class="font-mono">{a.reference}</span> · {BASIS_LABEL[a.basis]} · {STATUS_LABEL[a.status]}
             · {fmtDate(a.starts_on)} → {a.ends_on ? fmtDate(a.ends_on) : 'rolling'}
           </span>
-        </button>
+</Button>
       {:else}
         <p class="text-xs text-slate-500">Nobody.</p>
       {/each}

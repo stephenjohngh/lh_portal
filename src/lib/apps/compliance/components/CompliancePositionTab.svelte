@@ -345,8 +345,8 @@
     <!-- Report switch + export -->
     <div class="bar">
       <div class="views">
-        <button class="view-btn" class:on={report === 'position'} on:click={() => (report = 'position')}>Compliance position</button>
-        <button class="view-btn" class:on={report === 'history'}  on:click={() => (report = 'history')}>Evidence history</button>
+        <Button variant="plain" on:click={() => (report = 'position')} className="view-btn {report === 'position' ? 'on' : ''}">Compliance position</Button>
+        <Button variant="plain" on:click={() => (report = 'history')} className="view-btn {report === 'history' ? 'on' : ''}">Evidence history</Button>
       </div>
       <Button variant="secondary" size="small" on:click={() => (showExport = true)}>⬇ Word report</Button>
     </div>
@@ -356,14 +356,14 @@
       <div class="frow">
         <span class="fl">Category</span>
         {#each GROUPS as g (g)}
-          <button class="chip" class:on={fGroups.includes(g)} on:click={() => (fGroups = toggle(fGroups, g))}>{GROUP_LABEL[g]}</button>
+          <Button variant="plain" on:click={() => (fGroups = toggle(fGroups, g))} className="chip {fGroups.includes(g) ? 'on' : ''}">{GROUP_LABEL[g]}</Button>
         {/each}
-        <button class="chip" class:on={fGroups.includes('unlisted')} on:click={() => (fGroups = toggle(fGroups, 'unlisted'))}>Not in the register</button>
+        <Button variant="plain" on:click={() => (fGroups = toggle(fGroups, 'unlisted'))} className="chip {fGroups.includes('unlisted') ? 'on' : ''}">Not in the register</Button>
       </div>
       <div class="frow">
         <span class="fl">Source</span>
         {#each BASIS as b (b)}
-          <button class="chip" class:on={fBases.includes(b)} on:click={() => (fBases = toggle(fBases, b))}>{BASIS_LABEL[b]}</button>
+          <Button variant="plain" on:click={() => (fBases = toggle(fBases, b))} className="chip {fBases.includes(b) ? 'on' : ''}">{BASIS_LABEL[b]}</Button>
         {/each}
       </div>
       <div class="frow">
@@ -545,18 +545,18 @@
 
   .bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
   .views { display: flex; gap: 0.4rem; }
-  .view-btn { font-size: 0.78rem; padding: 0.32rem 0.75rem; border-radius: 6px; cursor: pointer;
+  :global(.view-btn) { font-size: 0.78rem; padding: 0.32rem 0.75rem; border-radius: 6px; cursor: pointer;
               border: 1px solid rgb(71 85 105 / 0.6); background: transparent; color: rgb(148 163 184); }
-  .view-btn.on { background: rgb(var(--lh-accent-rgb) / 0.15); border-color: rgb(var(--lh-accent-rgb) / 0.5); color: rgb(226 232 240); }
+  :global(.view-btn):global(.on) { background: rgb(var(--lh-accent-rgb) / 0.15); border-color: rgb(var(--lh-accent-rgb) / 0.5); color: rgb(226 232 240); }
 
   .filters { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.6rem 0.75rem;
              border-radius: 8px; background: rgb(15 23 42 / 0.35); border: 1px solid rgb(71 85 105 / 0.4); }
   .frow { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
   .fl { font-size: 0.7rem; color: rgb(100 116 139); text-transform: uppercase; letter-spacing: 0.05em; margin-right: 0.15rem; }
-  .chip { font-size: 0.72rem; padding: 0.2rem 0.55rem; border-radius: 999px; cursor: pointer;
+  :global(.chip) { font-size: 0.72rem; padding: 0.2rem 0.55rem; border-radius: 999px; cursor: pointer;
           border: 1px solid rgb(71 85 105 / 0.6); background: transparent; color: rgb(148 163 184); }
-  .chip.on { background: rgb(var(--lh-accent-rgb) / 0.18); border-color: rgb(var(--lh-accent-rgb) / 0.5); color: rgb(226 232 240); }
-  .chip.clear { color: rgb(252 165 165); border-color: rgb(248 113 113 / 0.4); }
+  :global(.chip):global(.on) { background: rgb(var(--lh-accent-rgb) / 0.18); border-color: rgb(var(--lh-accent-rgb) / 0.5); color: rgb(226 232 240); }
+  :global(.chip).clear { color: rgb(252 165 165); border-color: rgb(248 113 113 / 0.4); }
   .sel { background: rgb(30 41 59); border: 1px solid rgb(71 85 105); border-radius: 5px;
          padding: 0.2rem 0.4rem; font-size: 0.75rem; color: rgb(226 232 240); }
   .search { background: rgb(30 41 59); border: 1px solid rgb(71 85 105); border-radius: 5px;

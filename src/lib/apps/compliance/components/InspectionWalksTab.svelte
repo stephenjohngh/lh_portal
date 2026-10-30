@@ -419,8 +419,8 @@
 
           <!-- -- Session row ------------------------------------------------ -->
           <div class="sess-row-wrap">
-            <button class="sess-row" on:click={() => toggleExpand(session)}>
-              <span class="chev">{isExpanded ? '▾' : '▸'}</span>
+            <Button variant="plain" on:click={() => toggleExpand(session)} className="sess-row">
+<span class="chev">{isExpanded ? '▾' : '▸'}</span>
 
               <div class="sess-main">
                 <!-- Header line -->
@@ -487,7 +487,7 @@
                 class:status-unfinished={unfinished}>
                 {state}
               </span>
-            </button>
+</Button>
 
             <!-- Admin delete (two-click confirm) -->
             <ProtectedButton
@@ -564,13 +564,7 @@
                         >
                           <td class="caret-cell">
                             {#if items.length > 0}
-                              <button
-                                type="button"
-                                class="expand-btn {isExpanded ? 'expanded' : ''}"
-                                on:click|stopPropagation={() => toggleRow(session.id, grp.component_id)}
-                                title={isExpanded ? 'Hide condition breakdown' : 'Show condition breakdown'}
-                                aria-label={isExpanded ? 'Collapse row' : 'Expand row'}
-                              >▸</button>
+                              <Button variant="plain" type="button" on:click={(e) => { e.stopPropagation(); (() => toggleRow(session.id, grp.component_id))(e); }} title={isExpanded ? 'Hide condition breakdown' : 'Show condition breakdown'} aria-label={isExpanded ? 'Collapse row' : 'Expand row'} className="expand-btn {isExpanded ? 'expanded' : ''}">▸</Button>
                             {/if}
                           </td>
                           <td class="font-medium font-mono">{displayName}</td>
@@ -603,13 +597,7 @@
                               {#if firstRow.photo_urls?.length > 0}
                                 <div class="photo-thumbs">
                                   {#each firstRow.photo_urls as url, i (url)}
-                                    <button
-                                      class="photo-thumb-btn"
-                                      on:click|stopPropagation={() => openLightbox(firstRow.photo_urls, i)}
-                                      title="View photo {i + 1}"
-                                    >
-                                      <img src={url} alt="Photo {i + 1}" />
-                                    </button>
+                                    <Button variant="plain" on:click={(e) => { e.stopPropagation(); (() => openLightbox(firstRow.photo_urls, i))(e); }} title="View photo {i + 1}" className="photo-thumb-btn"><img src={url} alt="Photo {i + 1}" /></Button>
                                   {/each}
                                 </div>
                               {:else}
@@ -699,8 +687,8 @@
   .sess-card     { background: rgb(51 65 85 / 0.4); border: 1px solid rgb(71 85 105); border-radius: 8px; overflow: hidden; }
   .sess-open     { border-color: rgb(217 119 6 / 0.4); }
   .sess-row-wrap { display: flex; align-items: stretch; }
-  .sess-row      { flex: 1; text-align: left; padding: 0.75rem 1rem; display: flex; align-items: center; gap: 0.75rem; background: none; border: none; cursor: pointer; transition: background 0.15s; }
-  .sess-row:hover { background: rgb(71 85 105 / 0.4); }
+  :global(.sess-row)      { flex: 1; text-align: left; padding: 0.75rem 1rem; display: flex; align-items: center; gap: 0.75rem; background: none; border: none; cursor: pointer; transition: background 0.15s; }
+  :global(.sess-row):hover { background: rgb(71 85 105 / 0.4); }
 
   /* Delete button */
   .del-btn          { flex-shrink: 0; padding: 0 0.875rem; background: none; border: none; border-left: 1px solid rgb(71 85 105 / 0.5); color: rgb(107 114 128); font-size: 0.875rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
@@ -763,15 +751,15 @@
   .notes-lines      { display: block; white-space: pre-line; line-height: 1.4; max-height: 5rem; overflow-y: auto; }
   .photo-thumb-cell { vertical-align: middle; }
   .photo-thumbs     { display: flex; flex-wrap: wrap; gap: 0.2rem; max-width: 8rem; }
-  .photo-thumb-btn  { display: block; width: 2rem; height: 2rem; padding: 0; border: 1px solid rgb(71 85 105 / 0.6); border-radius: 3px; overflow: hidden; cursor: zoom-in; background: none; transition: border-color 0.15s; }
-  .photo-thumb-btn:hover { border-color: rgb(148 163 184); }
-  .photo-thumb-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  :global(.photo-thumb-btn)  { display: block; width: 2rem; height: 2rem; padding: 0; border: 1px solid rgb(71 85 105 / 0.6); border-radius: 3px; overflow: hidden; cursor: zoom-in; background: none; transition: border-color 0.15s; }
+  :global(.photo-thumb-btn):hover { border-color: rgb(148 163 184); }
+  :global(.photo-thumb-btn) img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
   /* Expand caret + expanded row */
   .caret-cell  { width: 1.5rem; padding-right: 0 !important; }
-  .expand-btn  { background: none; border: 0; color: rgb(148 163 184); cursor: pointer; font-size: 0.85rem; line-height: 1; padding: 0; transition: transform 0.15s, color 0.15s; }
-  .expand-btn:hover { color: rgb(226 232 240); }
-  .expand-btn.expanded { transform: rotate(90deg); color: rgb(216 180 254); }
+  :global(.expand-btn)  { background: none; border: 0; color: rgb(148 163 184); cursor: pointer; font-size: 0.85rem; line-height: 1; padding: 0; transition: transform 0.15s, color 0.15s; }
+  :global(.expand-btn):hover { color: rgb(226 232 240); }
+  :global(.expand-btn).expanded { transform: rotate(90deg); color: rgb(216 180 254); }
   .insp-row-expanded     { background: rgb(15 23 42 / 0.4); border-bottom: 1px solid rgb(71 85 105 / 0.5); }
   .insp-row-expanded td  { padding: 0.5rem 0.75rem; vertical-align: top; }
   .expanded-content      { display: flex; flex-direction: column; gap: 0.35rem; }

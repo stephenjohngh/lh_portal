@@ -142,13 +142,7 @@
       <p class="text-xs text-slate-400 mb-2">Overall result</p>
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {#each RESULTS as r}
-          <button
-            class="result-btn {r.cls}"
-            class:result-active={result === r.value}
-            on:click={() => result = r.value}
-          >
-            {r.label}
-          </button>
+          <Button variant="plain" on:click={() => result = r.value} className="result-btn {r.cls} {result === r.value ? 'result-active' : ''}">{r.label}</Button>
         {/each}
       </div>
     </div>
@@ -315,16 +309,16 @@
 </Modal>
 
 <style>
-  .result-btn {
+  :global(.result-btn) {
     padding: 0.5rem 0.5rem; border-radius: 8px; font-size: 0.8rem; font-weight: 600;
     border: 2px solid transparent; cursor: pointer; transition: all 0.12s; text-align: center;
   }
-  .result-pass    { background: rgb(20 83 45 / 0.3);  color: #86efac; border-color: rgb(34 197 94 / 0.2); }
-  .result-fail    { background: rgb(127 29 29 / 0.3); color: #fca5a5; border-color: rgb(239 68 68 / 0.2); }
-  .result-partial { background: rgb(120 53 15 / 0.3); color: #fcd34d; border-color: rgb(245 158 11 / 0.2); }
-  .result-na      { background: rgb(30 41 59 / 0.4);  color: #94a3b8; border-color: rgb(71 85 105 / 0.4); }
-  .result-active.result-pass    { border-color: #22c55e; background: rgb(20 83 45 / 0.6); }
-  .result-active.result-fail    { border-color: #ef4444; background: rgb(127 29 29 / 0.6); }
-  .result-active.result-partial { border-color: #f59e0b; background: rgb(120 53 15 / 0.6); }
-  .result-active.result-na      { border-color: #64748b; background: rgb(30 41 59 / 0.7); }
+  :global(.result-pass)    { background: rgb(20 83 45 / 0.3);  color: #86efac; border-color: rgb(34 197 94 / 0.2); }
+  :global(.result-fail)    { background: rgb(127 29 29 / 0.3); color: #fca5a5; border-color: rgb(239 68 68 / 0.2); }
+  :global(.result-partial) { background: rgb(120 53 15 / 0.3); color: #fcd34d; border-color: rgb(245 158 11 / 0.2); }
+  :global(.result-na)      { background: rgb(30 41 59 / 0.4);  color: #94a3b8; border-color: rgb(71 85 105 / 0.4); }
+  :global(.result-active):global(.result-pass)    { border-color: #22c55e; background: rgb(20 83 45 / 0.6); }
+  :global(.result-active):global(.result-fail)    { border-color: #ef4444; background: rgb(127 29 29 / 0.6); }
+  :global(.result-active):global(.result-partial) { border-color: #f59e0b; background: rgb(120 53 15 / 0.6); }
+  :global(.result-active):global(.result-na)      { border-color: #64748b; background: rgb(30 41 59 / 0.7); }
 </style>

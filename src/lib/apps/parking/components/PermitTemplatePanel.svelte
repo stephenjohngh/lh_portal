@@ -63,11 +63,10 @@
 </script>
 
 <section class="mt-6 bg-slate-800/40 border border-slate-700 rounded-xl">
-  <button type="button" class="w-full text-left px-4 py-3 text-slate-200 font-semibold flex justify-between"
-    on:click={() => open = !open} aria-expanded={open}>
-    <span>Permit template <span class="text-xs font-normal text-slate-400">— admin</span></span>
+  <Button variant="plain" type="button" on:click={() => open = !open} aria-expanded={open} className="w-full text-left px-4 py-3 text-slate-200 font-semibold flex justify-between">
+<span>Permit template <span class="text-xs font-normal text-slate-400">— admin</span></span>
     <span class="text-slate-400">{open ? '▾' : '▸'}</span>
-  </button>
+</Button>
 
   {#if open && form}
     <div class="px-4 pb-4 grid gap-4 lg:grid-cols-2">

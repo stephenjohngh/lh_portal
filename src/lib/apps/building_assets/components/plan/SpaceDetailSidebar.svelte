@@ -502,16 +502,11 @@
         <div class="flex gap-1.5 flex-wrap">
           {#each SPACE_COLOURS as sc (sc.hex)}
             {@const isNone = sc.hex === 'none'}
-            <button
-              on:click={() => editColourHex = sc.hex}
-              title={sc.label}
-              class="w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center
+            <Button variant="plain" on:click={() => editColourHex = sc.hex} title={sc.label} style={!isNone ? `background-color:${sc.hex}` : ''} className="w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center
                      {editColourHex === sc.hex
                        ? 'border-white scale-110'
                        : 'border-transparent hover:border-slate-400'}
-                     {isNone ? 'bg-slate-700' : ''}"
-              style={!isNone ? `background-color:${sc.hex}` : ''}
-            >{#if isNone}<span class="text-slate-500 text-[9px] leading-none">∅</span>{/if}</button>
+                     {isNone ? 'bg-slate-700' : ''}">{#if isNone}<span class="text-slate-500 text-[9px] leading-none">∅</span>{/if}</Button>
           {/each}
         </div>
       </div>
@@ -558,13 +553,10 @@
       <div class="flex items-center justify-between">
         <p class="text-xs text-slate-600">{poly.length} polygon vertices</p>
         {#if !readOnly && allowShapeEdit}
-          <button
-            on:click={() => dispatch(vertexEditingActive ? 'doneeditshape' : 'editshape')}
-            class="text-xs px-2 py-0.5 rounded transition-colors
+          <Button variant="plain" on:click={() => dispatch(vertexEditingActive ? 'doneeditshape' : 'editshape')} className="text-xs px-2 py-0.5 rounded transition-colors
                    {vertexEditingActive
                      ? 'bg-purple-600 text-white hover:bg-purple-500'
-                     : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}"
-          >{vertexEditingActive ? 'Done editing' : 'Edit shape ✦'}</button>
+                     : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}">{vertexEditingActive ? 'Done editing' : 'Edit shape ✦'}</Button>
         {/if}
       </div>
       <!-- Corners typed exactly (user, 2026-10-12): numbered as on the drawing, in

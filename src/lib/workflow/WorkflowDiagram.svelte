@@ -8,6 +8,7 @@
      Any app's workflow can be drawn with it: the point of one standard model.
      Plain SVG, laid out by workflowLayout.js; no graph library. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { layoutWorkflow, LABEL } from './workflowLayout.js';
   import { describeDeadline } from './workflowDeadlines.js';
   import { timerPhrase } from './workflowModel.js';
@@ -49,11 +50,7 @@
 </script>
 
 <div class="flex justify-end mb-1">
-  <button type="button" class="text-xs px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:text-white hover:border-slate-400"
-          aria-pressed={fit} data-testid="workflow-diagram-fit" on:click={toggleFit}
-          title={fit ? 'Draw the diagram at full size, scrolling sideways if it is wider than the window' : 'Shrink the diagram so all of it fits across the window'}>
-    {fit ? 'Actual size' : 'Fit to window'}
-  </button>
+  <Button variant="plain" type="button" aria-pressed={fit} data-testid="workflow-diagram-fit" on:click={toggleFit} title={fit ? 'Draw the diagram at full size, scrolling sideways if it is wider than the window' : 'Shrink the diagram so all of it fits across the window'} className="text-xs px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:text-white hover:border-slate-400">{fit ? 'Actual size' : 'Fit to window'}</Button>
 </div>
 <div class="overflow-x-auto rounded-lg border border-slate-700 bg-slate-900/60 p-2" data-testid="workflow-diagram">
   <svg role="img" aria-label={title} width={fit ? '100%' : layout.width} height={fit ? undefined : layout.height}

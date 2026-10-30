@@ -944,15 +944,12 @@
         {#if datasets.length}
           <div class="pb-1">
             {#each datasets as dataset (dataset.id)}
-              <button
-                class="flex items-center gap-2 w-full px-3 py-1 text-left text-sm
+              <Button variant="plain" on:click={() => openDataset(dataset)} className="flex items-center gap-2 w-full px-3 py-1 text-left text-sm
                        hover:bg-slate-700/50 transition-colors
-                       {selectedDatasetId === dataset.id ? 'bg-slate-700 text-white' : 'text-slate-300'}"
-                on:click={() => openDataset(dataset)}
-              >
-                <span class="text-slate-600 text-xs shrink-0">▦</span>
+                       {selectedDatasetId === dataset.id ? 'bg-slate-700 text-white' : 'text-slate-300'}">
+<span class="text-slate-600 text-xs shrink-0">▦</span>
                 <span class="truncate">{dataset.title}</span>
-              </button>
+</Button>
             {/each}
           </div>
         {/if}
@@ -980,20 +977,15 @@
                   {filesOpen ? 'flex-1' : 'shrink-0'}">
         <!-- When open, AttachedDocuments supplies its own "FILES (n)" heading,
              so this button carries the label only while collapsed. -->
-        <button
-          class="flex items-center gap-2 w-full px-3 py-2 text-left shrink-0
-                 hover:bg-slate-700/40 transition-colors"
-          aria-label={filesOpen ? 'Hide files' : 'Show files'}
-          aria-expanded={filesOpen}
-          on:click={toggleFiles}
-        >
-          <span class="text-[10px] text-slate-500 w-2">{filesOpen ? '▼' : '▶'}</span>
+        <Button variant="plain" aria-label={filesOpen ? 'Hide files' : 'Show files'} aria-expanded={filesOpen} on:click={toggleFiles} className="flex items-center gap-2 w-full px-3 py-2 text-left shrink-0
+                 hover:bg-slate-700/40 transition-colors">
+<span class="text-[10px] text-slate-500 w-2">{filesOpen ? '▼' : '▶'}</span>
           {#if !filesOpen}
             <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide flex-1">
               Files
             </span>
           {/if}
-        </button>
+</Button>
 
         {#if filesOpen}
           <div class="flex-1 min-h-0 overflow-y-auto px-3 pb-3">
@@ -1016,21 +1008,16 @@
            collapsed by default: it is the one place a live external link is
            visible, and it should be looked at deliberately. -->
       <div class="border-t border-slate-700 shrink-0">
-        <button
-          class="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-800/50
-                 transition-colors text-left"
-          aria-label={pubsOpen ? 'Hide links' : 'Show links'}
-          aria-expanded={pubsOpen}
-          on:click={togglePubs}
-        >
-          <span class="text-[10px] text-slate-500 w-2">{pubsOpen ? '▼' : '▶'}</span>
+        <Button variant="plain" aria-label={pubsOpen ? 'Hide links' : 'Show links'} aria-expanded={pubsOpen} on:click={togglePubs} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-800/50
+                 transition-colors text-left">
+<span class="text-[10px] text-slate-500 w-2">{pubsOpen ? '▼' : '▶'}</span>
           <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide flex-1">
             Links
           </span>
           {#if liveLinks}
             <span class="text-[10px] text-green-400">{liveLinks} live</span>
           {/if}
-        </button>
+</Button>
 
         {#if pubsOpen}
           <div class="max-h-64 overflow-y-auto px-3 pb-3">

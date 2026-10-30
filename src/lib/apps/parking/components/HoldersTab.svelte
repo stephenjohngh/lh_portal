@@ -63,10 +63,7 @@
           </td>
           <td class="py-2 pr-3 text-xs">
             {#each agreementsOf(h.id) as a (a.id)}
-              <button class="block text-left hover:underline {LIVE.has(a.status) ? 'text-slate-200' : 'text-slate-500'}"
-                on:click={() => dispatch('showAgreement', a.id)}>
-                <span class="font-mono">{a.reference}</span> · {bayRef(a.bay_id)} · {STATUS_LABEL[a.status]}
-              </button>
+              <Button variant="plain" on:click={() => dispatch('showAgreement', a.id)} className="block text-left hover:underline {LIVE.has(a.status) ? 'text-slate-200' : 'text-slate-500'}"><span class="font-mono">{a.reference}</span> · {bayRef(a.bay_id)} · {STATUS_LABEL[a.status]}</Button>
             {:else}<span class="text-slate-600">None</span>{/each}
           </td>
           <td class="py-2 text-right">

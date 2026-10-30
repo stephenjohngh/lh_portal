@@ -170,16 +170,10 @@
     <p class="font-semibold text-white text-sm shrink-0">{title}</p>
 
     <div class="flex rounded-lg overflow-hidden border border-slate-600 text-xs shrink-0">
-      <button
-        on:click={() => view = 'list'}
-        class="px-3 py-1 transition-colors
-               {view === 'list' ? 'bg-purple-600 text-white font-medium' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}"
-      >List</button>
-      <button
-        on:click={() => view = 'summary'}
-        class="px-3 py-1 border-l border-slate-600 transition-colors
-               {view === 'summary' ? 'bg-purple-600 text-white font-medium' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}"
-      >Summary</button>
+      <Button variant="plain" on:click={() => view = 'list'} className="px-3 py-1 transition-colors
+               {view === 'list' ? 'bg-purple-600 text-white font-medium' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}">List</Button>
+      <Button variant="plain" on:click={() => view = 'summary'} className="px-3 py-1 border-l border-slate-600 transition-colors
+               {view === 'summary' ? 'bg-purple-600 text-white font-medium' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}">Summary</Button>
     </div>
 
     <span class="ml-auto text-xs text-slate-500 shrink-0">

@@ -269,14 +269,9 @@
                   {/each}
                 </select>
               {:else if doc.category}
-                <button
-                  class="shrink-0 rounded px-1.5 py-0.5 text-[11px] leading-tight
+                <Button variant="plain" disabled={!canEdit} title={canEdit ? 'Change the category' : categoryLabel(doc.category)} on:click={() => { if (canEdit) editingCatId = doc.id; }} className="shrink-0 rounded px-1.5 py-0.5 text-[11px] leading-tight
                          bg-purple-900/40 text-purple-200 border border-purple-800/60
-                         {canEdit ? 'hover:border-purple-500' : 'cursor-default'}"
-                  disabled={!canEdit}
-                  title={canEdit ? 'Change the category' : categoryLabel(doc.category)}
-                  on:click={() => { if (canEdit) editingCatId = doc.id; }}
-                >{categoryLabel(doc.category)}</button>
+                         {canEdit ? 'hover:border-purple-500' : 'cursor-default'}">{categoryLabel(doc.category)}</Button>
               {:else if canEdit}
                 <Button variant="tertiary" size="xs" title="Set a category" on:click={() => editingCatId = doc.id}>+ category</Button>
               {/if}

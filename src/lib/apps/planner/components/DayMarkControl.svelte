@@ -83,16 +83,10 @@
              reading its name to pick it is a step nobody needs. -->
         <div class="flex items-center gap-1">
           {#each PALETTE as swatch}
-            <button
-              type="button"
-              title={swatch.label}
-              aria-label={swatch.label}
-              class="w-3.5 h-3.5 rounded {swatch.dot} transition-transform
+            <Button variant="plain" type="button" title={swatch.label} aria-label={swatch.label} on:click={() => colour = swatch.key} className="w-3.5 h-3.5 rounded {swatch.dot} transition-transform
                      {colour === swatch.key
                        ? 'ring-2 ring-offset-1 ring-offset-slate-800 ring-white/60 scale-110'
-                       : 'opacity-50 hover:opacity-100'}"
-              on:click={() => colour = swatch.key}
-            ></button>
+                       : 'opacity-50 hover:opacity-100'}"></Button>
           {/each}
         </div>
 

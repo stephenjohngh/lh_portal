@@ -713,13 +713,10 @@
                 { id: 'residential', label: 'Residential' },
                 { id: 'basement',    label: 'Basement' },
               ] as p (p.id)}
-                <button
-                  on:click={() => { floorPreset = p.id; filterFloorIds = new Set(); }}
-                  class="px-3 py-1.5 border-l border-slate-600 first:border-l-0 transition-colors
+                <Button variant="plain" on:click={() => { floorPreset = p.id; filterFloorIds = new Set(); }} className="px-3 py-1.5 border-l border-slate-600 first:border-l-0 transition-colors
                          {floorPreset === p.id
                            ? 'bg-purple-600 text-white font-medium'
-                           : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}"
-                >{p.label}</button>
+                           : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}">{p.label}</Button>
               {/each}
             </div>
             <!-- Individual floor multi-select -->

@@ -4,6 +4,7 @@
      (document | xlsx | csv). All three share the report data model — the CSV and
      Excel detail use the same column matrix; Word/Excel summaries the same pivot. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   const dispatch = createEventDispatcher();
 
@@ -17,21 +18,7 @@
 </script>
 
 <div class="ml-auto flex items-center gap-2">
-  <button
-    on:click={() => dispatch('document')}
-    disabled={generating || count === 0 || documentDisabled}
-    class={BTN}
-  >{generating ? 'Generating…' : '⬇ Word'}</button>
-  <button
-    on:click={() => dispatch('xlsx')}
-    disabled={generatingXlsx || count === 0}
-    class={BTN}
-    title="Excel (.xlsx) — Components sheet + Full Summary / By Floor sheets (filterable, styled)"
-  >{generatingXlsx ? 'Generating…' : '⬇ Excel'}</button>
-  <button
-    on:click={() => dispatch('csv')}
-    disabled={count === 0}
-    class={BTN}
-    title="CSV — one row per component; attribute & condition columns follow the Columns toggles (Excel-filterable)"
-  >⬇ CSV</button>
+  <Button variant="plain" on:click={() => dispatch('document')} disabled={generating || count === 0 || documentDisabled} className={BTN}>{generating ? 'Generating…' : '⬇ Word'}</Button>
+  <Button variant="plain" on:click={() => dispatch('xlsx')} disabled={generatingXlsx || count === 0} title="Excel (.xlsx) — Components sheet + Full Summary / By Floor sheets (filterable, styled)" className={BTN}>{generatingXlsx ? 'Generating…' : '⬇ Excel'}</Button>
+  <Button variant="plain" on:click={() => dispatch('csv')} disabled={count === 0} title="CSV — one row per component; attribute & condition columns follow the Columns toggles (Excel-filterable)" className={BTN}>⬇ CSV</Button>
 </div>

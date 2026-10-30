@@ -353,11 +353,8 @@
       <p class={sec}>Status</p>
       <div class="grid grid-cols-4 gap-2">
         {#each STATUS_OPTS as opt}
-          <button
-            on:click={() => { status = opt.value; dirty = true; }}
-            class="py-2 text-sm rounded font-medium text-white transition-all
-                   {opt.bg} {status === opt.value ? 'ring-2 ' + opt.ring : 'opacity-40 hover:opacity-70'}"
-          >{opt.label}</button>
+          <Button variant="plain" on:click={() => { status = opt.value; dirty = true; }} className="py-2 text-sm rounded font-medium text-white transition-all
+                   {opt.bg} {status === opt.value ? 'ring-2 ' + opt.ring : 'opacity-40 hover:opacity-70'}">{opt.label}</Button>
         {/each}
       </div>
     </section>
@@ -373,13 +370,10 @@
             {/if}
           </p>
           {#if conditionDefs.length > 0}
-            <button
-              on:click={() => showConditionAttrs = !showConditionAttrs}
-              class="text-xs px-2 py-0.5 rounded border transition-colors shrink-0
+            <Button variant="plain" on:click={() => showConditionAttrs = !showConditionAttrs} className="text-xs px-2 py-0.5 rounded border transition-colors shrink-0
                      {showConditionAttrs
                        ? 'bg-purple-600/30 border-purple-500/50 text-purple-300'
-                       : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-300'}"
-            >Condition attrs ({conditionDefs.length})</button>
+                       : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-300'}">Condition attrs ({conditionDefs.length})</Button>
           {/if}
         </div>
 

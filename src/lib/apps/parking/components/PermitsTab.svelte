@@ -266,10 +266,8 @@
           <p class="text-xs text-slate-400 mb-1">For</p>
           <div class="flex gap-2">
             {#each PERMIT_DURATIONS as d}
-              <button type="button" on:click={() => chooseDuration(d.key)}
-                class="px-3 py-1.5 rounded text-sm border transition-colors
-                       {duration === d.key ? 'bg-purple-600 border-purple-500 text-white' : 'border-slate-600 text-slate-300 hover:bg-slate-700'}"
-              >{d.label}</button>
+              <Button variant="plain" type="button" on:click={() => chooseDuration(d.key)} className="px-3 py-1.5 rounded text-sm border transition-colors
+                       {duration === d.key ? 'bg-purple-600 border-purple-500 text-white' : 'border-slate-600 text-slate-300 hover:bg-slate-700'}">{d.label}</Button>
             {/each}
             {#if duration === 'custom'}<span class="text-xs text-slate-400 self-center">Dates set by hand</span>{/if}
           </div>

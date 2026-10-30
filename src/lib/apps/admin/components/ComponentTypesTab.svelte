@@ -4,6 +4,7 @@
      All CRUD is handled in child panels; this component manages
      selection state and calls reload() after any save. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { today } from '#lib/utils/dates.js';
   import { downloadCsvRows } from '#lib/utils/download.js';
   import { buildingAssetsStore } from '#lib/apps/building_assets/stores/buildingAssetsStore.js';
@@ -118,20 +119,16 @@
       <span></span>
     {/if}
 
-    <button
-      on:click={exportCsv}
-      title="Download types, attributes and options as CSV"
-      class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
+    <Button variant="plain" on:click={exportCsv} title="Download types, attributes and options as CSV" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
              bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-slate-100
-             border border-slate-600 transition-colors"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+             border border-slate-600 transition-colors">
+<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
         <path fill-rule="evenodd"
           d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
           clip-rule="evenodd"/>
       </svg>
       Export CSV
-    </button>
+</Button>
   </div>
 
   <!-- -- Four-panel layout ------------------------------------------- -->

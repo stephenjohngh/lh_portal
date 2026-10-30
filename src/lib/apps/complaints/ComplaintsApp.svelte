@@ -11,6 +11,7 @@
      (P3). The columns those need already exist, so each is behaviour rather
      than schema. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { errMessage } from '#lib/utils/errors.js';
   import { permissions } from '#lib/stores/permissions.js';
   import AppGate from '#lib/components/common/AppGate.svelte';
@@ -149,11 +150,9 @@
     {#if !state.selected}
       <div class="flex rounded border border-slate-600 overflow-hidden text-xs shrink-0">
         {#each [['open', 'Open'], ['all', 'All']] as [key, label]}
-          <button type="button"
-                  class="px-2.5 py-1 transition-colors
+          <Button variant="plain" type="button" on:click={() => tab = key} className="px-2.5 py-1 transition-colors
                          {tab === key ? 'bg-purple-600 text-white'
-                                      : 'text-slate-400 hover:bg-slate-700'}"
-                  on:click={() => tab = key}>{label}</button>
+                                      : 'text-slate-400 hover:bg-slate-700'}">{label}</Button>
         {/each}
       </div>
 

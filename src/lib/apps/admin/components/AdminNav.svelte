@@ -4,6 +4,7 @@
      The list itself is `sections` in adminSections.js, so a new setting is one
      entry there. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { SECTION_GROUPS, sectionOf } from '../utils/adminSections.js';
 
@@ -25,13 +26,7 @@
 </script>
 
 <nav aria-label="Admin sections" class="w-full {collapsed ? 'md:w-12' : 'md:w-52'} shrink-0 space-y-4">
-  <button type="button"
-          class="hidden md:flex w-full items-center gap-2 px-3 py-1 rounded text-xs text-slate-500 hover:text-white"
-          aria-expanded={!collapsed} data-testid="admin-nav-toggle"
-          title={collapsed ? 'Show the section names' : 'Hide the section names to give the screen more width'}
-          on:click={() => dispatch('toggle')}>
-    <span>{collapsed ? '»' : '«'}</span>{#if !collapsed}<span>Hide list</span>{/if}
-  </button>
+  <Button variant="plain" type="button" aria-expanded={!collapsed} data-testid="admin-nav-toggle" title={collapsed ? 'Show the section names' : 'Hide the section names to give the screen more width'} on:click={() => dispatch('toggle')} className="hidden md:flex w-full items-center gap-2 px-3 py-1 rounded text-xs text-slate-500 hover:text-white"><span>{collapsed ? '»' : '«'}</span>{#if !collapsed}<span>Hide list</span>{/if}</Button>
   {#each groups as g (g.key)}
     <div>
       {#if !collapsed}
@@ -42,20 +37,14 @@
       <ul class="space-y-0.5">
         {#each g.sections as s (s.id)}
           <li>
-            <button
-              type="button"
-              class="w-full flex items-center gap-2 px-3 py-1.5 rounded text-sm text-left transition-colors
-                     {activeSection === s.id ? 'bg-purple-600/20 text-purple-300' : 'text-slate-300 hover:bg-slate-700/50'}"
-              aria-current={activeSection === s.id ? 'page' : undefined}
-              title={collapsed ? s.label : undefined}
-              on:click={() => dispatch('select', s)}
-            >
-              <span class="shrink-0">{s.icon}</span>
+            <Button variant="plain" type="button" aria-current={activeSection === s.id ? 'page' : undefined} title={collapsed ? s.label : undefined} on:click={() => dispatch('select', s)} className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-sm text-left transition-colors
+                     {activeSection === s.id ? 'bg-purple-600/20 text-purple-300' : 'text-slate-300 hover:bg-slate-700/50'}">
+<span class="shrink-0">{s.icon}</span>
               <span class="flex-1 truncate {collapsed ? 'md:hidden' : ''}">{s.label}</span>
               {#if s.id === 'users' && userCount != null && !collapsed}
                 <span class="text-xs text-slate-500 tabular-nums">{userCount}</span>
               {/if}
-            </button>
+</Button>
           </li>
         {/each}
       </ul>

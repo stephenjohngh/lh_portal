@@ -238,28 +238,20 @@
     <div>
       <h4 class="font-semibold mb-3">Report Type</h4>
       <div class="flex gap-3">
-        <button
-          class="type-btn"
-          class:type-btn-active={reportType === 'summary'}
-          on:click={() => reportType = 'summary'}
-        >
-          <span class="type-icon">📋</span>
+        <Button variant="plain" on:click={() => reportType = 'summary'} className="type-btn {reportType === 'summary' ? 'type-btn-active' : ''}">
+<span class="type-icon">📋</span>
           <div>
             <div class="font-semibold text-sm">Summary</div>
             <div class="text-xs text-gray-400 mt-0.5">One row per session — dates, counts, pass/fail totals</div>
           </div>
-        </button>
-        <button
-          class="type-btn"
-          class:type-btn-active={reportType === 'detailed'}
-          on:click={() => reportType = 'detailed'}
-        >
-          <span class="type-icon">📄</span>
+</Button>
+        <Button variant="plain" on:click={() => reportType = 'detailed'} className="type-btn {reportType === 'detailed' ? 'type-btn-active' : ''}">
+<span class="type-icon">📄</span>
           <div>
             <div class="font-semibold text-sm">Detailed</div>
             <div class="text-xs text-gray-400 mt-0.5">One page per session — every component result + photos</div>
           </div>
-        </button>
+</Button>
       </div>
 
       {#if reportType === 'detailed'}
@@ -322,12 +314,7 @@
                 ✓ {registered[session.id].reference}
               </span>
             {:else if canEdit && session.status === 'closed'}
-              <button type="button" class="gt-reg gt-btn"
-                on:click|preventDefault|stopPropagation={() => registerSession(session)}
-                disabled={registeringId === session.id}
-                title="Register this session's report in the Golden Thread">
-                {registeringId === session.id ? '…' : '↗ GT'}
-              </button>
+              <Button variant="plain" type="button" on:click={(e) => { e.preventDefault(); e.stopPropagation(); (() => registerSession(session))(e); }} disabled={registeringId === session.id} title="Register this session's report in the Golden Thread" className="gt-reg gt-btn">{registeringId === session.id ? '…' : '↗ GT'}</Button>
             {/if}
           </label>
         {/each}
@@ -358,15 +345,15 @@
 </Modal>
 
 <style>
-  .type-btn {
+  :global(.type-btn) {
     flex: 1; display: flex; align-items: flex-start; gap: 0.75rem;
     padding: 0.875rem 1rem; border-radius: 8px; text-align: left;
     border: 1px solid rgb(71 85 105);
     background: rgb(51 65 85 / 0.3);
     cursor: pointer; transition: all 0.15s; color: #e2e8f0;
   }
-  .type-btn:hover    { border-color: rgb(var(--lh-accent-rgb) / 0.5); background: rgb(var(--lh-accent-rgb) / 0.05); }
-  .type-btn-active   { border-color: var(--lh-accent); background: rgb(var(--lh-accent-rgb) / 0.1); }
+  :global(.type-btn):hover    { border-color: rgb(var(--lh-accent-rgb) / 0.5); background: rgb(var(--lh-accent-rgb) / 0.05); }
+  :global(.type-btn-active)   { border-color: var(--lh-accent); background: rgb(var(--lh-accent-rgb) / 0.1); }
   .type-icon         { font-size: 1.25rem; flex-shrink: 0; }
 
   .session-list {
@@ -395,10 +382,10 @@
   .status-open   { background: rgb(217 119 6 / 0.2);  color: rgb(251 191 36);  border-color: rgb(217 119 6 / 0.3); }
   .status-closed { background: rgb(71 85 105 / 0.4);  color: rgb(156 163 175); border-color: rgb(71 85 105); }
 
-  .gt-reg   { flex-shrink: 0; font-size: 0.68rem; white-space: nowrap; }
+  :global(.gt-reg)   { flex-shrink: 0; font-size: 0.68rem; white-space: nowrap; }
   .gt-done  { color: rgb(52 211 153); }
-  .gt-btn   { padding: 0.15rem 0.45rem; border-radius: 9999px; border: 1px solid rgb(var(--lh-accent-rgb) / 0.4);
+  :global(.gt-btn)   { padding: 0.15rem 0.45rem; border-radius: 9999px; border: 1px solid rgb(var(--lh-accent-rgb) / 0.4);
               color: rgb(var(--lh-accent-rgb)); background: rgb(var(--lh-accent-rgb) / 0.08); cursor: pointer; }
-  .gt-btn:hover:not(:disabled) { background: rgb(var(--lh-accent-rgb) / 0.18); }
-  .gt-btn:disabled { opacity: 0.5; cursor: default; }
+  :global(.gt-btn):hover:not(:disabled) { background: rgb(var(--lh-accent-rgb) / 0.18); }
+  :global(.gt-btn):disabled { opacity: 0.5; cursor: default; }
 </style>

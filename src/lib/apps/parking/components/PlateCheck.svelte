@@ -208,9 +208,8 @@
         <legend class="text-sm text-slate-300">Where is the car?</legend>
         <div class="flex gap-2">
           {#each Object.entries(SIGHTING_PLACES) as [value, label]}
-            <button type="button" on:click={() => choosePlace(value)} aria-pressed={place === value}
-              class="flex-1 min-h-[48px] rounded-lg border text-base
-                {place === value ? 'border-purple-400 bg-purple-900/50 text-white font-semibold' : 'border-slate-600 text-slate-300'}">{label}</button>
+            <Button variant="plain" type="button" on:click={() => choosePlace(value)} aria-pressed={place === value} className="flex-1 min-h-[48px] rounded-lg border text-base
+                {place === value ? 'border-purple-400 bg-purple-900/50 text-white font-semibold' : 'border-slate-600 text-slate-300'}">{label}</Button>
           {/each}
         </div>
       </fieldset>

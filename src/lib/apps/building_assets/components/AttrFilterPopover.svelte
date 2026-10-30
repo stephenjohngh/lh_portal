@@ -203,16 +203,13 @@
             {:else}
               {@const def = row.def}
               <li>
-              <button
-                on:click={() => pickAttr(def)}
-                class="w-full text-left px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2"
-              >
-                <span class="flex-1">{def.name}</span>
+              <Button variant="plain" on:click={() => pickAttr(def)} className="w-full text-left px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2">
+<span class="flex-1">{def.name}</span>
                 <span class="text-[10px] text-slate-500 font-mono">{def.display_type}</span>
                 {#if def._scope === 'system'}
                   <span class="text-[10px] text-blue-400/70" title="Inherited from system">↑sys</span>
                 {/if}
-              </button>
+</Button>
               </li>
             {/if}
           {/each}
@@ -232,13 +229,10 @@
           <div class="flex flex-wrap gap-1.5">
             {#each chosenOptions as opt (opt.id)}
               {@const selected = (draft?.values ?? []).includes(opt.value)}
-              <button
-                on:click={() => toggleValueInSet(opt.value)}
-                class="px-2 py-1 text-xs rounded border transition-colors
+              <Button variant="plain" on:click={() => toggleValueInSet(opt.value)} className="px-2 py-1 text-xs rounded border transition-colors
                        {selected
                          ? 'bg-purple-600/30 border-purple-500/60 text-purple-200'
-                         : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-500'}"
-              >{opt.value}</button>
+                         : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-500'}">{opt.value}</Button>
             {/each}
           </div>
         {/if}
@@ -248,13 +242,10 @@
         <p class="text-[11px] text-slate-500">Match components whose value is…</p>
         <div class="flex gap-1.5">
           {#each [['is_true','✓ Yes / true'], ['is_false','✗ No / false']] as [op, label]}
-            <button
-              on:click={() => draft = { ...draft, op, values: '' }}
-              class="px-3 py-1 text-xs rounded border transition-colors
+            <Button variant="plain" on:click={() => draft = { ...draft, op, values: '' }} className="px-3 py-1 text-xs rounded border transition-colors
                      {draft?.op === op
                        ? 'bg-purple-600/30 border-purple-500/60 text-purple-200'
-                       : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-500'}"
-            >{label}</button>
+                       : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-500'}">{label}</Button>
           {/each}
         </div>
 

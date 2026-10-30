@@ -7,6 +7,7 @@
     Meeting Minutes    — per-meeting minutes with attendees and tagged items
 -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import IssuesReportPanel         from './IssuesReportPanel.svelte';
   import ActionsReportPanel        from './ActionsReportPanel.svelte';
   import MeetingMinutesReportPanel from './MeetingMinutesReportPanel.svelte';
@@ -27,15 +28,10 @@
   <!-- Sub-tab bar -->
   <div class="flex border-b border-slate-700 shrink-0">
     {#each tabs as tab}
-      <button
-        class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
+      <Button variant="plain" on:click={() => activeReport = tab.id} className="px-4 py-2 text-sm font-medium border-b-2 transition-colors
                {activeReport === tab.id
                  ? 'text-white border-purple-500'
-                 : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}"
-        on:click={() => activeReport = tab.id}
-      >
-        {tab.label}
-      </button>
+                 : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}">{tab.label}</Button>
     {/each}
   </div>
 

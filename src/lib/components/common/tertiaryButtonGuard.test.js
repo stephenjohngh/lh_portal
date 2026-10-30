@@ -16,7 +16,6 @@ const SKIP = /apps[\/](inspection|mobileplan|managementmobile)[\/]/;
 
 // Kept as links on purpose — each NAVIGATES to a thing rather than acting:
 const ALLOWED = {
-  'src/lib/apps/parking/components/AgreementPanel.svelte': 'the bay reference opens that bay',
   'src/routes/pack/[token]/+page.svelte': 'the public pack’s document tree; titles open the document',
 };
 

@@ -2,6 +2,7 @@
 <!-- A car's earlier unauthorised-parking sightings (migration 245): when, where,
      the note and the photo. Shown under Car check's answer, whatever it is. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import PhotoLightbox from '#lib/components/common/PhotoLightbox.svelte';
   import { normalisePhotoUrl } from '#lib/utils/driveUtils.js';
   import { fmtDateTime } from '#lib/utils/dates.js';
@@ -22,10 +23,7 @@
       {#each sightings as s (s.id)}
         <li class="flex gap-2">
           {#if s.photos?.length}
-            <button type="button" class="shrink-0" on:click={() => (viewing = s.photos.map(normalisePhotoUrl))}
-              title="Show the photo">
-              <img src={normalisePhotoUrl(s.photos[0])} alt="Car" class="h-12 w-16 object-cover rounded border border-white/20" />
-            </button>
+            <Button variant="plain" type="button" on:click={() => (viewing = s.photos.map(normalisePhotoUrl))} title="Show the photo" className="shrink-0"><img src={normalisePhotoUrl(s.photos[0])} alt="Car" class="h-12 w-16 object-cover rounded border border-white/20" /></Button>
           {/if}
           <span>
             <span class="block text-slate-100">{fmtDateTime(s.seen_at)} · {SIGHTING_PLACES[s.place] ?? s.place}

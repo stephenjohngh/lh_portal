@@ -122,20 +122,16 @@
     {#if selectedId === section.id && !publishedView}
       {@const inSection = sectionNotes(notes, section.id)}
       {#each inSection as note (note.id)}
-        <button
-          class="w-full text-left pl-7 pr-3 py-1.5 text-xs truncate transition-colors
+        <Button variant="plain" title={note.title} on:click={() => dispatch('selectNote', note)} className="w-full text-left pl-7 pr-3 py-1.5 text-xs truncate transition-colors
                  flex items-center gap-1.5
                  {openNoteId === note.id
                    ? 'bg-slate-700/70 text-white'
-                   : 'text-slate-400 hover:bg-slate-700/40 hover:text-slate-200'}"
-          title={note.title}
-          on:click={() => dispatch('selectNote', note)}
-        >
-          {#if note.is_pinned}
+                   : 'text-slate-400 hover:bg-slate-700/40 hover:text-slate-200'}">
+{#if note.is_pinned}
             <span class="text-purple-400 shrink-0" title="Pinned">📌</span>
           {/if}
           <span class="truncate">{note.title}</span>
-        </button>
+</Button>
       {:else}
         <p class="pl-7 pr-3 py-1.5 text-xs text-slate-600 italic">No notes yet</p>
       {/each}

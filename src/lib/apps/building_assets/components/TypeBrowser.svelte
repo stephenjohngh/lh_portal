@@ -1,6 +1,7 @@
 <!-- src/lib/apps/building_assets/components/TypeBrowser.svelte -->
 <!-- Read-only browser: System → Type → Attribute Definitions + Options -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   export let systems  = [];
   export let types    = [];
   export let attrDefs = {};    // { typeId: type_attributes[] }
@@ -33,21 +34,18 @@
   <div class="w-52 shrink-0 flex flex-col gap-1">
     <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Systems</p>
     {#each systems as sys}
-      <button
-        class="text-left px-3 py-2 rounded-lg text-sm transition-colors
+      <Button variant="plain" on:click={() => { selectedSystem = sys; selectedType = null; }} className="text-left px-3 py-2 rounded-lg text-sm transition-colors
                {selectedSystem?.id === sys.id
                  ? 'bg-purple-600 text-white'
-                 : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'}"
-        on:click={() => { selectedSystem = sys; selectedType = null; }}
-      >
-        <div class="font-medium">{sys.name}</div>
+                 : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'}">
+<div class="font-medium">{sys.name}</div>
         {#if sys.uniclass_code}
           <div class="text-xs opacity-60 font-mono">{sys.uniclass_code}</div>
         {/if}
         <div class="text-xs opacity-60 mt-0.5">
           {types.filter(t => t.building_system_id === sys.id).length} types
         </div>
-      </button>
+</Button>
     {/each}
     {#if systems.length === 0}
       <p class="text-slate-500 text-sm italic">No systems found — run seed SQL</p>
@@ -63,14 +61,11 @@
       <p class="text-slate-600 text-sm italic">Select a system</p>
     {:else}
       {#each systemTypes as t}
-        <button
-          class="text-left px-3 py-2 rounded-lg text-sm transition-colors
+        <Button variant="plain" on:click={() => selectedType = t} className="text-left px-3 py-2 rounded-lg text-sm transition-colors
                  {selectedType?.id === t.id
                    ? 'bg-purple-600 text-white'
-                   : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'}"
-          on:click={() => selectedType = t}
-        >
-          <div class="flex items-center gap-2">
+                   : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'}">
+<div class="flex items-center gap-2">
             <span
               class="w-6 h-6 rounded text-xs font-bold flex items-center justify-center shrink-0"
               style={colourStyle(t.colour)}
@@ -90,7 +85,7 @@
               </span>
             {/if}
           </div>
-        </button>
+</Button>
       {/each}
       {#if systemTypes.length === 0}
         <p class="text-slate-600 text-sm italic">No types in this system</p>

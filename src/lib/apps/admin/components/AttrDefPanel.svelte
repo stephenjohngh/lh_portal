@@ -446,14 +446,11 @@
   <!-- Footer: Add button -->
   {#if mode && editingId !== 'new'}
     <div class="px-3 py-2.5 border-t border-slate-700">
-      <button
-        on:click={startNew}
-        class="w-full py-1.5 text-xs rounded border border-dashed
+      <Button variant="plain" on:click={startNew} className="w-full py-1.5 text-xs rounded border border-dashed
                {mode === 'system'
                  ? 'border-blue-700 text-blue-400/70 hover:text-blue-300 hover:border-blue-500'
                  : 'border-slate-600 text-slate-400 hover:text-white hover:border-purple-500'}
-               transition-colors"
-      >{addLabel}</button>
+               transition-colors">{addLabel}</Button>
     </div>
   {/if}
 

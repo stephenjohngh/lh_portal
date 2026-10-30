@@ -517,12 +517,10 @@
            a formatting choice. -->
       <div class="kinds">
         {#each REGISTER_KINDS as k (k.key)}
-          <button class="kind" class:on={kind === k.key}
-            disabled={kinds[k.key] === 0}
-            on:click={() => (kind = k.key)}>
-            <span class="kind-n">{kinds[k.key]}</span>
+          <Button variant="plain" disabled={kinds[k.key] === 0} on:click={() => (kind = k.key)} className="kind {kind === k.key ? 'on' : ''}">
+<span class="kind-n">{kinds[k.key]}</span>
             <span class="kind-l">{k.label}</span>
-          </button>
+</Button>
         {/each}
       </div>
       <p class="kind-blurb">{kindBlurb}</p>
@@ -660,16 +658,10 @@
 
       <div class="tally-strip">
         {#each REGISTER_STATUS as s (s)}
-          <button
-            class="tally {REGISTER_STATUS_CLASS[s]}"
-            class:on={filters.status?.has(s)}
-            disabled={tallies[s] === 0 && !filters.status?.has(s)}
-            title={tallies[s] === 0 ? 'None of these' : `${REGISTER_STATUS_EXPLAINED[s]} — click to show only these`}
-            on:click={() => toggleStatus(s)}
-          >
-            <span class="tally-n">{tallies[s]}</span>
+          <Button variant="plain" disabled={tallies[s] === 0 && !filters.status?.has(s)} title={tallies[s] === 0 ? 'None of these' : `${REGISTER_STATUS_EXPLAINED[s]} — click to show only these`} on:click={() => toggleStatus(s)} className="tally {REGISTER_STATUS_CLASS[s]} {filters.status?.has(s) ? 'on' : ''}">
+<span class="tally-n">{tallies[s]}</span>
             <span class="tally-l">{REGISTER_STATUS_LABEL[s]}</span>
-          </button>
+</Button>
         {/each}
       </div>
 
@@ -683,10 +675,8 @@
 
       <div class="groupby">
         <span class="groupby-l">Group by</span>
-        <button class="gb" class:on={groupBy === 'group'}
-          on:click={() => (groupBy = 'group')}>Subject</button>
-        <button class="gb" class:on={groupBy === 'route'}
-          on:click={() => (groupBy = 'route')}>How it gets done</button>
+        <Button variant="plain" on:click={() => (groupBy = 'group')} className="gb {groupBy === 'group' ? 'on' : ''}">Subject</Button>
+        <Button variant="plain" on:click={() => (groupBy = 'route')} className="gb {groupBy === 'route' ? 'on' : ''}">How it gets done</Button>
       </div>
 
       <!-- ⭐ FOLDED AWAY, AND THE REASON IS THE WHOLE POINT OF THIS PANEL.
@@ -1021,20 +1011,20 @@
     display: flex; flex-wrap: wrap; gap: 0.3rem;
     border-bottom: 1px solid rgb(71 85 105 / 0.5);
   }
-  .kind {
+  :global(.kind) {
     display: flex; align-items: baseline; gap: 0.35rem; cursor: pointer;
     padding: 0.4rem 0.7rem; border-radius: 6px 6px 0 0; font-size: 0.76rem;
     border: 1px solid transparent; border-bottom: none;
     color: rgb(148 163 184); background: transparent; margin-bottom: -1px;
   }
-  .kind:hover:not(:disabled) { color: rgb(226 232 240); background: rgb(30 41 59 / 0.5); }
-  .kind:disabled { opacity: 0.4; cursor: default; }
-  .kind.on {
+  :global(.kind):hover:not(:disabled) { color: rgb(226 232 240); background: rgb(30 41 59 / 0.5); }
+  :global(.kind):disabled { opacity: 0.4; cursor: default; }
+  :global(.kind):global(.on) {
     color: rgb(226 232 240); background: rgb(15 23 42 / 0.6);
     border-color: rgb(71 85 105 / 0.7); border-bottom: 1px solid rgb(15 23 42 / 0.6);
   }
   .kind-n { font-weight: 700; font-size: 0.85rem; color: rgb(226 232 240); }
-  .kind.on .kind-n { color: var(--lh-accent); }
+  :global(.kind):global(.on) .kind-n { color: var(--lh-accent); }
   .kind-blurb { font-size: 0.76rem; color: rgb(148 163 184); line-height: 1.45; }
 
   /* Shown only when a release and somebody here changed the same requirement. */
@@ -1048,20 +1038,20 @@
 
   /* ── The count strip: a summary that is also the control ───────────────── */
   .tally-strip { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-  .tally {
+  :global(.tally) {
     display: flex; align-items: baseline; gap: 0.35rem; cursor: pointer;
     padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.72rem;
     border: 1px solid rgb(71 85 105 / 0.6); background: rgb(30 41 59 / 0.4);
     color: rgb(148 163 184); transition: border-color 0.12s, color 0.12s;
   }
-  .tally:hover:not(:disabled) { border-color: rgb(148 163 184 / 0.8); color: rgb(226 232 240); }
-  .tally:disabled { opacity: 0.4; cursor: default; }
-  .tally.on { background: rgb(var(--lh-accent-rgb) / 0.15); border-color: rgb(var(--lh-accent-rgb) / 0.6); color: rgb(226 232 240); }
+  :global(.tally):hover:not(:disabled) { border-color: rgb(148 163 184 / 0.8); color: rgb(226 232 240); }
+  :global(.tally):disabled { opacity: 0.4; cursor: default; }
+  :global(.tally):global(.on) { background: rgb(var(--lh-accent-rgb) / 0.15); border-color: rgb(var(--lh-accent-rgb) / 0.6); color: rgb(226 232 240); }
   .tally-n { font-weight: 700; font-size: 0.9rem; color: rgb(226 232 240); }
-  .tally.gap .tally-n  { color: rgb(252 165 165); }
-  .tally.ok .tally-n   { color: rgb(134 239 172); }
-  .tally.else .tally-n { color: rgb(125 211 252); }
-  .tally.part .tally-n { color: rgb(252 211 77); }
+  :global(.tally):global(.gap) .tally-n  { color: rgb(252 165 165); }
+  :global(.tally):global(.ok) .tally-n   { color: rgb(134 239 172); }
+  :global(.tally):global(.else) .tally-n { color: rgb(125 211 252); }
+  :global(.tally):global(.part) .tally-n { color: rgb(252 211 77); }
   .report-next { margin-top: 0.3rem; color: rgb(148 163 184); }
   .wd-body { display: flex; flex-direction: column; gap: 0.6rem; }
   .wd-name { font-weight: 600; color: rgb(226 232 240); }
@@ -1109,11 +1099,11 @@
   .bulk-note { font-size: 0.74rem; color: rgb(148 163 184); }
   .groupby { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
   .groupby-l { font-size: 0.72rem; color: rgb(100 116 139); text-transform: uppercase; letter-spacing: 0.04em; }
-  .gb {
+  :global(.gb) {
     font-size: 0.74rem; padding: 0.2rem 0.55rem; border-radius: 6px; cursor: pointer;
     border: 1px solid rgb(71 85 105 / 0.6); background: rgb(30 41 59 / 0.4); color: rgb(148 163 184);
   }
-  .gb.on { color: rgb(226 232 240); border-color: var(--lh-accent); background: rgb(var(--lh-accent-rgb) / 0.12); }
+  :global(.gb):global(.on) { color: rgb(226 232 240); border-color: var(--lh-accent); background: rgb(var(--lh-accent-rgb) / 0.12); }
   .sec-blurb { font-size: 0.74rem; color: rgb(100 116 139); line-height: 1.45; margin: 0.1rem 0 0.2rem 1.1rem; }
   .sec-n { font-weight: 400; color: rgb(100 116 139); font-size: 0.78rem; margin-left: 0.3rem; }
   .warn-text.late { color: rgb(248 113 113); font-weight: 600; }

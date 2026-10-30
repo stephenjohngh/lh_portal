@@ -449,13 +449,11 @@
           <p class="text-xs text-slate-400 mb-1.5">Recent maintenance for this group — click a date to use it:</p>
           <div class="flex flex-col gap-1">
             {#each editSuggestions.candidates as job (job.id)}
-              <button type="button"
-                      on:click={() => editLastRenewal = job.completed_date}
-                      class="flex items-baseline gap-2 text-left px-2 py-1 rounded hover:bg-slate-700/60 transition-colors
+              <Button variant="plain" type="button" on:click={() => editLastRenewal = job.completed_date} className="flex items-baseline gap-2 text-left px-2 py-1 rounded hover:bg-slate-700/60 transition-colors
                              {editLastRenewal === job.completed_date ? 'bg-purple-900/30' : ''}">
-                <span class="font-mono text-xs text-purple-300 whitespace-nowrap">{fmtDate(job.completed_date)}</span>
+<span class="font-mono text-xs text-purple-300 whitespace-nowrap">{fmtDate(job.completed_date)}</span>
                 <span class="text-xs text-slate-300 truncate">{job.title}</span>
-              </button>
+</Button>
             {/each}
           </div>
           <p class="text-[11px] text-slate-500 mt-1.5">

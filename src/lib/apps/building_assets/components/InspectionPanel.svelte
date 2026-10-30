@@ -112,11 +112,8 @@
     <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Inspection Result</p>
     <div class="grid grid-cols-4 gap-2">
       {#each RESULTS as r}
-        <button
-          on:click={() => result = r.value}
-          class="py-2 text-sm rounded font-medium text-white transition-all
-                 {r.cls} {result === r.value ? r.selCls : 'opacity-50'}"
-        >{r.label}</button>
+        <Button variant="plain" on:click={() => result = r.value} className="py-2 text-sm rounded font-medium text-white transition-all
+                 {r.cls} {result === r.value ? r.selCls : 'opacity-50'}">{r.label}</Button>
       {/each}
     </div>
   </div>

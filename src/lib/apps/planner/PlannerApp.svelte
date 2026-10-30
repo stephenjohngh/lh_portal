@@ -506,11 +506,9 @@
 
     <div class="flex rounded border border-slate-600 overflow-hidden text-xs shrink-0">
       {#each [['year', 'Year'], ['month', 'Month'], ['agenda', 'Agenda']] as [key, label]}
-        <button type="button"
-                class="px-2.5 py-1 transition-colors
+        <Button variant="plain" type="button" on:click={() => { view = key; selectedDay = null; }} className="px-2.5 py-1 transition-colors
                        {view === key ? 'bg-purple-600 text-white'
-                                     : 'text-slate-400 hover:bg-slate-700'}"
-                on:click={() => { view = key; selectedDay = null; }}>{label}</button>
+                                     : 'text-slate-400 hover:bg-slate-700'}">{label}</Button>
       {/each}
     </div>
 

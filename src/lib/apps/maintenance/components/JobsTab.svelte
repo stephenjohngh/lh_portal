@@ -70,13 +70,7 @@
     <!-- Status chips -->
     <div class="flex flex-wrap gap-1.5">
       {#each STATUS_OPTS as opt}
-        <button
-          class="filter-chip"
-          class:filter-chip-active={statusFilter === opt.value}
-          on:click={() => statusFilter = opt.value}
-        >
-          {opt.label}
-        </button>
+        <Button variant="plain" on:click={() => statusFilter = opt.value} className="filter-chip {statusFilter === opt.value ? 'filter-chip-active' : ''}">{opt.label}</Button>
       {/each}
     </div>
     <!-- Search + scope row -->
@@ -198,13 +192,13 @@
   }
   .new-btn:hover { background: rgb(var(--lh-accent-rgb) / 0.3); }
 
-  .filter-chip {
+  :global(.filter-chip) {
     padding: 0.2rem 0.75rem; border-radius: 9999px; font-size: 0.75rem;
     border: 1px solid rgb(71 85 105 / 0.6); background: transparent;
     color: #94a3b8; cursor: pointer; transition: all 0.12s;
   }
-  .filter-chip:hover    { border-color: rgb(100 116 139); color: #cbd5e1; }
-  .filter-chip-active   { border-color: rgb(var(--lh-accent-rgb) / 0.7); background: rgb(var(--lh-accent-rgb) / 0.12); color: #e2e8f0; }
+  :global(.filter-chip):hover    { border-color: rgb(100 116 139); color: #cbd5e1; }
+  :global(.filter-chip-active)   { border-color: rgb(var(--lh-accent-rgb) / 0.7); background: rgb(var(--lh-accent-rgb) / 0.12); color: #e2e8f0; }
 
   .complete-btn {
     width: 28px; height: 28px; border-radius: 6px; font-size: 0.875rem;

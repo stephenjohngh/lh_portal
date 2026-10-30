@@ -146,13 +146,7 @@
       <p class="text-xs text-slate-400 mb-1.5">What this job covers</p>
       <div class="flex gap-2 flex-wrap mb-3">
         {#each ['building', 'system', 'type'] as st}
-          <button
-            class="scope-btn"
-            class:scope-btn-active={scopeType === st}
-            on:click={() => { scopeType = st; onScopeTypeChange(); }}
-          >
-            {scopeTypeLabel(st)}
-          </button>
+          <Button variant="plain" on:click={() => { scopeType = st; onScopeTypeChange(); }} className="scope-btn {scopeType === st ? 'scope-btn-active' : ''}">{scopeTypeLabel(st)}</Button>
         {/each}
       </div>
 
@@ -248,11 +242,11 @@
 </Modal>
 
 <style>
-  .scope-btn {
+  :global(.scope-btn) {
     padding: 0.3rem 0.875rem; border-radius: 6px; font-size: 0.8rem;
     border: 1px solid rgb(71 85 105); background: rgb(51 65 85 / 0.4);
     color: #cbd5e1; cursor: pointer; transition: all 0.12s;
   }
-  .scope-btn:hover    { border-color: rgb(var(--lh-accent-rgb) / 0.6); }
-  .scope-btn-active   { border-color: var(--lh-accent); background: rgb(var(--lh-accent-rgb) / 0.15); color: #e2e8f0; }
+  :global(.scope-btn):hover    { border-color: rgb(var(--lh-accent-rgb) / 0.6); }
+  :global(.scope-btn-active)   { border-color: var(--lh-accent); background: rgb(var(--lh-accent-rgb) / 0.15); color: #e2e8f0; }
 </style>

@@ -1,5 +1,6 @@
 <!-- src/lib/apps/mor/components/CaseList.svelte -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import { matchesSearch } from '#lib/utils/textSearch.js';
   import { createEventDispatcher } from 'svelte';
   import CaseCard from '#lib/apps/mor/components/CaseCard.svelte';
@@ -67,12 +68,8 @@
   <!-- Open / closed / all toggle -->
   <div class="flex rounded-lg border border-slate-600 overflow-hidden text-xs">
     {#each [['open','Open'], ['closed','Closed'], ['all','All']] as [val, label]}
-      <button
-        type="button"
-        class="px-3 py-1.5 transition-colors
-               {showFilter === val ? 'bg-slate-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}"
-        on:click={() => showFilter = val}
-      >{label}</button>
+      <Button variant="plain" type="button" on:click={() => showFilter = val} className="px-3 py-1.5 transition-colors
+               {showFilter === val ? 'bg-slate-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}">{label}</Button>
     {/each}
   </div>
 

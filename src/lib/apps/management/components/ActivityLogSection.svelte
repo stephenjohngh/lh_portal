@@ -554,16 +554,10 @@
       <!-- Type picker pills -->
       <div class="flex flex-wrap gap-1 mb-3">
         {#each ACTIVITY_TYPES as t}
-          <button
-            type="button"
-            class="text-xs px-2.5 py-1 rounded-full border transition-colors
+          <Button variant="plain" type="button" on:click={() => changeEditType(t.value)} className="text-xs px-2.5 py-1 rounded-full border transition-colors
                    {editingActivity.activity_type === t.value
                      ? t.color + ' border-current bg-slate-600/80 text-white font-semibold'
-                     : 'border-slate-600 text-slate-400 hover:border-slate-500 hover:text-slate-300'}"
-            on:click={() => changeEditType(t.value)}
-          >
-            {t.icon} {t.label}
-          </button>
+                     : 'border-slate-600 text-slate-400 hover:border-slate-500 hover:text-slate-300'}">{t.icon} {t.label}</Button>
         {/each}
       </div>
 

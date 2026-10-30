@@ -86,8 +86,8 @@
             recorded, and visitors are not recorded at all.</span></p>
       {:else}
         {#each hits as h (h.vehicle.id)}
-          <button class="w-full text-left p-2 rounded hover:bg-slate-700" on:click={() => h.agreement && openAgreement(h.agreement.id)}>
-            <span class="font-mono text-white">{formatReg(h.vehicle.registration)}</span>
+          <Button variant="plain" on:click={() => h.agreement && openAgreement(h.agreement.id)} className="w-full text-left p-2 rounded hover:bg-slate-700">
+<span class="font-mono text-white">{formatReg(h.vehicle.registration)}</span>
             {#if h.standing === 'authorised'}<span class="text-xs text-green-400 ml-1">authorised today</span>
             {:else if h.standing === 'pending'}<span class="text-xs text-sky-400 ml-1">not yet authorised{h.agreement?.status === 'draft'
               ? ' (agreement is a draft)' : ' — from ' + fmtDate([h.agreement?.starts_on, h.vehicle.from_date].filter(Boolean).sort().pop())}</span>
@@ -96,7 +96,7 @@
               {h.bay?.ref ?? '—'} · {h.agreement?.reference ?? '—'} ({STATUS_LABEL[h.agreement?.status] ?? '—'})
               · {h.holder?.display_name ?? '—'}{h.holder?.phone ? ' · ' + h.holder.phone : ''}
             </span>
-          </button>
+</Button>
         {/each}
       {/if}
 
@@ -108,13 +108,13 @@
         <p class="text-slate-400 p-2">No road permit for this registration.</p>
       {:else}
         {#each permitHits as h (h.permit.id)}
-          <button class="w-full text-left p-2 rounded hover:bg-slate-700" on:click={() => openPermit(h.permit)}>
-            <span class="font-mono text-white">{h.permit.registration}</span>
+          <Button variant="plain" on:click={() => openPermit(h.permit)} className="w-full text-left p-2 rounded hover:bg-slate-700">
+<span class="font-mono text-white">{h.permit.registration}</span>
             {#if h.status === 'current'}<span class="text-xs text-green-400 ml-1">current permit, until {fmtPermitWhen(h.permit.valid_to, h.permit.valid_to_time)}</span>
             {:else if h.status === 'upcoming'}<span class="text-xs text-sky-400 ml-1">future permit, starts {fmtPermitWhen(h.permit.valid_from, h.permit.valid_from_time)}</span>
             {:else}<span class="text-xs text-amber-400 ml-1">{h.permit.ended_early_at ? 'permit ended early' : 'expired permit, ended'} {fmtPermitWhen(h.permit.valid_to, h.permit.valid_to_time)}</span>{/if}
             <span class="block text-xs text-slate-400">Permit {permitNumberLabel(h.permit.permit_number)} · {h.permit.company}</span>
-          </button>
+</Button>
         {/each}
       {/if}
       <Button variant="tertiary" size="xs" on:click={close}>Close</Button>

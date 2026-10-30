@@ -79,12 +79,9 @@
       </div>
 
       {#each results as result, i (result.kind + (result.docId ?? result.datasetId) + i)}
-        <button
-          class="w-full text-left px-3 py-2 border-b border-slate-700/40
-                 hover:bg-slate-700/60 transition-colors"
-          on:click={() => choose(result)}
-        >
-          <p class="text-[11px] text-slate-400 flex items-center gap-1.5">
+        <Button variant="plain" on:click={() => choose(result)} className="w-full text-left px-3 py-2 border-b border-slate-700/40
+                 hover:bg-slate-700/60 transition-colors">
+<p class="text-[11px] text-slate-400 flex items-center gap-1.5">
             <span class="text-slate-500">
               {result.kind === 'page' ? '📄' : result.kind === 'file' ? '📎' : '▤'}
             </span>
@@ -99,7 +96,7 @@
             >{result.snippet.text.slice(result.snippet.from, result.snippet.to)}</mark
             >{result.snippet.text.slice(result.snippet.to)}
           </p>
-        </button>
+</Button>
       {/each}
     </div>
   {/if}

@@ -6,6 +6,7 @@
      invisible until the year is wrong. Whatever is chosen is echoed back in
      words underneath (describeRule), so it can be checked before it is saved. -->
 <script>
+  import Button from '#lib/components/common/Button.svelte';
   import FormSelect from '#lib/components/common/FormSelect.svelte';
   import FormInput  from '#lib/components/common/FormInput.svelte';
   import Checkbox   from '#lib/components/common/Checkbox.svelte';
@@ -162,12 +163,10 @@
       <p class="text-xs text-slate-400 mb-1.5">On these days</p>
       <div class="flex flex-wrap gap-1">
         {#each WEEKDAYS as day}
-          <button type="button"
-                  class="px-2 py-1 rounded text-xs border transition-colors
+          <Button variant="plain" type="button" on:click={() => toggleWeekday(day.value)} className="px-2 py-1 rounded text-xs border transition-colors
                          {rule.weekdays?.includes(day.value)
                            ? 'bg-purple-600 border-purple-500 text-white'
-                           : 'border-slate-600 text-slate-400 hover:border-slate-500'}"
-                  on:click={() => toggleWeekday(day.value)}>{day.short}</button>
+                           : 'border-slate-600 text-slate-400 hover:border-slate-500'}">{day.short}</Button>
         {/each}
       </div>
       <p class="text-[11px] text-slate-600 mt-1">

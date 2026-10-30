@@ -119,16 +119,11 @@
     <p class="text-xs text-slate-400 mb-1.5">Colour</p>
     <div class="flex gap-1.5 flex-wrap">
       {#each SPACE_COLOURS as sc (sc.hex)}
-        <button
-          on:click={() => colourHex = sc.hex}
-          title={sc.label}
-          class="w-6 h-6 rounded-full border-2 transition-all
+        <Button variant="plain" on:click={() => colourHex = sc.hex} title={sc.label} style={sc.hex !== 'none' ? `background-color:${sc.hex}` : ''} className="w-6 h-6 rounded-full border-2 transition-all
                  {colourHex === sc.hex
                    ? 'border-white scale-110'
                    : 'border-transparent hover:border-slate-400'}
-                 {sc.hex === 'none' ? 'bg-slate-700' : ''}"
-          style={sc.hex !== 'none' ? `background-color:${sc.hex}` : ''}
-        >{#if sc.hex === 'none'}<span class="text-slate-500 text-[9px] leading-none">∅</span>{/if}</button>
+                 {sc.hex === 'none' ? 'bg-slate-700' : ''}">{#if sc.hex === 'none'}<span class="text-slate-500 text-[9px] leading-none">∅</span>{/if}</Button>
       {/each}
     </div>
   </div>

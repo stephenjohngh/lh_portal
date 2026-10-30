@@ -82,17 +82,10 @@
       {/if}
 
       <!-- Pin -->
-      <button
-        class="p-1.5 rounded transition-colors
+      <Button variant="plain" title="{note.is_pinned ? 'Unpin' : 'Pin'} note" on:click={() => dispatch('togglePin', note)} disabled={!$permissions.canModify} className="p-1.5 rounded transition-colors
                {note.is_pinned
                  ? 'text-amber-400 hover:text-amber-300'
-                 : 'text-slate-500 hover:text-amber-400'}"
-        title="{note.is_pinned ? 'Unpin' : 'Pin'} note"
-        on:click={() => dispatch('togglePin', note)}
-        disabled={!$permissions.canModify}
-      >
-        <Icon name="pin" size={4} />
-      </button>
+                 : 'text-slate-500 hover:text-amber-400'}"><Icon name="pin" size={4} /></Button>
 
       <!-- Archive / Unarchive -->
       {#if $permissions.canModify}

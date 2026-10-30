@@ -96,14 +96,9 @@
                            : cell.weekend ? WEEKEND_WASH : 'bg-slate-800/80'}
                          {selected === cell.date ? 'ring-2 ring-inset ring-white z-10 relative'
                            : cell.today ? 'ring-2 ring-inset ring-purple-400 z-10 relative' : ''}">
-                <button
-                  type="button"
-                  class="w-full h-full px-0.5 pt-0.5 flex flex-col items-center
-                         hover:bg-slate-600/50 transition-colors"
-                  title="{cell.date}{mark ? ` — ${mark.label}` : ''}{dots.count ? ` — ${dots.count} item${dots.count === 1 ? '' : 's'}` : ''}"
-                  on:click={() => dispatch('selectDay', cell)}
-                >
-                  <!-- The DATE, in every cell. Without it the chart has to be
+                <Button variant="plain" type="button" title="{cell.date}{mark ? ` — ${mark.label}` : ''}{dots.count ? ` — ${dots.count} item${dots.count === 1 ? '' : 's'}` : ''}" on:click={() => dispatch('selectDay', cell)} className="w-full h-full px-0.5 pt-0.5 flex flex-col items-center
+                         hover:bg-slate-600/50 transition-colors">
+<!-- The DATE, in every cell. Without it the chart has to be
                        counted rather than read. -->
                   <span class="day-num tabular-nums leading-none
                                {cell.today ? 'text-white font-bold'
@@ -133,7 +128,7 @@
                       {/if}
                     </span>
                   {/if}
-                </button>
+</Button>
               </td>
             {/if}
           {/each}

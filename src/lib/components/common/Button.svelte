@@ -3,7 +3,7 @@
   import Icon from '#lib/components/icons/Icon.svelte';
 
   // Props
-  export let variant = 'primary'; // 'primary', 'amber', 'blue', 'green', 'secondary', 'tertiary', 'danger'
+  export let variant = 'primary'; // 'primary', 'amber', 'blue', 'green', 'secondary', 'tertiary', 'danger', 'plain'
   export let size = 'medium'; // 'xs', 'small', 'medium', 'large'
   export let icon = ''; // Icon name from Icon.svelte
   export let iconPosition = 'left'; // 'left', 'right', 'only'
@@ -75,7 +75,14 @@
   };
 
   // Computed classes
-  $: buttonClasses = [
+  // ⭐ `plain` is for a button that is a LAYOUT element — a list row, a table cell,
+  // a thumbnail, an accordion header, a toggle chip — whose look the caller gives
+  // it through `className`. It carries no border, colour, size or rounding of its
+  // own, only focus and disabled behaviour. Still the one place a <button> is
+  // written (rawButtonGuard), and it forwards aria-* and role.
+  $: buttonClasses = variant === 'plain'
+    ? ['focus:outline-none disabled:cursor-not-allowed', fullWidth ? 'w-full' : '', className].filter(Boolean).join(' ')
+    : [
     'inline-flex items-center justify-center border',
     'font-medium rounded-lg',
     'transition-colors duration-200',
@@ -100,6 +107,7 @@
   {id}
   aria-label={ariaLabel}
   data-testid={testid}
+  {...$$restProps}
   class={buttonClasses}
   on:click
   on:mousedown
@@ -110,26 +118,17 @@
   on:blur
 >
   {#if showIcon && (iconPosition === 'left' || iconPosition === 'only')}
-    <span class={showText ? 'mr-2' : ''}>
-      {#if loading}
+    <span class={showText ? 'mr-2' : ''}>{#if loading}
         <Icon name="refresh" size={iconSize} className="animate-spin" />
       {:else if icon}
         <Icon name={icon} size={iconSize} />
       {/if}
     </span>
-  {/if}
-
-  {#if showText}
-    <slot />
-  {/if}
-
-  {#if showIcon && iconPosition === 'right'}
-    <span class="ml-2">
-      {#if loading}
+  {/if}{#if showText}<slot />{/if}{#if showIcon && iconPosition === 'right'}
+    <span class="ml-2">{#if loading}
         <Icon name="refresh" size={iconSize} className="animate-spin" />
       {:else if icon}
         <Icon name={icon} size={iconSize} />
       {/if}
     </span>
-  {/if}
-</button>
+  {/if}</button>

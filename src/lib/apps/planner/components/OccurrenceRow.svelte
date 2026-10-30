@@ -74,16 +74,10 @@
     {:else}
       <!-- Disabled rather than hidden for a viewer: a control that vanishes
            leaves the reader wondering where it went. -->
-      <button
-        type="button"
-        class="w-5 h-5 shrink-0 rounded border-2 {category.edge} flex items-center justify-center
+      <Button variant="plain" type="button" disabled={!canEdit} title={done ? 'Mark as not done' : skipped ? `${notDoneWord} — mark as done instead` : 'Mark as done'} on:click={() => dispatch('toggle', occurrence)} className="w-5 h-5 shrink-0 rounded border-2 {category.edge} flex items-center justify-center
                text-xs transition-colors
                {done || skipped ? category.dot + ' text-white' : 'text-transparent hover:bg-slate-700'}
-               {canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}"
-        disabled={!canEdit}
-        title={done ? 'Mark as not done' : skipped ? `${notDoneWord} — mark as done instead` : 'Mark as done'}
-        on:click={() => dispatch('toggle', occurrence)}
-      >{skipped ? '✕' : '✓'}</button>
+               {canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}">{skipped ? '✕' : '✓'}</Button>
     {/if}
 
     <!-- Clicking the text (not the tick or the pencil) opens everything about it,

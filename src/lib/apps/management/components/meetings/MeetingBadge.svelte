@@ -60,19 +60,11 @@
 {#if meeting}
   <div class="relative inline-block">
 
-    <button
-      type="button"
-      on:click={toggle}
-      disabled={untagging}
-      title="🗓 {meeting.title} · {fmtDateLong(meeting.meeting_date)}"
-      class="text-[11px] px-1.5 py-0.5 rounded
+    <Button variant="plain" type="button" on:click={toggle} disabled={untagging} title="🗓 {meeting.title} · {fmtDateLong(meeting.meeting_date)}" className="text-[11px] px-1.5 py-0.5 rounded
              bg-purple-600/20 text-purple-200 border border-purple-500/40
              hover:bg-purple-600/30 hover:border-purple-400/60
              transition-colors leading-none flex items-center gap-1
-             disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      🗓 {fmtDate(meeting.meeting_date)} · {meeting.meeting_type}{#if untagging}&nbsp;…{/if}
-    </button>
+             disabled:opacity-50 disabled:cursor-not-allowed">🗓 {fmtDate(meeting.meeting_date)} · {meeting.meeting_type}{#if untagging}&nbsp;…{/if}</Button>
 
     {#if menuOpen}
       <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->

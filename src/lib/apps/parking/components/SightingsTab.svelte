@@ -95,9 +95,7 @@
                 <td class="px-3 py-2 whitespace-pre-line text-slate-300">{s.notes ?? ''}</td>
                 <td class="px-3 py-2">
                   {#if s.photos?.length}
-                    <button type="button" on:click={() => (viewing = s.photos.map(normalisePhotoUrl))} title="Show the photo">
-                      <img src={normalisePhotoUrl(s.photos[0])} alt="Car" class="h-12 w-16 object-cover rounded border border-slate-600" />
-                    </button>
+                    <Button variant="plain" type="button" on:click={() => (viewing = s.photos.map(normalisePhotoUrl))} title="Show the photo"><img src={normalisePhotoUrl(s.photos[0])} alt="Car" class="h-12 w-16 object-cover rounded border border-slate-600" /></Button>
                   {:else}<span class="text-slate-600">—</span>{/if}
                 </td>
                 <td class="px-3 py-2 text-slate-300">{nameOf($profiles.list, s.created_by) || '—'}</td>

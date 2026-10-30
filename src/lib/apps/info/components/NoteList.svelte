@@ -87,17 +87,13 @@
     </select>
 
     <!-- Archive toggle -->
-    <button
-      class="px-2.5 py-1.5 text-xs rounded-lg border transition-colors
+    <Button variant="plain" title="{showArchived ? 'Show active notes' : 'Show archived notes'}" on:click={() => showArchived = !showArchived} className="px-2.5 py-1.5 text-xs rounded-lg border transition-colors
              {showArchived
                ? 'bg-slate-600 border-slate-500 text-slate-200'
-               : 'border-slate-600 text-slate-500 hover:border-slate-400 hover:text-slate-300'}"
-      title="{showArchived ? 'Show active notes' : 'Show archived notes'}"
-      on:click={() => showArchived = !showArchived}
-    >
-      <Icon name="archive" size={3} className="inline -mt-0.5 mr-1" />
+               : 'border-slate-600 text-slate-500 hover:border-slate-400 hover:text-slate-300'}">
+<Icon name="archive" size={3} className="inline -mt-0.5 mr-1" />
       {showArchived ? 'Archived' : archivedCount > 0 ? `${archivedCount} archived` : 'Archive'}
-    </button>
+</Button>
 
     <!-- New Note -->
     {#if $permissions.canModify}
