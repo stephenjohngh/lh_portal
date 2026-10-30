@@ -67,7 +67,7 @@
   
   {#if maxlength}
     <p class="mt-1 text-sm text-gray-400 text-right">
-      {value.length}/{maxlength}
+      {(value ?? "").length}/{maxlength}
     </p>
   {/if}
 </div>

@@ -27,6 +27,11 @@ describe('FormTextarea', () => {
     expect(screen.getByText('3/100')).toBeInTheDocument();
   });
 
+  it('counts a value that is null (a record with no text yet) as empty instead of crashing', () => {
+    render(FormTextarea, { props: { label: 'X', value: null, maxlength: 100 } });
+    expect(screen.getByText('0/100')).toBeInTheDocument();
+  });
+
   it('omits the counter when maxlength is not set', () => {
     render(FormTextarea, { props: { label: 'X', value: 'abc' } });
     expect(screen.queryByText(/\/\d+$/)).not.toBeInTheDocument();
