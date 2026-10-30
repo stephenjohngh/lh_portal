@@ -2613,6 +2613,7 @@ export type Database = {
           component_id: string | null
           space_id: string | null
           planner_series_id: string | null
+          show_on: string
           workflow_key: string | null
           created_at: string
           created_by: string | null
@@ -2627,6 +2628,7 @@ export type Database = {
           component_id?: string | null
           space_id?: string | null
           planner_series_id?: string | null
+          show_on?: string
           workflow_key?: string | null
           created_at?: string
           created_by?: string | null
@@ -2641,6 +2643,7 @@ export type Database = {
           component_id?: string | null
           space_id?: string | null
           planner_series_id?: string | null
+          show_on?: string
           workflow_key?: string | null
           created_at?: string
           created_by?: string | null
@@ -5402,6 +5405,7 @@ export type Database = {
           link_source: string
           link_type_filter: string | null
           presentation_order: number
+          fail_response: string
           created_at: string
           created_by: string | null
           updated_at: string | null
@@ -5435,6 +5439,7 @@ export type Database = {
           link_source?: string
           link_type_filter?: string | null
           presentation_order?: number
+          fail_response?: string
           created_at?: string
           created_by?: string | null
           updated_at?: string | null
@@ -5468,6 +5473,7 @@ export type Database = {
           link_source?: string
           link_type_filter?: string | null
           presentation_order?: number
+          fail_response?: string
           created_at?: string
           created_by?: string | null
           updated_at?: string | null

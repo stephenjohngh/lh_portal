@@ -16,6 +16,10 @@
 
 export const STEP_KINDS = ['step', 'caution', 'stop', 'good', 'bad'];
 export const AUDIENCES = ['anyone', 'caretaker', 'cleaner'];
+/** When a link is offered (migration 273): always, or only once a check has failed. */
+export const LINK_SHOW_ON = ['always', 'fail'];
+/** What a failed check means on a walk (statutory_obligations.fail_response, migration 273). */
+export const FAIL_RESPONSES = ['collect', 'immediate'];
 export const GUIDE_STATUSES = ['draft', 'in_review', 'published', 'retired'];
 
 /** Words for the kinds, as an author and a reader see them. */

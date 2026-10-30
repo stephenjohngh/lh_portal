@@ -4,6 +4,7 @@ const h = vi.hoisted(() => ({ tables: /** @type {Record<string, any[]>} */ ({}),
 
 vi.mock('#lib/utils/api.js', () => ({
   api: {
+    get: vi.fn(async (table, o) => (h.tables[table] ?? []).filter((r) => Object.entries(o?.filters ?? {}).every(([k, v]) => r[k] === v))),
     getAllIn: vi.fn(async (table, column, values) => {
       if (h.failOn === table) throw new Error('read failed');
       return (h.tables[table] ?? []).filter((r) => values.map(String).includes(String(r[column])));
@@ -19,7 +20,7 @@ vi.mock('./utils/guideOffline.js', () => ({
   cachedPhotoUrl: async (u) => o.photos[u] ?? null,
 }));
 
-import { guidesFor, guidesForWalk, prepareGuidesForWalk } from './public.js';
+import { guidesFor, guidesForWalk, prepareGuidesForWalk, failHelpForWalk } from './public.js';
 
 const guide = (o) => ({ id: 'g1', title: 'Testing a luminaire', status: 'published', version: 2, summary: 's', ...o });
 const link = (o) => ({ id: `l-${Math.random()}`, guide_id: 'g1', step_ids: null, created_at: 'x', ...o });
@@ -151,5 +152,45 @@ describe('check-level guides (S4)', () => {
     const r = await guidesForWalk(ctx, { requireTarget: 'type_attribute_id' });
     expect(r.guides.map((g) => g.guideId)).toEqual(['g2']);
     expect(r.fromCache).toBe(false);
+  });
+});
+
+describe('if a check fails (S-fail, migration 273)', () => {
+  const tables = () => ({
+    guide_links: [link({ obligation_id: 'ob' }), link({ guide_id: 'g2', obligation_id: 'ob', component_type_id: 'ty', show_on: 'fail' })],
+    guides: [guide(), guide({ id: 'g2', title: 'If it fails' })], guide_versions: [version(), version({ guide_id: 'g2' })],
+    portal_settings: [{ key: 'guides_fail_contact', value: { name: 'The office', phone: '020 7946 0000', hours: '8-6', notes: '' } }],
+  });
+  const ctx = { obligation_id: 'ob', component_type_id: 'ty' };
+
+  it('an ordinary bar never offers an "if it fails" guide, and the failure help offers only those', async () => {
+    h.tables = tables();
+    expect((await guidesForWalk(ctx)).guides.map((g) => g.guideId)).toEqual(['g1']);
+    expect((await failHelpForWalk(ctx)).guides.map((g) => g.guideId)).toEqual(['g2']);
+  });
+
+  it('returns who to call, tidied', async () => {
+    h.tables = tables();
+    expect((await failHelpForWalk(ctx)).contact).toEqual({ name: 'The office', phone: '020 7946 0000', hours: '8-6', notes: '' });
+  });
+
+  it('nobody set up is null, not an empty box', async () => {
+    h.tables = { ...tables(), portal_settings: [{ key: 'guides_fail_contact', value: { name: ' ', phone: '' } }] };
+    expect((await failHelpForWalk(ctx)).contact).toBeNull();
+  });
+
+  it('with no signal, answers from the saved walk — guides and the number', async () => {
+    h.tables = tables();
+    await prepareGuidesForWalk({ obligationId: 'ob', typeIds: ['ty'] });
+    h.failOn = 'guide_links';
+    const r = await failHelpForWalk(ctx);
+    expect(r.fromCache).toBe(true);
+    expect(r.guides.map((g) => g.guideId)).toEqual(['g2']);
+    expect(r.contact?.phone).toBe('020 7946 0000');
+  });
+
+  it('with no signal and nothing saved it fails, so the screen cannot read it as "nothing to do"', async () => {
+    h.failOn = 'guide_links';
+    await expect(failHelpForWalk(ctx)).rejects.toThrow();
   });
 });

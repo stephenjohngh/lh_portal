@@ -5,6 +5,7 @@
      pendingPhotos state so uploadAllPending() can run at save time. -->
 <script>
   import GuideHowTo from './GuideHowTo.svelte';
+  import FailNextStep from './FailNextStep.svelte';
   import { today } from '#lib/utils/dates.js';
   import { createEventDispatcher } from 'svelte';
   import { deriveChecklistOutcome } from '../utils/checklistRules.js';
@@ -46,6 +47,8 @@
   export let floor         = null;  // floors row — used for human-readable Drive folder names
   export let type          = null;  // component_types row — used for human-readable Drive file names
   export let saveLabel     = 'RECORD INSPECTION';
+  /** What a failure means on this walk: 'collect' (carry on, picked up later) or 'immediate' (respond now). */
+  export let failResponse  = 'collect';
 
   $: canSave = !!result;
 
@@ -292,6 +295,13 @@
       <span class="ri">—</span><span class="rl">INACTIVE</span>
     </button>
   </div>
+  {/if}
+
+  <!-- What to do next on a FAIL or PROBLEM (Guides, migration 273). Never blocks saving. -->
+  {#if !noAccess && (result === 'failed' || result === 'problem')}
+    <FailNextStep response={failResponse}
+      failedChecks={passFailDefs.filter((d) => checklistResults[d.id] === false).map((d) => d.id)}
+      context={{ obligation_id: session?.definition_id, component_type_id: type?.id, component_id: component?.id }} />
   {/if}
 
   <!-- Couldn't assess it. Deliberately outside the result row: this is not a

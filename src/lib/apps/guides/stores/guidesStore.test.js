@@ -117,4 +117,12 @@ describe('guidesStore authoring', () => {
   it('a guide not yet in its workflow cannot be moved, and says what to do', async () => {
     await expect(guidesStore.moveGuide('g1', 'published')).rejects.toThrow(/workflow yet/);
   });
+
+  it('saves who to call, trimmed, under one setting', async () => {
+    const saved = await guidesStore.saveFailContact({ name: ' The office ', phone: '020 7946 0000 ', hours: '', notes: undefined });
+    expect(saved).toEqual({ name: 'The office', phone: '020 7946 0000', hours: '', notes: '' });
+    const up = h.calls.find((c) => c[0] === 'upsert');
+    expect(up[1]).toBe('portal_settings');
+    expect(up[2]).toMatchObject({ key: 'guides_fail_contact', value: saved });
+  });
 });

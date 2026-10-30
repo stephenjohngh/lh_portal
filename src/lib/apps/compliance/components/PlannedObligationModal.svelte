@@ -71,6 +71,7 @@
   let checklistMode    = definition?.checklist_mode ?? 'type_driven';
   let checklistAttrIds = new Set(definition?.checklist_attr_ids ?? []);
   let passFailRule     = definition?.pass_fail_rule ?? 'manual';
+  let failResponse     = definition?.fail_response ?? 'collect';
   // Statutory provenance (G3) — descriptive metadata, not logic.
   let statutoryRef     = definition?.statutory_ref ?? '';
   // Where the requirement comes from, for an obligation the shipped register
@@ -185,6 +186,7 @@
         checklist_mode: checklistMode,
         checklist_attr_ids: [...checklistAttrIds],
         pass_fail_rule: passFailRule,
+        fail_response: failResponse,
         presentation_order: Number(presentationOrder) || 0,
         statutory_ref: statutoryRef.trim() || null,
         test_type:     testType.trim() || null,
@@ -478,6 +480,21 @@
       </label>
       {#if passFailRule === 'all_checks_pass'}
         <p class="hint">Components with no pass/fail checks fall back to a manual result.</p>
+      {/if}
+    </div>
+    <!-- What a failure means on this walk (Guides, migration 273) -->
+    <div class="block">
+      <p class="block-lbl">When a check fails</p>
+      <label class="rule-row">
+        <input type="radio" bind:group={failResponse} value="collect" />
+        Collect and carry on — the walker records it and moves on; failures are picked up afterwards
+      </label>
+      <label class="rule-row">
+        <input type="radio" bind:group={failResponse} value="immediate" />
+        Immediate response — a failure here is serious: the walk shows who to call and what to do before the walker moves on
+      </label>
+      {#if failResponse === 'immediate'}
+        <p class="hint">Set the number to call in Guides → Manage → Who to call when a check fails, and link a “what to do if this fails” guide to this duty.</p>
       {/if}
     </div>
     {#if isEdit && definition?.id}

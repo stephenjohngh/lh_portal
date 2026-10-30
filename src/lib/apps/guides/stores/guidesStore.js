@@ -30,6 +30,7 @@ import { LIMITS } from '../utils/guideModel.js';
 import { loadWorkflow, listItems, moveItem, saveWorkflow, assignItem, listAssignees } from '#lib/workflow/workflowApi.js';
 import { ensureNonWorkingDays } from '#lib/workflow/nonWorkingDays.js';
 import { DEFAULT_GUIDE_WORKFLOW, GUIDE_WORKFLOW_KEY } from '../utils/guideWorkflow.js';
+import { readFailContact, FAIL_CONTACT_KEY } from '../public.js';
 import { STARTER_GUIDES, STARTER_SETTING_KEY } from '../utils/starterGuides.js';
 
 const AUDIT = { appId: 'guides', eventCategory: 'guides' };
@@ -275,6 +276,20 @@ function createGuidesStore() {
     await api.update('guides', guide.id, { updated_by: userId }, false);
   }
 
+  // ── Who to call when a check fails (migration 273) ──────────────────────────
+
+  /** @returns {Promise<{ name: string, phone: string, hours: string, notes: string }|null>} */
+  const getFailContact = () => readFailContact();
+
+  /** Save the number to call (an administrator). An empty contact clears it. @param {{ name?: string, phone?: string, hours?: string, notes?: string }} c */
+  async function saveFailContact(c) {
+    const userId = await requireUserId();
+    const clean = Object.fromEntries(['name', 'phone', 'hours', 'notes'].map((k) => [k, String(/** @type {any} */ (c)[k] ?? '').trim()]));
+    await api.upsert('portal_settings', { key: FAIL_CONTACT_KEY, value: clean, updated_by: userId }, { onConflict: 'key' });
+    logAudit('update', 'portal_setting', FAIL_CONTACT_KEY, 'Who to call when a check fails', { ...AUDIT, severity: 'info', afterData: { set: Object.values(clean).some(Boolean) } });
+    return clean;
+  }
+
   // ── Links: where a guide is offered (pointers — ids of other apps' records) ───
 
   /** @param {string} guideId */
@@ -314,7 +329,7 @@ function createGuidesStore() {
     subscribe, load, reload, ensureDefaultCategories, ensureStarterGuides, setUpWorkflow, moveGuide, assignGuide,
     createGuide, updateGuide, retireGuide, deleteGuide, publish,
     listSteps, photosByStep, addStep, updateStep, deleteStep, reorderSteps, addPhoto, removePhoto,
-    listLinks, addLink, deleteLink,
+    listLinks, addLink, deleteLink, getFailContact, saveFailContact,
     listVersions, readVersion,
   };
 }

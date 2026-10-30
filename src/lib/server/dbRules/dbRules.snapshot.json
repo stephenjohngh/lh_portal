@@ -6,6 +6,7 @@
         ],
         "guides.status": [
             "draft",
+            "in_review",
             "published",
             "retired"
         ],

@@ -4,6 +4,7 @@
   import { onMount } from 'svelte';
   import Button from '#lib/components/common/Button.svelte';
   import GuideEditor from './GuideEditor.svelte';
+  import FailContactPanel from './FailContactPanel.svelte';
   import { permissions } from '#lib/stores/permissions.js';
   import { guidesStore } from '../stores/guidesStore.js';
   import { errMessage } from '#lib/utils/errors.js';
@@ -48,6 +49,7 @@
     {#if error}<p class="text-red-400 text-sm" role="alert">{error}</p>{/if}
     {#if notice}<p class="text-amber-300 text-sm" role="status" data-testid="starter-notice">{notice}</p>{/if}
     <Button disabled={busy} testid="new-guide" on:click={create}>+ New guide</Button>
+    <FailContactPanel />
     {#if s.guides.length === 0}
       <p class="text-sm text-slate-400">No guides yet. Start one — it stays a draft until you publish it.</p>
     {:else}

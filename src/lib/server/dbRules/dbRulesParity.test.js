@@ -219,10 +219,7 @@ describe('the database rules snapshot', () => {
 // once that migration is applied and `npm run db:rules` run — the first test
 // below then fails, saying to remove it.
 /** @type {Record<string, { values: string[], migration: string }>} */
-const VALUES_AWAITING_MIGRATION = {
-  // ⏳ Migration 272 (guides on the workflow manager) adds in_review. Remove once `npm run db:rules` has run.
-  'guides.status': { values: ['in_review'] },
-};
+const VALUES_AWAITING_MIGRATION = {};
 
 describe('value lists: the code holds exactly what the database accepts', () => {
   it('a value allowance goes once its migration is applied', () => {

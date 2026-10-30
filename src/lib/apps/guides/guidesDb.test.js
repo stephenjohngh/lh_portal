@@ -130,6 +130,11 @@ const AS_ADMIN = [
     update guides set targets = array[repeat('x', 61)] where id = '00000000-0000-4000-8000-0000000000e1';`, 'guides_targets_shape'],
   ['more than twelve targets are refused', `
     update guides set targets = (select array_agg('t' || g) from generate_series(1, 13) g) where id = '00000000-0000-4000-8000-0000000000e1';`, 'guides_targets_shape'],
+  ['a link is offered always unless it is marked for failure (migration 273)', `
+    if (select show_on from guide_links where guide_id = '00000000-0000-4000-8000-0000000000a1' limit 1) <> 'always' then raise exception 'default is not always'; end if;
+    insert into guide_links (guide_id, space_id, show_on) values ('00000000-0000-4000-8000-0000000000a1', gen_random_uuid(), 'fail');`, null],
+  ['a link cannot be offered on anything but always or fail', `
+    insert into guide_links (guide_id, space_id, show_on) values ('00000000-0000-4000-8000-0000000000a1', gen_random_uuid(), 'sometimes');`, 'show_on'],
   ['a staff-only guide is made for the contractor test', `
     insert into guides (id, title, staff_only) values ('00000000-0000-4000-8000-0000000000a5', 'DBT staff only', true);
     insert into guide_steps (guide_id, position, title) values ('00000000-0000-4000-8000-0000000000a5', 1, 'Step');
@@ -169,6 +174,11 @@ const AS_CONTRACTOR = [
 ];
 
 const SETUP_ONLY = [
+  ['a walk can say a failure needs an immediate response, and nothing else (migration 273)', `
+    if (select column_default from information_schema.columns where table_name = 'statutory_obligations' and column_name = 'fail_response') not like '%collect%'
+      then raise exception 'default is not collect'; end if;
+    if (select string_agg(pg_get_constraintdef(oid), ' ') from pg_constraint where conrelid = 'public.statutory_obligations'::regclass and pg_get_constraintdef(oid) like '%fail_response%') not like '%immediate%'
+      then raise exception 'no CHECK on fail_response'; end if;`, null],
   ['a walk can record the guide versions it showed, as an object only (migration 271)', `
     if not exists (select 1 from information_schema.columns where table_name = 'walk_sessions' and column_name = 'guide_versions')
       then raise exception 'no guide_versions column'; end if;

@@ -7,6 +7,7 @@
 <script>
   import { onMount } from 'svelte';
   import Button from '#lib/components/common/Button.svelte';
+  import Checkbox from '#lib/components/common/Checkbox.svelte';
   import FormInput from '#lib/components/common/FormInput.svelte';
   import FormSelect from '#lib/components/common/FormSelect.svelte';
   import { api } from '#lib/utils/api.js';
@@ -32,6 +33,7 @@
   /** @type {any[]} */ let events = [];
   let spaceId = '';
   let eventId = '';
+  let onlyOnFail = false;
   let obligationId = '';
   let typeId = '';
   let attributeId = '';
@@ -93,8 +95,9 @@
         obligation_id: obligationId || null, component_type_id: typeId || null,
         type_attribute_id: attributeId || null, component_id: componentId || null,
         space_id: spaceId || null, planner_series_id: eventId || null,
+        show_on: onlyOnFail ? 'fail' : 'always',
       });
-      links = [...links, l]; obligationId = ''; typeId = ''; attributeId = ''; componentId = ''; componentSearch = ''; spaceId = ''; eventId = '';
+      links = [...links, l]; obligationId = ''; typeId = ''; attributeId = ''; componentId = ''; componentSearch = ''; spaceId = ''; eventId = ''; onlyOnFail = false;
     } catch (e) { error = errMessage(e); }
     finally { busy = false; }
   }
@@ -123,7 +126,7 @@
     <ul class="space-y-1">
       {#each links as l (l.id)}
         <li class="flex items-center gap-2 text-sm text-slate-200">
-          <span class="flex-1">{describe(l)} <span class="text-xs text-slate-500">({specificity(l) === 2 ? 'specific' : 'general'})</span></span>
+          <span class="flex-1">{describe(l)}{#if l.show_on === 'fail'} <span class="text-xs text-amber-300">· only when a check fails</span>{/if} <span class="text-xs text-slate-500">({specificity(l) === 2 ? 'specific' : 'general'})</span></span>
           <Button variant="danger" size="xs" disabled={busy} on:click={() => remove(l)}>Remove</Button>
         </li>
       {/each}
@@ -156,6 +159,7 @@
       <FormSelect label="A Planner event (e.g. bin day)" placeholder="— none —" bind:value={eventId}
         options={events.map((e) => ({ value: e.id, label: e.title }))} />
     </div>
+    <Checkbox label="Only offer this when a check fails (a “what to do if this fails” guide)" bind:checked={onlyOnFail} />
     <Button variant="secondary" disabled={busy || (!obligationId && !typeId && !attributeId && !componentId && !spaceId && !eventId)} on:click={add}>Add link</Button>
   {/if}
 </section>

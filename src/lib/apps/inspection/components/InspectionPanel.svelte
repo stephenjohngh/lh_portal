@@ -171,6 +171,7 @@
       bind:readings
       {checklistDefs}
       {passFailRule}
+      failResponse={definition?.fail_response ?? 'collect'}
       {saving}
       {error}
       {session}

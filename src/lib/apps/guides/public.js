@@ -49,13 +49,16 @@ async function fetchBundle(values) {
 /**
  * Decide which guides of a bundle apply to a context, and shape them for the screen.
  * @param {Bundle} bundle @param {Record<string, string|null|undefined>} context
- * @param {{ requireTarget?: string|null }} [opts]
+ * @param {{ requireTarget?: string|null, showOn?: 'normal'|'fail' }} [opts]
  * @returns {WalkGuide[]}
  */
-export function resolveGuides(bundle, context, { requireTarget = null } = {}) {
+export function resolveGuides(bundle, context, { requireTarget = null, showOn = 'normal' } = {}) {
   // `requireTarget`: only guides with a link that NAMES that target (a check-level bar must not
   // repeat the walk-level guides, which match the same context).
-  const links = requireTarget ? bundle.links.filter((l) => present(l[requireTarget])) : bundle.links;
+  // `showOn`: a link marked for failure is offered only as the "if this fails" help, never in the
+  // ordinary bar; and the failure help is only those links.
+  const wanted = bundle.links.filter((l) => (showOn === 'fail') === (l.show_on === 'fail'));
+  const links = requireTarget ? wanted.filter((l) => present(l[requireTarget])) : wanted;
   if (!links.length) return [];
   const byId = Object.fromEntries(bundle.guides.map((g) => [g.id, g]));
   const matches = matchGuides(links, context, byId);
@@ -154,8 +157,50 @@ export async function prepareGuidesForWalk({ obligationId = null, typeIds = [], 
     type_attribute_id: [...new Set(attributeIds.filter(present))],
     component_id: [...new Set(componentIds.filter(present))],
   });
-  await saveBundle(walkKey(obligationId), bundle);
+  const contact = await readFailContact().catch(() => null);        // the number to call, kept for a walk with no signal
+  await saveBundle(walkKey(obligationId), { ...bundle, contact });
   const urls = [...new Set(bundle.versions.flatMap((v) => (v.snapshot?.steps ?? []).flatMap((/** @type {any} */ s) => (s.photos ?? []).map((/** @type {any} */ p) => p.url))))];
   const { saved, missed } = await cachePhotos(urls);
   return { guides: bundle.guides.length, photos: saved, photosMissed: missed };
+}
+
+// ── If a check fails (migration 273) ─────────────────────────────────────────
+
+/** portal_settings key holding the number to call when a check fails (set in Guides → Manage). */
+export const FAIL_CONTACT_KEY = 'guides_fail_contact';
+
+/**
+ * Who to call, and when: { name, phone, hours, notes } or null when nobody has set it.
+ * @returns {Promise<{ name: string, phone: string, hours: string, notes: string }|null>}
+ */
+export async function readFailContact() {
+  const rows = await api.get('portal_settings', { select: 'key, value', filters: { key: FAIL_CONTACT_KEY } });
+  const v = rows[0]?.value;
+  if (!v || typeof v !== 'object') return null;
+  const t = (/** @type {any} */ x) => (typeof x === 'string' ? x.trim() : '');
+  const c = { name: t(v.name), phone: t(v.phone), hours: t(v.hours), notes: t(v.notes) };
+  return c.name || c.phone || c.hours || c.notes ? c : null;
+}
+
+/**
+ * What to show when a check or a component has FAILED: the guides linked "only when a check
+ * fails" for this place, and the number to call. Live when it can, from the walk's saved copy
+ * when it cannot. A failed read with nothing saved rejects, so the screen can say so — a failure
+ * must never read as "there is nothing to do".
+ *
+ * @param {Record<string, string|null|undefined>} context
+ * @returns {Promise<{ guides: WalkGuide[], contact: { name: string, phone: string, hours: string, notes: string }|null, fromCache: boolean }>}
+ */
+export async function failHelpForWalk(context) {
+  const saved = await loadBundle(walkKey(context.obligation_id));
+  try {
+    /** @type {Record<string, string[]>} */
+    const values = {};
+    for (const k of LINK_TARGETS) if (present(context[k])) values[k] = [/** @type {string} */ (context[k])];
+    const [bundle, contact] = await Promise.all([fetchBundle(values), readFailContact()]);
+    return { guides: await withLocalPhotos(resolveGuides(bundle, context, { showOn: 'fail' })), contact, fromCache: false };
+  } catch (liveError) {
+    if (!saved) throw liveError;
+    return { guides: await withLocalPhotos(resolveGuides(saved, context, { showOn: 'fail' })), contact: saved.contact ?? null, fromCache: true };
+  }
 }
