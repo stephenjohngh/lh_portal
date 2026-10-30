@@ -13,11 +13,16 @@
   let open = null;
   let error = '';
   let busy = false;
+  let notice = '';
 
   $: s = $guidesStore;
 
   onMount(async () => {
-    try { await guidesStore.ensureDefaultCategories(); } catch (e) { error = errMessage(e); }
+    try {
+      await guidesStore.ensureDefaultCategories();
+      const added = await guidesStore.ensureStarterGuides();
+      if (added) notice = `${added} starter guide${added === 1 ? ' was' : 's were'} added as drafts. They were written without seeing this building: walk through each on site and correct it before publishing.`;
+    } catch (e) { error = errMessage(e); }
     if (initialId) open = $guidesStore.guides.find((g) => g.id === initialId) ?? null;
   });
 
@@ -36,6 +41,7 @@
 {:else}
   <div class="space-y-3">
     {#if error}<p class="text-red-400 text-sm" role="alert">{error}</p>{/if}
+    {#if notice}<p class="text-amber-300 text-sm" role="status" data-testid="starter-notice">{notice}</p>{/if}
     <Button disabled={busy} testid="new-guide" on:click={create}>+ New guide</Button>
     {#if s.guides.length === 0}
       <p class="text-sm text-slate-400">No guides yet. Start one — it stays a draft until you publish it.</p>

@@ -27,6 +27,7 @@ import { listAttachments, addAttachments, purgeAttachments, deleteStorageObjects
 import { entityFolderPath, DOC_FOLDERS } from '#lib/utils/documentUtils.js';
 import { DEFAULT_CATEGORIES, NEW_GUIDE_TITLE, NEW_STEP_TITLE } from '../utils/guideDefaults.js';
 import { LIMITS } from '../utils/guideModel.js';
+import { STARTER_GUIDES, STARTER_SETTING_KEY } from '../utils/starterGuides.js';
 
 const AUDIT = { appId: 'guides', eventCategory: 'guides' };
 const PHOTO_TYPE = 'guide_step';
@@ -73,6 +74,40 @@ function createGuidesStore() {
       DEFAULT_CATEGORIES.map((c, i) => ({ ...c, position: (i + 1) * 10 })), false);
     await reload();
     return true;
+  }
+
+  /**
+   * Add the starter guides (as DRAFTS) that have not been added before. The keys already added are
+   * remembered, so a starter an administrator deleted on purpose is not brought back.
+   * @returns {Promise<number>} how many were added
+   */
+  async function ensureStarterGuides() {
+    const userId = await requireUserId();
+    const rows = await api.get('portal_settings', { select: 'key, value', filters: { key: STARTER_SETTING_KEY } });
+    /** @type {string[]} */
+    const done = Array.isArray(rows[0]?.value) ? rows[0].value : [];
+    const todo = STARTER_GUIDES.filter((g) => !done.includes(g.key));
+    let added = 0;
+    for (const g of todo) {
+      const guide = await api.create('guides', {
+        title: g.title, summary: g.summary, category_key: g.category_key, audience: g.audience,
+        targets: g.targets, you_need: g.you_need, minutes: g.minutes, created_by: userId, updated_by: userId,
+      }, true);
+      try {
+        await api.createMany('guide_steps', g.steps.map((st, i) => ({
+          guide_id: guide.id, position: i + 1, kind: st.kind ?? 'step', title: st.title, body: st.body ?? null,
+        })), false);
+      } catch (e) {
+        await api.delete('guides', guide.id);             // never leave a guide with half its steps
+        throw e;
+      }
+      done.push(g.key);
+      added += 1;
+      await api.upsert('portal_settings', { key: STARTER_SETTING_KEY, value: done, updated_by: userId }, { onConflict: 'key' });
+      logAudit('create', 'guide', guide.id, guide.title, { ...AUDIT, severity: 'info', afterData: { starter: g.key } });
+    }
+    if (added) await reload();
+    return added;
   }
 
   // ── Guides ──────────────────────────────────────────────────────────────────
@@ -229,7 +264,7 @@ function createGuidesStore() {
   }
 
   return {
-    subscribe, load, reload, ensureDefaultCategories,
+    subscribe, load, reload, ensureDefaultCategories, ensureStarterGuides,
     createGuide, updateGuide, retireGuide, deleteGuide, publish,
     listSteps, photosByStep, addStep, updateStep, deleteStep, reorderSteps, addPhoto, removePhoto,
     listLinks, addLink, deleteLink,

@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const h = vi.hoisted(() => ({ calls: /** @type {any[]} */ ([]), failFiles: false, steps: /** @type {any[]} */ ([]) }));
+const h = vi.hoisted(() => ({ applied: /** @type {any} */ (null), calls: /** @type {any[]} */ ([]), failFiles: false, steps: /** @type {any[]} */ ([]) }));
 
 vi.mock('#lib/utils/api.js', () => ({
   api: {
     getAll: vi.fn(async (t, o) => { h.calls.push(['getAll', t, o]); return t === 'guide_steps' ? h.steps : []; }),
-    get: vi.fn(async (t, o) => { h.calls.push(['get', t, o]); return h.steps.length ? [{ position: h.steps.length }] : []; }),
+    get: vi.fn(async (t, o) => { h.calls.push(['get', t, o]); if (t === 'portal_settings') return h.applied ? [{ value: h.applied }] : []; return h.steps.length ? [{ position: h.steps.length }] : []; }),
+    upsert: vi.fn(async (t, d) => { h.calls.push(['upsert', t, d]); }),
     getById: vi.fn(async (t, id) => ({ id, title: 'G', version: h.version ?? 0 })),
     count: vi.fn(async () => 0),
     create: vi.fn(async (t, d) => { h.calls.push(['create', t, d]); return { id: 'new', title: d.title ?? 'x', ...d }; }),
@@ -28,7 +29,7 @@ vi.mock('#lib/utils/mediaAttachments.js', () => ({
 
 import { guidesStore } from './guidesStore.js';
 
-beforeEach(() => { h.calls = []; h.failFiles = false; h.steps = []; h.version = 0; });
+beforeEach(() => { h.applied = null; h.calls = []; h.failFiles = false; h.steps = []; h.version = 0; });
 const names = () => h.calls.map((c) => c.slice(0, 2).join(':'));
 
 describe('guidesStore authoring', () => {
@@ -83,5 +84,21 @@ describe('guidesStore authoring', () => {
   it('default categories are added only when there are none', async () => {
     await guidesStore.ensureDefaultCategories();
     expect(names()).toContain('createMany:guide_categories');
+  });
+
+  it('adds the starter guides once as drafts, and remembers them', async () => {
+    const n = await guidesStore.ensureStarterGuides();
+    expect(n).toBe(5);
+    const made = h.calls.filter((c) => c[0] === 'create' && c[1] === 'guides').map((c) => c[2]);
+    expect(made).toHaveLength(5);
+    expect(made.every((m) => !('status' in m))).toBe(true);        // never published by the seed
+    const last = h.calls.filter((c) => c[0] === 'upsert').at(-1)[2];
+    expect(last.value).toHaveLength(5);
+  });
+
+  it('does not add one again — nor bring back one an admin deleted', async () => {
+    h.applied = ['bins-collection', 'change-bulb', 'fire-alarm-test-mode', 'test-emergency-luminaire', 'isolate-lighting-circuit'];
+    expect(await guidesStore.ensureStarterGuides()).toBe(0);
+    expect(names()).not.toContain('create:guides');
   });
 });
