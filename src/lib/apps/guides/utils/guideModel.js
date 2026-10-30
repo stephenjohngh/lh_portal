@@ -224,3 +224,25 @@ export function hasUnpublishedChanges(guide, latestVersion) {
   if (!latestVersion?.published_at) return true;
   return !!guide.updated_at && new Date(guide.updated_at).getTime() > new Date(latestVersion.published_at).getTime() + 1000;
 }
+
+// ── The reader: one screen at a time ──────────────────────────────────────────
+
+/**
+ * The screens of a guide, in order: an intro (what it is, what you will need, how long),
+ * one per step, then a closing screen. Pure, so the reader and its tests share it.
+ * @param {{ steps?: Array<{ id: string, position?: number }> }|null|undefined} snapshot
+ * @returns {Array<{ type: 'intro' } | { type: 'step', index: number, step: any } | { type: 'done' }>}
+ */
+export function readerScreens(snapshot) {
+  const steps = [...(snapshot?.steps ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  return [{ type: 'intro' }, ...steps.map((step, index) => ({ type: /** @type {const} */ ('step'), index, step })), { type: 'done' }];
+}
+
+/** Move within [0, count): never past either end. @param {number} at @param {number} by @param {number} count */
+export const stepBy = (at, by, count) => Math.max(0, Math.min(count - 1, at + by));
+
+/** Which way a horizontal swipe goes: +1 next, -1 back, 0 too small or mostly vertical. */
+export function swipeDirection(dx, dy, min = 50) {
+  if (Math.abs(dx) < min || Math.abs(dx) < Math.abs(dy) * 1.5) return 0;
+  return dx < 0 ? 1 : -1;
+}

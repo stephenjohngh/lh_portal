@@ -13,9 +13,11 @@
 <script>
   import AppGate from '#lib/components/common/AppGate.svelte';
   import TabBar from '#lib/components/common/TabBar.svelte';
+  import Button from '#lib/components/common/Button.svelte';
   import FormInput from '#lib/components/common/FormInput.svelte';
   import ToggleChip from '#lib/components/common/ToggleChip.svelte';
   import GuidebookPanel from './components/GuidebookPanel.svelte';
+  import GuideReader from './components/GuideReader.svelte';
   import ManageGuides from './components/ManageGuides.svelte';
   import { guidesStore } from './stores/guidesStore.js';
   import { permissions } from '#lib/stores/permissions.js';
@@ -30,6 +32,8 @@
   let search = '';
   /** @type {string} */
   let category = '';
+  /** @type {any} */ let reading = null;
+  /** @type {string|null} */ let editId = null;
 
   $: s = $guidesStore;
   // A reader sees published guides; an admin also sees drafts and retired ones (and says which).
@@ -38,6 +42,7 @@
     .filter((g) => matchesSearch([g.title, g.summary, (g.tags ?? []).join(' ')], search));
   $: usedCategories = s.categories.filter((c) => !c.retired && s.guides.some((g) => g.category_key === c.key));
   $: isAdmin = $permissions.isAdmin;
+  $: if (tab !== 'manage') editId = null;       // the editor opens a named guide once, not every visit
 </script>
 
 <AppGate appId="guides" name="Guides" load={() => guidesStore.load()}>
@@ -53,7 +58,12 @@
       <p class="text-red-400 text-sm" role="alert">{s.error}</p>
     {/if}
 
-    {#if tab === 'library'}
+    {#if tab === 'library' && reading}
+      {#key reading.id}
+        <GuideReader guide={reading} {isAdmin} on:close={() => (reading = null)}
+          on:edit={(e) => { editId = e.detail.id; reading = null; tab = 'manage'; }} />
+      {/key}
+    {:else if tab === 'library'}
       <GuidebookPanel />
       <div class="flex flex-wrap items-center gap-2">
         <div class="w-64"><FormInput compact label="" placeholder="Search guides…" bind:value={search} /></div>
@@ -72,17 +82,22 @@
       {:else}
         <ul class="space-y-2" data-testid="guides-list">
           {#each shown as g (g.id)}
-            <li class="rounded-lg border border-slate-700 bg-slate-800/60 p-3">
-              <p class="text-white font-medium">{g.title}
-                {#if g.status !== 'published'}<span class="ml-2 text-xs text-amber-300">{g.status}</span>{/if}
-              </p>
-              {#if g.summary}<p class="text-sm text-slate-400 mt-0.5">{g.summary}</p>{/if}
+            <li class="rounded-lg border border-slate-700 bg-slate-800/60 p-3 flex items-center gap-3">
+              <div class="flex-1 min-w-0">
+                <p class="text-white font-medium">{g.title}
+                  {#if g.status !== 'published'}<span class="ml-2 text-xs text-amber-300">{g.status}</span>{/if}
+                </p>
+                {#if g.summary}<p class="text-sm text-slate-400 mt-0.5">{g.summary}</p>{/if}
+              </div>
+              {#if g.version > 0 && g.status === 'published'}
+                <Button size="small" on:click={() => (reading = g)}>Read</Button>
+              {/if}
             </li>
           {/each}
         </ul>
       {/if}
     {:else if tab === 'manage'}
-      <ManageGuides />
+      <ManageGuides initialId={editId} />
     {/if}
   </div>
 </AppGate>

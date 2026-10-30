@@ -7,6 +7,8 @@
   import { guidesStore } from '../stores/guidesStore.js';
   import { errMessage } from '#lib/utils/errors.js';
 
+  /** Open this guide straight away (the reader's "Edit this guide"). @type {string|null} */
+  export let initialId = null;
   /** @type {any} */
   let open = null;
   let error = '';
@@ -16,6 +18,7 @@
 
   onMount(async () => {
     try { await guidesStore.ensureDefaultCategories(); } catch (e) { error = errMessage(e); }
+    if (initialId) open = $guidesStore.guides.find((g) => g.id === initialId) ?? null;
   });
 
   async function create() {

@@ -193,3 +193,28 @@ describe('unpublished changes', () => {
     expect(hasUnpublishedChanges({ updated_at: '2026-10-30T10:05:00Z' }, v)).toBe(true);
   });
 });
+
+import { readerScreens, stepBy, swipeDirection } from './guideModel.js';
+
+describe('the reader', () => {
+  it('has an intro, each step in position order, then a closing screen', () => {
+    const r = readerScreens({ steps: [{ id: 'b', position: 2 }, { id: 'a', position: 1 }] });
+    expect(r.map((s) => s.type)).toEqual(['intro', 'step', 'step', 'done']);
+    expect(r[1].step.id).toBe('a');
+    expect(r[2].index).toBe(1);
+  });
+  it('still has an intro and a close for a guide with no steps', () => {
+    expect(readerScreens(null).map((s) => s.type)).toEqual(['intro', 'done']);
+  });
+  it('never moves past either end', () => {
+    expect(stepBy(0, -1, 4)).toBe(0);
+    expect(stepBy(3, 1, 4)).toBe(3);
+    expect(stepBy(1, 1, 4)).toBe(2);
+  });
+  it('reads a swipe: left is next, right is back, a small or vertical drag is nothing', () => {
+    expect(swipeDirection(-120, 10)).toBe(1);
+    expect(swipeDirection(120, 10)).toBe(-1);
+    expect(swipeDirection(-20, 0)).toBe(0);
+    expect(swipeDirection(-80, 120)).toBe(0);
+  });
+});
