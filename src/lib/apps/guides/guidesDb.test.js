@@ -102,6 +102,25 @@ const AS_ADMIN = [
     insert into guides (id, title) values ('00000000-0000-4000-8000-0000000000a6', 'DBT never published');
     with d as (delete from guides where id = '00000000-0000-4000-8000-0000000000a6' returning 1) insert into _n2 select count(*) from d;
     if (select c from _n2) <> 1 then raise exception 'it was not deleted'; end if;`, null],
+  ['a step edit bumps the guide so "unpublished changes" can show (migration 269)', `
+    insert into guides (id, title) values ('00000000-0000-4000-8000-0000000000c1', 'DBT reorder');
+    insert into guide_steps (id, guide_id, position, title) values
+      ('00000000-0000-4000-8000-0000000000d1', '00000000-0000-4000-8000-0000000000c1', 1, 'One'),
+      ('00000000-0000-4000-8000-0000000000d2', '00000000-0000-4000-8000-0000000000c1', 2, 'Two'),
+      ('00000000-0000-4000-8000-0000000000d3', '00000000-0000-4000-8000-0000000000c1', 3, 'Three');
+    update guides set updated_at = '2020-01-01' where id = '00000000-0000-4000-8000-0000000000c1';
+    update guide_steps set title = 'One!' where id = '00000000-0000-4000-8000-0000000000d1';
+    if (select updated_at from guides where id = '00000000-0000-4000-8000-0000000000c1') < now() - interval '1 minute'
+      then raise exception 'the guide was not touched'; end if;`, null],
+  ['reordering renumbers 1..n in one call', `
+    perform guide_reorder_steps('00000000-0000-4000-8000-0000000000c1',
+      array['00000000-0000-4000-8000-0000000000d3', '00000000-0000-4000-8000-0000000000d1', '00000000-0000-4000-8000-0000000000d2']::uuid[]);
+    if (select array_agg(id::text order by position) from guide_steps where guide_id = '00000000-0000-4000-8000-0000000000c1')
+       <> array['00000000-0000-4000-8000-0000000000d3', '00000000-0000-4000-8000-0000000000d1', '00000000-0000-4000-8000-0000000000d2']
+      then raise exception 'not reordered'; end if;`, null],
+  ['a list that is not exactly the guide steps is refused', `
+    perform guide_reorder_steps('00000000-0000-4000-8000-0000000000c1',
+      array['00000000-0000-4000-8000-0000000000d3', '00000000-0000-4000-8000-0000000000d1']::uuid[]);`, 'not exactly this guide'],
   ['a staff-only guide is made for the contractor test', `
     insert into guides (id, title, staff_only) values ('00000000-0000-4000-8000-0000000000a5', 'DBT staff only', true);
     insert into guide_steps (guide_id, position, title) values ('00000000-0000-4000-8000-0000000000a5', 1, 'Step');
@@ -123,6 +142,8 @@ const AS_PLAIN = [
     insert into guides (title) values ('nope');`, 'row-level security'],
   ['a non-admin cannot publish', `
     perform guide_publish('00000000-0000-4000-8000-0000000000a1');`, 'Only an administrator'],
+  ['a non-admin cannot reorder steps', `
+    perform guide_reorder_steps('00000000-0000-4000-8000-0000000000c1', array[]::uuid[]);`, 'Only an administrator'],
   ['a non-admin cannot add a link', `
     insert into guide_links (guide_id, space_id) values ('00000000-0000-4000-8000-0000000000a1', gen_random_uuid());`, 'row-level security'],
   ['a non-contractor sees a staff-only guide', `

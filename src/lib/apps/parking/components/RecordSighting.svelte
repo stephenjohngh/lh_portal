@@ -7,7 +7,7 @@
   import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import { online } from '#lib/stores/online.js';
-  import { compressImage } from '#lib/apps/inspection/utils/imageCompression.js';
+  import { compressImage } from '#lib/utils/imageCompression.js';
   import { errMessage } from '#lib/utils/errors.js';
   import { sightingStore } from '../stores/sightingStore.js';
   import { SIGHTING_PLACES } from '../utils/sightingModel.js';

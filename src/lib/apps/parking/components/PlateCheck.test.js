@@ -37,7 +37,7 @@ vi.mock('../stores/sightingStore.js', () => ({ sightingStore: {
   subscribe: h.sightings.subscribe, ensureLoaded: async () => {},
   record: async (input) => { h.recorded.push(input); return { sighting: { id: 'n1', seen_at: '2026-10-17T09:15:00Z' }, photoError: '' }; },
 } }));
-vi.mock('#lib/apps/inspection/utils/imageCompression.js', () => ({ compressImage: async (b) => b }));
+vi.mock('#lib/utils/imageCompression.js', () => ({ compressImage: async (b) => b }));
 vi.mock('../stores/registrationCheck.js', () => ({
   checkRegistration: async (q, o) => { h.checked.push([q, o]); return h.result; },
 }));

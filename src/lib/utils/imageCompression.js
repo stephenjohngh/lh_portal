@@ -1,4 +1,4 @@
-// src/lib/apps/inspection/utils/imageCompression.js
+// src/lib/utils/imageCompression.js (moved from inspection/utils, 2026-10-30: Guides and Parking use it too)
 // Image compression utility for inspection photos.
 // Uses browser-image-compression library.
 

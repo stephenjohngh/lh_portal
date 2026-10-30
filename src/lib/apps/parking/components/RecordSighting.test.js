@@ -14,7 +14,7 @@ vi.mock('#lib/stores/online.js', async () => {
   const { writable } = await import('svelte/store');
   return { online: writable(true) };
 });
-vi.mock('#lib/apps/inspection/utils/imageCompression.js', () => ({ compressImage: async (/** @type {any} */ f) => f }));
+vi.mock('#lib/utils/imageCompression.js', () => ({ compressImage: async (/** @type {any} */ f) => f }));
 
 import RecordSighting from './RecordSighting.svelte';
 

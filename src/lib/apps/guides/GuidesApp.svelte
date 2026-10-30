@@ -15,6 +15,7 @@
   import TabBar from '#lib/components/common/TabBar.svelte';
   import FormInput from '#lib/components/common/FormInput.svelte';
   import ToggleChip from '#lib/components/common/ToggleChip.svelte';
+  import ManageGuides from './components/ManageGuides.svelte';
   import { guidesStore } from './stores/guidesStore.js';
   import { permissions } from '#lib/stores/permissions.js';
   import { matchesSearch } from '#lib/utils/textSearch.js';
@@ -79,7 +80,7 @@
         </ul>
       {/if}
     {:else if tab === 'manage'}
-      <p class="text-slate-400 text-sm">Writing guides arrives next.</p>
+      <ManageGuides />
     {/if}
   </div>
 </AppGate>
