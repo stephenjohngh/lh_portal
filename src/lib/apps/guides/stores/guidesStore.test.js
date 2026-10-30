@@ -16,6 +16,12 @@ vi.mock('#lib/utils/api.js', () => ({
     rpc: vi.fn(async (fn, p) => { h.calls.push(['rpc', fn, p]); return 3; }),
   },
 }));
+vi.mock('#lib/workflow/workflowApi.js', () => ({
+  loadWorkflow: vi.fn(async () => null), listItems: vi.fn(async () => []), listAssignees: vi.fn(async () => []),
+  moveItem: vi.fn(async (...a) => { h.calls.push(['moveItem', ...a]); }), saveWorkflow: vi.fn(async (...a) => { h.calls.push(['saveWorkflow', ...a]); }),
+  assignItem: vi.fn(async () => ({})),
+}));
+vi.mock('#lib/workflow/nonWorkingDays.js', () => ({ ensureNonWorkingDays: async () => {} }));
 vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: vi.fn() }));
 vi.mock('#lib/utils/currentUser.js', () => ({ requireUserId: async () => 'u1' }));
 vi.mock('#lib/utils/imageCompression.js', () => ({ compressImage: async (f) => f }));
@@ -100,5 +106,15 @@ describe('guidesStore authoring', () => {
     h.applied = ['bins-collection', 'change-bulb', 'fire-alarm-test-mode', 'test-emergency-luminaire', 'isolate-lighting-circuit'];
     expect(await guidesStore.ensureStarterGuides()).toBe(0);
     expect(names()).not.toContain('create:guides');
+  });
+
+  it('sets up the guide workflow: saves the shipped one, then attaches the guides already there', async () => {
+    await guidesStore.setUpWorkflow();
+    expect(h.calls.find((c) => c[0] === 'saveWorkflow')[1]).toMatchObject({ key: 'guide', appId: 'guides' });
+    expect(h.calls.some((c) => c[0] === 'rpc' && c[1] === 'guide_attach_to_workflow')).toBe(true);
+  });
+
+  it('a guide not yet in its workflow cannot be moved, and says what to do', async () => {
+    await expect(guidesStore.moveGuide('g1', 'published')).rejects.toThrow(/workflow yet/);
   });
 });

@@ -22,6 +22,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { SAVE_CASES } from './workflowSaveCases.test-helper.js';
 import { DEFAULT_COMPLIANCE_ACTION_WORKFLOW as ACTION_WF } from '#lib/apps/compliance/utils/complianceActionWorkflow.js';
+import { DEFAULT_GUIDE_WORKFLOW as GUIDE_WF } from '#lib/apps/guides/utils/guideWorkflow.js';
 import { DEFAULT_WORKS_SCHEDULE_WORKFLOW as WORKS_WF } from '#lib/apps/building_assets/utils/worksScheduleWorkflow.js';
 import { DEFAULT_MAINTENANCE_JOB_WORKFLOW as JOB_WF } from '#lib/apps/maintenance/utils/maintenanceJobWorkflow.js';
 import { DEFAULT_WAITING_LIST_WORKFLOW as WL_WF } from '#lib/apps/parking/utils/waitingListWorkflow.js';
@@ -77,6 +78,10 @@ const worksSave = `perform workflow_save('works_schedule', ${txt(WORKS_WF.name)}
       ${lit(WORKS_WF.steps.map((x, n) => ({ ...x, position: n + 1 })))},
       ${lit(WORKS_WF.moves.map((m, n) => ({ ...m, position: n + 1 })))}, null, null, null, '[]', null);`;
 const worksItem = `(select i.id from workflow_items i join works_schedules w on w.id = i.subject_id where w.title = 'DB test works')`;
+const guideSave = `perform workflow_save('guide', ${txt(GUIDE_WF.name)}, 'guides', null,
+      ${lit(GUIDE_WF.steps.map((x, n) => ({ ...x, position: n + 1 })))},
+      ${lit(GUIDE_WF.moves.map((m, n) => ({ ...m, position: n + 1 })))}, null, null, null, '[]', null);`;
+const guideItem = `(select i.id from workflow_items i join guides g on g.id = i.subject_id where g.title = 'DB test guide')`;
 const jobSave = `perform workflow_save('maintenance_job', ${txt(JOB_WF.name)}, 'maintenance', null,
       ${lit(JOB_WF.steps.map((x, n) => ({ ...x, position: n + 1 })))},
       ${lit(JOB_WF.moves.map((m, n) => ({ ...m, position: n + 1 })))}, null, null, null, '[]', null);`;
@@ -297,6 +302,55 @@ const RUNTIME = [
     delete from works_schedules where title = 'DB test works';
     if exists (select 1 from workflow_items i join workflows w on w.id = i.workflow_id
                 where w.key = 'works_schedule' and not exists (select 1 from works_schedules s where s.id = i.subject_id))
+      then raise exception 'left behind'; end if;`, null],
+  // Migration 272: guides.
+  ['the shipped Guide workflow saves, and the guides attach to it', `
+    ${guideSave}
+    perform guide_attach_to_workflow();
+    if exists (select 1 from guides g where not exists (select 1 from workflow_items i where i.subject_id = g.id))
+      then raise exception 'a guide was left out'; end if;`, null],
+  ['a new guide joins its workflow at Draft', `
+    insert into guides (title, created_by, updated_by) values ('DB test guide', auth.uid(), auth.uid());
+    if (select step_key from workflow_items where id = ${guideItem}) <> 'draft' then raise exception 'not at draft'; end if;`, null],
+  ['a guide’s status changes only through its workflow', `
+    update guides set status = 'published' where title = 'DB test guide';`, 'through its workflow'],
+  ['a guide with no steps cannot be published, by the move either', `
+    perform workflow_move(${guideItem}, 'published', null);`, 'at least one step'],
+  ['submitting for review writes the status', `
+    perform workflow_move(${guideItem}, 'in_review', null);
+    if (select status from guides where title = 'DB test guide') <> 'in_review' then raise exception 'not in review'; end if;`, null],
+  ['a guide in review is not published, and its version is still 0', `
+    if (select version from guides where title = 'DB test guide') <> 0 then raise exception 'version moved'; end if;`, null],
+  ['Publish freezes version 1 and writes the status', `
+    insert into guide_steps (guide_id, position, kind, title, body)
+      select id, 1, 'step', 'Do it', 'Like this' from guides where title = 'DB test guide';
+    perform workflow_move(${guideItem}, 'published', null);
+    if (select status || version from guides where title = 'DB test guide') <> 'published1' then raise exception 'not published v1'; end if;
+    if (select count(*) from guide_versions v join guides g on g.id = v.guide_id where g.title = 'DB test guide') <> 1 then raise exception 'no frozen version'; end if;`, null],
+  ['a published guide’s review date is its deadline', `
+    update guides set review_due = current_date + 90 where title = 'DB test guide';
+    if (select due_on from workflow_items where id = ${guideItem}) <> current_date + 90 then raise exception 'not dated'; end if;`, null],
+  ['Publish changes on a published guide still makes version 2, with no move', `
+    if guide_publish((select id from guides where title = 'DB test guide')) <> 2 then raise exception 'not version 2'; end if;
+    if (select step_key from workflow_items where id = ${guideItem}) <> 'published' then raise exception 'it moved'; end if;`, null],
+  ['the first publication cannot bypass the workflow', `
+    insert into guides (title, created_by, updated_by) values ('DB test guide two', auth.uid(), auth.uid());
+    insert into guide_steps (guide_id, position, kind, title) select id, 1, 'step', 'x' from guides where title = 'DB test guide two';
+    perform guide_publish((select id from guides where title = 'DB test guide two'));`, 'through its workflow'],
+  ['retiring then reopening as a draft keeps the version', `
+    perform workflow_move(${guideItem}, 'retired', 'Out of date');
+    if (select status from guides where title = 'DB test guide') <> 'retired' then raise exception 'not retired'; end if;
+    perform workflow_move(${guideItem}, 'draft', 'Correcting it');
+    if (select status || version from guides where title = 'DB test guide') <> 'draft2' then raise exception 'not reopened'; end if;`, null],
+  ['a move to Published cannot be a timer', `
+    perform workflow_save('guide', 'Guide', 'guides', null,
+      ${lit(GUIDE_WF.steps.map((x, n) => ({ ...x, position: n + 1 })))},
+      ${lit(GUIDE_WF.moves.map((m, n) => (m.label === 'Publish' && m.from_key === 'in_review' ? { ...m, timer_days: 3, timer_basis: 'calendar', position: n + 1 } : { ...m, position: n + 1 })))},
+      null, null, null, '[]', null);`, 'cannot be made by a timer'],
+  ['a deleted draft guide takes its item with it', `
+    delete from guides where title = 'DB test guide two';
+    if exists (select 1 from workflow_items i join workflows w on w.id = i.workflow_id
+                where w.key = 'guide' and not exists (select 1 from guides g where g.id = i.subject_id))
       then raise exception 'left behind'; end if;`, null],
   // Migration 259: timers — a move the system makes after N days in its step.
   ['a timed move is made by the run once due, by nobody, with its reason', `

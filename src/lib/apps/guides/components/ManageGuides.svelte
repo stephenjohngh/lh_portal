@@ -4,6 +4,7 @@
   import { onMount } from 'svelte';
   import Button from '#lib/components/common/Button.svelte';
   import GuideEditor from './GuideEditor.svelte';
+  import { permissions } from '#lib/stores/permissions.js';
   import { guidesStore } from '../stores/guidesStore.js';
   import { errMessage } from '#lib/utils/errors.js';
 
@@ -19,6 +20,10 @@
 
   onMount(async () => {
     try {
+      // The guides' workflow first, so the starter guides join it as they are made.
+      if (!$guidesStore.workflow && $permissions.isAdmin) {
+        try { await guidesStore.setUpWorkflow(); } catch (e) { error = `The guide workflow could not be set up: ${errMessage(e)}`; }
+      }
       await guidesStore.ensureDefaultCategories();
       const added = await guidesStore.ensureStarterGuides();
       if (added) notice = `${added} starter guide${added === 1 ? ' was' : 's were'} added as drafts. They were written without seeing this building: walk through each on site and correct it before publishing.`;

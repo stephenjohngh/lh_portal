@@ -73,6 +73,18 @@ export const CONTRACTS = Object.freeze({
     subjectDue: true,
     explains: 'Its steps are the works schedule statuses and each has a fixed kind. The names, moves, notes and conditions can be changed; a schedule’s deadline is its expected completion date.',
   },
+  // Migration 272: guides. The keys are the guide statuses; publishing freezes a version.
+  guides: {
+    name: 'Guide',
+    stepsAre: 'the guide statuses',
+    steps: { draft: 'start', in_review: 'open', published: 'open', retired: 'done' },
+    subjectDue: true,
+    check: ({ moves }) => {
+      const timed = moves.find((/** @type {any} */ m) => m.to_key === 'published' && m.timer_days != null && m.timer_days !== '');
+      return timed ? `The move "${timed.label}" publishes a guide, so it cannot be made by a timer.` : null;
+    },
+    explains: 'Its steps are the guide statuses and each has a fixed kind. Moving to Published freezes the version readers and walks see; Review is optional (Draft can be published directly). The names, moves, notes and conditions can be changed — add four-eyes to Publish where a second person must approve. A published guide’s deadline is its review due date.',
+  },
   // Migration 260: maintenance jobs. ⭐ The steps are the administrator's —
   // a step's KIND is the job's status — so only two rules are fixed.
   maintenance: {

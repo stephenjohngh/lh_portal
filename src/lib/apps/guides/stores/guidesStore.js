@@ -16,7 +16,7 @@
 // on a phone is never lost. Every change to a photo also touches the guide, so
 // "unpublished changes" is true.
 
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import { api } from '#lib/utils/api.js';
 import { logAudit } from '#lib/utils/auditLogger.js';
 import { storeLoader } from '#lib/utils/storeLoad.js';
@@ -27,6 +27,9 @@ import { listAttachments, addAttachments, purgeAttachments, deleteStorageObjects
 import { entityFolderPath, DOC_FOLDERS } from '#lib/utils/documentUtils.js';
 import { DEFAULT_CATEGORIES, NEW_GUIDE_TITLE, NEW_STEP_TITLE } from '../utils/guideDefaults.js';
 import { LIMITS } from '../utils/guideModel.js';
+import { loadWorkflow, listItems, moveItem, saveWorkflow, assignItem, listAssignees } from '#lib/workflow/workflowApi.js';
+import { ensureNonWorkingDays } from '#lib/workflow/nonWorkingDays.js';
+import { DEFAULT_GUIDE_WORKFLOW, GUIDE_WORKFLOW_KEY } from '../utils/guideWorkflow.js';
 import { STARTER_GUIDES, STARTER_SETTING_KEY } from '../utils/starterGuides.js';
 
 const AUDIT = { appId: 'guides', eventCategory: 'guides' };
@@ -36,21 +39,32 @@ const PHOTO_TYPE = 'guide_step';
  * @typedef {import('#lib/database.types.ts').Tables<'guides'> & Record<string, any>} Guide
  * @typedef {import('#lib/database.types.ts').Tables<'guide_categories'> & Record<string, any>} Category
  * @typedef {import('#lib/database.types.ts').Tables<'guide_steps'> & Record<string, any>} Step
- * @typedef {{ categories: Category[], guides: Guide[], loading: boolean, loaded?: boolean, error: string|null }} State
+ * @typedef {{ categories: Category[], guides: Guide[], workflow: any, steps: any[], moves: any[], fields: any[], wfItems: any[], assignees: any[],
+ *   loading: boolean, loaded?: boolean, error: string|null }} State
  */
 
 function createGuidesStore() {
   const { subscribe, update } = writable(/** @type {State} */ ({
-    categories: [], guides: [], loading: false, error: null,
+    categories: [], guides: [], workflow: null, steps: [], moves: [], fields: [], wfItems: [], assignees: [],
+    loading: false, error: null,
   }));
+
+  /** The guides' workflow and its items (migration 272); empty until an administrator sets it up. */
+  async function readWorkflow() {
+    const wf = await loadWorkflow(GUIDE_WORKFLOW_KEY);
+    if (!wf) return { workflow: null, steps: [], moves: [], fields: [], wfItems: [], assignees: [] };
+    const [wfItems, assignees] = await Promise.all([listItems(wf.workflow.id), listAssignees(wf.workflow.id)]);
+    return { workflow: wf.workflow, steps: wf.steps, moves: wf.moves, fields: wf.fields, wfItems, assignees };
+  }
 
   const load = storeLoader(update,
     async () => {
-      const [categories, guides] = await Promise.all([
+      const [categories, guides, wf] = await Promise.all([
         api.getAll('guide_categories', { orderBy: 'position', tiebreak: false }),
         api.getAll('guides', { orderBy: 'title' }),
+        readWorkflow().catch(() => ({ workflow: null, steps: [], moves: [], fields: [], wfItems: [], assignees: [] })),
       ]);
-      return { categories, guides };
+      return { categories, guides, ...wf };
     },
     (data) => data,
     { what: 'the guides' });
@@ -61,7 +75,8 @@ function createGuidesStore() {
       api.getAll('guide_categories', { orderBy: 'position', tiebreak: false }),
       api.getAll('guides', { orderBy: 'title' }),
     ]);
-    update((s) => ({ ...s, categories, guides }));
+    const wf = await readWorkflow().catch(() => null);
+    update((s) => ({ ...s, categories, guides, ...(wf ?? {}) }));
   }
 
   // ── Categories ──────────────────────────────────────────────────────────────
@@ -108,6 +123,38 @@ function createGuidesStore() {
     }
     if (added) await reload();
     return added;
+  }
+
+  // ── The guide lifecycle, on the workflow manager (migration 272) ───────────
+
+  /** Admin, on first opening Manage: save the shipped workflow when there is none, attach the guides already there. */
+  async function setUpWorkflow() {
+    await ensureNonWorkingDays();
+    await saveWorkflow(DEFAULT_GUIDE_WORKFLOW);
+    const attached = await api.rpc('guide_attach_to_workflow', {});
+    logAudit('create', 'workflow', null, DEFAULT_GUIDE_WORKFLOW.name, { ...AUDIT, severity: 'info', afterData: { attached } });
+    await reload();
+  }
+
+  /** A guide's workflow item, or null. @param {string} guideId */
+  const itemFor = (guideId) => getStateNow().wfItems.find((i) => i.subject_id === guideId) ?? null;
+  const getStateNow = () => /** @type {State} */ (get({ subscribe }));
+
+  /** Move a guide on through its workflow: the database writes the status, and Publish freezes the version. */
+  async function moveGuide(/** @type {string} */ id, /** @type {string} */ to, note = '') {
+    const item = itemFor(id);
+    if (!item) throw new Error('This guide is not in its workflow yet — an administrator opening Manage sets it up.');
+    await moveItem(item.id, to, note);
+    const g = await api.getById('guides', id);
+    logAudit('update', 'guide', id, g?.title ?? id, { ...AUDIT, severity: 'info', afterData: { status: to } });
+    await reload();
+    return g;
+  }
+
+  async function assignGuide(/** @type {string} */ itemId, /** @type {string|null} */ userId) {
+    const r = await assignItem(itemId, userId || null);
+    await reload();
+    return r;
   }
 
   // ── Guides ──────────────────────────────────────────────────────────────────
@@ -264,7 +311,7 @@ function createGuidesStore() {
   }
 
   return {
-    subscribe, load, reload, ensureDefaultCategories, ensureStarterGuides,
+    subscribe, load, reload, ensureDefaultCategories, ensureStarterGuides, setUpWorkflow, moveGuide, assignGuide,
     createGuide, updateGuide, retireGuide, deleteGuide, publish,
     listSteps, photosByStep, addStep, updateStep, deleteStep, reorderSteps, addPhoto, removePhoto,
     listLinks, addLink, deleteLink,

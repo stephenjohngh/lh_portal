@@ -15,6 +15,9 @@
   import Checkbox from '#lib/components/common/Checkbox.svelte';
   import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
   import GuideLinks from './GuideLinks.svelte';
+  import WorkflowItemControls from '#lib/workflow/WorkflowItemControls.svelte';
+  import { auth } from '#lib/stores/auth.js';
+  import { profiles, profilesStore } from '#lib/stores/profiles.js';
   import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
   import { guidesStore } from '../stores/guidesStore.js';
   import { STEP_KINDS, KIND_LABEL, AUDIENCES, LIMITS, publishProblems, stepProblems, hasUnpublishedChanges } from '../utils/guideModel.js';
@@ -49,6 +52,21 @@
   $: withPhotos = steps.map((st) => ({ ...st, photos: photos[st.id] ?? [] }));
   $: problems = publishProblems(guide, withPhotos);
   $: unpublished = hasUnpublishedChanges(guide, latest);
+  // The guide's lifecycle, on the workflow manager (migration 272). Without its workflow the
+  // older buttons below still work, so an unset-up deployment is not stranded.
+  $: wfItem = s.wfItems.find((i) => i.subject_id === guide.id) ?? null;
+  $: nameById = Object.fromEntries(($profiles.list ?? []).map((p) => [p.id, p.full_name ?? '']));
+  /** Publish is refused, with the first reason, until the guide is publishable. */
+  $: extraRefusal = (/** @type {any} */ m) => (m.to_key === 'published' && problems.length ? problems[0] : null);
+  const confirmMove = (/** @type {any} */ m) => (m.to_key === 'published'
+    ? { title: 'Publish this guide?', message: 'Readers and inspection walks will see this version. Later edits stay in the draft until you publish them.' }
+    : m.to_key === 'retired'
+      ? { title: 'Retire this guide?', message: 'It stops being offered to readers and walks. Its history is kept.' }
+      : null);
+  async function onWfMove(/** @type {any} */ m, /** @type {string} */ note) {
+    await guidesStore.moveGuide(guide.id, m.to_key, note);
+    await reloadAll();
+  }
   $: canPublish = problems.length === 0 && guide.status !== 'retired' && unpublished;
 
   async function reloadAll() {
@@ -61,6 +79,7 @@
 
   onMount(async () => {
     tagsText = (guide.tags ?? []).join(', ');
+    profilesStore.load();
     try { await reloadAll(); } catch (e) { error = errMessage(e); } finally { loading = false; }
   });
 
@@ -242,11 +261,20 @@
           {#each problems as p}<li>{p}</li>{/each}
         </ul>
       {/if}
+      {#if wfItem}
+        <WorkflowItemControls item={wfItem} workflow={s.workflow} steps={s.steps} moves={s.moves} fields={s.fields}
+          reference={guide.title} isAdmin canEdit me={$auth.user?.id ?? null} assignees={s.assignees} {nameById}
+          onMove={onWfMove} onAssign={(uid) => guidesStore.assignGuide(wfItem.id, uid)}
+          {extraRefusal} {confirmMove} audit={{ appId: 'guides', entityType: 'guide', entityId: guide.id }}
+          finishedText="A retired guide can be reopened as a draft." />
+      {/if}
       <div class="flex flex-wrap gap-2">
-        <Button disabled={!canPublish || busy} testid="publish" on:click={publish}>
-          {guide.version > 0 ? 'Publish changes' : 'Publish'}
-        </Button>
-        {#if guide.status === 'published'}
+        {#if !wfItem || (guide.status === 'published' && guide.version > 0)}
+          <Button disabled={!canPublish || busy} testid="publish" on:click={publish}>
+            {guide.version > 0 ? 'Publish changes' : 'Publish'}
+          </Button>
+        {/if}
+        {#if !wfItem && guide.status === 'published'}
           <Button variant="secondary" disabled={busy} on:click={() => (pendingRetire = true)}>Retire</Button>
         {/if}
         {#if guide.version === 0}

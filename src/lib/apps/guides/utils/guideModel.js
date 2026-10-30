@@ -16,7 +16,7 @@
 
 export const STEP_KINDS = ['step', 'caution', 'stop', 'good', 'bad'];
 export const AUDIENCES = ['anyone', 'caretaker', 'cleaner'];
-export const GUIDE_STATUSES = ['draft', 'published', 'retired'];
+export const GUIDE_STATUSES = ['draft', 'in_review', 'published', 'retired'];
 
 /** Words for the kinds, as an author and a reader see them. */
 export const KIND_LABEL = {

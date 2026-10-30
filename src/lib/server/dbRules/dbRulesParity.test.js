@@ -58,6 +58,7 @@ import * as results            from '#lib/utils/resultConstants.js';
 import * as registerKinds      from '#lib/utils/registerKinds.js';
 import * as actionWorkflow     from '#lib/apps/compliance/utils/complianceActionWorkflow.js';
 import * as obligationEvidence from '#lib/utils/obligationEvidence.js';
+import * as guideModel        from '#lib/apps/guides/utils/guideModel.js';
 import * as worksSchedule      from '#lib/apps/building_assets/utils/worksSchedule.js';
 import * as datasetTemplates   from '#lib/apps/dossier/utils/datasetTemplates.js';
 import * as spaceTypeOptions   from '#lib/apps/building_assets/utils/spaceTypeOptions.js';
@@ -132,6 +133,7 @@ const VALUE_LISTS = {
   'statutory_obligations.evidenced_by': () => values(obligationEvidence.EVIDENCE_ROUTES),
   'works_schedule_items.action':      () => values(worksSchedule.WORKS_ACTIONS),
   'works_schedules.status':           () => values(worksSchedule.SCHEDULE_STATUS),
+  'guides.status':                    () => values(guideModel.GUIDE_STATUSES),            // migration 272 added in_review
   'works_schedules.purpose':          () => values(worksSchedule.SCHEDULE_PURPOSE),
   'dossier_datasets.key':             () => values(datasetTemplates.TEMPLATE_KEYS),
   'issues.status':                    () => Object.values(ISSUE_STATUS),
@@ -217,7 +219,10 @@ describe('the database rules snapshot', () => {
 // once that migration is applied and `npm run db:rules` run — the first test
 // below then fails, saying to remove it.
 /** @type {Record<string, { values: string[], migration: string }>} */
-const VALUES_AWAITING_MIGRATION = {};
+const VALUES_AWAITING_MIGRATION = {
+  // ⏳ Migration 272 (guides on the workflow manager) adds in_review. Remove once `npm run db:rules` has run.
+  'guides.status': { values: ['in_review'] },
+};
 
 describe('value lists: the code holds exactly what the database accepts', () => {
   it('a value allowance goes once its migration is applied', () => {

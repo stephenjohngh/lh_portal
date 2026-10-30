@@ -32,6 +32,7 @@ export const WORKFLOW_TABS = Object.freeze({
   mor_case: null,           // the whole MOR app — its dashboard and case list both
   gt_document: 'Register',
   gt_risk: 'Risks',
+  guide: 'Manage',
 });
 
 /** @param {string|null|undefined} appId */
