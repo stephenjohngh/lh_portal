@@ -72,9 +72,11 @@
   async function reloadAll() {
     steps = await guidesStore.listSteps(guide.id);
     photos = await guidesStore.photosByStep(steps.map((x) => x.id));
-    versions = guide.version > 0 ? await guidesStore.listVersions(guide.id) : [];
+    // Take the fresh guide first: its version decides whether there are versions to read
+    // (a guide just published still held version 0 here and read as "unpublished changes").
     const fresh = $guidesStore.guides.find((g) => g.id === guide.id);
     if (fresh) guide = fresh;
+    versions = guide.version > 0 ? await guidesStore.listVersions(guide.id) : [];
   }
 
   onMount(async () => {
