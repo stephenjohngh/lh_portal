@@ -252,6 +252,14 @@ describe('addAction', () => {
   });
 });
 
+describe('updateAction', () => {
+  it('saves an empty deadline as null — the column is a date, and "" is not one', async () => {
+    await issuesStore.updateAction('a1', { action_text: 'do it', name_text: 'A', status: 'pending', date_deadline: '' });
+    const call = h.api.update.mock.calls.find(c => c[0] === 'actions' && c[1] === 'a1');
+    expect(call[2].date_deadline).toBeNull();
+  });
+});
+
 // ── assignToMeeting ──────────────────────────────────────────────────────────
 describe('assignToMeeting', () => {
   it('no-ops (success, no writes) when nothing is selected', async () => {

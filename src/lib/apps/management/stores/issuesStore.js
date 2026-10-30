@@ -598,7 +598,7 @@ function createIssuesStore() {
         const actionPayload = {
           action_text:   actionData.action_text,
           name_text:     actionData.name_text,
-          date_deadline: actionData.date_deadline,
+          date_deadline: actionData.date_deadline || null,   // a date column: '' is not a date
           status:        actionData.status,
           updated_at:    actionData.override_updated_at || new Date().toISOString(),
           updated_by:    user?.id
