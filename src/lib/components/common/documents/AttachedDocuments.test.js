@@ -41,7 +41,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   h.listDocuments.mockResolvedValue([]);
   h.uploadDocument.mockImplementation(async (_file, meta) => ({
-    id: 'new-doc', filename: 'f.pdf', display_name: 'f.pdf', created_at: '2026-09-17', ...meta,
+    id: 'new-' + _file.name, filename: 'f.pdf', display_name: 'f.pdf', created_at: '2026-09-17', ...meta,
   }));
 });
 
@@ -125,5 +125,56 @@ describe('AttachedDocuments — the list shows what was stored', () => {
 
     await screen.findByText('a.pdf');
     expect(screen.queryByText('—')).not.toBeInTheDocument();
+  });
+});
+
+describe('AttachedDocuments — several files at once', () => {
+  async function chooseMany(names) {
+    await fireEvent.click(screen.getByRole('button', { name: /upload/i }));
+    const input = document.querySelector('input[type="file"]');
+    Object.defineProperty(input, 'files', { value: names.map((n) => aFile(n)), configurable: true });
+    await fireEvent.change(input);
+  }
+
+  it('uploads each file as its own document with the one category and description', async () => {
+    render(AttachedDocuments, { entityType: 'info_note', entityId: 'n1', canEdit: true });
+    await chooseMany(['a.pdf', 'b.pdf', 'c.pdf']);
+
+    await fireEvent.change(screen.getByLabelText(/category/i), { target: { value: 'warranty' } });
+    await fireEvent.input(screen.getByLabelText(/description/i), { target: { value: 'Roof works' } });
+    await fireEvent.click(screen.getByRole('button', { name: /upload 3 files/i }));
+
+    await waitFor(() => expect(h.uploadDocument).toHaveBeenCalledTimes(3));
+    const sent = h.uploadDocument.mock.calls.map((c) => [c[0].name, c[1].display_name, c[1].category, c[1].description]);
+    expect(sent).toEqual([
+      ['a.pdf', 'a.pdf', 'warranty', 'Roof works'],
+      ['b.pdf', 'b.pdf', 'warranty', 'Roof works'],
+      ['c.pdf', 'c.pdf', 'warranty', 'Roof works'],
+    ]);
+  });
+
+  it('does not apply a guess from one filename to the rest', async () => {
+    render(AttachedDocuments, { entityType: 'info_note', entityId: 'n1', canEdit: true });
+    await chooseMany(['EWS1 form.pdf', 'scan.pdf']);
+
+    await fireEvent.click(screen.getByRole('button', { name: /upload 2 files/i }));
+
+    await waitFor(() => expect(h.uploadDocument).toHaveBeenCalledTimes(2));
+    expect(h.uploadDocument.mock.calls.every((c) => c[1].category === undefined)).toBe(true);
+  });
+
+  it('keeps only the files that failed, and says which', async () => {
+    h.uploadDocument.mockImplementation(async (f, meta) => {
+      if (f.name === 'b.pdf') throw new Error('Storage refused it');
+      return { id: f.name, filename: f.name, display_name: f.name, created_at: '2026-09-17', ...meta };
+    });
+    render(AttachedDocuments, { entityType: 'info_note', entityId: 'n1', canEdit: true });
+    await chooseMany(['a.pdf', 'b.pdf']);
+
+    await fireEvent.click(screen.getByRole('button', { name: /upload 2 files/i }));
+
+    expect(await screen.findByText(/1 of 2 uploaded.*b\.pdf.*Storage refused it/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /remove b\.pdf/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /remove a\.pdf/i })).not.toBeInTheDocument();
   });
 });

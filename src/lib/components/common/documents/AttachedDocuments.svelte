@@ -43,7 +43,8 @@
 
   // Upload state
   let showUpload  = false;
-  let file        = null;
+  /** @type {File[]} */
+  let files       = [];
   let description = '';
   let category    = '';
   // The categories are an admin setting; reading $portalSettings here makes the
@@ -58,10 +59,17 @@
   // ⚠ Keyed on the filename, not on `file` — an object prop is always "dirty"
   // to Svelte, so a plain `$: if (file)` would overwrite a hand-picked category
   // on every parent update. (CLAUDE.md § Reactive statements + object props.)
+  // With several files, one category applies to all of them, so a guess from one
+  // name must not be applied to the rest: a suggestion we made is withdrawn as soon
+  // as more than one file is listed, and a category the person chose is left alone.
   let suggestedFor = null;
-  $: if (file?.name && file.name !== suggestedFor) {
-    suggestedFor = file.name;
-    category = categoryFromFilename(file.name);
+  let autoCategory = '';
+  $: firstName = files[0]?.name ?? null;
+  $: if (files.length === 1 && firstName && firstName !== suggestedFor) {
+    suggestedFor = firstName;
+    category = autoCategory = categoryFromFilename(firstName);
+  } else if (files.length > 1 && category && category === autoCategory) {
+    category = autoCategory = '';
   }
 
   // Delete state
@@ -141,33 +149,44 @@
   export function reload() { return load(); }
 
   function cancelUpload() {
-    showUpload = false; file = null; description = ''; category = '';
-    suggestedFor = null; attachRef?.reset?.();
+    showUpload = false; files = []; description = ''; category = '';
+    suggestedFor = null; autoCategory = ''; attachRef?.reset?.();
   }
 
+  /** One category and description for every file chosen; each file is its own document. */
   async function doUpload() {
-    if (!file) return;
+    if (!files.length) return;
     uploading = true; error = '';
-    try {
-      const doc = await docApi.uploadDocument(file, {
-        entity_type:  entityType,
-        entity_id:    entityId,
-        display_name: file.name,
-        // Left out when the host states nothing, so the server derives it from
-        // the MIME type rather than recording a blanket 'other'.
-        doc_type:     docType || undefined,
-        category:     category || undefined,
-        folder_path:  folderPath || undefined,
-        description:  description.trim() || undefined,
-      });
-      docs = [doc, ...docs];
-      cancelUpload();
-      dispatch('uploaded', doc);
-    } catch (/** @type {any} */ e) {
-      error = e.message;
-    } finally {
-      uploading = false;
+    const batch = [...files];            // capture before the awaits
+    const failed = [];
+    let lastError = '';
+    for (const f of batch) {
+      try {
+        const doc = await docApi.uploadDocument(f, {
+          entity_type:  entityType,
+          entity_id:    entityId,
+          display_name: f.name,
+          // Left out when the host states nothing, so the server derives it from
+          // the MIME type rather than recording a blanket 'other'.
+          doc_type:     docType || undefined,
+          category:     category || undefined,
+          folder_path:  folderPath || undefined,
+          description:  description.trim() || undefined,
+        });
+        docs = [doc, ...docs];
+        dispatch('uploaded', doc);
+      } catch (/** @type {any} */ e) {
+        failed.push(f);
+        lastError = e.message;
+      }
     }
+    uploading = false;
+    if (!failed.length) { cancelUpload(); return; }
+    // Keep only what did not go, so pressing Upload again retries just those.
+    files = failed;
+    error = failed.length === batch.length
+      ? lastError
+      : `${batch.length - failed.length} of ${batch.length} uploaded. Not uploaded: ${failed.map((f) => f.name).join(', ')} — ${lastError}`;
   }
 
   async function confirmDelete() {
@@ -211,7 +230,7 @@
   {#if canEdit && showUpload}
     <div class="mb-3 space-y-2 rounded-lg border border-slate-700 bg-slate-800/40 p-3">
       <div class={uploading ? 'opacity-50 pointer-events-none' : ''}>
-        <DocAttachInput bind:this={attachRef} bind:file />
+        <DocAttachInput bind:this={attachRef} multiple bind:files />
       </div>
       <FormSelect
         label="Category (optional)"
@@ -219,20 +238,22 @@
         options={offered}
         placeholder="— none —"
         disabled={uploading}
-        helpText={category && category === categoryFromFilename(file?.name)
-          ? 'Suggested from the filename — change it if it is wrong.'
-          : ''}
+        helpText={files.length > 1
+          ? 'Applies to all ' + files.length + ' files.'
+          : category && category === categoryFromFilename(files[0]?.name)
+            ? 'Suggested from the filename — change it if it is wrong.'
+            : ''}
       />
       <FormInput
-        label="Description (optional)"
+        label={files.length > 1 ? 'Description for all ' + files.length + ' files (optional)' : 'Description (optional)'}
         bind:value={description}
         placeholder="e.g. EWS1 form issued Jan 2026"
         disabled={uploading}
       />
       <div class="flex justify-end gap-2">
         <Button variant="secondary" size="small" on:click={cancelUpload} disabled={uploading}>Cancel</Button>
-        <Button variant="primary" size="small" loading={uploading} disabled={uploading || !file}
-                on:click={doUpload}>Upload</Button>
+        <Button variant="primary" size="small" loading={uploading} disabled={uploading || !files.length}
+                on:click={doUpload}>{files.length > 1 ? `Upload ${files.length} files` : 'Upload'}</Button>
       </div>
     </div>
   {/if}
