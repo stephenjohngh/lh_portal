@@ -21,8 +21,8 @@
 
   import { tick, onMount } from 'svelte';
   import {
-    pageOutline, outlineDepths, wordCount, describeReadingTime, packReadingTime,
-    docIdFromHash, hashForDoc, WORDS_PER_MINUTE,
+    pageOutline, outlineDepths,
+    docIdFromHash, hashForDoc,
   } from '#lib/apps/dossier/utils/pageNav.js';
   import { refreshAll } from '$app/navigation';
   import { page } from '$app/state';
@@ -92,9 +92,6 @@
   let outlineOpen = false;
   let outlineFor = null;
   $: if (selectedId !== outlineFor) { outlineFor = selectedId; outlineOpen = false; }
-  $: pageWords   = wordCount(selectedDoc?.blocks);
-  $: pageReading = describeReadingTime(pageWords);
-  $: packReading = packReadingTime(docs);
 
   // ── Deep links ────────────────────────────────────────────────────────────
   // `/pack/<token>#chronology`. Both specs asked for links to a LOCATION rather
@@ -329,10 +326,6 @@
             {#if publication?.expires_at}
               · available until {fmtDateLong(publication?.expires_at)}
             {/if}
-            <!-- What the recipient is holding. Spec 1's success criterion is a
-                 reader understanding the matter in 15-20 minutes; they cannot
-                 judge that without being told the size of the thing. -->
-            {#if packReading}· {packReading}{/if}
           </p>
         </div>
         <Button variant="plain" title="Print the whole pack" disabled={preparing} on:click={printPack} className="pack-print-button text-xs px-2 py-1 rounded border border-slate-700
@@ -426,13 +419,6 @@
                author whose page opens with its own heading got two. The print
                rendering below DOES head each section, because paper has no
                contents panel to say where you are. -->
-
-          <!-- Only for a page long enough that the answer is useful. "Under a
-               minute" on a three-line page is chrome, and this reader has just
-               had a repeated title taken out of it for the same reason. -->
-          {#if pageWords >= WORDS_PER_MINUTE}
-            <p class="text-[11px] text-slate-600 mb-3">{pageReading}</p>
-          {/if}
 
           <BlockContent
             blocks={selectedDoc.blocks}
