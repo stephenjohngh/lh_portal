@@ -1,11 +1,13 @@
 <!-- src/lib/apps/dossier/components/DocTree.svelte -->
 <!-- Recursive doc tree. Renders itself for children via <svelte:self>.
      All structural intent is dispatched upward — this component never touches
-     the store, so the move guards in utils/docTree.js stay authoritative. -->
+     the store, so the move guards in utils/docTree.js stay authoritative.
+     It has NO per-row buttons: seven of them covered every page name, and
+     hiding them until hover was reversed because touch screens cannot hover
+     (2026-10-27). The actions live in DocTreeToolbar, acting on the selected page. -->
 <script>
   import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
-  import { permissions } from '#lib/stores/permissions.js';
 
   export let nodes      = [];     // tree nodes from buildTree()
   export let selectedId = null;
@@ -13,8 +15,6 @@
   export let collapsed  = {};     // id -> true when its children are hidden
 
   const dispatch = createEventDispatcher();
-
-  $: canEdit = $permissions.isAdmin || $permissions.canModify;
 
   function toggle(id) {
     // Reassign so the change propagates through the recursive instances.
@@ -47,27 +47,6 @@
           {node.title}
         </span>
 
-        {#if canEdit}
-          <!-- Absolutely positioned so the controls consume NO width while
-               hidden — otherwise seven buttons permanently squeeze the page
-               title, which is what caused every name to truncate. They float
-               over the row on hover, with the row's own background behind them.
-               opacity (not `hidden`) keeps them keyboard-reachable. -->
-          <span class="absolute right-1 top-1/2 -translate-y-1/2 z-10
-                       flex items-center gap-0.5 rounded px-0.5
-                       bg-slate-700 shadow-sm
-                      ">
-            <Button variant="tertiary" size="xs" title="Move up" on:click={(e) => { e.stopPropagation(); (() => dispatch('move', { node, kind: 'up' }))(e); }}>↑</Button>
-            <Button variant="tertiary" size="xs" title="Move down" on:click={(e) => { e.stopPropagation(); (() => dispatch('move', { node, kind: 'down' }))(e); }}>↓</Button>
-            <Button variant="tertiary" size="xs" title="Indent" on:click={(e) => { e.stopPropagation(); (() => dispatch('move', { node, kind: 'indent' }))(e); }}>→</Button>
-            <Button variant="tertiary" size="xs" title="Outdent" on:click={(e) => { e.stopPropagation(); (() => dispatch('move', { node, kind: 'outdent' }))(e); }}>←</Button>
-            <Button variant="tertiary" size="xs" title="New child page" on:click={(e) => { e.stopPropagation(); (() => dispatch('newChild', node))(e); }}>+</Button>
-            <Button variant="tertiary" size="xs" title="Rename" on:click={(e) => { e.stopPropagation(); (() => dispatch('rename', node))(e); }}>✎</Button>
-            {#if $permissions.isAdmin}
-              <Button admin size="xs" title="Delete page" on:click={e => { e.stopPropagation(); dispatch('delete', node); }}>×</Button>
-            {/if}
-          </span>
-        {/if}
       </div>
 
       {#if node.children.length && !collapsed[node.id]}
@@ -77,10 +56,6 @@
           depth={depth + 1}
           bind:collapsed
           on:select
-          on:move
-          on:newChild
-          on:rename
-          on:delete
           on:collapse
         />
       {/if}

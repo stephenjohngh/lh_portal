@@ -20,6 +20,7 @@
     buildTree, descendantIds, planReorder, planIndent, planOutdent,
   } from '../utils/docTree.js';
   import DocTree      from './DocTree.svelte';
+  import DocTreeToolbar from './DocTreeToolbar.svelte';
   import PackSearch   from './PackSearch.svelte';
   import { pageShowingFile } from '../utils/packSearch.js';
   import { revealBlock }     from '../utils/revealBlock.js';
@@ -906,6 +907,17 @@
         />
       </div>
 
+      {#if canEdit}
+        <DocTreeToolbar
+          doc={selectedDoc}
+          isAdmin={$permissions.isAdmin}
+          on:move={handleMove}
+          on:newChild={(e) => openNewDoc(e.detail)}
+          on:rename={(e)   => openRename(e.detail)}
+          on:delete={(e)   => requestDelete(e.detail)}
+        />
+      {/if}
+
       <div class="flex-1 min-h-0 overflow-y-auto p-1.5">
         {#if $dossierStore.loadingDocs}
           <div class="flex justify-center py-8"><LoadingSpinner /></div>
@@ -919,10 +931,6 @@
             {selectedId}
             bind:collapsed
             on:select={(e)   => { selectPage(e.detail.id); notice = ''; }}
-            on:move={handleMove}
-            on:newChild={(e) => openNewDoc(e.detail)}
-            on:rename={(e)   => openRename(e.detail)}
-            on:delete={(e)   => requestDelete(e.detail)}
           />
         {/if}
       </div>
