@@ -341,8 +341,7 @@
   {#if files.length === 0 && folders.length === 0}
     <p class="text-xs text-slate-600 italic py-2">No files yet.</p>
   {:else}
-    <!-- The tree can be pulled taller from its bottom-right corner. -->
-    <div class="resize-y overflow-auto min-h-24 max-h-[80vh]" style="height: 16rem" data-testid="file-tree-box">
+    <div data-testid="file-tree-box">
       <FileTreeNode folders={tree.folders} files={tree.rootFiles} {selected} {thumbnails} bind:collapsed on:select={choose} />
     </div>
   {/if}
