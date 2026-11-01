@@ -1141,7 +1141,7 @@
           <div class="h-full" on:click={handleContentClick}>
             {#if previewing}
               <div class="h-full overflow-y-auto" bind:this={previewEl}>
-                <div class="max-w-3xl mx-auto px-8 py-6">
+                <div class="max-w-4xl mx-auto px-5 py-6">
                   <BlockContent blocks={selectedDoc.blocks} mode="read" {docs} {files}
                                 {datasets} {records}
                                 on:openDoc={(e) => selectPage(e.detail)}

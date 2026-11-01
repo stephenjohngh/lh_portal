@@ -600,7 +600,7 @@
     <!-- min-h gives a generous click target below the last block; it belongs
          to the editing surface, not to the shared prose styles. -->
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-    <div class="max-w-3xl mx-auto px-8 py-6 min-h-[60vh] {editable ? 'cursor-text' : ''}"
+    <div class="max-w-4xl mx-auto px-5 py-6 min-h-[60vh] {editable ? 'cursor-text' : ''}"
          on:mousedown={notePress}
          on:click={focusEnd}>
       <!-- The editor attaches to BlockContent's host element so edit and read
