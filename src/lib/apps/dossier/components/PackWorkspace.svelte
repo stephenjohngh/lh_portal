@@ -913,7 +913,10 @@
   <div class="flex flex-1 min-h-0">
 
     <!-- ── Doc tree ── -->
-    <div class="w-72 shrink-0 border-r border-slate-700 flex flex-col min-h-0">
+    <!-- The column scrolls as a whole, and the page list and the files each keep a
+         usable minimum, so opening Tables/Files/Published links never squeezes
+         the page tree down to a handful of rows. -->
+    <div class="w-72 shrink-0 border-r border-slate-700 flex flex-col min-h-0 overflow-y-auto" data-testid="pack-sidebar">
       <div class="flex items-center gap-2 px-3 py-2 border-b border-slate-700/50 shrink-0">
         <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide flex-1">Pages</p>
         {#if canEdit}
@@ -940,7 +943,7 @@
         />
       {/if}
 
-      <div class="flex-1 min-h-0 overflow-y-auto p-1.5">
+      <div class="flex-1 min-h-[12rem] overflow-y-auto p-1.5">
         {#if $dossierStore.loadingDocs}
           <div class="flex justify-center py-8"><LoadingSpinner /></div>
         {:else if tree.length === 0}
@@ -1005,7 +1008,7 @@
       <!-- Conditional class rather than class:flex-1 + shrink-0 — those two are
            the same specificity, so which wins would depend on CSS order. -->
       <div class="border-t border-slate-700 flex flex-col min-h-0
-                  {filesOpen ? 'flex-[2]' : 'shrink-0'}">
+                  {filesOpen ? 'flex-[2] min-h-[15rem]' : 'shrink-0'}">
         <!-- The label is always shown, with the count: the file panel no longer
              supplies a heading of its own. -->
         <Button variant="plain" aria-label={filesOpen ? 'Hide files' : 'Show files'} aria-expanded={filesOpen} on:click={toggleFiles} className="flex items-center gap-2 w-full px-3 py-2 text-left shrink-0
