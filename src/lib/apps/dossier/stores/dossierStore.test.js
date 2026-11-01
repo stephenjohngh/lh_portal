@@ -1144,3 +1144,45 @@ describe('the pack list folders', () => {
     expect(h.api.create).toHaveBeenCalledWith('dossier_packs', expect.objectContaining({ folder_id: 'f9' }), true);
   });
 });
+
+describe('syncFiles', () => {
+  const ids = (n) => Array.from({ length: n }, (_, i) => `f${i + 1}`);
+
+  it('sends the files in small batches and totals the answers', async () => {
+    h.postJson.mockReset();
+    h.postJson.mockImplementation(async (_url, body) => ({
+      moved: body.documentIds.map((id) => ({ document_id: id, folder_path: 'p/x' })), unchanged: [], skipped: [], failed: [],
+    }));
+    const total = await store.syncFiles('p1', ids(45));
+    expect(h.postJson).toHaveBeenCalledTimes(3);                       // 20 + 20 + 5
+    expect(h.postJson.mock.calls[0][1].documentIds).toHaveLength(20);
+    expect(h.postJson.mock.calls.every((c) => c[0] === '/api/dossier/sync-files')).toBe(true);
+    expect(total.moved).toBe(45);
+  });
+
+  it('records where each moved file now is in local state', async () => {
+    h.api.get.mockResolvedValueOnce([]);
+    await store.loadPackFiles(null);
+    store.addFile({ id: 'f1', folder_path: 'old' });
+    h.postJson.mockReset();
+    h.postJson.mockResolvedValueOnce({ moved: [{ document_id: 'f1', folder_path: 'new/path' }], unchanged: [], skipped: [], failed: [] });
+    await store.syncFiles('p1', ['f1']);
+    expect(get(store).files.find((f) => f.id === 'f1').folder_path).toBe('new/path');
+  });
+
+  it('reports a batch that could not be asked about as failed, and carries on', async () => {
+    h.postJson.mockReset();
+    h.postJson.mockRejectedValueOnce(new Error('network')).mockResolvedValue({ moved: [], unchanged: [{ document_id: 'x', folder_path: 'p' }], skipped: [], failed: [] });
+    const total = await store.syncFiles('p1', ids(25));
+    expect(total.failed).toHaveLength(20);
+    expect(total.failed[0].reason).toMatch(/network/);
+    expect(total.unchanged).toBe(1);
+  });
+
+  it('sends the same file once however often it is named', async () => {
+    h.postJson.mockReset();
+    h.postJson.mockResolvedValue({ moved: [], unchanged: [], skipped: [], failed: [] });
+    await store.syncFiles('p1', ['f1', 'f1', 'f2']);
+    expect(h.postJson.mock.calls[0][1].documentIds).toEqual(['f1', 'f2']);
+  });
+});

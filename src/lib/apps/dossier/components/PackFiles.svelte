@@ -6,10 +6,10 @@
      document API, and tells the host what changed so it can audit it. -->
 <script>
   import { createEventDispatcher } from 'svelte';
+  import { get } from 'svelte/store';
   import { dossierStore } from '../stores/dossierStore.js';
   import * as docApi from '#lib/utils/documentApi.js';
   import { fileViewUrl } from '#lib/utils/driveUtils.js';
-  import { DOC_FOLDERS, entityFolderPath } from '#lib/utils/documentUtils.js';
   import { currentUserId } from '#lib/utils/currentUser.js';
   import { errMessage } from '#lib/utils/errors.js';
   import Button from '#lib/components/common/Button.svelte';
@@ -19,8 +19,9 @@
   import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import FileTreeNode from './FileTreeNode.svelte';
+  import { desiredFolderPath, filesOutOfStep, filesUnderFolder } from '../utils/fileSync.js';
   import {
-    buildFileTree, folderLabel, storageSegments, folderMoveTargets, folderNameProblem,
+    buildFileTree, folderLabel, folderMoveTargets, folderNameProblem,
     descendantFolderIds, placementMap, filesUnder,
   } from '../utils/fileTree.js';
 
@@ -61,6 +62,41 @@
   let toUpload = [];
   let uploadDescription = '';
   let attachRef;
+
+  // ── Keeping Drive in step with the tree ────────────────────────────────────
+  // The tree is the truth; Drive is a best-effort mirror. A file whose recorded storage
+  // folder is not where the tree puts it is "not yet moved" — judged from data, so it
+  // survives a reload. Moves and renames bring the files they affect into step at once;
+  // the button does the rest, and nothing writes to Drive merely because a pack was opened.
+  let syncing = false;
+  let syncNote = '';
+  /** Files whose storage cannot be rearranged (not counted as out of step). */
+  let unmirrorable = new Set();
+  $: outOfStep = filesOutOfStep(pack, files, folders, placements).filter(f => !unmirrorable.has(f.id));
+
+  /** Move these files in Drive to match the tree. Never throws; says what happened. */
+  async function mirror(list) {
+    const ids = list.map(f => f.id);
+    if (!ids.length) return;
+    syncing = true; syncNote = '';
+    try {
+      const r = await dossierStore.syncFiles(pack.id, ids);
+      unmirrorable = new Set([...unmirrorable, ...r.skipped.map(x => x.document_id)]);
+      if (r.failed.length) {
+        syncNote = `${r.failed.length} file${r.failed.length === 1 ? '' : 's'} could not be moved in Drive` +
+          `${r.failed[0].reason ? ` (${r.failed[0].reason})` : ''}. They still open from here; press Sync Drive to try again.`;
+      }
+    } catch (/** @type {any} */ err) {
+      syncNote = `Drive could not be brought into step: ${errMessage(err)}`;
+    } finally {
+      syncing = false;
+    }
+  }
+  /** After a change to the tree: the files now under a folder (read from the latest state). */
+  function mirrorUnder(folderId) {
+    const s = get(dossierStore);
+    return mirror(filesUnderFolder(s.folders, s.placements, s.files, folderId));
+  }
 
   $: selFolder = selected?.kind === 'folder' ? folders.find(f => f.id === selected.id) : null;
   $: selFile = selected?.kind === 'file' ? files.find(f => f.id === selected.id) : null;
@@ -110,6 +146,7 @@
       const problem = folderNameProblem(folders, selFolder.parent_id, nameValue, id);
       if (problem) throw new Error(problem);
       await dossierStore.renameFolder(id, nameValue, await currentUserId());
+      mirrorUnder(id);
     } else if (selFile) {
       const id = selFile.id;
       const name = nameValue.trim();
@@ -124,8 +161,13 @@
   const move = () => run(async () => {
     const to = moveValue && moveValue !== TOP ? moveValue : null;
     const user = await currentUserId();
-    if (selFolder) await dossierStore.moveFolder(selFolder.id, to, user);
-    else if (selFile) await dossierStore.placeFile(selFile.id, pack.id, to, user);
+    if (selFolder) {
+      await dossierStore.moveFolder(selFolder.id, to, user);
+      mirrorUnder(selFolder.id);
+    } else if (selFile) {
+      await dossierStore.placeFile(selFile.id, pack.id, to, user);
+      mirror([selFile]);
+    }
     if (to) collapsed = { ...collapsed, [to]: false };
     mode = '';
   });
@@ -156,7 +198,10 @@
   const confirmDelete = () => run(async () => {
     const target = pendingDelete;
     if (target.kind === 'folder') {
+      const s = get(dossierStore);
+      const affected = filesUnderFolder(s.folders, s.placements, s.files, target.id);   // before they go to the top
       await dossierStore.deleteFolder(target.id, target.name);
+      mirror(affected);
     } else {
       await docApi.deleteDocument(target.id);
       dossierStore.removeFile(target.id);
@@ -166,11 +211,7 @@
   }).finally(() => { pendingDelete = null; });
 
   // ── Upload ───────────────────────────────────────────────────────────────
-  function storagePath() {
-    const base = entityFolderPath(DOC_FOLDERS.DOSSIER_PACKS, pack.title, pack.id);
-    const segs = targetFolderId ? storageSegments(folders, targetFolderId) : [];
-    return [base, ...segs].join('/');
-  }
+  const storagePath = () => desiredFolderPath(pack, folders, targetFolderId);
 
   /** Each file is its own document, placed in the target folder; any that fail stay listed to retry. */
   async function upload() {
@@ -266,6 +307,23 @@
         </div>
       </div>
     {/if}
+  {/if}
+
+  {#if canEdit && (syncing || syncNote || outOfStep.length)}
+    <div class="mb-2 rounded border border-slate-700/70 bg-slate-800/30 px-2 py-1.5 text-[11px]" data-testid="drive-status">
+      {#if syncing}
+        <p class="text-slate-400">Moving files in Drive to match…</p>
+      {:else}
+        {#if syncNote}<p class="text-amber-400">{syncNote}</p>{/if}
+        {#if outOfStep.length}
+          <p class="text-slate-400">
+            {outOfStep.length} file{outOfStep.length === 1 ? ' is' : 's are'} not yet in the matching Drive folder.
+            They open as normal.
+            <Button variant="tertiary" size="xs" title="Move these files into the Drive folders that match the tree" on:click={() => mirror(outOfStep)}>Sync Drive</Button>
+          </p>
+        {/if}
+      {/if}
+    </div>
   {/if}
 
   {#if files.length === 0 && folders.length === 0}

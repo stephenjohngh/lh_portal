@@ -24,6 +24,7 @@ import {
 import { planPackCopy } from '../utils/packCopy.js';
 import { descendantFolderIds } from '../utils/fileTree.js';
 import { newUuid } from '#lib/utils/uuid.js';
+import { chunk } from '../utils/fileSync.js';
 import { buildSnapshot, buildManifest } from '../utils/snapshot.js';
 import { generateToken, hashToken, tokenPrefix } from '../utils/publicationToken.js';
 import { hashPassphrase } from '../utils/publicationPassphrase.js';
@@ -570,6 +571,35 @@ function createDossierStore() {
         ? [...rest, { document_id: documentId, pack_id: packId, folder_id: folderId, created_at: new Date().toISOString(), created_by: userId }]
         : rest };
     });
+  }
+
+  /**
+   * Bring files' Drive folders into step with the tree (the tree is the truth; Drive is
+   * a best-effort mirror — see utils/fileSync.js). Sent in small batches because each
+   * file is a few storage calls; a batch that fails is reported and the rest carry on.
+   * Records where each file now is in local state, so "out of step" clears as it goes.
+   * @param {string} packId @param {string[]} documentIds
+   * @returns {Promise<{ moved: number, unchanged: number, skipped: any[], failed: any[] }>}
+   */
+  async function syncFiles(packId, documentIds) {
+    const { postJson } = await import('#lib/utils/request.js');
+    const total = { moved: 0, unchanged: 0, skipped: [], failed: [] };
+    for (const part of chunk([...new Set(documentIds)])) {
+      try {
+        const res = await postJson('/api/dossier/sync-files', { packId, documentIds: part });
+        total.moved += res.moved?.length ?? 0;
+        total.unchanged += res.unchanged?.length ?? 0;
+        total.skipped.push(...(res.skipped ?? []));
+        total.failed.push(...(res.failed ?? []));
+        for (const r of [...(res.moved ?? []), ...(res.unchanged ?? [])]) {
+          update(s => ({ ...s, files: s.files.map(f => f.id === r.document_id ? { ...f, folder_path: r.folder_path } : f) }));
+        }
+      } catch (err) {
+        // The whole batch could not be asked about: they stay where they are, untouched.
+        for (const id of part) total.failed.push({ document_id: id, filename: '', reason: errMessage(err) });
+      }
+    }
+    return total;
   }
 
   /** Local state only — the file already exists in document_library. */
@@ -1190,7 +1220,7 @@ function createDossierStore() {
     loadDatasets, createDataset, deleteDataset,
     createRecord, createRecords, updateRecord, deleteRecord,
     loadDocs, closePack, loadPackFiles, templateUsers, createFolder, renameFolder, moveFolder, deleteFolder, placeFile,
-    addFile, patchFile, removeFile, createDoc, renameDoc, deleteDoc, applyMove, saveDocBlocks,
+    addFile, patchFile, removeFile, syncFiles, createDoc, renameDoc, deleteDoc, applyMove, saveDocBlocks,
     saveVersion, loadRevisions, restoreRevision, loadBacklinks,
     loadPublications, loadAllPublications, createPublication, revokePublication, deletePublication,
     regeneratePublicationToken,

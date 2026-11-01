@@ -10,7 +10,7 @@ const h = vi.hoisted(() => {
     subscribe(fn) { subs.add(fn); fn(state); return () => subs.delete(fn); },
     set(v) { state = v; subs.forEach(f => f(state)); },
     createFolder: vi.fn(), renameFolder: vi.fn(), moveFolder: vi.fn(), deleteFolder: vi.fn(),
-    placeFile: vi.fn(async () => {}), addFile: vi.fn(), patchFile: vi.fn(), removeFile: vi.fn(),
+    placeFile: vi.fn(async () => {}), syncFiles: vi.fn(async () => ({ moved: 1, unchanged: 0, skipped: [], failed: [] })), addFile: vi.fn(), patchFile: vi.fn(), removeFile: vi.fn(),
   };
   return { store, uploadDocument: vi.fn(), updateDocument: vi.fn(), deleteDocument: vi.fn() };
 });
@@ -126,5 +126,62 @@ describe('PackFiles', () => {
   it('has no template section for a pack with no template', () => {
     render(PackFiles, { pack, canEdit: true });
     expect(screen.queryByTestId('template-files')).toBeNull();
+  });
+
+  describe('keeping Drive in step', () => {
+    const inStep = (f, folderPath) => ({ ...f, folder_path: folderPath });
+    const BASE = 'Dossier Packs/Surveyor brief (p1)';
+    const stateInStep = () => state({
+      files: [inStep(files[0], BASE), inStep(files[1], `${BASE}/Old plans (bbbbbbbb)`)],
+    });
+    // the pack id is 'p1' so its short id is 'p1'; the keyed folder is Plans > Old plans
+    const keyed = 'Dossier Packs/Surveyor brief (p1)/Plans (aaaaaaaa)/Old plans (bbbbbbbb)';
+
+    it('says nothing when every file is where the tree puts it', () => {
+      h.store.set(state({ files: [inStep(files[0], BASE), inStep(files[1], keyed)] }));
+      render(PackFiles, { pack, canEdit: true });
+      expect(screen.queryByTestId('drive-status')).toBeNull();
+    });
+
+    it('counts the files not yet moved, and Sync Drive sends exactly those', async () => {
+      h.store.set(state({ files: [inStep(files[0], BASE), inStep(files[1], BASE)] }));   // f2 is placed in Old plans
+      render(PackFiles, { pack, canEdit: true });
+      expect(screen.getByTestId('drive-status')).toHaveTextContent(/1 file is not yet in the matching Drive folder/);
+      await fireEvent.click(screen.getByRole('button', { name: /sync drive/i }));
+      await waitFor(() => expect(h.store.syncFiles).toHaveBeenCalledWith('p1', ['f2']));
+    });
+
+    it('moving a file to another folder brings that file into step at once', async () => {
+      h.store.set(state({ files: [inStep(files[0], BASE), inStep(files[1], keyed)] }));
+      render(PackFiles, { pack, canEdit: true });
+      await fireEvent.click(screen.getByText('roof.png'));
+      await fireEvent.click(screen.getByRole('button', { name: /move/i }));
+      await fireEvent.change(screen.getByLabelText(/move to/i), { target: { value: 'bbbbbbbb-2222' } });
+      await fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
+      await waitFor(() => expect(h.store.syncFiles).toHaveBeenCalledWith('p1', ['f1']));
+    });
+
+    it('says plainly when a file could not be moved, and keeps it counted', async () => {
+      h.store.syncFiles.mockResolvedValueOnce({ moved: 0, unchanged: 0, skipped: [], failed: [{ document_id: 'f2', filename: 'x', reason: 'Drive said no' }] });
+      h.store.set(state({ files: [inStep(files[0], BASE), inStep(files[1], BASE)] }));
+      render(PackFiles, { pack, canEdit: true });
+      await fireEvent.click(screen.getByRole('button', { name: /sync drive/i }));
+      expect(await screen.findByText(/could not be moved in Drive.*Drive said no/)).toBeInTheDocument();
+      expect(screen.getByTestId('drive-status')).toHaveTextContent(/not yet in the matching Drive folder/);
+    });
+
+    it('does not count a file whose storage cannot be rearranged', async () => {
+      h.store.syncFiles.mockResolvedValueOnce({ moved: 0, unchanged: 0, skipped: [{ document_id: 'f2', filename: 'x', reason: 'cannot be rearranged' }], failed: [] });
+      h.store.set(state({ files: [inStep(files[0], BASE), inStep(files[1], BASE)] }));
+      render(PackFiles, { pack, canEdit: true });
+      await fireEvent.click(screen.getByRole('button', { name: /sync drive/i }));
+      await waitFor(() => expect(screen.queryByTestId('drive-status')).toBeNull());
+    });
+
+    it('shows a viewer nothing about Drive', () => {
+      h.store.set(state({ files: [inStep(files[0], BASE), inStep(files[1], BASE)] }));
+      render(PackFiles, { pack, canEdit: false });
+      expect(screen.queryByTestId('drive-status')).toBeNull();
+    });
   });
 });
