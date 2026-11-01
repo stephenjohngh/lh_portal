@@ -84,9 +84,10 @@ function touch(userId) {
  * @typedef {import('#lib/database.types.ts').Tables<'dossier_doc_revisions'>} DocRevision
  * @typedef {import('#lib/database.types.ts').Tables<'document_library'>} LibraryFile
  * @typedef {import('#lib/database.types.ts').Tables<'dossier_folders'>} Folder
+ * @typedef {import('#lib/database.types.ts').Tables<'dossier_pack_folders'>} PackFolder
  * @typedef {import('#lib/database.types.ts').Tables<'dossier_file_placements'>} Placement
  * @typedef {{
- *   packs: Pack[], loading: boolean, error: string|null,
+ *   packs: Pack[], packFolders: PackFolder[], loading: boolean, error: string|null,
  *   activePackId: string|null, docs: Doc[], loadingDocs: boolean,
  *   files: LibraryFile[], folders: Folder[], placements: Placement[],
  *   inheritedFiles: LibraryFile[], inheritedFolders: Folder[], inheritedPlacements: Placement[],
@@ -97,6 +98,7 @@ function touch(userId) {
 function createDossierStore() {
   const store = writable(/** @type {DossierState} */ ({
     packs:        [],
+    packFolders:  [],   // the pack list's folders (migration 276)
     loading:      false,
     error:        null,
     // Docs for the pack currently open in the workspace.
@@ -137,6 +139,64 @@ function createDossierStore() {
     (packs) => ({ packs: sortPacks(packs) }),
     { what: 'the packs' });
 
+  // ── The pack list's folders (migration 276) ──────────────────────────────
+  // A folder holds packs of ONE kind: 'template' (an admin's, shared) or 'dossier'
+  // (its owner's). A pack's folder is its folder_id; none = the top of its section.
+
+  async function loadPackFolders() {
+    const packFolders = await api.getAll('dossier_pack_folders', { orderBy: 'name' });
+    update(s => ({ ...s, packFolders }));
+    return packFolders;
+  }
+
+  /** @param {{ kind: 'template'|'dossier', parentId?: string|null, name: string }} input */
+  async function createPackFolder({ kind, parentId = null, name }, userId) {
+    const folder = await api.create('dossier_pack_folders', {
+      kind, parent_id: parentId, name: String(name).trim(), created_by: userId, ...touch(userId),
+    }, true);
+    update(s => ({ ...s, packFolders: [...s.packFolders, folder] }));
+    logAudit('create', 'dossier_pack_folder', folder.id, folder.name, {
+      appId: 'dossier', eventCategory: 'dossier', severity: 'info', afterData: { kind },
+    });
+    return folder;
+  }
+
+  async function renamePackFolder(id, name, userId) {
+    const clean = String(name).trim();
+    await api.update('dossier_pack_folders', id, { name: clean, ...touch(userId) }, false);
+    update(s => ({ ...s, packFolders: s.packFolders.map(f => f.id === id ? { ...f, name: clean } : f) }));
+    logAudit('update', 'dossier_pack_folder', id, clean, { appId: 'dossier', eventCategory: 'dossier', severity: 'info' });
+  }
+
+  /** @param {string|null} parentId  null = the top level of its section */
+  async function movePackFolder(id, parentId, userId) {
+    await api.update('dossier_pack_folders', id, { parent_id: parentId, ...touch(userId) }, false);
+    update(s => ({ ...s, packFolders: s.packFolders.map(f => f.id === id ? { ...f, parent_id: parentId } : f) }));
+  }
+
+  /**
+   * Delete a folder and the folders inside it. The PACKS in them are not deleted:
+   * their folder goes, so they are at the top level of their section (the database
+   * does this with ON DELETE SET NULL; the local state follows).
+   */
+  async function deletePackFolder(id, name) {
+    const gone = new Set([id, ...descendantFolderIds(getState().packFolders, id)]);
+    await api.delete('dossier_pack_folders', id);
+    update(s => ({
+      ...s,
+      packFolders: s.packFolders.filter(f => !gone.has(f.id)),
+      packs: s.packs.map(p => gone.has(p.folder_id) ? { ...p, folder_id: null } : p),
+    }));
+    logAudit('delete', 'dossier_pack_folder', id, name, { appId: 'dossier', eventCategory: 'dossier', severity: 'warning' });
+  }
+
+  /** Put a pack in a folder (or back at the top of its section with null). */
+  async function movePack(packId, folderId, userId) {
+    const pack = await api.update('dossier_packs', packId, { folder_id: folderId, ...touch(userId) }, true);
+    update(s => ({ ...s, packs: sortPacks(s.packs.map(p => p.id === packId ? pack : p)) }));
+    return pack;
+  }
+
   async function createPack(data, userId) {
     const pack = await api.create('dossier_packs', {
       title:       data.title,
@@ -146,6 +206,7 @@ function createDossierStore() {
       // else); a dossier may record the template it was copied from.
       is_template: data.is_template === true,
       template_id: data.template_id ?? null,
+      folder_id:   data.folder_id ?? null,
       created_by:  userId,
       ...touch(userId),
     }, true);
@@ -291,6 +352,7 @@ function createDossierStore() {
 
     const pack = await createPack({
       title, description: source.description ?? null, template_id: templateId,
+      folder_id: options?.folderId ?? null,
     }, userId);
 
     try {
@@ -1123,7 +1185,7 @@ function createDossierStore() {
 
   return {
     subscribe,
-    loadPacks, createPack, updatePack, setArchived, deletePack,
+    loadPacks, loadPackFolders, createPackFolder, renamePackFolder, movePackFolder, deletePackFolder, movePack, createPack, updatePack, setArchived, deletePack,
     readPackContents, duplicatePack,
     loadDatasets, createDataset, deleteDataset,
     createRecord, createRecords, updateRecord, deleteRecord,

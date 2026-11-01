@@ -1,16 +1,16 @@
 <!-- src/lib/apps/dossier/components/PackList.svelte -->
-<!-- The Pack list — the app's landing surface, in two parts: TEMPLATES (made by an
-     administrator, readable by everyone with the Dossier grant) and the person's
-     own DOSSIERS. Rows are clickable divs (not buttons) because they contain action
-     buttons; nesting interactive elements is a Svelte a11y compile error. -->
+<!-- The Pack list — the app's landing surface, in two sections: TEMPLATES (made by an
+     administrator, readable by everyone with the Dossier grant) and the person's own
+     DOSSIERS. Each section is a tree of folders and packs (PackSection). Archived
+     packs show as a flat list. -->
 <script>
   import Button from '#lib/components/common/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
   import LoadingSpinner  from '#lib/components/common/LoadingSpinner.svelte';
-  import Icon            from '#lib/components/icons/Icon.svelte';
   import { permissions } from '#lib/stores/permissions.js';
-  import { fmtDate }     from '#lib/utils/dates.js';
+  import { dossierStore } from '../stores/dossierStore.js';
+  import PackSection from './PackSection.svelte';
 
   export let packs   = [];
   export let loading = false;
@@ -18,14 +18,23 @@
   const dispatch = createEventDispatcher();
 
   let showArchived = false;
+  /** The folder selected in each section, so "new" files into it. */
+  let templateFolderId = null;
+  let dossierFolderId = null;
 
   $: isAdmin = $permissions.isAdmin;
+  $: canModify = $permissions.isAdmin || $permissions.canModify;
   $: inView = (p) => (showArchived ? p.status === 'archived' : p.status !== 'archived');
   $: templates = packs.filter(p => p.is_template && inView(p));
   $: dossiers  = packs.filter(p => !p.is_template && inView(p));
+  $: templateFolders = $dossierStore.packFolders.filter(f => f.kind === 'template');
+  $: dossierFolders  = $dossierStore.packFolders.filter(f => f.kind === 'dossier');
   $: archivedCount = packs.filter(p => p.status === 'archived').length;
   $: titleOf = (id) => packs.find(p => p.id === id)?.title ?? 'a template';
   $: nothing = templates.length === 0 && dossiers.length === 0;
+
+  // Section events are passed up with the folder the new thing should go in.
+  const up = (name) => (e) => dispatch(name, e.detail);
 </script>
 
 <div class="flex flex-col h-full">
@@ -48,10 +57,10 @@
     <Button variant="tertiary" size="xs" title="Every link issued from every pack" on:click={() => dispatch('showPublished')}>Published links</Button>
 
     {#if isAdmin}
-      <Button admin size="small" title="A template other people start their dossiers from" on:click={() => dispatch('newTemplate')}>+ New Template</Button>
+      <Button admin size="small" title="A template other people start their dossiers from" on:click={() => dispatch('newTemplate', { folderId: showArchived ? null : templateFolderId })}>+ New Template</Button>
     {/if}
 
-    <ProtectedButton action="modify" variant="primary" size="small" on:click={() => dispatch('new')}>
+    <ProtectedButton action="modify" variant="primary" size="small" on:click={() => dispatch('new', { folderId: showArchived ? null : dossierFolderId })}>
       + New Pack
     </ProtectedButton>
   </div>
@@ -63,7 +72,7 @@
         <LoadingSpinner size="large" text="Loading packs…" />
       </div>
 
-    {:else if nothing}
+    {:else if nothing && !isAdmin && dossierFolders.length === 0}
       <div class="text-center py-16 px-4">
         <p class="text-slate-400 text-sm">
           {showArchived ? 'Nothing archived.' : 'No packs yet.'}
@@ -77,81 +86,25 @@
       </div>
 
     {:else}
-      {#each [
-        { key: 'templates', label: 'Templates', note: 'Starting points. A dossier made from one copies its pages and tables and can use its files.', rows: templates },
-        { key: 'dossiers',  label: 'Dossiers',  note: '', rows: dossiers },
-      ] as section (section.key)}
-        {#if section.rows.length || (section.key === 'dossiers' && templates.length === 0)}
-          <div class="mb-5" data-testid="section-{section.key}">
-            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide">{section.label}
-              <span class="text-slate-500 font-normal normal-case tracking-normal">({section.rows.length})</span></p>
-            {#if section.note}<p class="text-xs text-slate-500 mb-2">{section.note}</p>{:else}<div class="mb-2"></div>{/if}
-
-            <div class="space-y-2">
-              {#each section.rows as pack (pack.id)}
-                <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-                <div
-                  class="group flex items-start gap-3 p-4 rounded-lg border border-slate-700
-                         bg-slate-800/50 hover:bg-slate-800 hover:border-slate-600
-                         cursor-pointer transition-colors"
-                  on:click={() => dispatch('open', pack)}
-                >
-                  <div class="text-slate-500 mt-0.5 shrink-0">
-                    <Icon name="book" size={18} />
-                  </div>
-
-                  <div class="flex-1 min-w-0">
-                    <p class="text-sm font-semibold text-white truncate">{pack.title}
-                      {#if pack.is_template}<span class="ml-2 rounded bg-purple-900/50 border border-purple-700/60 px-1.5 py-0.5 text-[10px] font-normal text-purple-200 align-middle">Template</span>{/if}
-                    </p>
-                    {#if pack.description}
-                      <p class="text-xs text-slate-400 mt-1 line-clamp-2">{pack.description}</p>
-                    {/if}
-                    <p class="text-xs text-slate-500 mt-1.5">
-                      Updated {fmtDate(pack.updated_at ?? pack.created_at)}
-                      {#if pack.template_id} · from {titleOf(pack.template_id)}{/if}
-                    </p>
-                  </div>
-
-                  <div class="flex items-center gap-1 shrink-0 ">
-                    {#if pack.is_template}
-                      <ProtectedButton action="modify" variant="primary" size="small"
-                              title="Start a new dossier from this template"
-                              on:click={(e) => { e.stopPropagation(); dispatch('useTemplate', pack); }}>
-                        Use
-                      </ProtectedButton>
-                    {/if}
-                    {#if !pack.is_template || isAdmin}
-                      <ProtectedButton action="modify" variant="secondary" size="small"
-                              on:click={(e) => { e.stopPropagation(); dispatch('edit', pack); }}>
-                        Edit
-                      </ProtectedButton>
-                    {/if}
-                    {#if !pack.is_template}
-                      <ProtectedButton action="modify" variant="secondary" size="small"
-                              title="Make an independent copy of this dossier"
-                              on:click={(e) => { e.stopPropagation(); dispatch('duplicate', pack); }}>
-                        Duplicate
-                      </ProtectedButton>
-                    {/if}
-                    {#if !pack.is_template || isAdmin}
-                      <ProtectedButton action="modify" variant="secondary" size="small"
-                              on:click={(e) => { e.stopPropagation(); dispatch('archive', pack); }}>
-                        {pack.status === 'archived' ? 'Restore' : 'Archive'}
-                      </ProtectedButton>
-                    {/if}
-                    <ProtectedButton requireAdmin={true} variant="danger" size="small"
-                            title={pack.is_template ? 'Delete this template — only once no dossier is based on it' : 'Delete this pack and everything in it'}
-                            on:click={(e) => { e.stopPropagation(); dispatch('delete', pack); }}>
-                      Delete
-                    </ProtectedButton>
-                  </div>
-                </div>
-              {/each}
-            </div>
-          </div>
-        {/if}
-      {/each}
+      {#if templates.length || (isAdmin && !showArchived)}
+        <PackSection
+          kind="template" label="Templates"
+          note="Starting points. A dossier made from one copies its pages and tables and can use its files."
+          folders={templateFolders} packs={templates} flat={showArchived}
+          {isAdmin} canFolders={isAdmin} {titleOf}
+          bind:selectedId={templateFolderId}
+          on:open={up('open')} on:edit={up('edit')} on:archive={up('archive')} on:delete={up('delete')}
+          on:useTemplate={(e) => dispatch('useTemplate', { template: e.detail, folderId: dossierFolderId })}
+        />
+      {/if}
+      <PackSection
+        kind="dossier" label="Dossiers" note=""
+        folders={dossierFolders} packs={dossiers} flat={showArchived}
+        {isAdmin} canFolders={canModify} {titleOf}
+        bind:selectedId={dossierFolderId}
+        on:open={up('open')} on:edit={up('edit')} on:archive={up('archive')} on:delete={up('delete')}
+        on:duplicate={up('duplicate')}
+      />
     {/if}
   </div>
 </div>

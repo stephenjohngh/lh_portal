@@ -1099,3 +1099,48 @@ describe('loading the template files', () => {
     expect(h.listDocuments).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('the pack list folders', () => {
+  beforeEach(() => {
+    h.api.get.mockReset(); h.api.get.mockResolvedValue([]);
+    h.api.update.mockReset(); h.api.update.mockImplementation((t, id, d) => Promise.resolve({ id, ...d }));
+  });
+  it('creates a folder of a kind, owned by the caller, and adds it to the state', async () => {
+    const f = await store.createPackFolder({ kind: 'dossier', parentId: null, name: '  Roof jobs ' }, 'u1');
+    expect(h.api.create).toHaveBeenCalledWith('dossier_pack_folders',
+      expect.objectContaining({ kind: 'dossier', parent_id: null, name: 'Roof jobs', created_by: 'u1' }), true);
+    expect(get(store).packFolders.some(x => x.id === f.id)).toBe(true);
+  });
+
+  it('deleting a folder removes the folders inside it and releases its packs, deleting none of them', async () => {
+    h.api.get.mockResolvedValueOnce([
+      { id: 'a', kind: 'dossier', parent_id: null, name: 'A' },
+      { id: 'b', kind: 'dossier', parent_id: 'a', name: 'B' },
+      { id: 'c', kind: 'dossier', parent_id: null, name: 'C' },
+    ]);
+    await store.loadPackFolders();
+    await seed([
+      { id: 'p1', title: 'P1', folder_id: 'b', created_at: '2026-01-01' },
+      { id: 'p2', title: 'P2', folder_id: 'c', created_at: '2026-01-02' },
+    ]);
+    h.api.delete.mockClear();
+    await store.deletePackFolder('a', 'A');
+    expect(h.api.delete).toHaveBeenCalledTimes(1);
+    expect(h.api.delete).toHaveBeenCalledWith('dossier_pack_folders', 'a');
+    expect(get(store).packFolders.map(f => f.id)).toEqual(['c']);
+    const byId = Object.fromEntries(get(store).packs.map(p => [p.id, p.folder_id]));
+    expect(byId).toEqual({ p1: null, p2: 'c' });
+  });
+
+  it('moves a pack by changing its folder_id', async () => {
+    await seed([{ id: 'p1', title: 'P1', folder_id: null, created_at: '2026-01-01' }]);
+    await store.movePack('p1', 'c', 'u1');
+    expect(h.api.update).toHaveBeenCalledWith('dossier_packs', 'p1', expect.objectContaining({ folder_id: 'c' }), true);
+    expect(get(store).packs[0].folder_id).toBe('c');
+  });
+
+  it('files a new pack in the chosen folder', async () => {
+    await store.createPack({ title: 'T', folder_id: 'f9' }, 'u1');
+    expect(h.api.create).toHaveBeenCalledWith('dossier_packs', expect.objectContaining({ folder_id: 'f9' }), true);
+  });
+});

@@ -1656,6 +1656,47 @@ export type Database = {
             }
           ]
       }
+      dossier_pack_folders: {
+        Row: {
+          id: string
+          kind: string
+          parent_id: string | null
+          name: string
+          created_at: string
+          created_by: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          kind: string
+          parent_id?: string | null
+          name: string
+          created_at?: string
+          created_by: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          kind?: string
+          parent_id?: string | null
+          name?: string
+          created_at?: string
+          created_by?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "dossier_pack_folders_parent_id_fkey"
+              columns: ["parent_id"]
+              isOneToOne: false
+              referencedRelation: "dossier_pack_folders"
+              referencedColumns: ["id"]
+            }
+        ]
+      }
       dossier_packs: {
         Row: {
           id: string
@@ -1670,6 +1711,7 @@ export type Database = {
           updated_by: string | null
           is_template: boolean
           template_id: string | null
+          folder_id: string | null
         }
         Insert: {
           id?: string
@@ -1684,6 +1726,7 @@ export type Database = {
           updated_by?: string | null
           is_template?: boolean
           template_id?: string | null
+          folder_id?: string | null
         }
         Update: {
           id?: string
@@ -1698,8 +1741,16 @@ export type Database = {
           updated_by?: string | null
           is_template?: boolean
           template_id?: string | null
+          folder_id?: string | null
         }
         Relationships: [
+            {
+              foreignKeyName: "dossier_packs_folder_id_fkey"
+              columns: ["folder_id"]
+              isOneToOne: false
+              referencedRelation: "dossier_pack_folders"
+              referencedColumns: ["id"]
+            },
             {
               foreignKeyName: "dossier_packs_created_by_fkey"
               columns: ["created_by"]

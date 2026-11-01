@@ -26,6 +26,7 @@
   let editingPack   = null;
   let creatingTemplate = false;   // the form is making a template, not a dossier
   let startTemplateId  = '';      // a template to start the new dossier from
+  let newFolderId      = null;    // the folder the new pack or template goes into
   let packModalRef;
 
   // null = the pack list; set = the authoring workspace for that pack.
@@ -100,7 +101,7 @@
     try {
       await permissions.init($auth.user.id, 'dossier');
       try {
-        await dossierStore.loadPacks();
+        await Promise.all([dossierStore.loadPacks(), dossierStore.loadPackFolders()]);
       } catch (err) {
         appError = errMessage(err);
       }
@@ -111,9 +112,9 @@
 
   // ── Pack CRUD ─────────────────────────────────────────────────────────────
 
-  function openNewPack(templateId = '') { editingPack = null; creatingTemplate = false; startTemplateId = templateId; showPackModal = true; }
-  function openNewTemplate() { editingPack = null; creatingTemplate = true; startTemplateId = ''; showPackModal = true; }
-  function openEditPack(p)   { editingPack = p; creatingTemplate = false; startTemplateId = ''; showPackModal = true; }
+  function openNewPack(templateId = '', folderId = null) { editingPack = null; creatingTemplate = false; startTemplateId = templateId; newFolderId = folderId; showPackModal = true; }
+  function openNewTemplate(folderId = null) { editingPack = null; creatingTemplate = true; startTemplateId = ''; newFolderId = folderId; showPackModal = true; }
+  function openEditPack(p)   { editingPack = p; creatingTemplate = false; startTemplateId = ''; newFolderId = null; showPackModal = true; }
 
   async function handlePackSave(e) {
     // Capture before the await — Svelte 5 flushes effects synchronously, so
@@ -125,17 +126,17 @@
       if (target) {
         await dossierStore.updatePack(target.id, data, userId);
       } else if (data.isTemplate) {
-        await dossierStore.createPack({ ...data, is_template: true }, userId);
+        await dossierStore.createPack({ ...data, is_template: true, folder_id: newFolderId }, userId);
       } else if (data.templateId) {
         // One-off copy of the template's pages and tables; its files are READ,
         // not copied. Later changes to the template do not reach this dossier.
         const template = packs.find(p => p.id === data.templateId);
         if (!template) throw new Error('That template is no longer available.');
         const { pack } = await dossierStore.duplicatePack(
-          template, { title: data.title, fromTemplate: true }, userId);
+          template, { title: data.title, fromTemplate: true, folderId: newFolderId }, userId);
         await dossierStore.updatePack(pack.id, { title: pack.title, description: data.description ?? null }, userId);
       } else {
-        await dossierStore.createPack(data, userId);
+        await dossierStore.createPack({ ...data, folder_id: newFolderId }, userId);
       }
       showPackModal = false;
       packModalRef?.done();
@@ -305,9 +306,9 @@
       <PackList
         {packs}
         loading={!ready || $dossierStore.loading}
-        on:new={() => openNewPack()}
-        on:newTemplate={openNewTemplate}
-        on:useTemplate={(e) => openNewPack(e.detail.id)}
+        on:new={(e) => openNewPack('', e.detail?.folderId ?? null)}
+        on:newTemplate={(e) => openNewTemplate(e.detail?.folderId ?? null)}
+        on:useTemplate={(e) => openNewPack(e.detail.template.id, e.detail.folderId ?? null)}
         on:open={(e)    => handleOpen(e.detail)}
         on:edit={(e)    => openEditPack(e.detail)}
         on:archive={(e) => handleArchive(e.detail)}
