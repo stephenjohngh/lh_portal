@@ -265,7 +265,7 @@
       {#if imageCount}<Button variant="tertiary" size="xs" title="Show a small picture beside each image file" on:click={toggleThumbs}>{thumbnails ? 'Hide pictures' : 'Show pictures'}</Button>{/if}
       <Button variant="tertiary" size="xs" title="New folder in {targetLabel}" on:click={() => setMode('newFolder')}>+ Folder</Button>
       <span class="w-px h-4 bg-slate-700 mx-1"></span>
-      <Button variant="tertiary" size="xs" disabled={!selected} on:click={() => setMode('rename')}>✎ Rename / describe</Button>
+      <Button variant="tertiary" size="xs" disabled={!selected} title="Edit the description shown under the file, or its name" on:click={() => setMode('rename')}>✎ Edit</Button>
       <Button variant="tertiary" size="xs" disabled={!selected} on:click={() => setMode('move')}>Move…</Button>
       {#if selFile}
         <a class="inline-flex items-center rounded border border-purple-700/50 px-2 py-0.5 text-xs text-purple-300 hover:bg-purple-900/20"
@@ -287,8 +287,9 @@
       </div>
     {:else if mode === 'rename'}
       <div class="mb-2 rounded border border-slate-700 bg-slate-800/40 p-2 space-y-2">
-        <FormInput label={selFolder ? 'Folder name' : 'File name'} bind:value={nameValue} disabled={busy} />
-        {#if selFile}<FormInput label="Description (optional)" bind:value={descValue} disabled={busy} />{/if}
+        {#if selFile}<FormInput label="Description — shown under the file on pages" bind:value={descValue} placeholder="What this file is, in a sentence" disabled={busy} />{/if}
+        <FormInput label={selFolder ? 'Folder name' : 'Name — as listed here; pages placed later use it'} bind:value={nameValue} disabled={busy} />
+        {#if selFile}<p class="text-[10px] text-slate-500">Changing the name does not change the file in Drive or cards already on pages.</p>{/if}
         <div class="flex justify-end gap-2">
           <Button variant="secondary" size="small" on:click={() => mode = ''} disabled={busy}>Cancel</Button>
           <Button variant="primary" size="small" loading={busy} on:click={rename}>Save</Button>

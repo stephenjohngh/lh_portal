@@ -55,9 +55,9 @@ describe('PackFiles', () => {
 
   it('enables the actions only once something is selected', async () => {
     render(PackFiles, { pack, canEdit: true, isAdmin: true });
-    expect(screen.getByRole('button', { name: /rename/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /edit/i })).toBeDisabled();
     await fireEvent.click(screen.getByText('Old plans'));
-    expect(screen.getByRole('button', { name: /rename/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /edit/i })).toBeEnabled();
   });
 
   it('uploads into the selected folder: its storage path and its placement', async () => {
@@ -114,7 +114,7 @@ describe('PackFiles', () => {
     // selecting a template file offers Open and nothing that changes it
     await fireEvent.click(screen.getByText('ground floor.png'));
     expect(screen.getByRole('link', { name: /open ground floor/i })).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /rename|delete/i }).every(b => b.disabled || !tpl.contains(b))).toBe(true);
+    expect(screen.getAllByRole('button', { name: /edit|delete/i }).every(b => b.disabled || !tpl.contains(b))).toBe(true);
   });
 
   it('says so when the template files could not be read', () => {
