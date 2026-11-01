@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema37.csv
+// Source: docs/ops/supabase_lhportal_schema38.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -1662,51 +1662,44 @@ export type Database = {
           title: string
           description: string | null
           status: string
-          is_template: boolean
-          template_id: string | null
           subject_entity_type: string | null
           subject_entity_id: string | null
           created_at: string
           created_by: string | null
           updated_at: string | null
           updated_by: string | null
+          is_template: boolean
+          template_id: string | null
         }
         Insert: {
           id?: string
           title: string
           description?: string | null
           status?: string
-          is_template?: boolean
-          template_id?: string | null
           subject_entity_type?: string | null
           subject_entity_id?: string | null
           created_at?: string
           created_by?: string | null
           updated_at?: string | null
           updated_by?: string | null
+          is_template?: boolean
+          template_id?: string | null
         }
         Update: {
           id?: string
           title?: string
           description?: string | null
           status?: string
-          is_template?: boolean
-          template_id?: string | null
           subject_entity_type?: string | null
           subject_entity_id?: string | null
           created_at?: string
           created_by?: string | null
           updated_at?: string | null
           updated_by?: string | null
+          is_template?: boolean
+          template_id?: string | null
         }
         Relationships: [
-            {
-              foreignKeyName: "dossier_packs_template_id_fkey"
-              columns: ["template_id"]
-              isOneToOne: false
-              referencedRelation: "dossier_packs"
-              referencedColumns: ["id"]
-            },
             {
               foreignKeyName: "dossier_packs_created_by_fkey"
               columns: ["created_by"]
@@ -1719,6 +1712,13 @@ export type Database = {
               columns: ["updated_by"]
               isOneToOne: false
               referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "dossier_packs_template_id_fkey"
+              columns: ["template_id"]
+              isOneToOne: false
+              referencedRelation: "dossier_packs"
               referencedColumns: ["id"]
             }
           ]

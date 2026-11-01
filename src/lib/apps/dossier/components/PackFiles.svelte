@@ -279,6 +279,8 @@
       <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">From the template{templateTitle ? ` · ${templateTitle}` : ''}</p>
       {#if $dossierStore.inheritedError}
         <p class="text-xs text-amber-400 mt-1">{$dossierStore.inheritedError}</p>
+      {:else if $dossierStore.inheritedLoading}
+        <p class="text-xs text-slate-500 italic py-1">Loading the template’s files…</p>
       {:else if !hasInherited}
         <p class="text-xs text-slate-600 italic py-1">The template has no files.</p>
       {:else}

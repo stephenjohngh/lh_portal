@@ -70,7 +70,7 @@
     <FormInput
       label="Title"
       bind:value={title}
-      placeholder="e.g. Flat 14 — service charge dispute"
+      placeholder={isTemplate || pack?.is_template ? 'e.g. Surveyor briefing' : 'e.g. Flat 14 — service charge dispute'}
       required={true}
       error={titleError}
       on:input={() => titleError = ''}

@@ -1008,7 +1008,7 @@
                  hover:bg-slate-700/40 transition-colors">
 <span class="text-[10px] text-slate-500 w-2">{filesOpen ? '▼' : '▶'}</span>
           <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide flex-1">
-            Files <span class="text-slate-500 font-normal normal-case tracking-normal">({files.length})</span>
+            Files <span class="text-slate-500 font-normal normal-case tracking-normal">({ownFiles.length})</span>
           </span>
 </Button>
 

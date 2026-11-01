@@ -90,7 +90,7 @@ function touch(userId) {
  *   activePackId: string|null, docs: Doc[], loadingDocs: boolean,
  *   files: LibraryFile[], folders: Folder[], placements: Placement[],
  *   inheritedFiles: LibraryFile[], inheritedFolders: Folder[], inheritedPlacements: Placement[],
- *   inheritedError: string|null
+ *   inheritedError: string|null, inheritedLoading: boolean
  * }} DossierState
  */
 
@@ -109,7 +109,7 @@ function createDossierStore() {
     // The open dossier's TEMPLATE's files, read-only (migration 275). Never
     // mixed into `files`: those are the pack's own, the ones it may change.
     inheritedFiles: [], inheritedFolders: [], inheritedPlacements: [],
-    inheritedError: null,
+    inheritedError: null, inheritedLoading: false,
     datasets:     [],   // the pack's structured lists (chronology etc.)
     // EVERY record in the pack, not just the open table's. The broken-reference
     // check has to see rows in tables the author has not opened, and P3's
@@ -397,7 +397,7 @@ function createDossierStore() {
   // can see the shelf without reaching into that component.
 
   async function loadPackFiles(packId) {
-    const none = { files: [], folders: [], placements: [], inheritedFiles: [], inheritedFolders: [], inheritedPlacements: [], inheritedError: null };
+    const none = { files: [], folders: [], placements: [], inheritedFiles: [], inheritedFolders: [], inheritedPlacements: [], inheritedError: null, inheritedLoading: false };
     if (!packId) { update(s => ({ ...s, ...none })); return []; }
     const templateId = getState().packs.find(p => p.id === packId)?.template_id ?? null;
     try {
@@ -419,6 +419,7 @@ function createDossierStore() {
     // does the dossier must SAY so — a page showing a template image would
     // otherwise read as a missing file, which is a different (and false) claim.
     if (templateId) {
+      update(s => ({ ...s, inheritedLoading: true }));
       try {
         const [inheritedFiles, inheritedFolders, inheritedPlacements] = await Promise.all([
           listDocuments({ entity_type: 'dossier_pack', entity_id: templateId }),
@@ -426,14 +427,15 @@ function createDossierStore() {
           api.getAll('dossier_file_placements', {
             filters: { pack_id: templateId }, orderBy: 'document_id', tiebreak: false }),
         ]);
-        update(s => ({ ...s, inheritedFiles, inheritedFolders, inheritedPlacements, inheritedError: null }));
+        update(s => ({ ...s, inheritedFiles, inheritedFolders, inheritedPlacements, inheritedError: null, inheritedLoading: false }));
       } catch (err) {
         logger('⚠ could not load the template files', err);
         update(s => ({ ...s, inheritedFiles: [], inheritedFolders: [], inheritedPlacements: [],
+          inheritedLoading: false,
           inheritedError: 'The template’s files could not be read, so pictures from the template will show as missing.' }));
       }
     } else {
-      update(s => ({ ...s, inheritedFiles: [], inheritedFolders: [], inheritedPlacements: [], inheritedError: null }));
+      update(s => ({ ...s, inheritedFiles: [], inheritedFolders: [], inheritedPlacements: [], inheritedError: null, inheritedLoading: false }));
     }
     return getState().files;
   }
@@ -904,7 +906,7 @@ function createDossierStore() {
   function closePack() {
     update(s => ({
       ...s, activePackId: null, docs: [], files: [], folders: [], placements: [],
-      inheritedFiles: [], inheritedFolders: [], inheritedPlacements: [], inheritedError: null,
+      inheritedFiles: [], inheritedFolders: [], inheritedPlacements: [], inheritedError: null, inheritedLoading: false,
       datasets: [], records: [], publications: [],
     }));
   }
