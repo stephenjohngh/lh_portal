@@ -7,6 +7,7 @@
   import { createEventDispatcher } from 'svelte';
   import { fmtBytes, mimeIcon } from '#lib/utils/files.js';
   import { filesUnder } from '../utils/fileTree.js';
+  import { fileViewUrl } from '#lib/utils/driveUtils.js';
 
   /** Folder nodes from buildFileTree, then the files at this level. */
   export let folders = [];
@@ -15,6 +16,9 @@
   export let selected = null;
   export let depth = 0;
   export let collapsed = {};
+  /** Show a small picture for image files. */
+  export let thumbnails = false;
+  const isImage = (f) => String(f.mime_type || '').startsWith('image/') && !!f.web_view_url;
 
   const dispatch = createEventDispatcher();
 
@@ -51,6 +55,7 @@
           {selected}
           depth={depth + 1}
           bind:collapsed
+          {thumbnails}
           on:select
         />
       {/if}
@@ -68,7 +73,12 @@
         data-testid="file-row"
         on:click={() => dispatch('select', { kind: 'file', id: file.id })}
       >
-        <span class="shrink-0 text-sm">{mimeIcon(file.mime_type)}</span>
+        {#if thumbnails && isImage(file)}
+          <img class="shrink-0 h-8 w-8 rounded object-cover bg-slate-800" src={fileViewUrl(file.web_view_url)}
+               alt="" loading="lazy" data-testid="file-thumb" />
+        {:else}
+          <span class="shrink-0 text-sm">{mimeIcon(file.mime_type)}</span>
+        {/if}
         <span class="flex-1 min-w-0 truncate text-xs {isSel('file', file.id) ? 'text-white' : 'text-slate-300'}">{file.display_name || file.filename}</span>
         {#if file.file_size}<span class="text-[10px] text-slate-500 shrink-0">{fmtBytes(file.file_size)}</span>{/if}
       </div>

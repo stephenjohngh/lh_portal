@@ -6,6 +6,7 @@
      document API, and tells the host what changed so it can audit it. -->
 <script>
   import { createEventDispatcher } from 'svelte';
+  import { getPref, setPref } from '#lib/utils/prefs.js';
   import { get } from 'svelte/store';
   import { dossierStore } from '../stores/dossierStore.js';
   import * as docApi from '#lib/utils/documentApi.js';
@@ -62,6 +63,13 @@
   let toUpload = [];
   let uploadDescription = '';
   let attachRef;
+  let progress = '';
+
+  // Pictures beside image files — remembered on this browser, off by default
+  // (a big tree would otherwise fetch every picture on opening).
+  let thumbnails = getPref('dossier.fileThumbnails') === '1';
+  function toggleThumbs() { thumbnails = !thumbnails; setPref('dossier.fileThumbnails', thumbnails ? '1' : '0'); }
+  $: imageCount = files.filter(f => String(f.mime_type || '').startsWith('image/')).length;
 
   // ── Keeping Drive in step with the tree ────────────────────────────────────
   // The tree is the truth; Drive is a best-effort mirror. A file whose recorded storage
@@ -223,7 +231,9 @@
     const failed = [];
     let lastError = '';
     const user = await currentUserId();
+    let n = 0;
     for (const f of batch) {
+      progress = `Uploading ${++n} of ${batch.length}…`;
       try {
         const doc = await docApi.uploadDocument(f, {
           entity_type: 'dossier_pack', entity_id: pack.id, display_name: f.name,
@@ -236,7 +246,7 @@
         failed.push(f); lastError = errMessage(err);
       }
     }
-    busy = false;
+    busy = false; progress = '';
     if (!failed.length) { cancelUpload(); return; }
     toUpload = failed;
     error = failed.length === batch.length
@@ -252,6 +262,7 @@
   {#if canEdit}
     <div class="flex flex-wrap items-center gap-0.5 mb-2" role="toolbar" aria-label="File actions" data-testid="file-toolbar">
       <Button variant="tertiary" size="xs" title="Upload files into {targetLabel}" on:click={() => setMode('upload')}>⬆ Upload</Button>
+      {#if imageCount}<Button variant="tertiary" size="xs" title="Show a small picture beside each image file" on:click={toggleThumbs}>{thumbnails ? 'Hide pictures' : 'Show pictures'}</Button>{/if}
       <Button variant="tertiary" size="xs" title="New folder in {targetLabel}" on:click={() => setMode('newFolder')}>+ Folder</Button>
       <span class="w-px h-4 bg-slate-700 mx-1"></span>
       <Button variant="tertiary" size="xs" disabled={!selected} on:click={() => setMode('rename')}>✎ Rename</Button>
@@ -300,6 +311,7 @@
         <FormInput
           label={toUpload.length > 1 ? 'Description for all ' + toUpload.length + ' files (optional)' : 'Description (optional)'}
           bind:value={uploadDescription} disabled={busy} />
+        {#if progress}<p class="text-[11px] text-slate-400" data-testid="upload-progress">{progress}</p>{/if}
         <div class="flex justify-end gap-2">
           <Button variant="secondary" size="small" on:click={cancelUpload} disabled={busy}>Cancel</Button>
           <Button variant="primary" size="small" loading={busy} disabled={busy || !toUpload.length}
@@ -329,7 +341,10 @@
   {#if files.length === 0 && folders.length === 0}
     <p class="text-xs text-slate-600 italic py-2">No files yet.</p>
   {:else}
-    <FileTreeNode folders={tree.folders} files={tree.rootFiles} {selected} bind:collapsed on:select={choose} />
+    <!-- The tree can be pulled taller from its bottom-right corner. -->
+    <div class="resize-y overflow-auto min-h-24 max-h-[80vh]" style="height: 16rem" data-testid="file-tree-box">
+      <FileTreeNode folders={tree.folders} files={tree.rootFiles} {selected} {thumbnails} bind:collapsed on:select={choose} />
+    </div>
   {/if}
 
   {#if pack.template_id}

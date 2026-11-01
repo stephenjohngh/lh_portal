@@ -185,3 +185,19 @@ describe('PackFiles', () => {
     });
   });
 });
+
+describe('pictures and progress', () => {
+  const imgFiles = [{ id: 'f1', display_name: 'roof.png', mime_type: 'image/png', file_size: 1, web_view_url: 'https://drive.google.com/file/d/abc/view' }];
+  it('offers pictures only when there are images, and shows them when switched on', async () => {
+    h.store.set(state({ files: imgFiles, placements: [] }));
+    render(PackFiles, { pack, canEdit: true });
+    expect(screen.queryByTestId('file-thumb')).toBeNull();
+    await fireEvent.click(screen.getByRole('button', { name: /show pictures/i }));
+    expect(screen.getByTestId('file-thumb')).toBeInTheDocument();
+  });
+  it('has no pictures button for a pack with no images', () => {
+    h.store.set(state({ files: [{ id: 'x', display_name: 'a.pdf', mime_type: 'application/pdf' }], placements: [] }));
+    render(PackFiles, { pack, canEdit: true });
+    expect(screen.queryByRole('button', { name: /pictures/i })).toBeNull();
+  });
+});
