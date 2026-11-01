@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const h = vi.hoisted(() => ({ applied: /** @type {any} */ (null), calls: /** @type {any[]} */ ([]), failFiles: false, steps: /** @type {any[]} */ ([]) }));
+const h = vi.hoisted(() => ({ applied: /** @type {any} */ (null), calls: /** @type {any[]} */ ([]), failFiles: false, steps: /** @type {any[]} */ ([]), versions: /** @type {any[]} */ ([]), atts: /** @type {any[]} */ ([]) }));
 
 vi.mock('#lib/utils/api.js', () => ({
   api: {
-    getAll: vi.fn(async (t, o) => { h.calls.push(['getAll', t, o]); return t === 'guide_steps' ? h.steps : []; }),
+    getAll: vi.fn(async (t, o) => { h.calls.push(['getAll', t, o]); return t === 'guide_steps' ? h.steps : t === 'guide_versions' ? h.versions : []; }),
     get: vi.fn(async (t, o) => { h.calls.push(['get', t, o]); if (t === 'portal_settings') return h.applied ? [{ value: h.applied }] : []; return h.steps.length ? [{ position: h.steps.length }] : []; }),
     upsert: vi.fn(async (t, d) => { h.calls.push(['upsert', t, d]); }),
-    getById: vi.fn(async (t, id) => ({ id, title: 'G', version: h.version ?? 0 })),
+    getById: vi.fn(async (t, id) => ({ id, title: 'G', version: h.version ?? 0, guide_id: 'g1' })),
     count: vi.fn(async () => 0),
     create: vi.fn(async (t, d) => { h.calls.push(['create', t, d]); return { id: 'new', title: d.title ?? 'x', ...d }; }),
     createMany: vi.fn(async (t, d) => { h.calls.push(['createMany', t, d]); return []; }),
@@ -27,7 +27,7 @@ vi.mock('#lib/utils/currentUser.js', () => ({ requireUserId: async () => 'u1' })
 vi.mock('#lib/utils/imageCompression.js', () => ({ compressImage: async (f) => f }));
 vi.mock('#lib/utils/mediaUpload.js', () => ({ uploadMedia: vi.fn(async () => ({ url: 'u', provider: 'drive', sizeBytes: 1, mimeType: 'image/jpeg' })) }));
 vi.mock('#lib/utils/mediaAttachments.js', () => ({
-  listAttachments: vi.fn(async () => []),
+  listAttachments: vi.fn(async () => h.atts),
   addAttachments: vi.fn(async (...a) => { h.calls.push(['addAttachments', ...a]); }),
   purgeAttachments: vi.fn(async (...a) => { h.calls.push(['purge', ...a]); if (h.failFiles) throw new Error('file stuck'); }),
   deleteStorageObjects: vi.fn(async () => ({ deleted: 0, failed: h.failFiles ? 1 : 0 })),
@@ -35,7 +35,7 @@ vi.mock('#lib/utils/mediaAttachments.js', () => ({
 
 import { guidesStore } from './guidesStore.js';
 
-beforeEach(() => { h.applied = null; h.calls = []; h.failFiles = false; h.steps = []; h.version = 0; });
+beforeEach(() => { h.applied = null; h.calls = []; h.failFiles = false; h.steps = []; h.version = 0; h.versions = []; h.atts = []; });
 const names = () => h.calls.map((c) => c.slice(0, 2).join(':'));
 
 describe('guidesStore authoring', () => {
@@ -52,7 +52,7 @@ describe('guidesStore authoring', () => {
 
   it('deleting a step deletes its photo files first, and keeps the step if one cannot go', async () => {
     await guidesStore.deleteStep('s1');
-    expect(names()).toEqual(['purge:guide_step', 'delete:guide_steps']);
+    expect(names()).toEqual(['getAll:guide_versions', 'purge:guide_step', 'delete:guide_steps']);
     h.calls = []; h.failFiles = true;
     await expect(guidesStore.deleteStep('s1')).rejects.toThrow();
     expect(names()).not.toContain('delete:guide_steps');
@@ -124,5 +124,33 @@ describe('guidesStore authoring', () => {
     const up = h.calls.find((c) => c[0] === 'upsert');
     expect(up[1]).toBe('portal_settings');
     expect(up[2]).toMatchObject({ key: 'guides_fail_contact', value: saved });
+  });
+});
+
+describe('photos a published version still shows', () => {
+  const snap = (urls) => ({ snapshot: { steps: [{ photos: urls.map((url) => ({ url })) }] } });
+
+  it('removing a photo the published version shows detaches it: no file deleted, the row is kept', async () => {
+    h.versions = [snap(['https://x/a'])];
+    await guidesStore.removePhoto({ id: 'g1' }, { id: 'm1', storage_url: 'https://x/a' });
+    expect(h.calls.find((c) => c[0] === 'update' && c[1] === 'media_attachments')).toEqual(
+      ['update', 'media_attachments', 'm1', { entity_type: 'guide_version_photo', entity_id: 'g1' }]);
+    expect(names()).not.toContain('delete:media_attachments');
+  });
+
+  it('removing a photo no version shows still deletes the file and the row', async () => {
+    h.versions = [snap(['https://x/other'])];
+    await guidesStore.removePhoto({ id: 'g1' }, { id: 'm2', storage_url: 'https://x/b' });
+    expect(names()).toContain('delete:media_attachments');
+    expect(h.calls.some((c) => c[0] === 'update' && c[1] === 'media_attachments')).toBe(false);
+  });
+
+  it('deleting a step detaches the photos a version shows, then deletes the step', async () => {
+    h.versions = [snap(['https://x/a'])];
+    h.atts = [{ id: 'm1', storage_url: 'https://x/a' }, { id: 'm2', storage_url: 'https://x/b' }];
+    await guidesStore.deleteStep('s1', 'g1');
+    const detached = h.calls.filter((c) => c[0] === 'update' && c[1] === 'media_attachments').map((c) => c[2]);
+    expect(detached).toEqual(['m1']);
+    expect(names()).toEqual(expect.arrayContaining(['purge:guide_step', 'delete:guide_steps']));
   });
 });

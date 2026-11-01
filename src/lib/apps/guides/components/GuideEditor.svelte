@@ -123,7 +123,7 @@
   async function confirmDeleteStep() {
     const st = pendingDeleteStep;
     pendingDeleteStep = null;
-    if (st) await run(async () => { await guidesStore.deleteStep(st.id); await reloadAll(); });
+    if (st) await run(async () => { await guidesStore.deleteStep(st.id, guide.id); await reloadAll(); });
   }
 
   async function addPhotos(st, e) {

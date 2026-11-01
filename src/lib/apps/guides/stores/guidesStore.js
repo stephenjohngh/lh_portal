@@ -239,8 +239,44 @@ function createGuidesStore() {
   /** @param {string} stepId @param {{ kind?: string, title?: string, body?: string|null }} patch */
   const updateStep = (stepId, patch) => api.update('guide_steps', stepId, patch, true);
 
-  /** Delete a step and its photo files (files first). */
-  async function deleteStep(stepId) {
+  // ⛔ A PUBLISHED VERSION NAMES ITS PHOTOS BY URL. Removing a photo (or a step) from
+  // the DRAFT must not delete a file a published version still shows: the file would
+  // go, and the file proxy refuses a file no portal record names, so readers and walks
+  // would see a broken picture until the guide was republished (and saved offline
+  // copies would be the only place left that still had it). Such a photo is DETACHED
+  // from the draft instead: its row stays, so the proxy still serves it, but it is
+  // re-typed so the draft no longer lists or counts it. The file goes when nothing
+  // names it. (Other apps' photos belong to one live record; a guide's belong to the
+  // draft AND to every version.)
+  const DETACHED_TYPE = 'guide_version_photo';
+
+  /** Every photo URL any published version of this guide names. @param {string} guideId */
+  async function versionPhotoUrls(guideId) {
+    const rows = await api.getAll('guide_versions', { select: 'snapshot', filters: { guide_id: guideId }, orderBy: 'version', tiebreak: false });
+    const urls = new Set();
+    for (const v of rows ?? []) for (const st of v.snapshot?.steps ?? []) for (const ph of st.photos ?? []) if (ph?.url) urls.add(ph.url);
+    return urls;
+  }
+
+  /** Re-type photo rows so the draft lets go of them but the proxy still serves them. */
+  const detachPhotos = (guideId, rows) =>
+    Promise.all(rows.map((r) => api.update('media_attachments', r.id, { entity_type: DETACHED_TYPE, entity_id: guideId }, false)));
+
+  /**
+   * Delete a step and its photo files (files first) — except a photo a published
+   * version still shows, which is detached rather than deleted.
+   * @param {string} stepId @param {string} [guideId]
+   */
+  async function deleteStep(stepId, guideId) {
+    const gid = guideId ?? (await api.getById('guide_steps', stepId, 'guide_id'))?.guide_id;
+    if (gid) {
+      const named = await versionPhotoUrls(gid);
+      if (named.size) {
+        const mine = await listAttachments(PHOTO_TYPE, [stepId]);
+        const keep = mine.filter((m) => named.has(m.storage_url));
+        if (keep.length) await detachPhotos(gid, keep);
+      }
+    }
     await purgeAttachments(PHOTO_TYPE, [stepId]);
     await api.delete('guide_steps', stepId);
   }
@@ -269,6 +305,11 @@ function createGuidesStore() {
 
   /** Remove one photo: the file first, then its row; kept if the file cannot go. */
   async function removePhoto(guide, photo) {
+    if ((await versionPhotoUrls(guide.id)).has(photo.storage_url)) {
+      await detachPhotos(guide.id, [photo]);
+      await api.update('guides', guide.id, { updated_by: await requireUserId() }, false);
+      return;
+    }
     const r = await deleteStorageObjects([photo]);
     if (r.failed) throw new Error('That photo could not be deleted from storage, so it was kept. Try again.');
     await api.delete('media_attachments', photo.id);
