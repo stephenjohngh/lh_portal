@@ -12,13 +12,13 @@ describe('DocTreeToolbar', () => {
       rename: (e) => seen.push(['rename', e.detail]),
     } });
     await fireEvent.click(screen.getByTitle('Indent'));
-    await fireEvent.click(screen.getByTitle('Rename'));
+    await fireEvent.click(screen.getByTitle('Rename page'));
     expect(seen).toEqual([['move', { node: doc, kind: 'indent' }], ['rename', doc]]);
   });
   it('is disabled with nothing selected, and says so', () => {
     render(DocTreeToolbar, { doc: null });
-    expect(screen.getByTitle('Rename')).toBeDisabled();
-    expect(screen.getByText('Select a page')).toBeInTheDocument();
+    expect(screen.getByTitle('Rename page')).toBeDisabled();
+    expect(screen.getByText(/Select a page/)).toBeInTheDocument();
   });
   it('shows Delete to admins only', () => {
     const { unmount } = render(DocTreeToolbar, { doc: { id: 'a' }, isAdmin: false });

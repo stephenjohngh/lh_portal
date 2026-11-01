@@ -980,17 +980,15 @@
       <!-- Conditional class rather than class:flex-1 + shrink-0 — those two are
            the same specificity, so which wins would depend on CSS order. -->
       <div class="border-t border-slate-700 flex flex-col min-h-0
-                  {filesOpen ? 'flex-1' : 'shrink-0'}">
-        <!-- When open, AttachedDocuments supplies its own "FILES (n)" heading,
-             so this button carries the label only while collapsed. -->
+                  {filesOpen ? 'flex-[2]' : 'shrink-0'}">
+        <!-- The label is always shown, with the count: the file panel no longer
+             supplies a heading of its own. -->
         <Button variant="plain" aria-label={filesOpen ? 'Hide files' : 'Show files'} aria-expanded={filesOpen} on:click={toggleFiles} className="flex items-center gap-2 w-full px-3 py-2 text-left shrink-0
                  hover:bg-slate-700/40 transition-colors">
 <span class="text-[10px] text-slate-500 w-2">{filesOpen ? '▼' : '▶'}</span>
-          {#if !filesOpen}
-            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide flex-1">
-              Files
-            </span>
-          {/if}
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide flex-1">
+            Files <span class="text-slate-500 font-normal normal-case tracking-normal">({files.length})</span>
+          </span>
 </Button>
 
         {#if filesOpen}

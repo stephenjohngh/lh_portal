@@ -211,8 +211,8 @@
       {#if selFolder || (selFile && isAdmin)}
         <Button admin={selFile ? true : false} variant={selFile ? 'danger' : 'tertiary'} size="xs" on:click={askDelete}>× Delete</Button>
       {/if}
-      {#if !selected}<span class="text-[10px] text-slate-500 ml-auto">Select a folder or file</span>{/if}
     </div>
+    {#if !selected}<p class="-mt-1 mb-1 text-[10px] text-slate-500">Select a folder or file to act on it.</p>{/if}
 
     {#if mode === 'newFolder'}
       <div class="mb-2 rounded border border-slate-700 bg-slate-800/40 p-2 space-y-2">
