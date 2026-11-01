@@ -177,3 +177,27 @@ export function folderNameProblem(folders, parentId, name, exceptId = null) {
 export function filesUnder(node) {
   return node.files.length + node.children.reduce((n, c) => n + filesUnder(c), 0);
 }
+
+/**
+ * The tree as one list of rows in display order, for a picker that cannot nest
+ * components: each folder, then (unless collapsed) its sub-folders and files, then
+ * the top-level files. A folder row carries the count of files beneath it.
+ * @param {{ folders: object[], rootFiles: object[] }} tree from buildFileTree
+ * @param {Record<string, boolean>} [collapsed] folder id → hidden contents
+ * @returns {Array<{ type: 'folder', node: object, depth: number, count: number }
+ *   | { type: 'file', file: object, depth: number }>}
+ */
+export function flattenFileTree(tree, collapsed = {}) {
+  const rows = [];
+  const walk = (nodes, depth) => {
+    for (const n of nodes) {
+      rows.push({ type: 'folder', node: n, depth, count: filesUnder(n) });
+      if (collapsed[n.id]) continue;
+      walk(n.children, depth + 1);
+      for (const file of n.files) rows.push({ type: 'file', file, depth: depth + 1 });
+    }
+  };
+  walk(tree.folders, 0);
+  for (const file of tree.rootFiles) rows.push({ type: 'file', file, depth: 0 });
+  return rows;
+}

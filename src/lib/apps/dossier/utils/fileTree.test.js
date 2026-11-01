@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildFileTree, folderNames, storageSegments, descendantFolderIds, folderMoveTargets,
-  folderNameProblem, filesUnder, MAX_FOLDER_DEPTH,
+  folderNameProblem, filesUnder, MAX_FOLDER_DEPTH, flattenFileTree,
 } from './fileTree.js';
 
 const F = (id, name, parent_id = null) => ({ id, name, parent_id });
@@ -82,5 +82,31 @@ describe('folderNameProblem', () => {
   it('allows the same name under another parent, and a folder keeping its own name', () => {
     expect(folderNameProblem(folders, 'plans', 'Photos')).toBe('');
     expect(folderNameProblem(folders, null, 'Photos', 'photos')).toBe('');
+  });
+});
+
+describe('flattenFileTree', () => {
+  const folders = [
+    { id: 'p', name: 'Plans', parent_id: null },
+    { id: 'o', name: 'Old plans', parent_id: 'p' },
+  ];
+  const files = [
+    { id: 'a', filename: 'a.pdf' }, { id: 'b', filename: 'b.pdf' }, { id: 'c', filename: 'c.pdf' },
+  ];
+  const placements = [{ document_id: 'a', folder_id: 'p' }, { document_id: 'b', folder_id: 'o' }];
+  const tree = buildFileTree(folders, files, placements);
+
+  it('lists folders, their contents indented, then top-level files', () => {
+    const rows = flattenFileTree(tree).map(r => `${r.depth}:${r.type === 'folder' ? 'D' + r.node.id : r.file.id}`);
+    expect(rows).toEqual(['0:Dp', '1:Do', '2:b', '1:a', '0:c']);
+  });
+
+  it('counts the files beneath a folder, sub-folders included', () => {
+    expect(flattenFileTree(tree)[0].count).toBe(2);
+  });
+
+  it('hides the contents of a collapsed folder but keeps its row', () => {
+    const rows = flattenFileTree(tree, { p: true }).map(r => r.type === 'folder' ? 'D' + r.node.id : r.file.id);
+    expect(rows).toEqual(['Dp', 'c']);
   });
 });
