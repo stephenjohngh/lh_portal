@@ -1,6 +1,8 @@
 // src/lib/apps/dossier/utils/calloutNode.js
-// The callout block — "⚠ Key issue" / "ℹ Background" / "✅ Recommendation".
-// The three variants are taken straight from spec 1 §4.2.
+// The callout block — "⚠ Key issue" / "ℹ️ Information" / "✅ Recommendation".
+// The three variants are taken straight from spec 1 §4.2 (the first was
+// "Background"; renamed Information, and given the emoji form of the icon so
+// it reads as a symbol like the other two rather than a bare letter i).
 //
 // No node view is needed: the icon is drawn by CSS from `data-variant`, so the
 // node is a plain declarative spec. That keeps it renderable by the P3 public
@@ -9,7 +11,7 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 
 export const CALLOUT_VARIANTS = [
-  { value: 'info',    label: 'Background',     icon: 'ℹ' },
+  { value: 'info',    label: 'Information',    icon: 'ℹ️' },
   { value: 'warning', label: 'Key issue',      icon: '⚠' },
   { value: 'success', label: 'Recommendation', icon: '✅' },
 ];

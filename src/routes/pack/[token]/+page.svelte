@@ -88,6 +88,10 @@
 
   $: selectedDoc = docs.find(d => d.id === selectedId) ?? null;
   $: outline     = outlineDepths(pageOutline(selectedDoc?.blocks));
+  // The open page's headings start collapsed, and close again on every new page.
+  let outlineOpen = false;
+  let outlineFor = null;
+  $: if (selectedId !== outlineFor) { outlineFor = selectedId; outlineOpen = false; }
   $: pageWords   = wordCount(selectedDoc?.blocks);
   $: pageReading = describeReadingTime(pageWords);
   $: packReading = packReadingTime(docs);
@@ -388,6 +392,14 @@
                        page rather than in a panel of its own so the reader has
                        one list to look at, not two competing ones. -->
                   {#if selectedId === node.id && outline.length > 1}
+                    <!-- Starts collapsed: a long page's headings otherwise fill
+                         the list and push the other pages out of sight. -->
+                    <Button variant="plain" aria-expanded={outlineOpen} testid="outline-toggle"
+                            on:click={() => outlineOpen = !outlineOpen}
+                            className="ml-3 mt-0.5 text-[11px] text-slate-500 hover:text-slate-200 transition-colors">
+                      {outlineOpen ? '▾' : '▸'} On this page ({outline.length})
+                    </Button>
+                    {#if outlineOpen}
                     <ul class="mt-0.5 mb-1 space-y-0.5 border-l border-slate-700 ml-3">
                       {#each outline as head, i (head.uid ?? i)}
                         <li>
@@ -396,6 +408,7 @@
                         </li>
                       {/each}
                     </ul>
+                    {/if}
                   {/if}
                 </li>
               {/each}

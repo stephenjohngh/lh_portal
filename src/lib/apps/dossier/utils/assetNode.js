@@ -187,19 +187,12 @@ export const Asset = Node.create({
 
     if (kind === 'image') {
       const image = ['img', { src: url, alt: name, class: 'dossier-asset-image' }];
-      // With the name off there is no caption at all: "view full size" without
-      // the filename is a link with nothing to say, and an image placed as a
-      // logo or a letterhead should sit on the page unlabelled.
-      if (!showName) return ['div', wrapper, image];
-
-      return ['div', wrapper, image,
-        // The caption is the full-size affordance: an <a> around the <img>
-        // itself would fight ProseMirror's node selection in edit mode.
-        ['div', { class: 'dossier-asset-caption' },
-          ['a', { href: url, target: '_blank', rel: 'noopener noreferrer' },
-            `${name} — view full size`],
-        ],
-      ];
+      // An image never shows its file name: "scan_0041.jpg" tells a recipient
+      // nothing. What it keeps is a "Full size" link that appears over the
+      // picture when the pointer is on it (CSS), so there is no caption line.
+      // A separate <a>, not one around the <img>, which would fight
+      // ProseMirror's node selection in edit mode.
+      return ['div', wrapper, image, fullSizeLink(url)];
     }
 
     if (kind === 'sheet') {
@@ -358,6 +351,11 @@ export const Asset = Node.create({
           && previewKind(current.attrs.mime_type, current.attrs.filename) === 'image'
           && Boolean(fileProxyUrl(current.attrs.provider_file_id, current.attrs.mime_type));
         sizes.hidden = !isImage;
+        // An image never shows its file name, so there is nothing to switch.
+        showButtons.show_name.hidden = isImage;
+        // The host takes the image's width so small and medium pictures can sit
+        // side by side (CSS); anything else is a full-width row.
+        dom.dataset.width = isImage ? normaliseImageWidth(current.attrs.width) : 'full';
         // Where the strip sits. Over an image it floats in the corner, where
         // it covers only picture. Over a file card that corner holds the
         // card's Open link, so the strip was drawn on top of the one thing a
@@ -460,20 +458,6 @@ function paint(host, node, missing = false, description = '') {
     return;
   }
 
-  const caption = (text, href) => {
-    const cap = document.createElement('div');
-    cap.className = 'dossier-asset-caption';
-    if (href) {
-      const a = document.createElement('a');
-      a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
-      a.textContent = text;
-      cap.appendChild(a);
-    } else {
-      cap.textContent = text;
-    }
-    return cap;
-  };
-
   if (url && kind === 'image') {
     const img = document.createElement('img');
     img.src = url; img.alt = name; img.className = 'dossier-asset-image';
@@ -485,7 +469,12 @@ function paint(host, node, missing = false, description = '') {
       host.appendChild(missingCard(name));
     }, { once: true });
     host.appendChild(img);
-    if (showName) host.appendChild(caption(`${name} — view full size`, url));
+    const full = document.createElement('a');
+    full.href = url; full.target = '_blank'; full.rel = 'noopener noreferrer';
+    full.className = 'dossier-asset-fullsize';
+    full.title = 'View full size';
+    full.textContent = FULL_SIZE_TEXT;
+    host.appendChild(full);
     if (shownDescription) host.appendChild(descriptionEl(shownDescription));
     return;
   }
@@ -530,6 +519,14 @@ function paint(host, node, missing = false, description = '') {
   card.append(icon, label, action);
   host.appendChild(card);
   if (shownDescription) host.appendChild(descriptionEl(shownDescription));
+}
+
+const FULL_SIZE_TEXT = '⤢ Full size';
+
+/** The hover link over a picture that opens it at full size in a new tab. */
+function fullSizeLink(url) {
+  return ['a', { href: url, target: '_blank', rel: 'noopener noreferrer',
+                 class: 'dossier-asset-fullsize', title: 'View full size' }, FULL_SIZE_TEXT];
 }
 
 /**

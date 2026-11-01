@@ -265,7 +265,7 @@
       {#if imageCount}<Button variant="tertiary" size="xs" title="Show a small picture beside each image file" on:click={toggleThumbs}>{thumbnails ? 'Hide pictures' : 'Show pictures'}</Button>{/if}
       <Button variant="tertiary" size="xs" title="New folder in {targetLabel}" on:click={() => setMode('newFolder')}>+ Folder</Button>
       <span class="w-px h-4 bg-slate-700 mx-1"></span>
-      <Button variant="tertiary" size="xs" disabled={!selected} on:click={() => setMode('rename')}>✎ Rename</Button>
+      <Button variant="tertiary" size="xs" disabled={!selected} on:click={() => setMode('rename')}>✎ Rename / describe</Button>
       <Button variant="tertiary" size="xs" disabled={!selected} on:click={() => setMode('move')}>Move…</Button>
       {#if selFile}
         <a class="inline-flex items-center rounded border border-purple-700/50 px-2 py-0.5 text-xs text-purple-300 hover:bg-purple-900/20"

@@ -237,7 +237,7 @@
     background: rgb(59 130 246 / 0.08);
     border-color: rgb(59 130 246 / 0.35);
   }
-  :global(.dossier-prose div[data-variant='info']::before)    { content: 'ℹ'; }
+  :global(.dossier-prose div[data-variant='info']::before)    { content: 'ℹ️'; }
 
   :global(.dossier-prose div[data-variant='warning']) {
     background: rgb(245 158 11 / 0.08);
@@ -417,9 +417,41 @@
   }
   /* Author-chosen preview width, as a share of the text column so it renders
      the same in the editor, in Preview and in a published pack. */
-  :global(.dossier-prose [data-width='small']  .dossier-asset-image) { max-width: 25%; }
-  :global(.dossier-prose [data-width='medium'] .dossier-asset-image) { max-width: 50%; }
-  :global(.dossier-prose [data-width='large']  .dossier-asset-image) { max-width: 75%; }
+  /* The WIDTH belongs to the block, not the picture, so a block narrower than
+     the column no longer takes the whole row: small and medium pictures are
+     inline-blocks and sit side by side (four small, two medium) before wrapping.
+     In the editor the host (.dossier-asset-host) carries the width; in a reader
+     the .dossier-asset itself does — the :not() keeps the editor's inner
+     element from shrinking a second time inside its host. */
+  :global(.dossier-prose .dossier-asset-host[data-width='small']),
+  :global(.dossier-prose .dossier-asset:not(.dossier-asset-inner)[data-kind='image'][data-width='small']) {
+    display: inline-block; vertical-align: top;
+    width: calc(25% - 0.75rem); margin-right: 0.5rem;
+  }
+  :global(.dossier-prose .dossier-asset-host[data-width='medium']),
+  :global(.dossier-prose .dossier-asset:not(.dossier-asset-inner)[data-kind='image'][data-width='medium']) {
+    display: inline-block; vertical-align: top;
+    width: calc(50% - 0.75rem); margin-right: 0.5rem;
+  }
+  :global(.dossier-prose .dossier-asset-host[data-width='large']),
+  :global(.dossier-prose .dossier-asset:not(.dossier-asset-inner)[data-kind='image'][data-width='large']) {
+    width: 75%;
+  }
+  /* "⤢ Full size" over the picture, shown on hover (always on a touch screen,
+     which has no hover). It replaces the old filename caption. */
+  :global(.dossier-prose .dossier-asset[data-kind='image']) { position: relative; }
+  :global(.dossier-prose .dossier-asset-fullsize) {
+    position: absolute; top: 0.4rem; left: 0.4rem;
+    padding: 0.1rem 0.45rem; border-radius: 4px;
+    font-size: 0.7rem; text-decoration: none; white-space: nowrap;
+    color: #f1f5f9; background: rgb(15 23 42 / 0.8);
+    opacity: 0; transition: opacity 0.12s;
+  }
+  :global(.dossier-prose .dossier-asset:hover .dossier-asset-fullsize),
+  :global(.dossier-prose .dossier-asset-fullsize:focus) { opacity: 1; }
+  @media (hover: none) {
+    :global(.dossier-prose .dossier-asset-fullsize) { opacity: 1; }
+  }
   /* The uploader's own words about the file, under it. Distinct from the
      filename line, which says what it is called rather than what it is. */
   :global(.dossier-prose .dossier-asset-description) {

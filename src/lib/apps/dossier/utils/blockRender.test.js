@@ -259,13 +259,17 @@ describe('asset blocks', () => {
     expect(html).toContain('data-width="full"');
   });
 
-  it('gives an image a full-size link in its caption', () => {
+  it('gives an image a hover full-size link and never its file name', () => {
     const html = renderBlocksToHtml(asset({
       document_id: 'd1', filename: 'Roof.jpg',
       mime_type: 'image/jpeg', provider_file_id: 'drive1',
     }));
     expect(html).toContain('href="/api/media/file/drive1?mime=image%2Fjpeg"');
-    expect(html).toContain('view full size');
+    expect(html).toContain('dossier-asset-fullsize');
+    expect(html).not.toContain('dossier-asset-caption');
+    const parsed = document.createElement('div');
+    parsed.innerHTML = html;
+    expect(parsed.textContent).not.toContain('Roof.jpg');
   });
 
   it('renders anything else as a download card', () => {
@@ -392,16 +396,15 @@ describe('missing assets', () => {
     expect(html).toContain('Open PDF');
   });
 
-  it('drops an image-s caption entirely with the name, not just the text', () => {
-    // "— view full size" without a filename is a link with nothing to say, and
-    // a logo should sit on the page unlabelled.
+  it('shows no caption on an image whatever the name setting says', () => {
     const image = { document_id: 'f1', filename: 'logo.png',
                     mime_type: 'image/png', provider_file_id: 'drive1' };
-    const html = renderBlocksToHtml(asset({ ...image, show_name: false }),
-      { files: [{ id: 'f1' }] });
-
-    expect(html).not.toContain('dossier-asset-caption');
-    expect(html).toContain('dossier-asset-image');
+    for (const show_name of [true, false]) {
+      const html = renderBlocksToHtml(asset({ ...image, show_name }),
+        { files: [{ id: 'f1' }] });
+      expect(html).not.toContain('dossier-asset-caption');
+      expect(html).toContain('dossier-asset-image');
+    }
   });
 
   it('escapes a description rather than letting it inject markup', () => {
