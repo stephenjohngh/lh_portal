@@ -84,6 +84,7 @@
   import { Editor }      from '@tiptap/core';
   import { fmtTime }     from '#lib/utils/dates.js';
   import ErrorDisplay    from '#lib/components/common/ErrorDisplay.svelte';
+  import PageTreeList from './PageTreeList.svelte';
   import Modal           from '#lib/components/common/Modal.svelte';
   import Button          from '#lib/components/common/Button.svelte';
   import FormInput       from '#lib/components/common/FormInput.svelte';
@@ -397,41 +398,45 @@
       .run();
   }
 
-  // A mark needs something to wrap, so the button is inert on an empty
-  // selection — unless the cursor is already inside a link, where it removes it.
+  // ONE link control. A link needs some text to wrap, so the button is inert on an
+  // empty selection — unless the cursor is already inside a link (of either kind),
+  // where it removes that link. Otherwise a small dialog asks where it goes.
   $: selectionEmpty = editor ? editor.state.selection.empty : true;
-  $: onExistingLink = editor?.isActive('docLink') ?? false;
+  $: onPageLink     = editor?.isActive('docLink') ?? false;
+  $: onWebLink      = editor?.isActive('link') ?? false;
+  $: onExistingLink = onPageLink || onWebLink;
   $: linkDisabled   = selectionEmpty && !onExistingLink;
 
-  function handleLinkClick() {
-    if (onExistingLink) {
-      editor?.chain().focus().unsetDocLink().run();
-      return;
-    }
-    dispatch('pickPage');
-  }
-
-  // ── External links ────────────────────────────────────────────────────────
-  // 🔗 links to another PAGE in this pack. A link out to the web is a different
-  // thing and had no control at all: the only way to make one was to paste a
-  // URL and let the editor autolink it.
-
-  let showUrlModal = false;
+  let showLinkModal = false;
+  /** @type {'page'|'web'} */
+  let linkKind = 'page';
+  let pageSearch = '';
   let urlValue = '';
   let urlError = '';
 
-  function openUrlModal() {
-    // Offer whatever is already there, so the control edits as well as adds.
-    urlValue = editor?.getAttributes('link')?.href ?? '';
-    urlError = '';
-    showUrlModal = true;
+  function handleLinkClick() {
+    if (onPageLink) { editor?.chain().focus().unsetDocLink().run(); return; }
+    if (onWebLink) {
+      // Show the address so it can be changed or removed.
+      linkKind = 'web';
+      urlValue = editor?.getAttributes('link')?.href ?? '';
+    } else {
+      linkKind = 'page'; urlValue = '';
+    }
+    urlError = ''; pageSearch = '';
+    showLinkModal = true;
+  }
+
+  function pickLinkPage(d) {
+    applyDocLink(d);
+    showLinkModal = false;
   }
 
   function applyUrl() {
     const raw = urlValue.trim();
     if (!raw) {
       editor?.chain().focus().extendMarkRange('link').unsetLink().run();
-      showUrlModal = false;
+      showLinkModal = false;
       return;
     }
     // A bare `example.com` is what people type. Left alone the browser reads it
@@ -446,7 +451,7 @@
     }
     editor?.chain().focus().extendMarkRange('link')
       .setLink({ href, target: '_blank', rel: 'noopener noreferrer' }).run();
-    showUrlModal = false;
+    showLinkModal = false;
   }
 
   const isActive = (a) => (a.is ? (editor?.isActive(a.is, a.attrs) ?? false) : false);
@@ -535,24 +540,17 @@
       <button
         type="button"
         title={linkDisabled
-          ? 'Select some text first, then link it to another page'
-          : 'Link the selected text to another page'}
+          ? 'Select some text first, then link it to a page or a web address'
+          : onExistingLink ? 'Remove this link' : 'Link the selected text to a page or a web address'}
         disabled={linkDisabled}
+        data-testid="link-button"
         class="min-w-7 h-7 px-1.5 rounded text-xs transition-colors
-               {editor?.isActive('docLink')
+               {onExistingLink
                  ? 'bg-slate-600 text-white'
                  : 'text-slate-400 hover:bg-slate-700 hover:text-white'}
                disabled:opacity-30 disabled:hover:bg-transparent"
         on:click={handleLinkClick}
       >🔗</button>
-      <button
-        type="button"
-        title="Link to a web address"
-        class="min-w-7 h-7 px-1.5 rounded text-xs text-slate-400
-               hover:bg-slate-700 hover:text-white transition-colors
-               {editor?.isActive('link') ? 'bg-slate-700 text-white' : ''}"
-        on:click={openUrlModal}
-      >🌐</button>
       <button
         type="button"
         title="Show another page's content inside this one"
@@ -612,23 +610,38 @@
   </div>
 </div>
 
-<Modal bind:show={showUrlModal} title="Link to a web address" size="medium"
-       on:close={() => showUrlModal = false}>
-  <div class="space-y-2">
-    <FormInput
-      label="Address"
-      bind:value={urlValue}
-      placeholder="example.com or https://example.com"
-      error={urlError}
-    />
-    <p class="text-xs text-slate-500">
-      Select some text first and it becomes the link. Leave this empty to
-      remove a link that is already there.
-    </p>
+<Modal bind:show={showLinkModal} title="Link the selected text" size="medium"
+       on:close={() => showLinkModal = false}>
+  <div class="space-y-3">
+    <div class="flex gap-1" role="tablist" aria-label="Where the link goes">
+      <button type="button" role="tab" aria-selected={linkKind === 'page'}
+              class="text-xs px-3 py-1 rounded transition-colors {linkKind === 'page' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:bg-slate-700'}"
+              on:click={() => linkKind = 'page'}>A page in this pack</button>
+      <button type="button" role="tab" aria-selected={linkKind === 'web'}
+              class="text-xs px-3 py-1 rounded transition-colors {linkKind === 'web' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:bg-slate-700'}"
+              on:click={() => linkKind = 'web'}>A web address</button>
+    </div>
+
+    {#if linkKind === 'page'}
+      {#if docs.filter(d => d.id !== doc?.id).length === 0}
+        <p class="py-6 text-center text-sm text-slate-400">There is no other page to link to yet.</p>
+      {:else}
+        <FormInput label="" bind:value={pageSearch} placeholder="Search pages…" />
+        <PageTreeList {docs} excludeId={doc?.id} search={pageSearch} on:pick={(e) => pickLinkPage(e.detail)} />
+      {/if}
+    {:else}
+      <FormInput
+        label="Address"
+        bind:value={urlValue}
+        placeholder="example.com or https://example.com"
+        error={urlError}
+      />
+      <p class="text-xs text-slate-500">Leave this empty and press Apply to remove a link that is already there.</p>
+    {/if}
   </div>
 
   <div slot="footer" class="flex justify-end gap-2">
-    <Button variant="secondary" on:click={() => showUrlModal = false}>Cancel</Button>
-    <Button variant="primary" on:click={applyUrl}>Apply</Button>
+    <Button variant="secondary" on:click={() => showLinkModal = false}>Cancel</Button>
+    {#if linkKind === 'web'}<Button variant="primary" on:click={applyUrl}>Apply</Button>{/if}
   </div>
 </Modal>

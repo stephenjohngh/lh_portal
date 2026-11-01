@@ -25,7 +25,6 @@
   function toggle(id) {
     collapsed = { ...collapsed, [id]: !collapsed[id] };
   }
-  const isSel = (kind, id) => selected?.kind === kind && selected?.id === id;
 </script>
 
 <ul class="list-none m-0 p-0">
@@ -34,7 +33,7 @@
       <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
       <div
         class="flex items-center gap-1 pr-1 py-1 rounded cursor-pointer hover:bg-slate-700/50 transition-colors
-               {isSel('folder', node.id) ? 'bg-slate-700' : ''}"
+               {selected?.kind === 'folder' && selected?.id === node.id ? 'bg-slate-700' : ''}"
         style="padding-left: {depth * 12 + 4}px"
         title={node.name}
         data-testid="folder-row"
@@ -45,7 +44,7 @@
               title={collapsed[node.id] ? 'Expand' : 'Collapse'}
               on:click|stopPropagation={() => toggle(node.id)}>{collapsed[node.id] ? '▶' : '▼'}</span>
         <span class="shrink-0 text-sm">📁</span>
-        <span class="flex-1 min-w-0 truncate text-sm {isSel('folder', node.id) ? 'text-white' : 'text-slate-300'}">{node.name}</span>
+        <span class="flex-1 min-w-0 truncate text-sm {selected?.kind === 'folder' && selected?.id === node.id ? 'text-white' : 'text-slate-300'}">{node.name}</span>
         <span class="text-[10px] text-slate-500 shrink-0">{filesUnder(node)}</span>
       </div>
       {#if !collapsed[node.id]}
@@ -67,7 +66,7 @@
       <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
       <div
         class="flex items-center gap-1.5 pr-1 py-1 rounded cursor-pointer hover:bg-slate-700/50 transition-colors
-               {isSel('file', file.id) ? 'bg-slate-700' : ''}"
+               {selected?.kind === 'file' && selected?.id === file.id ? 'bg-slate-700' : ''}"
         style="padding-left: {depth * 12 + 24}px"
         title={file.description || file.display_name || file.filename}
         data-testid="file-row"
@@ -79,7 +78,7 @@
         {:else}
           <span class="shrink-0 text-sm">{mimeIcon(file.mime_type)}</span>
         {/if}
-        <span class="flex-1 min-w-0 truncate text-xs {isSel('file', file.id) ? 'text-white' : 'text-slate-300'}">{file.display_name || file.filename}</span>
+        <span class="flex-1 min-w-0 truncate text-xs {selected?.kind === 'file' && selected?.id === file.id ? 'text-white' : 'text-slate-300'}">{file.display_name || file.filename}</span>
         {#if file.file_size}<span class="text-[10px] text-slate-500 shrink-0">{fmtBytes(file.file_size)}</span>{/if}
       </div>
     </li>

@@ -267,7 +267,7 @@ export function describeInclusion(snapshot, manifest) {
   const count = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
   return {
-    pages:  docs.map(d => ({ id: d.id, title: d.title })),
+    pages:  docs.map(d => ({ id: d.id, title: d.title, parent_doc_id: d.parent_doc_id ?? null, order_index: d.order_index ?? 0 })),
     tables: datasets.map(d => ({
       id: d.id, title: d.title,
       records: records.filter(r => r.dataset_id === d.id).length,

@@ -168,6 +168,9 @@
   // what a publication exposes — an orphan file uploaded straight into a block
   // would be invisible to that walk.
 
+  const LS_TABLES = 'dossier:tablesOpen';
+  let tablesOpen = getPref(LS_TABLES) !== '0';
+  function toggleTables() { tablesOpen = !tablesOpen; setPref(LS_TABLES, tablesOpen ? '1' : '0'); }
   const LS_FILES = 'dossier:filesOpen';
   let filesOpen = getPref(LS_FILES) === '1';
 
@@ -962,13 +965,14 @@
 
       <!-- ── Tables: the pack's structured lists ── -->
       <div class="border-t border-slate-700 shrink-0">
-        <div class="px-3 py-2">
-          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-            Tables
+        <Button variant="plain" aria-label={tablesOpen ? 'Hide tables' : 'Show tables'} aria-expanded={tablesOpen} on:click={toggleTables} className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-slate-700/40 transition-colors">
+<span class="text-[10px] text-slate-500 w-2">{tablesOpen ? '▼' : '▶'}</span>
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide flex-1">
+            Tables <span class="text-slate-500 font-normal normal-case tracking-normal">({datasets.length})</span>
           </span>
-        </div>
+</Button>
 
-        {#if datasets.length}
+        {#if tablesOpen && datasets.length}
           <div class="pb-1">
             {#each datasets as dataset (dataset.id)}
               <Button variant="plain" on:click={() => openDataset(dataset)} className="flex items-center gap-2 w-full px-3 py-1 text-left text-sm
@@ -981,7 +985,7 @@
           </div>
         {/if}
 
-        {#if canEdit}
+        {#if tablesOpen && canEdit}
           <!-- The add buttons get their own wrapped row: on the label line they
                squeezed into two-word columns in a 288px sidebar. Only templates
                the pack does not already have are offered — two chronologies is
@@ -1029,11 +1033,11 @@
            collapsed by default: it is the one place a live external link is
            visible, and it should be looked at deliberately. -->
       <div class="border-t border-slate-700 shrink-0">
-        <Button variant="plain" aria-label={pubsOpen ? 'Hide links' : 'Show links'} aria-expanded={pubsOpen} on:click={togglePubs} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-800/50
+        <Button variant="plain" aria-label={pubsOpen ? 'Hide published links' : 'Show published links'} aria-expanded={pubsOpen} on:click={togglePubs} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-800/50
                  transition-colors text-left">
 <span class="text-[10px] text-slate-500 w-2">{pubsOpen ? '▼' : '▶'}</span>
           <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide flex-1">
-            Links
+            Published links <span class="text-slate-500 font-normal normal-case tracking-normal">({publications.length})</span>
           </span>
           {#if liveLinks}
             <span class="text-[10px] text-green-400">{liveLinks} live</span>
@@ -1146,7 +1150,6 @@
                        doc={selectedDoc} editable={canEdit} onSave={handleSaveBlocks}
                        {files}
                        on:pickAsset={() => showAssetPicker = true}
-                       on:pickPage={() => openPicker('link')}
                        on:pickEmbed={() => openPicker('embed')}
                        on:pickTable={() => showTablePicker = true}
                        on:openDoc={(e) => selectPage(e.detail)}

@@ -9,6 +9,7 @@
 
      Two steps: review → the link, shown once. -->
 <script>
+  import { flattenTree } from '../utils/docTree.js';
   import { createEventDispatcher } from 'svelte';
   import Modal        from '#lib/components/common/Modal.svelte';
   import Button       from '#lib/components/common/Button.svelte';
@@ -154,8 +155,8 @@
               Pages ({review.pages.length})
             </p>
             <ul class="max-h-40 overflow-y-auto p-2 space-y-0.5">
-              {#each review.pages as p (p.id)}
-                <li class="text-xs text-slate-300 truncate">{p.title}</li>
+              {#each flattenTree(review.pages) as p (p.id)}
+                <li class="text-xs text-slate-300 truncate" style="padding-left: {p.depth * 12}px">{p.depth ? '↳ ' : ''}{p.title}</li>
               {:else}
                 <li class="text-xs text-slate-600">None</li>
               {/each}

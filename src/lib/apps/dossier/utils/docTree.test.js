@@ -190,3 +190,15 @@ describe('planReorder / planIndent / planOutdent', () => {
     expect(planOutdent(TREE, 'a').ok).toBe(false);
   });
 });
+
+describe('flattenTree', () => {
+  it('lists pages in tree order with their depth', async () => {
+    const { flattenTree } = await import('./docTree.js');
+    const docs = [
+      { id: 'b', title: 'B', order_index: 1, parent_doc_id: null },
+      { id: 'a', title: 'A', order_index: 0, parent_doc_id: null },
+      { id: 'a1', title: 'A1', order_index: 0, parent_doc_id: 'a' },
+    ];
+    expect(flattenTree(docs).map(d => [d.id, d.depth])).toEqual([['a', 0], ['a1', 1], ['b', 0]]);
+  });
+});

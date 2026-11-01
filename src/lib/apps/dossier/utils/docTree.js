@@ -214,3 +214,22 @@ export function planOutdent(docs, docId) {
   const parentIdx = uncles.findIndex(d => d.id === parent.id);
   return planMove(docs, { docId, newParentId: grandParent, newIndex: parentIdx + 1 });
 }
+
+/**
+ * The pages in tree order, each with its depth (0 = top level) — for any list
+ * that should look like the page tree: pickers, the publish review.
+ * @param {object[]} docs
+ * @returns {Array<object & { depth: number }>}
+ */
+export function flattenTree(docs = []) {
+  const out = [];
+  const walk = (nodes, depth) => {
+    for (const n of nodes) {
+      const { children, ...doc } = n;
+      out.push({ ...doc, depth });
+      walk(children, depth + 1);
+    }
+  };
+  walk(buildTree(docs), 0);
+  return out;
+}

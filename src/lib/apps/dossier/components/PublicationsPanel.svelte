@@ -29,7 +29,7 @@
 <div class="space-y-2">
   {#if publications.length === 0}
     <p class="text-xs text-slate-500">
-      No links have been issued for this pack.
+      No links have been published for this pack.
     </p>
   {:else}
     {#each publications as publication (publication.id)}
@@ -58,6 +58,17 @@
             {/if}
           </p>
           <p>Issued {fmtDateTime(publication.created_at)}</p>
+          <p data-testid="pub-expiry">
+            {#if publication.expires_at}
+              Expires {fmtDateTime(publication.expires_at)}
+            {:else}
+              No expiry date
+            {/if}
+          </p>
+          <p>{publication.passphrase_hash ? 'Needs a passphrase' : 'No passphrase'}
+            · {publication.mode === 'latest' ? 'Always shows the latest version' : 'A fixed copy, taken when published'}</p>
+          {#if publication.revoked_at}<p class="text-red-400/80">Revoked {fmtDateTime(publication.revoked_at)}</p>{/if}
+          {#if publication.manifest?.files?.length}<p>{publication.manifest.files.length} file{publication.manifest.files.length === 1 ? '' : 's'} included</p>{/if}
         </div>
 
         {#if canEdit && state !== 'revoked'}
