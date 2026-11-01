@@ -22,6 +22,8 @@ import {
   coerceRecordFields, templateFor, migrateRecordFields,
 } from '../utils/datasetTemplates.js';
 import { planPackCopy } from '../utils/packCopy.js';
+import { descendantFolderIds } from '../utils/fileTree.js';
+import { newUuid } from '#lib/utils/uuid.js';
 import { buildSnapshot, buildManifest } from '../utils/snapshot.js';
 import { generateToken, hashToken, tokenPrefix } from '../utils/publicationToken.js';
 import { hashPassphrase } from '../utils/publicationPassphrase.js';
@@ -81,10 +83,12 @@ function touch(userId) {
  * @typedef {import('#lib/database.types.ts').Tables<'dossier_docs'>} Doc
  * @typedef {import('#lib/database.types.ts').Tables<'dossier_doc_revisions'>} DocRevision
  * @typedef {import('#lib/database.types.ts').Tables<'document_library'>} LibraryFile
+ * @typedef {import('#lib/database.types.ts').Tables<'dossier_folders'>} Folder
+ * @typedef {import('#lib/database.types.ts').Tables<'dossier_file_placements'>} Placement
  * @typedef {{
  *   packs: Pack[], loading: boolean, error: string|null,
  *   activePackId: string|null, docs: Doc[], loadingDocs: boolean,
- *   files: LibraryFile[]
+ *   files: LibraryFile[], folders: Folder[], placements: Placement[]
  * }} DossierState
  */
 
@@ -98,6 +102,8 @@ function createDossierStore() {
     docs:         [],
     loadingDocs:  false,
     files:        [],   // document_library rows on this pack's shelf
+    folders:      [],   // the file tree's folders (migration 274)
+    placements:   [],   // which folder each non-top-level file is in
     datasets:     [],   // the pack's structured lists (chronology etc.)
     // EVERY record in the pack, not just the open table's. The broken-reference
     // check has to see rows in tables the author has not opened, and P3's
@@ -207,7 +213,7 @@ function createDossierStore() {
    * pack's docs — or none.
    */
   async function readPackContents(packId) {
-    const [docs, datasets, files] = await Promise.all([
+    const [docs, datasets, files, folders, placements] = await Promise.all([
       api.get('dossier_docs', {
         filters: { pack_id: packId }, orderBy: 'order_index', ascending: true,
       }),
@@ -219,13 +225,16 @@ function createDossierStore() {
       // (2026-10-03, §6ccc item 2). It runs before the copy is created, so a
       // failure stops the copy before it starts.
       listDocuments({ entity_type: 'dossier_pack', entity_id: packId }),
+      api.getAll('dossier_folders', { filters: { pack_id: packId }, orderBy: 'name' }),
+      api.getAll('dossier_file_placements', {
+        filters: { pack_id: packId }, orderBy: 'document_id', tiebreak: false }),
     ]);
 
     const records = datasets.length
       ? await api.getAllIn('dossier_records', 'dataset_id', datasets.map(d => d.id))
       : [];
 
-    return { docs, datasets, records, files };
+    return { docs, datasets, records, files, folders, placements };
   }
 
   /**
@@ -299,6 +308,26 @@ function createDossierStore() {
         })), false);
       }
 
+      // The file tree: new folder ids first (a child names its parent, and the
+      // statement is one insert), then each COPIED file's placement. A file that
+      // was not copied (files off, or over the copy bounds) has no copy to place.
+      if (contents.folders.length) {
+        const folderMap = new Map(contents.folders.map(f => [f.id, newUuid()]));
+        await api.createMany('dossier_folders', contents.folders.map(f => ({
+          id: folderMap.get(f.id), pack_id: pack.id,
+          parent_id: f.parent_id ? folderMap.get(f.parent_id) ?? null : null,
+          name: f.name, order_index: f.order_index ?? 0,
+          created_by: userId, ...touch(userId),
+        })), false);
+        const placed = contents.placements
+          .filter(pl => fileMap.has(pl.document_id) && folderMap.has(pl.folder_id))
+          .map(pl => ({
+            document_id: fileMap.get(pl.document_id).id, pack_id: pack.id,
+            folder_id: folderMap.get(pl.folder_id), created_by: userId,
+          }));
+        if (placed.length) await api.createMany('dossier_file_placements', placed, false);
+      }
+
       // dossier_links is derived, and each page rebuilds its own rows the next
       // time it is saved — but backlinks read the table, so seeding it now is
       // the difference between a copy whose backlink panels work and one whose
@@ -344,19 +373,93 @@ function createDossierStore() {
   // can see the shelf without reaching into that component.
 
   async function loadPackFiles(packId) {
-    if (!packId) { update(s => ({ ...s, files: [] })); return []; }
+    if (!packId) { update(s => ({ ...s, files: [], folders: [], placements: [] })); return []; }
     try {
-      const files = await listDocuments({
-        entity_type: 'dossier_pack', entity_id: packId,
-      });
-      update(s => ({ ...s, files }));
+      const [files, folders, placements] = await Promise.all([
+        listDocuments({ entity_type: 'dossier_pack', entity_id: packId }),
+        api.getAll('dossier_folders', { filters: { pack_id: packId }, orderBy: 'name' }),
+        api.getAll('dossier_file_placements', {
+          filters: { pack_id: packId }, orderBy: 'document_id', tiebreak: false }),
+      ]);
+      update(s => ({ ...s, files, folders, placements }));
       return files;
     } catch (err) {
       // Non-fatal: a pack is still perfectly editable without its shelf.
       logger('⚠ could not load pack files', err);
-      update(s => ({ ...s, files: [] }));
+      update(s => ({ ...s, files: [], folders: [], placements: [] }));
       return [];
     }
+  }
+
+  // ── The file tree (migration 274) ────────────────────────────────────────
+  // Folders are Dossier's own rows; a file's place is a placement row, and no
+  // row means the top level. State is patched locally after each write — the
+  // database has already agreed to it, and a refetch of hundreds of files per
+  // click would be the wrong price for moving one.
+
+  /** @param {{ packId: string, parentId?: string|null, name: string }} input */
+  async function createFolder({ packId, parentId = null, name }, userId) {
+    const folder = await api.create('dossier_folders', {
+      pack_id: packId, parent_id: parentId, name: String(name).trim(),
+      created_by: userId, ...touch(userId),
+    }, true);
+    update(s => ({ ...s, folders: [...s.folders, folder] }));
+    logAudit('create', 'dossier_folder', folder.id, folder.name, {
+      appId: 'dossier', eventCategory: 'dossier', severity: 'info', afterData: { pack_id: packId },
+    });
+    return folder;
+  }
+
+  async function renameFolder(id, name, userId) {
+    const clean = String(name).trim();
+    await api.update('dossier_folders', id, { name: clean, ...touch(userId) }, false);
+    update(s => ({ ...s, folders: s.folders.map(f => f.id === id ? { ...f, name: clean } : f) }));
+    logAudit('update', 'dossier_folder', id, clean, { appId: 'dossier', eventCategory: 'dossier', severity: 'info' });
+  }
+
+  /** @param {string|null} parentId  null = the top level */
+  async function moveFolder(id, parentId, userId) {
+    await api.update('dossier_folders', id, { parent_id: parentId, ...touch(userId) }, false);
+    update(s => ({ ...s, folders: s.folders.map(f => f.id === id ? { ...f, parent_id: parentId } : f) }));
+  }
+
+  /**
+   * Delete a folder and the folders inside it. Their FILES are not deleted: the
+   * placement rows go with the folders, so those files are back at the top level.
+   */
+  async function deleteFolder(id, name) {
+    const gone = new Set([id, ...descendantFolderIds(getState().folders, id)]);
+    await api.delete('dossier_folders', id);
+    update(s => ({
+      ...s,
+      folders: s.folders.filter(f => !gone.has(f.id)),
+      placements: s.placements.filter(p => !gone.has(p.folder_id)),
+    }));
+    logAudit('delete', 'dossier_folder', id, name, { appId: 'dossier', eventCategory: 'dossier', severity: 'warning' });
+  }
+
+  /** Put a file in a folder, or back at the top level with folderId null. */
+  async function placeFile(documentId, packId, folderId, userId) {
+    if (folderId) {
+      await api.upsert('dossier_file_placements',
+        { document_id: documentId, pack_id: packId, folder_id: folderId, created_by: userId },
+        { onConflict: 'document_id' });
+    } else {
+      await api.deleteMany('dossier_file_placements', { document_id: documentId });
+    }
+    update(s => {
+      const rest = s.placements.filter(p => p.document_id !== documentId);
+      return { ...s, placements: folderId
+        ? [...rest, { document_id: documentId, pack_id: packId, folder_id: folderId, created_at: new Date().toISOString(), created_by: userId }]
+        : rest };
+    });
+  }
+
+  /** Local state only — the file already exists in document_library. */
+  function addFile(file)          { update(s => ({ ...s, files: [file, ...s.files.filter(f => f.id !== file.id)] })); }
+  function patchFile(id, patch)   { update(s => ({ ...s, files: s.files.map(f => f.id === id ? { ...f, ...patch } : f) })); }
+  function removeFile(id) {
+    update(s => ({ ...s, files: s.files.filter(f => f.id !== id), placements: s.placements.filter(p => p.document_id !== id) }));
   }
 
   // ── Datasets ─────────────────────────────────────────────────────────────
@@ -747,7 +850,7 @@ function createDossierStore() {
 
   function closePack() {
     update(s => ({
-      ...s, activePackId: null, docs: [], files: [],
+      ...s, activePackId: null, docs: [], files: [], folders: [], placements: [],
       datasets: [], records: [], publications: [],
     }));
   }
@@ -968,7 +1071,8 @@ function createDossierStore() {
     readPackContents, duplicatePack,
     loadDatasets, createDataset, deleteDataset,
     createRecord, createRecords, updateRecord, deleteRecord,
-    loadDocs, closePack, loadPackFiles, createDoc, renameDoc, deleteDoc, applyMove, saveDocBlocks,
+    loadDocs, closePack, loadPackFiles, createFolder, renameFolder, moveFolder, deleteFolder, placeFile,
+    addFile, patchFile, removeFile, createDoc, renameDoc, deleteDoc, applyMove, saveDocBlocks,
     saveVersion, loadRevisions, restoreRevision, loadBacklinks,
     loadPublications, loadAllPublications, createPublication, revokePublication, deletePublication,
     regeneratePublicationToken,

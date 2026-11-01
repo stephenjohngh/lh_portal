@@ -1351,6 +1351,96 @@ export type Database = {
             }
           ]
       }
+      dossier_folders: {
+        Row: {
+          id: string
+          pack_id: string
+          parent_id: string | null
+          name: string
+          order_index: number
+          created_at: string
+          created_by: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          pack_id: string
+          parent_id?: string | null
+          name: string
+          order_index?: number
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          pack_id?: string
+          parent_id?: string | null
+          name?: string
+          order_index?: number
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "dossier_folders_pack_id_fkey"
+              columns: ["pack_id"]
+              isOneToOne: false
+              referencedRelation: "dossier_packs"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "dossier_folders_parent_id_fkey"
+              columns: ["parent_id"]
+              isOneToOne: false
+              referencedRelation: "dossier_folders"
+              referencedColumns: ["id"]
+            }
+        ]
+      }
+      dossier_file_placements: {
+        Row: {
+          document_id: string
+          pack_id: string
+          folder_id: string
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          document_id: string
+          pack_id: string
+          folder_id: string
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          document_id?: string
+          pack_id?: string
+          folder_id?: string
+          created_at?: string
+          created_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "dossier_file_placements_document_id_fkey"
+              columns: ["document_id"]
+              isOneToOne: true
+              referencedRelation: "document_library"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "dossier_file_placements_folder_id_fkey"
+              columns: ["folder_id"]
+              isOneToOne: false
+              referencedRelation: "dossier_folders"
+              referencedColumns: ["id"]
+            }
+        ]
+      }
       dossier_doc_revisions: {
         Row: {
           id: string

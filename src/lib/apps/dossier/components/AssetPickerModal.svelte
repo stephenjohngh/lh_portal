@@ -11,9 +11,15 @@
   import FormInput      from '#lib/components/common/FormInput.svelte';
   import { fmtDate }    from '#lib/utils/dates.js';
   import { previewKind, fmtSize } from '../utils/assetPreview.js';
+  import { folderLabel, placementMap } from '../utils/fileTree.js';
 
   export let show  = false;
   export let files = [];
+  /** The pack's folders and placements, so each file can say where it is. */
+  export let folders = [];
+  export let placements = [];
+
+  $: where = placementMap(placements);
 
   const dispatch = createEventDispatcher();
 
@@ -24,7 +30,7 @@
 
   // Search what is shown, including the description — otherwise a file is
   // visibly labelled with words that will not find it.
-  $: visible = files.filter(f => matchesSearch([f.display_name, f.filename, f.description], search));
+  $: visible = files.filter(f => matchesSearch([f.display_name, f.filename, f.description, folderLabel(folders, where.get(f.id))], search));
 
   const KIND_ICON = { image: '🖼', pdf: '📄', file: '📎' };
 
@@ -69,6 +75,9 @@
                      same thing; the description is what the author wrote to
                      tell them apart, so it belongs at the moment of choosing. -->
                 <p class="text-xs text-slate-400 line-clamp-2">{file.description}</p>
+              {/if}
+              {#if where.get(file.id)}
+                <p class="text-xs text-slate-500 truncate">📁 {folderLabel(folders, where.get(file.id))}</p>
               {/if}
               <p class="text-xs text-slate-500">
                 {fmtSize(file.file_size)}{file.file_size ? ' · ' : ''}{fmtDate(file.created_at)}

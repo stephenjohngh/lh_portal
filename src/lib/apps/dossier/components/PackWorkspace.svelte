@@ -8,8 +8,7 @@
   import { getPref, setPref } from '#lib/utils/prefs.js';
   import { requestDownload } from '#lib/utils/download.js';
   import { logAudit }    from '#lib/utils/auditLogger.js';
-  import AttachedDocuments from '#lib/components/common/documents/AttachedDocuments.svelte';
-  import { DOC_FOLDERS, entityFolderPath } from '#lib/utils/documentUtils.js';
+  import PackFiles from './PackFiles.svelte';
   import Button          from '#lib/components/common/Button.svelte';
   import LoadingSpinner  from '#lib/components/common/LoadingSpinner.svelte';
   import ErrorDisplay    from '#lib/components/common/ErrorDisplay.svelte';
@@ -548,7 +547,6 @@
   }
 
   function auditDoc(action, doc) {
-    dossierStore.loadPackFiles(pack.id);
     logAudit(action, 'dossier_file', doc.id, doc.display_name || doc.filename, {
       appId: 'dossier', eventCategory: 'dossier',
       severity: action === 'delete' ? 'warning' : 'info',
@@ -997,16 +995,11 @@
 
         {#if filesOpen}
           <div class="flex-1 min-h-0 overflow-y-auto px-3 pb-3">
-            <AttachedDocuments
-              entityType="dossier_pack"
-              entityId={pack.id}
-              canEdit={canEdit}
-              canDelete={$permissions.isAdmin}
-              folderPath={entityFolderPath(DOC_FOLDERS.DOSSIER_PACKS, pack.title, pack.id)}
-              title="Files"
-              on:uploaded={(e) => auditDoc('create', e.detail)}
-              on:updated={(e)  => auditDoc('update', e.detail)}
-              on:deleted={(e)  => auditDoc('delete', e.detail)}
+            <PackFiles
+              {pack}
+              {canEdit}
+              isAdmin={$permissions.isAdmin}
+              on:changed={(e) => auditDoc(e.detail.action, e.detail.doc)}
             />
           </div>
         {/if}
@@ -1255,6 +1248,8 @@
 <AssetPickerModal
   bind:show={showAssetPicker}
   {files}
+  folders={$dossierStore.folders}
+  placements={$dossierStore.placements}
   on:pick={(e) => handlePickAsset(e.detail)}
   on:close={() => { showAssetPicker = false; linkingRecord = null; }}
 />
