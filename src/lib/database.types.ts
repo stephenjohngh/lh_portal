@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema36.csv
+// Source: docs/ops/supabase_lhportal_schema37.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -1351,96 +1351,6 @@ export type Database = {
             }
           ]
       }
-      dossier_folders: {
-        Row: {
-          id: string
-          pack_id: string
-          parent_id: string | null
-          name: string
-          order_index: number
-          created_at: string
-          created_by: string | null
-          updated_at: string | null
-          updated_by: string | null
-        }
-        Insert: {
-          id?: string
-          pack_id: string
-          parent_id?: string | null
-          name: string
-          order_index?: number
-          created_at?: string
-          created_by?: string | null
-          updated_at?: string | null
-          updated_by?: string | null
-        }
-        Update: {
-          id?: string
-          pack_id?: string
-          parent_id?: string | null
-          name?: string
-          order_index?: number
-          created_at?: string
-          created_by?: string | null
-          updated_at?: string | null
-          updated_by?: string | null
-        }
-        Relationships: [
-            {
-              foreignKeyName: "dossier_folders_pack_id_fkey"
-              columns: ["pack_id"]
-              isOneToOne: false
-              referencedRelation: "dossier_packs"
-              referencedColumns: ["id"]
-            },
-            {
-              foreignKeyName: "dossier_folders_parent_id_fkey"
-              columns: ["parent_id"]
-              isOneToOne: false
-              referencedRelation: "dossier_folders"
-              referencedColumns: ["id"]
-            }
-        ]
-      }
-      dossier_file_placements: {
-        Row: {
-          document_id: string
-          pack_id: string
-          folder_id: string
-          created_at: string
-          created_by: string | null
-        }
-        Insert: {
-          document_id: string
-          pack_id: string
-          folder_id: string
-          created_at?: string
-          created_by?: string | null
-        }
-        Update: {
-          document_id?: string
-          pack_id?: string
-          folder_id?: string
-          created_at?: string
-          created_by?: string | null
-        }
-        Relationships: [
-            {
-              foreignKeyName: "dossier_file_placements_document_id_fkey"
-              columns: ["document_id"]
-              isOneToOne: true
-              referencedRelation: "document_library"
-              referencedColumns: ["id"]
-            },
-            {
-              foreignKeyName: "dossier_file_placements_folder_id_fkey"
-              columns: ["folder_id"]
-              isOneToOne: false
-              referencedRelation: "dossier_folders"
-              referencedColumns: ["id"]
-            }
-        ]
-      }
       dossier_doc_revisions: {
         Row: {
           id: string
@@ -1553,6 +1463,124 @@ export type Database = {
             },
             {
               foreignKeyName: "dossier_docs_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      dossier_file_placements: {
+        Row: {
+          document_id: string
+          pack_id: string
+          folder_id: string
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          document_id: string
+          pack_id: string
+          folder_id: string
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          document_id?: string
+          pack_id?: string
+          folder_id?: string
+          created_at?: string
+          created_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "dossier_file_placements_document_id_fkey"
+              columns: ["document_id"]
+              isOneToOne: false
+              referencedRelation: "document_library"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "dossier_file_placements_pack_id_fkey"
+              columns: ["pack_id"]
+              isOneToOne: false
+              referencedRelation: "dossier_packs"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "dossier_file_placements_folder_id_fkey"
+              columns: ["folder_id"]
+              isOneToOne: false
+              referencedRelation: "dossier_folders"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "dossier_file_placements_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      dossier_folders: {
+        Row: {
+          id: string
+          pack_id: string
+          parent_id: string | null
+          name: string
+          order_index: number
+          created_at: string
+          created_by: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          pack_id: string
+          parent_id?: string | null
+          name: string
+          order_index?: number
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          pack_id?: string
+          parent_id?: string | null
+          name?: string
+          order_index?: number
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "dossier_folders_pack_id_fkey"
+              columns: ["pack_id"]
+              isOneToOne: false
+              referencedRelation: "dossier_packs"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "dossier_folders_parent_id_fkey"
+              columns: ["parent_id"]
+              isOneToOne: false
+              referencedRelation: "dossier_folders"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "dossier_folders_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "dossier_folders_updated_by_fkey"
               columns: ["updated_by"]
               isOneToOne: false
               referencedRelation: "profiles"
@@ -2703,10 +2731,10 @@ export type Database = {
           component_id: string | null
           space_id: string | null
           planner_series_id: string | null
-          show_on: string
           workflow_key: string | null
           created_at: string
           created_by: string | null
+          show_on: string
         }
         Insert: {
           id?: string
@@ -2718,10 +2746,10 @@ export type Database = {
           component_id?: string | null
           space_id?: string | null
           planner_series_id?: string | null
-          show_on?: string
           workflow_key?: string | null
           created_at?: string
           created_by?: string | null
+          show_on?: string
         }
         Update: {
           id?: string
@@ -2733,10 +2761,10 @@ export type Database = {
           component_id?: string | null
           space_id?: string | null
           planner_series_id?: string | null
-          show_on?: string
           workflow_key?: string | null
           created_at?: string
           created_by?: string | null
+          show_on?: string
         }
         Relationships: [
             {
@@ -2845,7 +2873,6 @@ export type Database = {
           summary: string | null
           category_key: string | null
           tags: string[]
-          targets: string[]
           audience: string
           staff_only: boolean
           you_need: string | null
@@ -2860,6 +2887,7 @@ export type Database = {
           created_by: string | null
           updated_at: string
           updated_by: string | null
+          targets: string[]
         }
         Insert: {
           id?: string
@@ -2867,7 +2895,6 @@ export type Database = {
           summary?: string | null
           category_key?: string | null
           tags?: string[]
-          targets?: string[]
           audience?: string
           staff_only?: boolean
           you_need?: string | null
@@ -2882,6 +2909,7 @@ export type Database = {
           created_by?: string | null
           updated_at?: string
           updated_by?: string | null
+          targets?: string[]
         }
         Update: {
           id?: string
@@ -2889,7 +2917,6 @@ export type Database = {
           summary?: string | null
           category_key?: string | null
           tags?: string[]
-          targets?: string[]
           audience?: string
           staff_only?: boolean
           you_need?: string | null
@@ -2904,6 +2931,7 @@ export type Database = {
           created_by?: string | null
           updated_at?: string
           updated_by?: string | null
+          targets?: string[]
         }
         Relationships: [
             {
@@ -5495,7 +5523,6 @@ export type Database = {
           link_source: string
           link_type_filter: string | null
           presentation_order: number
-          fail_response: string
           created_at: string
           created_by: string | null
           updated_at: string | null
@@ -5514,6 +5541,7 @@ export type Database = {
           retired_on: string | null
           retired_reason: string | null
           retired_by: string | null
+          fail_response: string
         }
         Insert: {
           id?: string
@@ -5529,7 +5557,6 @@ export type Database = {
           link_source?: string
           link_type_filter?: string | null
           presentation_order?: number
-          fail_response?: string
           created_at?: string
           created_by?: string | null
           updated_at?: string | null
@@ -5548,6 +5575,7 @@ export type Database = {
           retired_on?: string | null
           retired_reason?: string | null
           retired_by?: string | null
+          fail_response?: string
         }
         Update: {
           id?: string
@@ -5563,7 +5591,6 @@ export type Database = {
           link_source?: string
           link_type_filter?: string | null
           presentation_order?: number
-          fail_response?: string
           created_at?: string
           created_by?: string | null
           updated_at?: string | null
@@ -5582,6 +5609,7 @@ export type Database = {
           retired_on?: string | null
           retired_reason?: string | null
           retired_by?: string | null
+          fail_response?: string
         }
         Relationships: [
             {
@@ -5899,7 +5927,6 @@ export type Database = {
           floor_id: string | null
           session_name: string | null
           total_components_count: number
-          guide_versions: Json | null
           inspected_components_count: number
           status: string
           started_at: string
@@ -5912,6 +5939,7 @@ export type Database = {
           updated_at: string
           definition_id: string | null
           trigger_component_id: string | null
+          guide_versions: Json | null
         }
         Insert: {
           id?: string
@@ -5924,7 +5952,6 @@ export type Database = {
           floor_id?: string | null
           session_name?: string | null
           total_components_count?: number
-          guide_versions?: Json | null
           inspected_components_count?: number
           status?: string
           started_at?: string
@@ -5937,6 +5964,7 @@ export type Database = {
           updated_at?: string
           definition_id?: string | null
           trigger_component_id?: string | null
+          guide_versions?: Json | null
         }
         Update: {
           id?: string
@@ -5949,7 +5977,6 @@ export type Database = {
           floor_id?: string | null
           session_name?: string | null
           total_components_count?: number
-          guide_versions?: Json | null
           inspected_components_count?: number
           status?: string
           started_at?: string
@@ -5962,6 +5989,7 @@ export type Database = {
           updated_at?: string
           definition_id?: string | null
           trigger_component_id?: string | null
+          guide_versions?: Json | null
         }
         Relationships: [
             {
@@ -6307,22 +6335,22 @@ export type Database = {
               foreignKeyName: "workflow_moves_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
-            },
-            {
-              foreignKeyName: "workflow_moves_workflow_id_fkey"
-              columns: ["workflow_id"]
-              isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
-            },
-            {
-              foreignKeyName: "workflow_moves_workflow_id_fkey"
-              columns: ["workflow_id"]
-              isOneToOne: false
               referencedRelation: "workflows"
               referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "workflow_moves_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
+            },
+            {
+              foreignKeyName: "workflow_moves_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
             },
             {
               foreignKeyName: "workflow_moves_from_key_fkey"
