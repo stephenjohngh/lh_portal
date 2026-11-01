@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema38.csv
+// Source: docs/ops/supabase_lhportal_schema39.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -1694,8 +1694,22 @@ export type Database = {
               isOneToOne: false
               referencedRelation: "dossier_pack_folders"
               referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "dossier_pack_folders_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "dossier_pack_folders_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
             }
-        ]
+          ]
       }
       dossier_packs: {
         Row: {
@@ -1745,13 +1759,6 @@ export type Database = {
         }
         Relationships: [
             {
-              foreignKeyName: "dossier_packs_folder_id_fkey"
-              columns: ["folder_id"]
-              isOneToOne: false
-              referencedRelation: "dossier_pack_folders"
-              referencedColumns: ["id"]
-            },
-            {
               foreignKeyName: "dossier_packs_created_by_fkey"
               columns: ["created_by"]
               isOneToOne: false
@@ -1770,6 +1777,13 @@ export type Database = {
               columns: ["template_id"]
               isOneToOne: false
               referencedRelation: "dossier_packs"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "dossier_packs_folder_id_fkey"
+              columns: ["folder_id"]
+              isOneToOne: false
+              referencedRelation: "dossier_pack_folders"
               referencedColumns: ["id"]
             }
           ]

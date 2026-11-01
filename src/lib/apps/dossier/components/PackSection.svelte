@@ -39,6 +39,8 @@
   export let selectedId = null;
 
   const dispatch = createEventDispatcher();
+  // "Top level" needs a value of its own: an empty one is the select's placeholder.
+  const TOP = '__top';
 
   let collapsed = {};
   /** @type {'' | 'new' | 'rename' | 'move' | 'movePack'} */
@@ -58,11 +60,11 @@
   $: if (selectedId && !folders.some(f => f.id === selectedId)) selectedId = null;
 
   $: moveChoices = selected
-    ? folderMoveTargets(folders, selected.id).map(id => ({ value: id ?? '', label: id ? folderLabel(folders, id) : 'Top level' }))
+    ? folderMoveTargets(folders, selected.id).map(id => ({ value: id ?? TOP, label: id ? folderLabel(folders, id) : 'Top level' }))
     : [];
   // A dossier can only go in a folder of ITS owner (an admin moving someone else's pack).
   $: packChoices = movingPack
-    ? [{ value: '', label: 'Top level' },
+    ? [{ value: TOP, label: 'Top level' },
        ...folders.filter(f => kind === 'template' || f.created_by === movingPack.created_by)
          .map(f => ({ value: f.id, label: folderLabel(folders, f.id) }))
          .sort((a, b) => a.label.localeCompare(b.label, 'en-GB', { numeric: true }))]
@@ -73,10 +75,10 @@
     mode = mode === m ? '' : m;
     if (mode === 'new') nameValue = '';
     if (mode === 'rename') nameValue = selected?.name ?? '';
-    if (mode === 'move') moveValue = selected?.parent_id ?? '';
+    if (mode === 'move') moveValue = selected?.parent_id ?? TOP;
   }
   function startMovePack(pack) {
-    error = ''; movingPack = pack; moveValue = pack.folder_id ?? ''; mode = 'movePack';
+    error = ''; movingPack = pack; moveValue = pack.folder_id ?? TOP; mode = 'movePack';
   }
   async function run(fn) {
     busy = true; error = '';
@@ -98,7 +100,7 @@
     mode = '';
   });
   const moveFolder = () => run(async () => {
-    const to = moveValue || null;
+    const to = moveValue && moveValue !== TOP ? moveValue : null;
     const problem = folderNameProblem(folders, to, selected.name, selected.id);
     if (problem) throw new Error(problem);
     await dossierStore.movePackFolder(selected.id, to, await currentUserId());
@@ -106,8 +108,9 @@
     mode = '';
   });
   const movePackTo = () => run(async () => {
-    await dossierStore.movePack(movingPack.id, moveValue || null, await currentUserId());
-    if (moveValue) collapsed = { ...collapsed, [moveValue]: false };
+    const to = moveValue && moveValue !== TOP ? moveValue : null;
+    await dossierStore.movePack(movingPack.id, to, await currentUserId());
+    if (to) collapsed = { ...collapsed, [moveValue]: false };
     movingPack = null; mode = '';
   });
 

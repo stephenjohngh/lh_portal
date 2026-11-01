@@ -81,7 +81,7 @@ describe('PackFiles', () => {
     render(PackFiles, { pack, canEdit: true, isAdmin: false });
     await fireEvent.click(screen.getByText('top floor.png'));
     await fireEvent.click(screen.getByRole('button', { name: /move/i }));
-    await fireEvent.change(screen.getByLabelText(/move to/i), { target: { value: '' } });
+    await fireEvent.change(screen.getByLabelText(/move to/i), { target: { value: '__top' } });
     await fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
     await waitFor(() => expect(h.store.placeFile).toHaveBeenCalledWith('f2', 'p1', null, 'u1'));
   });

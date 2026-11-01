@@ -122,7 +122,7 @@ describe('PackList', () => {
     render(PackList, { packs });
     const row = screen.getByText('Flat 4 survey').closest('[data-testid="pack-row"]');
     await fireEvent.click(within(row).getByRole('button', { name: 'Move…' }));
-    await fireEvent.change(screen.getByLabelText(/move “flat 4 survey” to/i), { target: { value: '' } });
+    await fireEvent.change(screen.getByLabelText(/move “flat 4 survey” to/i), { target: { value: '__top' } });
     await fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
     await waitFor(() => expect(h.store.movePack).toHaveBeenCalledWith('d1', null, 'u1'));
   });

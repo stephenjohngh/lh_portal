@@ -336,6 +336,10 @@
             "asset",
             "doc"
         ],
+        "dossier_pack_folders.kind": [
+            "dossier",
+            "template"
+        ],
         "dossier_publications.mode": [
             "latest",
             "snapshot"

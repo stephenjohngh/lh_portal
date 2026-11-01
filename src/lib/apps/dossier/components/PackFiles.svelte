@@ -32,6 +32,8 @@
   export let templateTitle = '';
 
   const dispatch = createEventDispatcher();
+  // "Top level" needs a value of its own: an empty one is the select's placeholder.
+  const TOP = '__top';
 
   $: folders = $dossierStore.folders;
   $: files = $dossierStore.files;
@@ -72,8 +74,8 @@
   $: moveOptions = selFolder
     ? folderMoveTargets(folders, selFolder.id)
     : selFile ? [null, ...folders.map(f => f.id)] : [];
-  $: moveChoices = moveOptions.map(id => ({ value: id ?? '', label: id ? folderLabel(folders, id) : 'Top level' }))
-    .sort((a, b) => (a.value === '' ? -1 : b.value === '' ? 1 : a.label.localeCompare(b.label, 'en-GB', { numeric: true })));
+  $: moveChoices = moveOptions.map(id => ({ value: id ?? TOP, label: id ? folderLabel(folders, id) : 'Top level' }))
+    .sort((a, b) => (a.value === TOP ? -1 : b.value === TOP ? 1 : a.label.localeCompare(b.label, 'en-GB', { numeric: true })));
 
   function choose(e) {
     selected = e.detail; mode = ''; error = '';
@@ -83,7 +85,7 @@
     mode = mode === m ? '' : m;
     if (mode === 'newFolder') nameValue = '';
     if (mode === 'rename') { nameValue = selFolder?.name ?? selFile?.display_name ?? selFile?.filename ?? ''; descValue = selFile?.description ?? ''; }
-    if (mode === 'move') moveValue = selFolder ? (selFolder.parent_id ?? '') : (placementMap(placements).get(selFile?.id) ?? '');
+    if (mode === 'move') moveValue = selFolder ? (selFolder.parent_id ?? TOP) : (placementMap(placements).get(selFile?.id) ?? TOP);
   }
 
   async function run(fn) {
@@ -120,7 +122,7 @@
   });
 
   const move = () => run(async () => {
-    const to = moveValue || null;
+    const to = moveValue && moveValue !== TOP ? moveValue : null;
     const user = await currentUserId();
     if (selFolder) await dossierStore.moveFolder(selFolder.id, to, user);
     else if (selFile) await dossierStore.placeFile(selFile.id, pack.id, to, user);
