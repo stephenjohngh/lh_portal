@@ -88,7 +88,9 @@ function touch(userId) {
  * @typedef {{
  *   packs: Pack[], loading: boolean, error: string|null,
  *   activePackId: string|null, docs: Doc[], loadingDocs: boolean,
- *   files: LibraryFile[], folders: Folder[], placements: Placement[]
+ *   files: LibraryFile[], folders: Folder[], placements: Placement[],
+ *   inheritedFiles: LibraryFile[], inheritedFolders: Folder[], inheritedPlacements: Placement[],
+ *   inheritedError: string|null
  * }} DossierState
  */
 
@@ -104,6 +106,10 @@ function createDossierStore() {
     files:        [],   // document_library rows on this pack's shelf
     folders:      [],   // the file tree's folders (migration 274)
     placements:   [],   // which folder each non-top-level file is in
+    // The open dossier's TEMPLATE's files, read-only (migration 275). Never
+    // mixed into `files`: those are the pack's own, the ones it may change.
+    inheritedFiles: [], inheritedFolders: [], inheritedPlacements: [],
+    inheritedError: null,
     datasets:     [],   // the pack's structured lists (chronology etc.)
     // EVERY record in the pack, not just the open table's. The broken-reference
     // check has to see rows in tables the author has not opened, and P3's
@@ -136,6 +142,10 @@ function createDossierStore() {
       title:       data.title,
       description: data.description ?? null,
       status:      'active',
+      // A template is made by an administrator (the database refuses anyone
+      // else); a dossier may record the template it was copied from.
+      is_template: data.is_template === true,
+      template_id: data.template_id ?? null,
       created_by:  userId,
       ...touch(userId),
     }, true);
@@ -260,13 +270,27 @@ function createDossierStore() {
    * @param {string} userId
    */
   async function duplicatePack(source, options, userId) {
-    const { title, includeRecords = false, includeFiles = false } = options ?? {};
+    const fromTemplate = options?.fromTemplate === true;
+    // A dossier made FROM a template copies its pages and tables (one-off) and
+    // READS its files; its own folders and files are not part of what is copied.
+    const { title, includeRecords = fromTemplate ? true : false,
+            includeFiles = fromTemplate ? false : false } = options ?? {};
     const sourceId = source.id;
 
     const contents = await readPackContents(sourceId);
 
+    // Files the new pack shares rather than copies: the template's. Copying a
+    // dossier keeps its template, so its references to template files stay valid.
+    const templateId = fromTemplate ? sourceId : (source.template_id ?? null);
+    /** @type {Set<string>} */
+    let keepFiles = new Set();
+    if (fromTemplate) keepFiles = new Set(contents.files.map(f => f.id));
+    else if (templateId) {
+      keepFiles = new Set((await listDocuments({ entity_type: 'dossier_pack', entity_id: templateId })).map(f => f.id));
+    }
+
     const pack = await createPack({
-      title, description: source.description ?? null,
+      title, description: source.description ?? null, template_id: templateId,
     }, userId);
 
     try {
@@ -276,7 +300,7 @@ function createDossierStore() {
       let fileMap = new Map();
       let skippedFiles = [];
 
-      if (includeFiles && contents.files.length) {
+      if (!fromTemplate && includeFiles && contents.files.length) {
         const { postJson } = await import('#lib/utils/request.js');
         const result = await postJson('/api/dossier/copy-files', {
           sourcePackId: sourceId, targetPackId: pack.id,
@@ -286,7 +310,7 @@ function createDossierStore() {
       }
 
       const plan = planPackCopy(contents, {
-        packId: pack.id, includeRecords, files: fileMap,
+        packId: pack.id, includeRecords, files: fileMap, keepFiles,
       });
 
       // One insert statement per table. Referential integrity is checked at the
@@ -311,7 +335,7 @@ function createDossierStore() {
       // The file tree: new folder ids first (a child names its parent, and the
       // statement is one insert), then each COPIED file's placement. A file that
       // was not copied (files off, or over the copy bounds) has no copy to place.
-      if (contents.folders.length) {
+      if (!fromTemplate && contents.folders.length) {
         const folderMap = new Map(contents.folders.map(f => [f.id, newUuid()]));
         await api.createMany('dossier_folders', contents.folders.map(f => ({
           id: folderMap.get(f.id), pack_id: pack.id,
@@ -344,7 +368,7 @@ function createDossierStore() {
       logAudit('create', 'dossier_pack', pack.id, pack.title, {
         appId: 'dossier', eventCategory: 'dossier', severity: 'info',
         afterData: {
-          duplicated_from: sourceId, pages: plan.docs.length,
+          duplicated_from: sourceId, from_template: fromTemplate, pages: plan.docs.length,
           tables: plan.datasets.length, entries: plan.records.length,
           files: fileMap.size,
         },
@@ -373,7 +397,9 @@ function createDossierStore() {
   // can see the shelf without reaching into that component.
 
   async function loadPackFiles(packId) {
-    if (!packId) { update(s => ({ ...s, files: [], folders: [], placements: [] })); return []; }
+    const none = { files: [], folders: [], placements: [], inheritedFiles: [], inheritedFolders: [], inheritedPlacements: [], inheritedError: null };
+    if (!packId) { update(s => ({ ...s, ...none })); return []; }
+    const templateId = getState().packs.find(p => p.id === packId)?.template_id ?? null;
     try {
       const [files, folders, placements] = await Promise.all([
         listDocuments({ entity_type: 'dossier_pack', entity_id: packId }),
@@ -382,13 +408,40 @@ function createDossierStore() {
           filters: { pack_id: packId }, orderBy: 'document_id', tiebreak: false }),
       ]);
       update(s => ({ ...s, files, folders, placements }));
-      return files;
     } catch (err) {
       // Non-fatal: a pack is still perfectly editable without its shelf.
       logger('⚠ could not load pack files', err);
-      update(s => ({ ...s, files: [], folders: [], placements: [] }));
+      update(s => ({ ...s, ...none }));
       return [];
     }
+
+    // The template's files are a separate read that can fail on its own. When it
+    // does the dossier must SAY so — a page showing a template image would
+    // otherwise read as a missing file, which is a different (and false) claim.
+    if (templateId) {
+      try {
+        const [inheritedFiles, inheritedFolders, inheritedPlacements] = await Promise.all([
+          listDocuments({ entity_type: 'dossier_pack', entity_id: templateId }),
+          api.getAll('dossier_folders', { filters: { pack_id: templateId }, orderBy: 'name' }),
+          api.getAll('dossier_file_placements', {
+            filters: { pack_id: templateId }, orderBy: 'document_id', tiebreak: false }),
+        ]);
+        update(s => ({ ...s, inheritedFiles, inheritedFolders, inheritedPlacements, inheritedError: null }));
+      } catch (err) {
+        logger('⚠ could not load the template files', err);
+        update(s => ({ ...s, inheritedFiles: [], inheritedFolders: [], inheritedPlacements: [],
+          inheritedError: 'The template’s files could not be read, so pictures from the template will show as missing.' }));
+      }
+    } else {
+      update(s => ({ ...s, inheritedFiles: [], inheritedFolders: [], inheritedPlacements: [], inheritedError: null }));
+    }
+    return getState().files;
+  }
+
+  /** The dossiers made from a template (an admin sees every pack, so this is complete for one). */
+  async function templateUsers(templateId) {
+    const rows = await api.getAll('dossier_packs', { filters: { template_id: templateId }, orderBy: 'title' });
+    return rows ?? [];
   }
 
   // ── The file tree (migration 274) ────────────────────────────────────────
@@ -851,6 +904,7 @@ function createDossierStore() {
   function closePack() {
     update(s => ({
       ...s, activePackId: null, docs: [], files: [], folders: [], placements: [],
+      inheritedFiles: [], inheritedFolders: [], inheritedPlacements: [], inheritedError: null,
       datasets: [], records: [], publications: [],
     }));
   }
@@ -1071,7 +1125,7 @@ function createDossierStore() {
     readPackContents, duplicatePack,
     loadDatasets, createDataset, deleteDataset,
     createRecord, createRecords, updateRecord, deleteRecord,
-    loadDocs, closePack, loadPackFiles, createFolder, renameFolder, moveFolder, deleteFolder, placeFile,
+    loadDocs, closePack, loadPackFiles, templateUsers, createFolder, renameFolder, moveFolder, deleteFolder, placeFile,
     addFile, patchFile, removeFile, createDoc, renameDoc, deleteDoc, applyMove, saveDocBlocks,
     saveVersion, loadRevisions, restoreRevision, loadBacklinks,
     loadPublications, loadAllPublications, createPublication, revokePublication, deletePublication,

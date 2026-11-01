@@ -1016,3 +1016,86 @@ describe('deletePublication', () => {
     expect(h.api.delete).toHaveBeenCalled();
   });
 });
+
+describe('a dossier made from a template', () => {
+  const TEMPLATE = { id: 'tpl', title: 'Surveyor template', description: null, is_template: true };
+  const asset = (id) => ({ type: 'asset', attrs: { uid: 'a', document_id: id, provider_file_id: 'prov-' + id } });
+
+  function seedTemplate({ files = [], folders = [] } = {}) {
+    // readPackContents: docs, datasets, then (alongside listDocuments) folders, placements
+    h.api.get.mockResolvedValueOnce([{ id: 'd1', slug: 'roof', title: 'Roof', order_index: 0,
+      blocks: { type: 'doc', content: [asset('plan-1')] } }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce(folders)
+      .mockResolvedValueOnce([]);
+    h.listDocuments.mockResolvedValueOnce(files);
+  }
+  const rowsFor = (table) => h.api.createMany.mock.calls.find(c => c[0] === table)?.[1] ?? [];
+
+  it('records its template, keeps references to the template files, and copies no files or folders', async () => {
+    seedTemplate({ files: [{ id: 'plan-1' }, { id: 'plan-2' }], folders: [{ id: 'f1', pack_id: 'tpl', parent_id: null, name: 'Plans' }] });
+    const { plan } = await store.duplicatePack(TEMPLATE, { title: 'Flat 4 survey', fromTemplate: true }, 'u1');
+
+    expect(h.api.create).toHaveBeenCalledWith('dossier_packs',
+      expect.objectContaining({ template_id: 'tpl', is_template: false }), true);
+    const block = rowsFor('dossier_docs')[0].blocks.content[0];
+    expect(block.attrs).toMatchObject({ document_id: 'plan-1', provider_file_id: 'prov-plan-1' });
+    expect(plan.dropped.files).toBe(0);
+    expect(h.postJson).not.toHaveBeenCalled();
+    expect(rowsFor('dossier_folders')).toEqual([]);
+  });
+
+  it('copies the template pages and tables including their entries', async () => {
+    h.api.getAllIn.mockReset();
+    h.api.get.mockResolvedValueOnce([]).mockResolvedValueOnce([{ id: 's1', key: 'chronology', title: 'C' }]);
+    h.listDocuments.mockResolvedValueOnce([]);
+    h.api.getAllIn.mockResolvedValueOnce([{ id: 'r1', dataset_id: 's1', fields: { event: 'x' } }]);
+    await store.duplicatePack(TEMPLATE, { title: 'D', fromTemplate: true }, 'u1');
+    expect(rowsFor('dossier_records')).toHaveLength(1);
+  });
+
+  it('a copy of a dossier stays based on the same template and keeps its template-file references', async () => {
+    const dossier = { id: 'dos', title: 'Flat 4', template_id: 'tpl' };
+    h.api.get.mockResolvedValueOnce([{ id: 'd1', slug: 'roof', title: 'Roof', order_index: 0,
+      blocks: { type: 'doc', content: [asset('plan-1')] } }]).mockResolvedValueOnce([]);
+    h.listDocuments
+      .mockResolvedValueOnce([])                                  // the dossier's own files
+      .mockResolvedValueOnce([{ id: 'plan-1' }]);                 // the template's files
+    await store.duplicatePack(dossier, { title: 'Flat 4 (copy)' }, 'u1');
+    expect(h.api.create).toHaveBeenCalledWith('dossier_packs', expect.objectContaining({ template_id: 'tpl' }), true);
+    expect(rowsFor('dossier_docs')[0].blocks.content[0].attrs.document_id).toBe('plan-1');
+  });
+
+  it('lists the dossiers based on a template', async () => {
+    h.api.get.mockResolvedValueOnce([{ id: 'x', title: 'Flat 4' }]);
+    expect(await store.templateUsers('tpl')).toEqual([{ id: 'x', title: 'Flat 4' }]);
+    expect(h.api.get).toHaveBeenCalledWith('dossier_packs', expect.objectContaining({ filters: { template_id: 'tpl' } }));
+  });
+});
+
+describe('loading the template files', () => {
+  it('reads the template files read-only, separate from the pack\'s own', async () => {
+    await seed([{ id: 'dos', title: 'D', template_id: 'tpl', created_at: '2026-01-01T00:00:00Z' }]);
+    h.listDocuments.mockResolvedValueOnce([{ id: 'own' }]).mockResolvedValueOnce([{ id: 'tplfile' }]);
+    await store.loadPackFiles('dos');
+    expect(get(store).files.map(f => f.id)).toEqual(['own']);
+    expect(get(store).inheritedFiles.map(f => f.id)).toEqual(['tplfile']);
+    expect(get(store).inheritedError).toBeNull();
+  });
+
+  it('says so when the template files cannot be read, rather than showing nothing', async () => {
+    await seed([{ id: 'dos', title: 'D', template_id: 'tpl', created_at: '2026-01-01T00:00:00Z' }]);
+    h.listDocuments.mockResolvedValueOnce([]).mockRejectedValueOnce(new Error('nope'));
+    await store.loadPackFiles('dos');
+    expect(get(store).inheritedFiles).toEqual([]);
+    expect(get(store).inheritedError).toMatch(/template/i);
+  });
+
+  it('has no template files for a pack with no template', async () => {
+    await seed([{ id: 'solo', title: 'S', template_id: null, created_at: '2026-01-01T00:00:00Z' }]);
+    h.listDocuments.mockResolvedValueOnce([{ id: 'own' }]);
+    await store.loadPackFiles('solo');
+    expect(get(store).inheritedFiles).toEqual([]);
+    expect(h.listDocuments).toHaveBeenCalledTimes(1);
+  });
+});

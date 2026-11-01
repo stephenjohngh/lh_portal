@@ -24,6 +24,8 @@
   let appError      = '';
   let showPackModal = false;
   let editingPack   = null;
+  let creatingTemplate = false;   // the form is making a template, not a dossier
+  let startTemplateId  = '';      // a template to start the new dossier from
   let packModalRef;
 
   // null = the pack list; set = the authoring workspace for that pack.
@@ -109,8 +111,9 @@
 
   // ── Pack CRUD ─────────────────────────────────────────────────────────────
 
-  function openNewPack()     { editingPack = null; showPackModal = true; }
-  function openEditPack(p)   { editingPack = p;    showPackModal = true; }
+  function openNewPack(templateId = '') { editingPack = null; creatingTemplate = false; startTemplateId = templateId; showPackModal = true; }
+  function openNewTemplate() { editingPack = null; creatingTemplate = true; startTemplateId = ''; showPackModal = true; }
+  function openEditPack(p)   { editingPack = p; creatingTemplate = false; startTemplateId = ''; showPackModal = true; }
 
   async function handlePackSave(e) {
     // Capture before the await — Svelte 5 flushes effects synchronously, so
@@ -119,8 +122,21 @@
     const data   = e.detail;
     const userId = $auth.user.id;
     try {
-      if (target) await dossierStore.updatePack(target.id, data, userId);
-      else        await dossierStore.createPack(data, userId);
+      if (target) {
+        await dossierStore.updatePack(target.id, data, userId);
+      } else if (data.isTemplate) {
+        await dossierStore.createPack({ ...data, is_template: true }, userId);
+      } else if (data.templateId) {
+        // One-off copy of the template's pages and tables; its files are READ,
+        // not copied. Later changes to the template do not reach this dossier.
+        const template = packs.find(p => p.id === data.templateId);
+        if (!template) throw new Error('That template is no longer available.');
+        const { pack } = await dossierStore.duplicatePack(
+          template, { title: data.title, fromTemplate: true }, userId);
+        await dossierStore.updatePack(pack.id, { title: pack.title, description: data.description ?? null }, userId);
+      } else {
+        await dossierStore.createPack(data, userId);
+      }
       showPackModal = false;
       packModalRef?.done();
     } catch (err) {
@@ -196,7 +212,24 @@
     }
   }
 
-  function requestDelete(pack) { pendingDelete = pack; }
+  /**
+   * A template can be deleted once no dossier is based on it. While any is, say
+   * which — they are made from it, so deleting it first would break their pictures.
+   * (The database refuses too; this is the explanation, not the guard.)
+   */
+  async function requestDelete(pack) {
+    if (pack.is_template) {
+      try {
+        const users = await dossierStore.templateUsers(pack.id);
+        if (users.length) {
+          appError = `“${pack.title}” cannot be deleted yet: ${users.length} dossier${users.length === 1 ? ' is' : 's are'} based on it ` +
+            `(${users.slice(0, 5).map(u => u.title).join(', ')}${users.length > 5 ? ', …' : ''}). Delete ${users.length === 1 ? 'it' : 'them'} first.`;
+          return;
+        }
+      } catch (err) { appError = errMessage(err); return; }
+    }
+    pendingDelete = pack;
+  }
 
   async function confirmDelete() {
     const { id, title } = pendingDelete;
@@ -272,7 +305,9 @@
       <PackList
         {packs}
         loading={!ready || $dossierStore.loading}
-        on:new={openNewPack}
+        on:new={() => openNewPack()}
+        on:newTemplate={openNewTemplate}
+        on:useTemplate={(e) => openNewPack(e.detail.id)}
         on:open={(e)    => handleOpen(e.detail)}
         on:edit={(e)    => openEditPack(e.detail)}
         on:archive={(e) => handleArchive(e.detail)}
@@ -288,6 +323,9 @@
   bind:this={packModalRef}
   bind:show={showPackModal}
   pack={editingPack}
+  isTemplate={creatingTemplate}
+  templates={packs.filter(p => p.is_template && p.status !== 'archived')}
+  {startTemplateId}
   on:save={handlePackSave}
   on:close={() => showPackModal = false}
 />
@@ -309,7 +347,9 @@
   processing={!!deletingId}
   title="Delete pack?"
   message={pendingDelete
-    ? `"${pendingDelete.title}", every document inside it and its attached files will be permanently deleted, and any link sent from it will stop working. This cannot be undone.`
+    ? (pendingDelete.is_template
+        ? `The template "${pendingDelete.title}", its pages, tables and every file in it will be permanently deleted. No dossier is based on it. This cannot be undone.`
+        : `"${pendingDelete.title}", every document inside it and its attached files will be permanently deleted, and any link sent from it will stop working. This cannot be undone.`)
     : ''}
   confirmText="Delete"
   on:confirm={confirmDelete}

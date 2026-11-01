@@ -8,9 +8,16 @@
   import FormInput    from '#lib/components/common/FormInput.svelte';
   import FormTextarea from '#lib/components/common/FormTextarea.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
+  import FormSelect   from '#lib/components/common/FormSelect.svelte';
 
   export let show = false;
   export let pack = null;   // null = create, object = edit
+  /** Creating a TEMPLATE (an administrator's act) rather than a dossier. */
+  export let isTemplate = false;
+  /** Templates a new dossier can start from (not archived). */
+  export let templates = [];
+  /** Pre-selected when the person came from a template's own button. */
+  export let startTemplateId = '';
 
   const dispatch = createEventDispatcher();
 
@@ -19,16 +26,18 @@
   let saving      = false;
   let error       = '';
   let titleError  = '';
+  let templateId  = '';
 
   $: if (show) {
     title       = pack?.title       ?? '';
     description = pack?.description ?? '';
+    templateId  = pack ? '' : startTemplateId;
     error       = '';
     titleError  = '';
   }
 
   function validate() {
-    titleError = title.trim() ? '' : 'A pack needs a title';
+    titleError = title.trim() ? '' : (isTemplate ? 'A template needs a title' : 'A pack needs a title');
     return !titleError;
   }
 
@@ -38,6 +47,8 @@
     dispatch('save', {
       title:       title.trim(),
       description: description.trim() || null,
+      isTemplate,
+      templateId: templateId || null,
     });
   }
 
@@ -49,7 +60,7 @@
 
 <Modal
   bind:show
-  title={pack ? 'Edit Pack' : 'New Pack'}
+  title={pack ? (pack.is_template ? 'Edit Template' : 'Edit Pack') : isTemplate ? 'New Template' : 'New Pack'}
   size="small"
   on:close={handleClose}
 >
@@ -66,6 +77,21 @@
       disabled={saving}
     />
 
+    {#if !pack && !isTemplate && templates.length}
+      <FormSelect
+        label="Start from a template (optional)"
+        bind:value={templateId}
+        options={templates.map(t => ({ value: t.id, label: t.title }))}
+        placeholder="— a blank dossier —"
+        disabled={saving}
+        helpText="Copies the template's pages and tables once, and lets you use its files. Changes made to the template later do not reach this dossier."
+      />
+    {:else if pack?.template_id}
+      <p class="text-xs text-slate-500">
+        Made from the template “{templates.find(t => t.id === pack.template_id)?.title ?? 'a template'}”. A dossier's template cannot be changed.
+      </p>
+    {/if}
+
     <FormTextarea
       label="Description"
       bind:value={description}
@@ -81,7 +107,7 @@
     <Button variant="primary" size="large" fullWidth={true}
             loading={saving} disabled={saving}
             on:click={handleSubmit}>
-      {pack ? 'Save Changes' : 'Create Pack'}
+      {pack ? 'Save Changes' : isTemplate ? 'Create Template' : templateId ? 'Create from template' : 'Create Pack'}
     </Button>
   </div>
 </Modal>

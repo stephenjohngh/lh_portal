@@ -59,6 +59,10 @@ export function remapBlocks(blocks, maps = {}, mint = newUuid) {
   const docMap  = maps.docs     ?? new Map();
   const setMap  = maps.datasets ?? new Map();
   const fileMap = maps.files    ?? new Map();
+  // Files the copy SHARES with the source's template instead of copying: a
+  // reference to one is left exactly as it is (it already points at the right
+  // file, and the file is not owned by either pack).
+  const keepFiles = maps.keepFiles ?? new Set();
   const dropped = { docs: 0, datasets: 0, files: 0 };
 
   /** @param {any} node */
@@ -73,7 +77,9 @@ export function remapBlocks(blocks, maps = {}, mint = newUuid) {
       // Every addressable block gets a fresh identity in the copy.
       if (attrs.uid) attrs.uid = mint();
 
-      if (out.type === ASSET_NODE && attrs.document_id) {
+      if (out.type === ASSET_NODE && attrs.document_id && keepFiles.has(attrs.document_id)) {
+        // shared template file: keep document_id, provider_file_id and preview
+      } else if (out.type === ASSET_NODE && attrs.document_id) {
         const target = fileMap.get(attrs.document_id);
         if (target) {
           attrs.document_id      = target.id;
@@ -140,11 +146,12 @@ export function remapBlocks(blocks, maps = {}, mint = newUuid) {
  * @param {boolean} [options.includeRecords]
  * @param {Map<string,{ id: string, provider_file_id?: string }>} [options.files]
  *        source document_library id → the copy that replaces it
+ * @param {Set<string>} [options.keepFiles] files shared with the source's template, referenced as they are
  * @param {() => string} [options.mint]
  */
 export function planPackCopy(
   { docs = [], datasets = [], records = [] } = {},
-  { packId, includeRecords = false, files = new Map(), mint = newUuid } = {},
+  { packId, includeRecords = false, files = new Map(), keepFiles = new Set(), mint = newUuid } = {},
 ) {
   // ── 1. Mint every id up front, so the maps are complete before any rewrite.
   const docMap = new Map(docs.map(d => [d.id, mint()]));
@@ -154,7 +161,7 @@ export function planPackCopy(
 
   // ── 2. Pages, with their blocks rewritten and their tree re-pointed.
   const newDocs = docs.map((doc) => {
-    const result = remapBlocks(doc.blocks, { docs: docMap, datasets: setMap, files }, mint);
+    const result = remapBlocks(doc.blocks, { docs: docMap, datasets: setMap, files, keepFiles }, mint);
     dropped.docs     += result.dropped.docs;
     dropped.datasets += result.dropped.datasets;
     dropped.files    += result.dropped.files;
@@ -186,8 +193,9 @@ export function planPackCopy(
     ? records
         .filter(r => setMap.has(r.dataset_id))
         .map((r) => {
+          const shared = !!r.document_id && keepFiles.has(r.document_id);
           const file = r.document_id ? files.get(r.document_id) : null;
-          if (r.document_id && !file) dropped.files++;
+          if (r.document_id && !file && !shared) dropped.files++;
           return {
             id:         mint(),
             dataset_id: setMap.get(r.dataset_id),
@@ -195,7 +203,7 @@ export function planPackCopy(
             position:   r.position ?? 0,
             // A row's evidence and its "detail is here" page are references
             // like any other, and rot the same way if they are not remapped.
-            document_id: file?.id ?? null,
+            document_id: shared ? r.document_id : (file?.id ?? null),
             doc_id:      r.doc_id ? (docMap.get(r.doc_id) ?? null) : null,
           };
         })

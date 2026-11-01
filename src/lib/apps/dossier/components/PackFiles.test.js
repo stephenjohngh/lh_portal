@@ -33,10 +33,12 @@ const files = [
 ];
 const placements = [{ document_id: 'f2', pack_id: 'p1', folder_id: 'bbbbbbbb-2222' }];
 
+const state = (extra = {}) => ({ folders, files, placements, inheritedFiles: [], inheritedFolders: [], inheritedPlacements: [], inheritedError: null, ...extra });
+
 beforeEach(() => {
   cleanup();
   vi.clearAllMocks();
-  h.store.set({ folders, files, placements });
+  h.store.set(state());
   h.uploadDocument.mockImplementation(async (f) => ({ id: 'n-' + f.name, display_name: f.name }));
 });
 
@@ -96,5 +98,33 @@ describe('PackFiles', () => {
     render(PackFiles, { pack, canEdit: false, isAdmin: false });
     expect(screen.queryByRole('toolbar')).toBeNull();
     expect(screen.getByText('roof.png')).toBeInTheDocument();
+  });
+
+  it('shows the template files read-only, with no actions on them but Open', async () => {
+    h.store.set(state({
+      inheritedFolders: [{ id: 'tf', pack_id: 'tpl', parent_id: null, name: 'New plans' }],
+      inheritedFiles: [{ id: 'tfile', display_name: 'ground floor.png', mime_type: 'image/png', file_size: 5, web_view_url: 'x' }],
+      inheritedPlacements: [{ document_id: 'tfile', pack_id: 'tpl', folder_id: 'tf' }],
+    }));
+    render(PackFiles, { pack: { ...pack, template_id: 'tpl' }, templateTitle: 'Surveyor template', canEdit: true, isAdmin: true });
+    const tpl = screen.getByTestId('template-files');
+    expect(tpl).toHaveTextContent('Surveyor template');
+    expect(tpl).toHaveTextContent('New plans');
+    expect(tpl).toHaveTextContent('ground floor.png');
+    // selecting a template file offers Open and nothing that changes it
+    await fireEvent.click(screen.getByText('ground floor.png'));
+    expect(screen.getByRole('link', { name: /open ground floor/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /rename|delete/i }).every(b => b.disabled || !tpl.contains(b))).toBe(true);
+  });
+
+  it('says so when the template files could not be read', () => {
+    h.store.set(state({ inheritedError: 'The template’s files could not be read, so pictures from the template will show as missing.' }));
+    render(PackFiles, { pack: { ...pack, template_id: 'tpl' }, canEdit: true });
+    expect(screen.getByTestId('template-files')).toHaveTextContent(/could not be read/);
+  });
+
+  it('has no template section for a pack with no template', () => {
+    render(PackFiles, { pack, canEdit: true });
+    expect(screen.queryByTestId('template-files')).toBeNull();
   });
 });

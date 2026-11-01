@@ -259,3 +259,30 @@ describe('describePackCopy', () => {
       .toBe('The copy will have 1 page, 0 tables.');
   });
 });
+
+describe('shared template files (keepFiles)', () => {
+  const asset = (id) => ({ type: 'asset', attrs: { uid: 'a', document_id: id, provider_file_id: 'prov-' + id, sheet_preview: { rows: [1] } } });
+
+  it('leaves a reference to a shared template file exactly as it is', () => {
+    const { blocks, dropped } = remapBlocks({ type: 'doc', content: [asset('tpl-file')] },
+      { keepFiles: new Set(['tpl-file']) }, counter());
+    expect(blocks.content[0].attrs).toMatchObject({ document_id: 'tpl-file', provider_file_id: 'prov-tpl-file' });
+    expect(blocks.content[0].attrs.sheet_preview).toEqual({ rows: [1] });
+    expect(dropped.files).toBe(0);
+  });
+
+  it('still empties a reference to a file that is neither copied nor shared', () => {
+    const { blocks, dropped } = remapBlocks({ type: 'doc', content: [asset('other')] },
+      { keepFiles: new Set(['tpl-file']) }, counter());
+    expect(blocks.content[0].attrs.document_id).toBeNull();
+    expect(dropped.files).toBe(1);
+  });
+
+  it('keeps a table row evidence link to a shared file', () => {
+    const plan = planPackCopy(
+      { docs: [], datasets: [{ id: 'd', key: 'k', title: 't' }], records: [{ dataset_id: 'd', document_id: 'tpl-file', fields: {} }] },
+      { packId: 'p', includeRecords: true, keepFiles: new Set(['tpl-file']), mint: counter() });
+    expect(plan.records[0].document_id).toBe('tpl-file');
+    expect(plan.dropped.files).toBe(0);
+  });
+});

@@ -47,7 +47,7 @@ export async function GET({ params, request }) {
   // Read with the service role, AFTER the check above has established that this
   // caller may see the pack. Same shape as the publication reader.
   const [{ data: pack }, { data: docs }, { data: datasets }] = await Promise.all([
-    db.from('dossier_packs').select('id, title, description').eq('id', packId).maybeSingle(),
+    db.from('dossier_packs').select('id, title, description, template_id').eq('id', packId).maybeSingle(),
     db.from('dossier_docs')
       .select('id, slug, title, parent_doc_id, order_index, blocks')
       .eq('pack_id', packId).order('order_index', { ascending: true }),
@@ -64,9 +64,26 @@ export async function GET({ params, request }) {
   // the pack's files and no note of the omission — files that fail ONE BY ONE
   // are listed as omitted below, but a failed list skipped even that
   // (2026-10-03, §6ccc item 2). The request now fails and says why.
-  const files = await listDocuments({
+  let files = await listDocuments({
     entity_type: 'dossier_pack', entity_id: packId,
   });
+
+  // A dossier made from a template READS the template's files, so the copy to keep
+  // must carry the ones its pages and tables actually use (never the whole template:
+  // it can hold hundreds). The caller is asked about the template as well — the
+  // service role would otherwise read it for anyone.
+  if (pack.template_id) {
+    const tplAllowed = await canListDocuments(
+      { entity_type: 'dossier_pack', entity_id: pack.template_id },
+      { isAdmin: auth.isAdmin, token: bearerToken(request) });
+    if (tplAllowed.ok) {
+      const used = JSON.stringify([docs ?? [], records ?? []]);
+      const templateFiles = await listDocuments({
+        entity_type: 'dossier_pack', entity_id: pack.template_id,
+      });
+      files = [...(files ?? []), ...templateFiles.filter(f => used.includes(f.id))];
+    }
+  }
 
   const result = await buildPackArchive({
     content: {

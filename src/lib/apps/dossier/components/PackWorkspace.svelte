@@ -44,7 +44,7 @@
   import PublishModal      from './PublishModal.svelte';
   import PublicationsPanel from './PublicationsPanel.svelte';
   import {
-    buildSnapshot, buildManifest, describeInclusion, prepareAssets,
+    buildSnapshot, buildManifest, describeInclusion, prepareAssets, referencedFileIds,
   } from '../utils/snapshot.js';
   import { expiryFromDays, publicationState } from '../utils/publicationState.js';
   import { MAX_PREVIEW_ROWS as DEFAULT_SHEET_ROWS } from '../utils/sheetPreview.js';
@@ -84,7 +84,8 @@
   }
   $: tree        = buildTree(docs);
   $: selectedDoc = docs.find(d => d.id === selectedId) ?? null;
-  $: canEdit     = $permissions.isAdmin || $permissions.canModify;
+  // A template is changed by an administrator only; everyone with the grant may read it.
+  $: canEdit     = pack.is_template ? $permissions.isAdmin : ($permissions.isAdmin || $permissions.canModify);
 
   // How many pages a delete would take with it.
   $: pendingSubtree = pendingDelete ? descendantIds(docs, pendingDelete.id) : [];
@@ -178,7 +179,11 @@
   // The picker reads the shelf from the store; AttachedDocuments keeps its own
   // copy for the panel, so both are refreshed when a file is added or removed.
   let showAssetPicker = false;
-  $: files = $dossierStore.files;
+  // `ownFiles` are this pack's (it may change them); `files` is what a page can SHOW —
+  // its own plus the template's. The document index and the Files panel use ownFiles.
+  $: ownFiles = $dossierStore.files;
+  $: files = [...ownFiles, ...$dossierStore.inheritedFiles];
+  $: templatePack = pack.template_id ? $dossierStore.packs.find(p => p.id === pack.template_id) ?? null : null;
 
   async function handlePickAsset(file) {
     // The same picker serves the editor and a table row; only one of them is
@@ -417,7 +422,7 @@
 
   async function handleAddFromShelf() {
     const dataset = selectedDataset;      // capture before the await
-    const rows = shelfIndexRows(unindexedFiles(files, records.filter(
+    const rows = shelfIndexRows(unindexedFiles(ownFiles, records.filter(
       r => r.dataset_id === dataset.id)));
     if (!rows.length) return;
     try {
@@ -681,7 +686,14 @@
     // read once at PUBLISH instead (see handlePublish): pinning here would
     // leave an orphaned copy behind every time an author looked and thought
     // better of it.
-    reviewedSnapshot = buildSnapshot({ pack, docs, datasets, records, files });
+    // The pack's own files, plus ONLY the template files something here uses: the
+    // manifest is an allow-list and the files are checked (and pinned) one by one,
+    // so a template of hundreds must not ride along.
+    const used = referencedFileIds({ docs, records });
+    reviewedSnapshot = buildSnapshot({
+      pack, docs, datasets, records,
+      files: [...ownFiles, ...$dossierStore.inheritedFiles.filter(f => used.has(f.id))],
+    });
     publishReview = describeInclusion(
       reviewedSnapshot, buildManifest(reviewedSnapshot));
     preparing = false;
@@ -821,6 +833,13 @@
     {#if pack.status === 'archived'}
       <span class="text-xs px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">Archived</span>
     {/if}
+    {#if pack.is_template}
+      <span class="text-xs px-1.5 py-0.5 rounded bg-purple-900/50 border border-purple-700/60 text-purple-200"
+            title="Dossiers are made from this; it is never published">Template{canEdit ? '' : ' (read only)'}</span>
+    {:else if pack.template_id}
+      <span class="text-xs px-1.5 py-0.5 rounded bg-slate-700 text-slate-300 truncate"
+            title="Copied once from this template. Later changes to the template do not reach this dossier.">From template: {templatePack?.title ?? '…'}</span>
+    {/if}
 
     <div class="flex-1"></div>
 
@@ -845,9 +864,11 @@
               on:click={downloadArchive}>
         {archiving ? 'Preparing…' : 'Download'}
       </Button>
-      <Button variant="primary" size="small" className="shrink-0" on:click={openPublish}>
-        Publish
-      </Button>
+      {#if !pack.is_template}
+        <Button variant="primary" size="small" className="shrink-0" on:click={openPublish}>
+          Publish
+        </Button>
+      {/if}
     {/if}
   </div>
 
@@ -995,6 +1016,7 @@
           <div class="flex-1 min-h-0 overflow-y-auto px-3 pb-3">
             <PackFiles
               {pack}
+              templateTitle={templatePack?.title ?? ''}
               {canEdit}
               isAdmin={$permissions.isAdmin}
               on:changed={(e) => auditDoc(e.detail.action, e.detail.doc)}
@@ -1246,8 +1268,9 @@
 <AssetPickerModal
   bind:show={showAssetPicker}
   {files}
-  folders={$dossierStore.folders}
-  placements={$dossierStore.placements}
+  folders={[...$dossierStore.folders, ...$dossierStore.inheritedFolders]}
+  placements={[...$dossierStore.placements, ...$dossierStore.inheritedPlacements]}
+  fromTemplate={new Set($dossierStore.inheritedFiles.map(f => f.id))}
   on:pick={(e) => handlePickAsset(e.detail)}
   on:close={() => { showAssetPicker = false; linkingRecord = null; }}
 />

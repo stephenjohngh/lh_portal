@@ -28,6 +28,8 @@
   export let pack;
   export let canEdit = false;
   export let isAdmin = false;
+  /** The template this dossier was made from ('' for none). Its files are shown read-only. */
+  export let templateTitle = '';
 
   const dispatch = createEventDispatcher();
 
@@ -35,6 +37,11 @@
   $: files = $dossierStore.files;
   $: placements = $dossierStore.placements;
   $: tree = buildFileTree(folders, files, placements);
+  $: inheritedTree = buildFileTree($dossierStore.inheritedFolders, $dossierStore.inheritedFiles, $dossierStore.inheritedPlacements);
+  $: hasInherited = $dossierStore.inheritedFiles.length > 0 || $dossierStore.inheritedFolders.length > 0;
+  let tplSelected = null;
+  let tplCollapsed = {};
+  $: tplFile = tplSelected?.kind === 'file' ? $dossierStore.inheritedFiles.find(f => f.id === tplSelected.id) : null;
 
   /** @type {{ kind: 'folder'|'file', id: string }|null} */
   let selected = null;
@@ -125,7 +132,9 @@
   let pendingDelete = null;
   $: deleteMessage = !pendingDelete ? '' : pendingDelete.kind === 'folder'
     ? folderDeleteMessage(pendingDelete.id)
-    : `Delete '${pendingDelete.name}'? Any page that shows it will show a missing file. This cannot be undone.`;
+    : `Delete '${pendingDelete.name}'? Any page that shows it will show a missing file.` +
+      (pack.is_template ? ' Dossiers made from this template show it too, so they will lose it as well.' : '') +
+      ' This cannot be undone.';
 
   function folderDeleteMessage(id) {
     const node = findNode(tree.folders, id);
@@ -261,6 +270,27 @@
     <p class="text-xs text-slate-600 italic py-2">No files yet.</p>
   {:else}
     <FileTreeNode folders={tree.folders} files={tree.rootFiles} {selected} bind:collapsed on:select={choose} />
+  {/if}
+
+  {#if pack.template_id}
+    <!-- The template's files: read-only here. A dossier uses them but never changes
+         or deletes them; its own files are separate and sit above. -->
+    <div class="mt-3 border-t border-slate-700/60 pt-2" data-testid="template-files">
+      <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">From the template{templateTitle ? ` · ${templateTitle}` : ''}</p>
+      {#if $dossierStore.inheritedError}
+        <p class="text-xs text-amber-400 mt-1">{$dossierStore.inheritedError}</p>
+      {:else if !hasInherited}
+        <p class="text-xs text-slate-600 italic py-1">The template has no files.</p>
+      {:else}
+        <p class="text-[10px] text-slate-500 mb-1">Read only. Insert them into a page from the file picker.</p>
+        <FileTreeNode folders={inheritedTree.folders} files={inheritedTree.rootFiles} selected={tplSelected}
+                      bind:collapsed={tplCollapsed} on:select={(e) => tplSelected = e.detail} />
+        {#if tplFile}
+          <a class="mt-1 inline-flex items-center rounded border border-purple-700/50 px-2 py-0.5 text-xs text-purple-300 hover:bg-purple-900/20"
+             href={fileViewUrl(tplFile.web_view_url)} target="_blank" rel="noopener noreferrer">Open {tplFile.display_name || tplFile.filename}</a>
+        {/if}
+      {/if}
+    </div>
   {/if}
 </div>
 

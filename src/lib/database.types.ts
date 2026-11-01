@@ -1662,6 +1662,8 @@ export type Database = {
           title: string
           description: string | null
           status: string
+          is_template: boolean
+          template_id: string | null
           subject_entity_type: string | null
           subject_entity_id: string | null
           created_at: string
@@ -1674,6 +1676,8 @@ export type Database = {
           title: string
           description?: string | null
           status?: string
+          is_template?: boolean
+          template_id?: string | null
           subject_entity_type?: string | null
           subject_entity_id?: string | null
           created_at?: string
@@ -1686,6 +1690,8 @@ export type Database = {
           title?: string
           description?: string | null
           status?: string
+          is_template?: boolean
+          template_id?: string | null
           subject_entity_type?: string | null
           subject_entity_id?: string | null
           created_at?: string
@@ -1694,6 +1700,13 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
+            {
+              foreignKeyName: "dossier_packs_template_id_fkey"
+              columns: ["template_id"]
+              isOneToOne: false
+              referencedRelation: "dossier_packs"
+              referencedColumns: ["id"]
+            },
             {
               foreignKeyName: "dossier_packs_created_by_fkey"
               columns: ["created_by"]

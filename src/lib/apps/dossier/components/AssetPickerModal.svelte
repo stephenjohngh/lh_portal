@@ -18,6 +18,8 @@
   /** The pack's folders and placements, so each file can say where it is. */
   export let folders = [];
   export let placements = [];
+  /** Ids of files that come from the pack's template. */
+  export let fromTemplate = new Set();
 
   $: where = placementMap(placements);
 
@@ -69,6 +71,7 @@
             <div class="flex-1 min-w-0">
               <p class="text-sm text-slate-200 truncate">
                 {file.display_name || file.filename}
+                {#if fromTemplate.has(file.id)}<span class="ml-1 rounded bg-purple-900/50 px-1 text-[10px] text-purple-200">template</span>{/if}
               </p>
               {#if file.description}
                 <!-- The filename alone rarely distinguishes two scans of the
