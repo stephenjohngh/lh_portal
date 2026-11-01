@@ -247,6 +247,7 @@
 
   async function handleOpen(pack) {
     publishedView = false;
+    appError = '';                   // a message about the list is not about this pack
     const packId = pack.id;          // capture before the await
     openPackId = packId;
     try {
@@ -257,6 +258,7 @@
   }
 
   function backToPacks() {
+    appError = '';
     openPackId = null;
     dossierStore.closePack();
   }
