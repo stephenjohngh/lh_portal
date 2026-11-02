@@ -7,6 +7,7 @@
 <script>
   import Button from '#lib/components/common/Button.svelte';
   import { fmtBytes, mimeIcon } from '#lib/utils/files.js';
+  import { pickFiles } from '#lib/utils/pickFiles.js';
 
   /** @type {File|null} */
   export let file     = null;
@@ -42,6 +43,14 @@
     }
     files = next;
     if (tooBig.length) error = `Too large (maximum ${fmtBytes(maxBytes)}): ${tooBig.join(', ')}`;
+  }
+
+  /** Open the chooser at the last-used folder where the browser can; else the plain input. */
+  async function openChooser() {
+    const picked = await pickFiles({ multiple, accept });
+    if (picked === null) { inputEl?.click(); return; }
+    if (!picked.length) return;
+    if (multiple) handleMany(picked); else handleFile(picked[0]);
   }
 
   function removeAt(i) { files = files.filter((_, k) => k !== i); if (inputEl) inputEl.value = ''; }
@@ -83,8 +92,8 @@
            {dragging
              ? 'border-purple-400 bg-purple-900/10'
              : 'border-slate-600 hover:border-slate-500 bg-slate-800/20 hover:bg-slate-700/20'}"
-    on:click={() => inputEl?.click()}
-    on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputEl?.click(); } }}
+    on:click={openChooser}
+    on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openChooser(); } }}
     on:dragover={onDragOver}
     on:dragleave={onDragLeave}
     on:drop={onDrop}
@@ -116,8 +125,8 @@
            {dragging
              ? 'border-purple-400 bg-purple-900/10'
              : 'border-slate-600 hover:border-slate-500 bg-slate-800/20 hover:bg-slate-700/20'}"
-    on:click={() => inputEl?.click()}
-    on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputEl?.click(); } }}
+    on:click={openChooser}
+    on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openChooser(); } }}
     on:dragover={onDragOver}
     on:dragleave={onDragLeave}
     on:drop={onDrop}
