@@ -37,6 +37,7 @@
         style="padding-left: {depth * 12 + 4}px"
         title={node.name}
         data-testid="folder-row"
+        data-folder-id={node.id}
         on:click={() => dispatch('select', { kind: 'folder', id: node.id })}
       >
         <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
@@ -70,6 +71,7 @@
         style="padding-left: {depth * 12 + 24}px"
         title={file.description || file.display_name || file.filename}
         data-testid="file-row"
+        data-file-id={file.id}
         on:click={() => dispatch('select', { kind: 'file', id: file.id })}
       >
         {#if thumbnails && isImage(file)}

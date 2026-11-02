@@ -5,7 +5,7 @@
      State lives in dossierStore; this component only talks to it and to the
      document API, and tells the host what changed so it can audit it. -->
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { getPref, setPref } from '#lib/utils/prefs.js';
   import { get } from 'svelte/store';
   import { dossierStore } from '../stores/dossierStore.js';
@@ -13,6 +13,7 @@
   import { fileViewUrl } from '#lib/utils/driveUtils.js';
   import { currentUserId } from '#lib/utils/currentUser.js';
   import { errMessage } from '#lib/utils/errors.js';
+  import { fmtBytes } from '#lib/utils/files.js';
   import Button from '#lib/components/common/Button.svelte';
   import FormInput from '#lib/components/common/FormInput.svelte';
   import FormSelect from '#lib/components/common/FormSelect.svelte';
@@ -222,15 +223,11 @@
   }).finally(() => { pendingDelete = null; });
 
   // ── Upload ───────────────────────────────────────────────────────────────
-  const storagePath = () => desiredFolderPath(pack, folders, targetFolderId);
+  const MAX_BYTES = 50 * 1024 * 1024;
 
-  /** Each file is its own document, placed in the target folder; any that fail stay listed to retry. */
-  async function upload() {
-    if (!toUpload.length) return;
-    busy = true; error = '';
-    const batch = [...toUpload];
-    const folderId = targetFolderId;       // capture before the awaits
-    const path = storagePath();
+  /** Each file is its own document, placed in `folderId`. Returns the files that failed, and why. */
+  async function uploadBatch(batch, folderId, description) {
+    const path = desiredFolderPath(pack, folders, folderId);
     const failed = [];
     let lastError = '';
     const user = await currentUserId();
@@ -240,7 +237,7 @@
       try {
         const doc = await docApi.uploadDocument(f, {
           entity_type: 'dossier_pack', entity_id: pack.id, display_name: f.name,
-          folder_path: path, description: uploadDescription.trim() || undefined,
+          folder_path: path, description: description.trim() || undefined,
         });
         dossierStore.addFile(doc);
         if (folderId) await dossierStore.placeFile(doc.id, pack.id, folderId, user);
@@ -249,13 +246,74 @@
         failed.push(f); lastError = errMessage(err);
       }
     }
-    busy = false; progress = '';
+    progress = '';
+    return { failed, lastError };
+  }
+
+  /** The upload form: files that fail stay listed to retry. */
+  async function upload() {
+    if (!toUpload.length) return;
+    busy = true; error = '';
+    const batch = [...toUpload];
+    const { failed, lastError } = await uploadBatch(batch, targetFolderId, uploadDescription);   // folder captured before the awaits
+    busy = false;
     if (!failed.length) { cancelUpload(); return; }
     toUpload = failed;
     error = failed.length === batch.length
       ? lastError
       : `${batch.length - failed.length} of ${batch.length} uploaded. Not uploaded: ${failed.map(f => f.name).join(', ')} — ${lastError}`;
   }
+
+  // ── Dropping files straight onto the tree ────────────────────────────────
+  const hasFiles = (e) => Array.from(e.dataTransfer?.types ?? []).includes('Files');
+  /** The folder a drop lands in: the folder row under the pointer, or the folder holding the file row under it, else the selection. */
+  function dropFolderFor(e) {
+    const el = /** @type {HTMLElement|null} */ (e.target instanceof Element ? e.target.closest('[data-folder-id],[data-file-id]') : null);
+    if (el?.dataset.folderId) return el.dataset.folderId;
+    if (el?.dataset.fileId) return placementMap(placements).get(el.dataset.fileId) ?? null;
+    return targetFolderId;
+  }
+  let dropFolder;            // undefined = not dragging; null = top level; id = a folder
+  $: dropLabel = dropFolder ? folderLabel(folders, dropFolder) : 'the top level';
+  function onTreeDragOver(e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    if (!canEdit || busy) { if (e.dataTransfer) e.dataTransfer.dropEffect = 'none'; dropFolder = undefined; return; }
+    dropFolder = dropFolderFor(e);
+  }
+  function onTreeDragLeave(e) {
+    if (!e.currentTarget.contains(e.relatedTarget)) dropFolder = undefined;
+  }
+  async function onTreeDrop(e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    const folderId = dropFolderFor(e);
+    dropFolder = undefined;
+    if (!canEdit || busy) return;
+    const all = Array.from(e.dataTransfer?.files ?? []);
+    const tooBig = all.filter(f => f.size > MAX_BYTES);
+    const batch = all.filter(f => f.size <= MAX_BYTES);
+    error = tooBig.length ? `Too large (maximum ${fmtBytes(MAX_BYTES)}): ${tooBig.map(f => f.name).join(', ')}` : '';
+    if (!batch.length) return;
+    busy = true;
+    if (folderId) { collapsed = { ...collapsed, [folderId]: false }; selected = { kind: 'folder', id: folderId }; }
+    const { failed, lastError } = await uploadBatch(batch, folderId, '');
+    busy = false;
+    if (failed.length) {
+      error = (error ? error + ' · ' : '') +
+        `${batch.length - failed.length} of ${batch.length} uploaded. Not uploaded: ${failed.map(f => f.name).join(', ')} — ${lastError}`;
+    }
+  }
+
+  // A file dropped anywhere that does not take it would make the browser open it
+  // and leave the app. Swallow those drops; the places that do take files have
+  // already handled theirs.
+  onMount(() => {
+    const guard = (e) => { if (hasFiles(e) && !e.defaultPrevented) e.preventDefault(); };
+    window.addEventListener('drop', guard);
+    window.addEventListener('dragover', guard);
+    return () => { window.removeEventListener('drop', guard); window.removeEventListener('dragover', guard); };
+  });
   function cancelUpload() { mode = ''; toUpload = []; uploadDescription = ''; attachRef?.reset?.(); }
 </script>
 
@@ -344,9 +402,16 @@
   {/if}
 
   {#if files.length === 0 && folders.length === 0}
-    <p class="text-xs text-slate-600 italic py-2">No files yet.</p>
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div class="rounded {dropFolder !== undefined ? 'ring-1 ring-purple-400 bg-purple-900/10' : ''}"
+         on:dragover={onTreeDragOver} on:dragleave={onTreeDragLeave} on:drop={onTreeDrop}>
+      <p class="text-xs text-slate-600 italic py-2">{dropFolder !== undefined ? 'Drop to upload into the top level' : canEdit ? 'No files yet. Drop files here to add them.' : 'No files yet.'}</p>
+    </div>
   {:else}
-    <div data-testid="file-tree-box">
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div data-testid="file-tree-box" class="rounded {dropFolder !== undefined ? 'ring-1 ring-purple-400 bg-purple-900/10' : ''}"
+         on:dragover={onTreeDragOver} on:dragleave={onTreeDragLeave} on:drop={onTreeDrop}>
+      {#if dropFolder !== undefined}<p class="px-1 py-0.5 text-[11px] text-purple-300" data-testid="drop-hint">Drop to upload into {dropLabel}</p>{/if}
       <FileTreeNode folders={tree.folders} files={tree.rootFiles} {selected} {thumbnails} bind:collapsed on:select={choose} />
     </div>
   {/if}

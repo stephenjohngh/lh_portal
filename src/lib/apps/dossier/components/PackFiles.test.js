@@ -201,3 +201,39 @@ describe('pictures and progress', () => {
     expect(screen.queryByRole('button', { name: /pictures/i })).toBeNull();
   });
 });
+
+describe('dropping files onto the tree', () => {
+  const dt = (...fs) => ({ dataTransfer: { types: ['Files'], files: fs } });
+  const png = (n) => new File(['x'], n, { type: 'image/png' });
+
+  it('uploads into the folder row it lands on, without opening the upload form', async () => {
+    render(PackFiles, { pack, canEdit: true });
+    const row = screen.getAllByTestId('folder-row').find(r => r.textContent.includes('Old plans'));
+    await fireEvent.drop(row, dt(png('a.png'), png('b.png')));
+    await waitFor(() => expect(h.uploadDocument).toHaveBeenCalledTimes(2));
+    expect(h.uploadDocument.mock.calls[0][1].folder_path).toMatch(/Old plans \(bbbbbbbb\)$/);
+    await waitFor(() => expect(h.store.placeFile).toHaveBeenCalledWith('n-a.png', 'p1', 'bbbbbbbb-2222', 'u1'));
+    expect(screen.queryByTestId('selected-files')).toBeNull();
+  });
+
+  it('a drop on a file row goes to that file’s folder', async () => {
+    render(PackFiles, { pack, canEdit: true });
+    await fireEvent.drop(screen.getByText('top floor.png').closest('[data-testid="file-row"]'), dt(png('c.png')));
+    await waitFor(() => expect(h.store.placeFile).toHaveBeenCalledWith('n-c.png', 'p1', 'bbbbbbbb-2222', 'u1'));
+  });
+
+  it('uploads nothing for a viewer, but still stops the browser opening the file', async () => {
+    render(PackFiles, { pack, canEdit: false });
+    const row = screen.getAllByTestId('folder-row')[0];
+    const notCancelled = await fireEvent.drop(row, dt(png('a.png')));
+    expect(notCancelled).toBe(false);
+    expect(h.uploadDocument).not.toHaveBeenCalled();
+  });
+
+  it('swallows a file dropped anywhere else on the page', async () => {
+    render(PackFiles, { pack, canEdit: true });
+    const notCancelled = await fireEvent.drop(document.body, dt(png('a.png')));
+    expect(notCancelled).toBe(false);
+    expect(h.uploadDocument).not.toHaveBeenCalled();
+  });
+});
