@@ -20,6 +20,7 @@
   import { LOGO as lhLogo, LOGO_ALT } from '#lib/branding.js';
 
   import { tick, onMount } from 'svelte';
+  import { getPref, setPref } from '#lib/utils/prefs.js';
   import {
     pageOutline, outlineDepths,
     docIdFromHash, hashForDoc,
@@ -127,6 +128,14 @@
       scrollTo(0, 0);
     }
   }
+
+  // Light or dark, the reader's own choice, kept in this browser. With no choice yet it follows the device.
+  let light = false;
+  onMount(() => {
+    const saved = getPref('pack.theme');
+    light = saved ? saved === 'light' : !!window.matchMedia?.('(prefers-color-scheme: light)').matches;
+  });
+  function toggleTheme() { light = !light; setPref('pack.theme', light ? 'light' : 'dark'); }
 
   onMount(() => {
     applyHash();
@@ -307,7 +316,7 @@
   <!-- `pack-root` exists for print. This div's dark background and light text
        sit between <body> and everything printed, so the print stylesheet's
        inversion of body was reaching nothing — see pack-print.css. -->
-  <div class="pack-root min-h-screen bg-slate-900 text-slate-200">
+  <div class="pack-root min-h-screen bg-slate-900 text-slate-200" class:light>
 
     <!-- Header -->
     <header class="pack-header border-b border-slate-700 bg-slate-900/95 sticky top-0 z-10">
@@ -328,6 +337,8 @@
             {/if}
           </p>
         </div>
+        <Button variant="plain" title={light ? 'Switch to the dark page' : 'Switch to a light page'} ariaLabel="Light page" aria-pressed={light} testid="theme-toggle" on:click={toggleTheme} className="pack-print-button text-xs px-2 py-1 rounded border border-slate-700
+                 text-slate-300 hover:text-white hover:border-slate-500 transition-colors shrink-0">{light ? '☾ Dark' : '☀ Light'}</Button>
         <Button variant="plain" title="Print the whole pack" disabled={preparing} on:click={printPack} className="pack-print-button text-xs px-2 py-1 rounded border border-slate-700
                  text-slate-300 hover:text-white hover:border-slate-500
                  transition-colors shrink-0">{preparing ? 'Preparing…' : 'Print'}</Button>

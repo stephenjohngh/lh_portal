@@ -135,7 +135,7 @@
      These rules are shared by BOTH modes; do not duplicate them elsewhere. */
   :global(.dossier-prose) {
     outline: none;
-    color: #e2e8f0;              /* slate-200 */
+    color: var(--pk-text, #e2e8f0);              /* slate-200 */
     font-size: 0.9375rem;
     line-height: 1.7;
   }
@@ -153,15 +153,15 @@
      pack. Giving it one line of height is what makes the two agree. */
   :global(.dossier-prose p:empty) { min-height: 1.7em; }
   :global(.dossier-prose h1) {
-    font-size: 1.5rem; font-weight: 700; color: #fff;
+    font-size: 1.5rem; font-weight: 700; color: var(--pk-strong, #fff);
     margin: 1.5rem 0 0.75rem; line-height: 1.3;
   }
   :global(.dossier-prose h2) {
-    font-size: 1.2rem; font-weight: 650; color: #fff;
+    font-size: 1.2rem; font-weight: 650; color: var(--pk-strong, #fff);
     margin: 1.25rem 0 0.5rem; line-height: 1.35;
   }
   :global(.dossier-prose h3) {
-    font-size: 1.02rem; font-weight: 600; color: #f1f5f9;
+    font-size: 1.02rem; font-weight: 600; color: var(--pk-strong2, #f1f5f9);
     margin: 1rem 0 0.4rem;
   }
   :global(.dossier-prose h1:first-child),
@@ -177,7 +177,7 @@
     border-left: 3px solid var(--lh-accent, #3c9683);
     padding-left: 0.9rem;
     margin: 0 0 0.75rem;
-    color: #cbd5e1;              /* slate-300 */
+    color: var(--pk-text2, #cbd5e1);              /* slate-300 */
     font-style: italic;
   }
   /* A table written INTO a page — pasted from markdown, or built in the editor.
@@ -198,17 +198,17 @@
   }
   :global(.dossier-prose th),
   :global(.dossier-prose td) {
-    border: 1px solid #334155;   /* slate-700 */
+    border: 1px solid var(--pk-line, #334155);   /* slate-700 */
     padding: 0.4rem 0.6rem;
     text-align: left;
     vertical-align: top;
   }
   :global(.dossier-prose th) {
-    background: #1e293b;         /* slate-800 */
-    color: #f1f5f9;              /* slate-100 */
+    background: var(--pk-panel, #1e293b);         /* slate-800 */
+    color: var(--pk-strong2, #f1f5f9);              /* slate-100 */
     font-weight: 600;
   }
-  :global(.dossier-prose td) { color: #cbd5e1; }
+  :global(.dossier-prose td) { color: var(--pk-text2, #cbd5e1); }
   /* Cells hold paragraphs; their bottom margin would double every row's
      height. */
   :global(.dossier-prose th > p:last-child),
@@ -228,15 +228,15 @@
 
   :global(.dossier-prose hr) {
     border: 0;
-    border-top: 1px solid #334155;   /* slate-700 */
+    border-top: 1px solid var(--pk-line, #334155);   /* slate-700 */
     margin: 1.5rem 0;
   }
   :global(.dossier-prose code) {
-    background: #1e293b; border-radius: 3px;
+    background: var(--pk-panel, #1e293b); border-radius: 3px;
     padding: 0.1em 0.35em; font-size: 0.875em;
   }
   :global(.dossier-prose pre) {
-    background: #0f172a; border: 1px solid #1e293b; border-radius: 6px;
+    background: var(--pk-ground, #0f172a); border: 1px solid var(--pk-panel, #1e293b); border-radius: 6px;
     padding: 0.75rem 0.9rem; margin: 0 0 0.75rem; overflow-x: auto;
   }
   :global(.dossier-prose pre code) { background: none; padding: 0; }
@@ -294,17 +294,17 @@
     height: 1.1rem;
     font-size: 0.6rem;
     line-height: 1;
-    color: #94a3b8;                  /* slate-400 */
+    color: var(--pk-muted, #94a3b8);                  /* slate-400 */
     background: none;
     border: 0;
     cursor: pointer;
     user-select: none;
   }
-  :global(.dossier-prose .dossier-toggle-chevron:hover) { color: #e2e8f0; }
+  :global(.dossier-prose .dossier-toggle-chevron:hover) { color: var(--pk-text, #e2e8f0); }
 
   :global(.dossier-prose div[data-toggle-summary]) {
     font-weight: 600;
-    color: #f1f5f9;
+    color: var(--pk-strong2, #f1f5f9);
     min-height: 1.5rem;
   }
   /* Collapsed hides only the body — the summary line stays visible. In read
@@ -315,7 +315,7 @@
   }
   :global(.dossier-prose div[data-toggle-body]) {
     margin-top: 0.35rem;
-    border-left: 1px solid #334155;  /* slate-700 */
+    border-left: 1px solid var(--pk-line, #334155);  /* slate-700 */
     padding-left: 0.75rem;
   }
   :global(.dossier-prose div[data-toggle-body] > :last-child) { margin-bottom: 0; }
@@ -324,14 +324,14 @@
   /* Visually distinct from an external link: a reference to another page in the
      same pack is navigation, not a departure. */
   :global(.dossier-prose a.dossier-doclink) {
-    color: #e2e8f0;                  /* slate-200 */
+    color: var(--pk-text, #e2e8f0);                  /* slate-200 */
     text-decoration: none;
     border-bottom: 1px solid rgb(var(--lh-accent-rgb, 60 150 131) / 0.6);
     padding-bottom: 1px;
     cursor: pointer;
   }
   :global(.dossier-prose a.dossier-doclink:hover) {
-    color: #fff;
+    color: var(--pk-strong, #fff);
     border-bottom-color: var(--lh-accent, #3c9683);
   }
   :global(.dossier-prose a.dossier-doclink::before) {
@@ -346,28 +346,28 @@
   /* Visibly a quotation of another page, not part of this one — otherwise a
      reader cannot tell whose words they are looking at. */
   :global(.dossier-prose .dossier-embed) {
-    border: 1px solid #334155;       /* slate-700 */
+    border: 1px solid var(--pk-line, #334155);       /* slate-700 */
     border-left: 3px solid var(--lh-accent, #3c9683);
     border-radius: 6px;
     padding: 0.7rem 0.9rem;
     margin: 0 0 0.9rem;
-    background: rgb(15 23 42 / 0.35); /* slate-900 */
+    background: rgb(var(--pk-ground-rgb, 15 23 42) / 0.35); /* slate-900 */
   }
   :global(.dossier-prose .dossier-embed-title) {
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #94a3b8;                  /* slate-400 */
+    color: var(--pk-muted, #94a3b8);                  /* slate-400 */
     margin-bottom: 0.4rem;
   }
   :global(.dossier-prose .dossier-embed-body > :last-child) { margin-bottom: 0; }
   :global(.dossier-prose .dossier-embed-summary) {
     font-size: 0.875rem;
-    color: #cbd5e1;                  /* slate-300 */
+    color: var(--pk-text2, #cbd5e1);                  /* slate-300 */
   }
   :global(.dossier-prose .dossier-embed-note) {
     font-size: 0.8rem;
-    color: #fbbf24;                  /* amber-400 */
+    color: var(--pk-amber, #fbbf24);                  /* amber-400 */
   }
   /* An embed that could not be expanded reads as a warning, not as content. */
   :global(.dossier-prose .dossier-embed[data-embed-note]) {
@@ -388,7 +388,7 @@
      than an embedded table: that IS the pack's content, this is a look at
      something that lives elsewhere. */
   :global(.dossier-prose .dossier-sheet) {
-    border: 1px solid #334155;         /* slate-700 */
+    border: 1px solid var(--pk-line, #334155);         /* slate-700 */
     border-radius: 6px 6px 0 0;
     border-bottom: 0;
     overflow-x: auto;                  /* a wide sheet scrolls itself */
@@ -402,15 +402,15 @@
   :global(.dossier-prose .dossier-sheet-table th) {
     text-align: left;
     font-weight: 600;
-    color: #94a3b8;                    /* slate-400 */
-    background: #1e293b;               /* slate-800 */
+    color: var(--pk-muted, #94a3b8);                    /* slate-400 */
+    background: var(--pk-panel, #1e293b);               /* slate-800 */
     padding: 0.35rem 0.6rem;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--pk-line, #334155);
   }
   :global(.dossier-prose .dossier-sheet-table td) {
     padding: 0.3rem 0.6rem;
-    color: #cbd5e1;                    /* slate-300 */
-    border-bottom: 1px solid #1e293b;
+    color: var(--pk-text2, #cbd5e1);                    /* slate-300 */
+    border-bottom: 1px solid var(--pk-panel, #1e293b);
     max-width: 18rem;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -421,9 +421,9 @@
   :global(.dossier-prose .dossier-sheet-note) {
     padding: 0.35rem 0.6rem;
     font-size: 0.6875rem;
-    color: #94a3b8;                    /* slate-400 */
-    background: #0f172a;               /* slate-900 */
-    border-top: 1px solid #1e293b;
+    color: var(--pk-muted, #94a3b8);                    /* slate-400 */
+    background: var(--pk-ground, #0f172a);               /* slate-900 */
+    border-top: 1px solid var(--pk-panel, #1e293b);
     position: sticky;
     left: 0;                           /* stays put while the table scrolls */
   }
@@ -441,7 +441,7 @@
     max-width: 100%;
     height: auto;
     border-radius: 6px;
-    border: 1px solid #334155;       /* slate-700 */
+    border: 1px solid var(--pk-line, #334155);       /* slate-700 */
   }
   /* Author-chosen preview width, as a share of the text column so it renders
      the same in the editor, in Preview and in a published pack. */
@@ -489,7 +489,7 @@
   :global(.dossier-prose .dossier-asset-expand) {
     padding: 0.1rem 0.45rem; border-radius: 4px;
     font-size: 0.7rem; text-decoration: none; white-space: nowrap;
-    color: #f1f5f9; background: rgb(15 23 42 / 0.8);
+    color: var(--pk-strong2, #f1f5f9); background: rgb(var(--pk-ground-rgb, 15 23 42) / 0.8);
   }
   :global(.dossier-prose .dossier-asset:hover .dossier-asset-tools),
   :global(.dossier-prose .dossier-asset-tools:focus-within) { opacity: 1; }
@@ -503,7 +503,7 @@
     position: absolute; top: 0.4rem; left: 0.4rem;
     padding: 0.1rem 0.45rem; border-radius: 4px;
     font-size: 0.7rem; text-decoration: none; white-space: nowrap;
-    color: #f1f5f9; background: rgb(15 23 42 / 0.8);
+    color: var(--pk-strong2, #f1f5f9); background: rgb(var(--pk-ground-rgb, 15 23 42) / 0.8);
     opacity: 0; transition: opacity 0.12s;
   }
   :global(.dossier-prose .dossier-asset:hover .dossier-asset-fullsize),
@@ -515,13 +515,13 @@
      filename line, which says what it is called rather than what it is. */
   :global(.dossier-prose .dossier-asset-description) {
     font-size: 0.8125rem;
-    color: #cbd5e1;                  /* slate-300 */
+    color: var(--pk-text2, #cbd5e1);                  /* slate-300 */
     margin-top: 0.3rem;
     line-height: 1.5;
   }
   :global(.dossier-prose .dossier-asset-caption) {
     font-size: 0.75rem;
-    color: #94a3b8;                  /* slate-400 */
+    color: var(--pk-muted, #94a3b8);                  /* slate-400 */
     margin-top: 0.35rem;
   }
   :global(.dossier-prose .dossier-asset-card) {
@@ -529,9 +529,9 @@
     align-items: center;
     gap: 0.6rem;
     padding: 0.6rem 0.8rem;
-    border: 1px solid #334155;
+    border: 1px solid var(--pk-line, #334155);
     border-radius: 6px;
-    background: rgb(30 41 59 / 0.5); /* slate-800/50 */
+    background: rgb(var(--pk-panel-rgb, 30 41 59) / 0.5); /* slate-800/50 */
   }
   :global(.dossier-prose .dossier-asset-icon) { font-size: 1.05rem; line-height: 1; }
   :global(.dossier-prose .dossier-asset-name) {
@@ -552,10 +552,10 @@
     background: rgb(245 158 11 / 0.07);
   }
   :global(.dossier-prose .dossier-asset-gone .dossier-asset-name) {
-    color: #fbbf24;                  /* amber-400 */
+    color: var(--pk-amber, #fbbf24);                  /* amber-400 */
   }
   :global(.dossier-prose .dossier-asset-missing) {
-    color: #94a3b8;                  /* slate-400 */
+    color: var(--pk-muted, #94a3b8);                  /* slate-400 */
     text-decoration: none;
     font-style: italic;
   }
@@ -604,7 +604,7 @@
     align-items: center;
     gap: 0.3rem;
     font-size: 0.65rem;
-    color: #94a3b8;                  /* slate-400 */
+    color: var(--pk-muted, #94a3b8);                  /* slate-400 */
     /* The host sets user-select:none so a click cannot smear a highlight over
        the block; a field the author types into has to opt back in. */
     user-select: text;
@@ -613,9 +613,9 @@
     width: 3rem;
     padding: 0.1rem 0.3rem;
     border-radius: 4px;
-    border: 1px solid #334155;       /* slate-700 */
-    background: rgb(15 23 42 / 0.9); /* slate-900 */
-    color: #e2e8f0;                  /* slate-200 */
+    border: 1px solid var(--pk-line, #334155);       /* slate-700 */
+    background: rgb(var(--pk-ground-rgb, 15 23 42) / 0.9); /* slate-900 */
+    color: var(--pk-text, #e2e8f0);                  /* slate-200 */
     font-size: 0.7rem;
     text-align: right;
   }
@@ -666,8 +666,8 @@
     display: flex;
     border-radius: 4px;
     overflow: hidden;
-    border: 1px solid #334155;       /* slate-700 */
-    background: rgb(15 23 42 / 0.85);
+    border: 1px solid var(--pk-line, #334155);       /* slate-700 */
+    background: rgb(var(--pk-ground-rgb, 15 23 42) / 0.85);
   }
   :global(.dossier-prose .dossier-block-sizes[hidden]),
   :global(.dossier-prose .dossier-block-shows[hidden]) { display: none; }
@@ -678,18 +678,18 @@
     padding: 0 0.3rem;
     font-size: 0.65rem;
     line-height: 1;
-    color: #94a3b8;                  /* slate-400 */
+    color: var(--pk-muted, #94a3b8);                  /* slate-400 */
     background: none;
     border: 0;
     cursor: pointer;
   }
   :global(.dossier-prose .dossier-block-shows button[hidden]) { display: none; }
   :global(.dossier-prose .dossier-block-sizes button:hover),
-  :global(.dossier-prose .dossier-block-shows button:hover) { color: #fff; }
+  :global(.dossier-prose .dossier-block-shows button:hover) { color: var(--pk-strong, #fff); }
   :global(.dossier-prose .dossier-block-sizes button.is-active),
   :global(.dossier-prose .dossier-block-shows button.is-active) {
-    background: #475569;             /* slate-600 */
-    color: #fff;
+    background: var(--pk-line2, #475569);             /* slate-600 */
+    color: var(--pk-strong, #fff);
   }
 
   /* The remove control, shared by asset and embedded-page blocks. Both are
@@ -699,9 +699,9 @@
     width: 1.5rem;
     height: 1.5rem;
     border-radius: 4px;
-    border: 1px solid #334155;       /* slate-700 */
-    background: rgb(15 23 42 / 0.85);/* slate-900 */
-    color: #94a3b8;                  /* slate-400 */
+    border: 1px solid var(--pk-line, #334155);       /* slate-700 */
+    background: rgb(var(--pk-ground-rgb, 15 23 42) / 0.85);/* slate-900 */
+    color: var(--pk-muted, #94a3b8);                  /* slate-400 */
     font-size: 0.9rem;
     line-height: 1;
     cursor: pointer;
@@ -765,8 +765,8 @@
 
   :global(.dossier-prose .dossier-block-controls .dossier-block-remove) {
     opacity: 1;
-    border: 1px solid #334155;
-    background: rgb(15 23 42 / 0.85);
+    border: 1px solid var(--pk-line, #334155);
+    background: rgb(var(--pk-ground-rgb, 15 23 42) / 0.85);
   }
   :global(.dossier-prose .dossier-block-remove:hover) { color: #f87171; }  /* red-400 */
 
@@ -790,7 +790,7 @@
     left: 0.15rem;
     top: 0.3rem;
     font-size: 0.6rem;
-    color: #94a3b8;
+    color: var(--pk-muted, #94a3b8);
   }
   :global(.dossier-prose div[data-toggle][data-open='false']:not(.dossier-toggle)::before) {
     content: '▸';
@@ -802,6 +802,6 @@
     cursor: pointer;
   }
   :global(.dossier-prose div[data-toggle]:not(.dossier-toggle) div[data-toggle-summary]:hover) {
-    color: #fff;
+    color: var(--pk-strong, #fff);
   }
 </style>

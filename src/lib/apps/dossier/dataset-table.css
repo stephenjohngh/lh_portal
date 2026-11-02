@@ -18,7 +18,7 @@
 
 .dossier-dataset {
   margin: 0 0 1rem;
-  border: 1px solid #334155;         /* slate-700 */
+  border: 1px solid var(--pk-line, #334155);         /* slate-700 */
   border-radius: 6px;
   /* Clips the table's corners to the box. The SCROLLING happens one level in —
      see .dossier-dataset-scroll. */
@@ -40,10 +40,10 @@
 .dossier-dataset-title {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #f1f5f9;                    /* slate-100 */
-  background: #1e293b;               /* slate-800 */
+  color: var(--pk-strong2, #f1f5f9);                    /* slate-100 */
+  background: var(--pk-panel, #1e293b);               /* slate-800 */
   padding: 0.45rem 0.7rem;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid var(--pk-line, #334155);
 }
 
 .dossier-dataset-table {
@@ -67,24 +67,24 @@
   text-align: left;
   /* Its own ground, so the header reads as a band across the whole table
      however far it is scrolled — the cells carry it, so it travels with them. */
-  background: #1e293b;               /* slate-800 */
+  background: var(--pk-panel, #1e293b);               /* slate-800 */
   /* A header must never wrap into its neighbour — that is what produced
      "SUBJECTSUMMARYDETAIL" running together. */
   white-space: nowrap;
   font-weight: 600;
-  color: #94a3b8;                    /* slate-400 */
+  color: var(--pk-muted, #94a3b8);                    /* slate-400 */
   font-size: 0.6875rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   padding: 0.4rem 0.6rem;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid var(--pk-line, #334155);
 }
 
 .dossier-dataset-table td {
   padding: 0.4rem 0.6rem;
-  color: #cbd5e1;                    /* slate-300 */
+  color: var(--pk-text2, #cbd5e1);                    /* slate-300 */
   vertical-align: top;
-  border-bottom: 1px solid #1e293b;
+  border-bottom: 1px solid var(--pk-panel, #1e293b);
   /* Author prose wraps at word boundaries, breaking a word only when the word
      itself is too long. `anywhere` broke mid-word on any narrow column, which
      is how a Notes cell ended up one character per line. */
@@ -100,11 +100,11 @@
 .dossier-dataset-note {
   padding: 0.6rem 0.7rem;
   font-size: 0.8125rem;
-  color: #94a3b8;                    /* slate-400 */
+  color: var(--pk-muted, #94a3b8);                    /* slate-400 */
 }
 
 .dossier-dataset-gone { border-color: rgb(245 158 11 / 0.35); }
-.dossier-dataset-gone .dossier-dataset-note { color: #fbbf24; }
+.dossier-dataset-gone .dossier-dataset-note { color: var(--pk-amber, #fbbf24); }
 
 /* ── Row references ─────────────────────────────────────────────────────────
    The "Detail" column: where a row says the fuller story lives. A page opens
@@ -117,7 +117,7 @@
 .dossier-prose .dossier-record-link:hover { border-bottom-style: solid; }
 
 /* Named but not reachable — a file in a rendering with no asset base. */
-.dossier-prose .dossier-record-link-plain { color: #94a3b8; }
+.dossier-prose .dossier-record-link-plain { color: var(--pk-muted, #94a3b8); }
 
 /* The Detail cell names one thing; wrapping it gains nothing — but nowrap
    ALONE made a long filename demand width from the automatic layout, and the
@@ -145,27 +145,27 @@
    and its message legible as two things without a heavy border. */
 .dossier-dataset-bodyrow > td {
   padding: 0.15rem 0.6rem 0.5rem;
-  background: rgb(30 41 59 / 0.35);  /* slate-800 */
-  border-bottom: 1px solid #1e293b;
+  background: rgb(var(--pk-panel-rgb, 30 41 59) / 0.35);  /* slate-800 */
+  border-bottom: 1px solid var(--pk-panel, #1e293b);
 }
 .dossier-dataset-table tr.dossier-dataset-bodyrow:last-child > td { border-bottom: 0; }
 
 .dossier-dataset-body > summary {
   cursor: pointer;
   font-size: 0.6875rem;
-  color: #94a3b8;                    /* slate-400 */
+  color: var(--pk-muted, #94a3b8);                    /* slate-400 */
   padding: 0.2rem 0;
   user-select: none;
 }
-.dossier-dataset-body > summary:hover { color: #e2e8f0; }
+.dossier-dataset-body > summary:hover { color: var(--pk-text, #e2e8f0); }
 
 .dossier-dataset-body-text {
   margin-top: 0.35rem;
   padding: 0.5rem 0.7rem;
-  background: rgb(30 41 59 / 0.75);  /* slate-800 — lighter than the table */
-  border-left: 2px solid #475569;    /* slate-600 */
+  background: rgb(var(--pk-panel-rgb, 30 41 59) / 0.75);  /* slate-800 — lighter than the table */
+  border-left: 2px solid var(--pk-line2, #475569);    /* slate-600 */
   border-radius: 0 4px 4px 0;
-  color: #cbd5e1;                    /* slate-300 */
+  color: var(--pk-text2, #cbd5e1);                    /* slate-300 */
   white-space: pre-wrap;
   overflow-wrap: break-word;
   /* A very long body scrolls rather than becoming the whole page. */
