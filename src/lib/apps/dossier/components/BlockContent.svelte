@@ -13,6 +13,7 @@
      rule below with no duplication. -->
 <script>
   import { createEventDispatcher } from 'svelte';
+  import Button from '#lib/components/common/Button.svelte';
   import { renderBlocksToHtml } from '../utils/blockRender.js';
   import { isEmptyDoc }         from '../utils/blockSchema.js';
   // Table styling is shared with the editor's node view,
@@ -49,9 +50,24 @@
    * and turned into an event the surrounding reader can navigate on. In the
    * editor no such anchors are rendered, so this never fires.
    */
+  /** The picture shown enlarged over the page, or null. */
+  let lightbox = null;
+  const closeLightbox = () => { lightbox = null; };
+  function onKey(e) { if (lightbox && e.key === 'Escape') closeLightbox(); }
+
   function handleClick(event) {
     const target = event.target instanceof Element ? event.target : null;
     if (!target) return;
+
+    // A picture, or its Expand link, enlarges in a pop-up at 90% of the window.
+    const expand = target.closest('a.dossier-asset-expand');
+    const picture = expand ? expand.closest('.dossier-asset')?.querySelector('img.dossier-asset-image')
+                           : target.closest('img.dossier-asset-image');
+    if (picture instanceof HTMLImageElement) {
+      event.preventDefault();
+      lightbox = { src: picture.currentSrc || picture.src, alt: picture.alt || '' };
+      return;
+    }
 
     const anchor = target.closest('a[data-doc-id], a[data-doc-slug]');
     if (anchor) {
@@ -86,6 +102,8 @@
   $: broken = mode === 'read' && html === '' && !isEmptyDoc(blocks);
 </script>
 
+<svelte:window on:keydown={onKey} />
+
 {#if mode === 'edit'}
   <div bind:this={host}></div>
 {:else if broken}
@@ -99,6 +117,16 @@
   <!-- Sanitised in renderBlocksToHtml() with a Dossier-specific allow-list. -->
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="dossier-prose" on:click={handleClick}>{@html html}</div>
+{/if}
+
+{#if lightbox}
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <div class="dossier-lightbox" role="dialog" aria-modal="true" aria-label="Enlarged picture" data-testid="lightbox" on:click={closeLightbox}>
+    <div class="dossier-lightbox-close">
+      <Button variant="secondary" size="small" ariaLabel="Close the enlarged picture" on:click={closeLightbox}>✕ Close</Button>
+    </div>
+    <img src={lightbox.src} alt={lightbox.alt} />
+  </div>
 {/if}
 
 <style>
@@ -439,6 +467,34 @@
   :global(.dossier-prose .dossier-asset-host[data-width='large']),
   :global(.dossier-prose .dossier-asset:not(.dossier-asset-inner)[data-kind='image'][data-width='large']) {
     width: 75%;
+  }
+  /* Enlarged picture: a pop-up over the page, the picture at up to 90% of the window. */
+  .dossier-lightbox {
+    position: fixed; inset: 0; z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    background: rgb(2 6 23 / 0.9); cursor: zoom-out;
+  }
+  .dossier-lightbox img { max-width: 90vw; max-height: 90vh; object-fit: contain; border-radius: 4px; }
+  .dossier-lightbox-close { position: absolute; top: 0.75rem; right: 0.75rem; }
+  /* In a reader a picture can be clicked to enlarge it. */
+  :global(.dossier-prose:not(.dossier-prose-editing) img.dossier-asset-image) { cursor: zoom-in; }
+  /* Expand and Full size sit together over a picture's top-left corner. */
+  :global(.dossier-prose .dossier-asset-tools) {
+    position: absolute; top: 0.4rem; left: 0.4rem; z-index: 1;
+    display: flex; gap: 0.3rem;
+    opacity: 0; transition: opacity 0.12s;
+  }
+  :global(.dossier-prose .dossier-asset-tools .dossier-asset-fullsize),
+  :global(.dossier-prose .dossier-asset-tools .dossier-asset-expand) { position: static; opacity: 1; }
+  :global(.dossier-prose .dossier-asset-expand) {
+    padding: 0.1rem 0.45rem; border-radius: 4px;
+    font-size: 0.7rem; text-decoration: none; white-space: nowrap;
+    color: #f1f5f9; background: rgb(15 23 42 / 0.8);
+  }
+  :global(.dossier-prose .dossier-asset:hover .dossier-asset-tools),
+  :global(.dossier-prose .dossier-asset-tools:focus-within) { opacity: 1; }
+  @media (hover: none) {
+    :global(.dossier-prose .dossier-asset-tools) { opacity: 1; }
   }
   /* "⤢ Full size" over the picture, shown on hover (always on a touch screen,
      which has no hover). It replaces the old filename caption. */

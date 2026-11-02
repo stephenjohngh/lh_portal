@@ -192,7 +192,8 @@ export const Asset = Node.create({
       // picture when the pointer is on it (CSS), so there is no caption line.
       // A separate <a>, not one around the <img>, which would fight
       // ProseMirror's node selection in edit mode.
-      return ['div', wrapper, image, fullSizeLink(url)];
+      return ['div', wrapper, image,
+        ['div', { class: 'dossier-asset-tools' }, expandLink(url), fullSizeLink(url)]];
     }
 
     if (kind === 'sheet') {
@@ -522,6 +523,13 @@ function paint(host, node, missing = false, description = '') {
 }
 
 const FULL_SIZE_TEXT = '⤢ Full size';
+
+/** The hover link that enlarges a picture in a pop-up over the page (the reader handles the
+ *  click; without it the link opens the picture in a new tab). */
+function expandLink(url) {
+  return ['a', { href: url, target: '_blank', rel: 'noopener noreferrer',
+                 class: 'dossier-asset-expand', title: 'Enlarge here' }, '⛶ Expand'];
+}
 
 /** The hover link over a picture that opens it at full size in a new tab. */
 function fullSizeLink(url) {

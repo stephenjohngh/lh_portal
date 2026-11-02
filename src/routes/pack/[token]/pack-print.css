@@ -261,7 +261,9 @@
      [data-width]`, in BlockContent), so nothing here may force it back to the
      full column: an `!important` max-width on the picture once printed a small
      logo a full page wide. */
-  .dossier-asset-fullsize { display: none !important; }
+  .dossier-asset-fullsize,
+  .dossier-asset-expand,
+  .dossier-asset-tools { display: none !important; }
   .dossier-asset-image {
     max-width: 100%;
     border-color: #999 !important;
