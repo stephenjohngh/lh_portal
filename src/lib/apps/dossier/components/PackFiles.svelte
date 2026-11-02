@@ -127,7 +127,7 @@
   function setMode(m) {
     error = '';
     mode = mode === m ? '' : m;
-    if (mode === 'newFolder') nameValue = '';
+    if (mode === 'newFolder') { nameValue = ''; newParent = targetFolderId ?? TOP; }
     if (mode === 'rename') { nameValue = selFolder?.name ?? selFile?.display_name ?? selFile?.filename ?? ''; descValue = selFile?.description ?? ''; }
     if (mode === 'move') moveValue = selFolder ? (selFolder.parent_id ?? TOP) : (placementMap(placements).get(selFile?.id) ?? TOP);
   }
@@ -138,8 +138,11 @@
   }
 
   // ── Folders ──────────────────────────────────────────────────────────────
+  let newParent = TOP;
+  $: newParentChoices = [{ value: TOP, label: 'Top level' }, ...folders.map(f => ({ value: f.id, label: folderLabel(folders, f.id) }))]
+    .sort((a, b) => (a.value === TOP ? -1 : b.value === TOP ? 1 : a.label.localeCompare(b.label, 'en-GB', { numeric: true })));
   const newFolder = () => run(async () => {
-    const parentId = targetFolderId;
+    const parentId = newParent === TOP ? null : newParent;
     const problem = folderNameProblem(folders, parentId, nameValue);
     if (problem) throw new Error(problem);
     const f = await dossierStore.createFolder({ packId: pack.id, parentId, name: nameValue }, await currentUserId());
@@ -279,7 +282,8 @@
 
     {#if mode === 'newFolder'}
       <div class="mb-2 rounded border border-slate-700 bg-slate-800/40 p-2 space-y-2">
-        <FormInput label="New folder in {targetLabel}" bind:value={nameValue} placeholder="e.g. Old plans" disabled={busy} />
+        <FormSelect label="Create in" bind:value={newParent} options={newParentChoices} disabled={busy} />
+        <FormInput label="Folder name" bind:value={nameValue} placeholder="e.g. Old plans" disabled={busy} />
         <div class="flex justify-end gap-2">
           <Button variant="secondary" size="small" on:click={() => mode = ''} disabled={busy}>Cancel</Button>
           <Button variant="primary" size="small" loading={busy} on:click={newFolder}>Create folder</Button>
