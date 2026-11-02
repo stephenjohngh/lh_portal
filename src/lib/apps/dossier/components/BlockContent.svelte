@@ -417,7 +417,7 @@
   }
   /* Author-chosen preview width, as a share of the text column so it renders
      the same in the editor, in Preview and in a published pack. */
-  /* Small and medium pictures have a SET HEIGHT (8rem and 14rem), so pictures
+  /* Small and medium pictures have a SET HEIGHT (10rem and 16rem), so pictures
      of different shapes line up along a row; the width follows each picture's
      own proportions. The block shrinks to its picture (inline-block, auto
      width) and several share a row until it is full, then wrap. Never wider
@@ -431,8 +431,8 @@
     display: inline-block; vertical-align: top;
     max-width: 100%; margin-right: 0.5rem;
   }
-  :global(.dossier-prose [data-width='small'] .dossier-asset-image) { height: 8rem; width: auto; max-width: 100%; }
-  :global(.dossier-prose [data-width='medium'] .dossier-asset-image) { height: 14rem; width: auto; max-width: 100%; }
+  :global(.dossier-prose [data-width='small'] .dossier-asset-image) { height: 10rem; width: auto; max-width: 100%; }
+  :global(.dossier-prose [data-width='medium'] .dossier-asset-image) { height: 16rem; width: auto; max-width: 100%; }
   /* A long description must not stretch a picture's block: it wraps under it. */
   :global(.dossier-prose [data-width='small'] .dossier-asset-description),
   :global(.dossier-prose [data-width='medium'] .dossier-asset-description) { width: 0; min-width: 100%; }
@@ -580,6 +580,21 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.12s;
+    /* Never squeezed to the width of the block it sits on: a small picture is
+       narrower than the strip, and a squeezed strip wraps and hides the size
+       buttons. */
+    width: max-content;
+    white-space: nowrap;
+  }
+  /* On a small or medium picture the strip starts at the picture's left edge and
+     runs on to the right (over the next picture if need be), below the
+     "Full size" link — anchored at the right it would run out of the editor on
+     the left. */
+  :global(.dossier-prose .dossier-asset-host[data-width='small'] .dossier-block-controls),
+  :global(.dossier-prose .dossier-asset-host[data-width='medium'] .dossier-block-controls) {
+    right: auto;
+    left: 0.35rem;
+    top: 2rem;
   }
   :global(.dossier-prose .dossier-asset-host:hover .dossier-block-controls),
   :global(.dossier-prose .dossier-block-controls:focus-within) {
