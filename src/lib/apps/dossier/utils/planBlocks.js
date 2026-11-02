@@ -42,7 +42,7 @@ const para = (text) => ({ type: 'paragraph', content: text ? [{ type: 'text', te
 export function blockToNodes(block, ctx) {
   const mint = ctx.mint ?? newUuid;
   const md = (text) => {
-    const nodes = ctx.htmlToNodes(markdownToHtml(String(text ?? '')));
+    const nodes = ctx.htmlToNodes(markdownToHtml(String(text ?? ''), { tables: true }));
     return nodes.length ? nodes : [para('')];
   };
 

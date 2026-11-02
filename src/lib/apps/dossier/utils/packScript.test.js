@@ -129,6 +129,11 @@ describe('plan to blocks (real schema, jsdom)', () => {
     expect(doc.content[1]).toMatchObject({ type: 'embedDataset', attrs: { dataset_id: 'ds1' } });
   });
 
+  it('turns a markdown table in a TEXT block into a real table', () => {
+    const doc = pageBlocksJson({ blocks: [{ type: 'text', markdown: '| A | B |\n|---|---|\n| 1 | 2 |' }] }, ctx);
+    expect(doc.content[0].type).toBe('table');
+  });
+
   it('turns a table into a real table node', () => {
     const nodes = htmlToNodes('<table><tbody><tr><th><p>a</p></th></tr></tbody></table>');
     expect(nodes[0].type).toBe('table');
