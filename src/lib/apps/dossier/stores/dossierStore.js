@@ -14,7 +14,8 @@ import { writable, get } from 'svelte/store';
 import { api }          from '#lib/utils/api.js';
 import { logAudit }     from '#lib/utils/auditLogger.js';
 import { getLogger }    from '#lib/utils/logger.js';
-import { listDocuments, deleteDocumentsFor } from '#lib/utils/documentApi.js';
+import { listDocuments, deleteDocumentsFor, uploadDocument } from '#lib/utils/documentApi.js';
+import { buildPackFromPlan } from '../utils/packBuild.js';
 import { uniqueSlug }   from '../utils/slug.js';
 import { nextOrderIndex } from '../utils/docTree.js';
 import { extractLinks, diffLinks, linkSignature, groupBacklinks } from '../utils/docLinks.js';
@@ -452,6 +453,34 @@ function createDossierStore() {
         `The copy could not be completed: ${errMessage(err)}. The part that was ` +
         'created has been archived — an admin can delete it.');
     }
+  }
+
+  /**
+   * Make a whole pack from a plan (utils/packPlan.js): folders, files, pages and
+   * tables, in one go. Private working pack only — nothing is published.
+   *
+   * @param {object} plan
+   * @param {{ folderId?: string|null, uploads?: Record<string, File>, htmlToNodes: (html: string) => object[] }} options
+   */
+  async function createPackFromPlan(plan, options, userId) {
+    const { postJson } = await import('#lib/utils/request.js');
+    const result = await buildPackFromPlan(plan, { ...options, userId }, {
+      createPack,
+      setArchived,
+      renamePack: async (id, title, uid) => {
+        await api.update('dossier_packs', id, { title, ...touch(uid) }, false);
+        update(s => ({ ...s, packs: s.packs.map(p => p.id === id ? { ...p, title } : p) }));
+      },
+      createMany: (table, rows) => api.createMany(table, rows, false),
+      uploadFile: (file, meta) => uploadDocument(file, meta),
+      importDocuments: (packId, items) => postJson('/api/dossier/import-documents', { targetPackId: packId, items }),
+      stamp: touch,
+    });
+    logAudit('create', 'dossier_pack', result.pack.id, result.pack.title, {
+      appId: 'dossier', eventCategory: 'dossier', severity: 'info',
+      afterData: { built_from_plan: true, ...result.counts, files_skipped: result.skipped.length },
+    });
+    return result;
   }
 
   // ── Pack files (the shelf) ───────────────────────────────────────────────
@@ -1216,7 +1245,7 @@ function createDossierStore() {
   return {
     subscribe,
     loadPacks, loadPackFolders, createPackFolder, renamePackFolder, movePackFolder, deletePackFolder, movePack, createPack, updatePack, setArchived, deletePack,
-    readPackContents, duplicatePack,
+    readPackContents, duplicatePack, createPackFromPlan,
     loadDatasets, createDataset, deleteDataset,
     createRecord, createRecords, updateRecord, deleteRecord,
     loadDocs, closePack, loadPackFiles, templateUsers, createFolder, renameFolder, moveFolder, deleteFolder, placeFile,

@@ -9,6 +9,7 @@
   import Button from '#lib/components/common/Button.svelte';
   import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
+  import IssueDossierDialog from './IssueDossierDialog.svelte';
   import { fmtDate, isOverdue } from '#lib/utils/dates.js';
   import { ISSUE_STATUS, ACTION_STATUS, ACTIVITY_TYPE, getPriorityLabel } from '#lib/utils/constants.js';
 
@@ -17,6 +18,7 @@
   export let showActions = false;
 
   const dispatch = createEventDispatcher();
+  let showDossier = false;
 
   let showDeleteConfirm = false;
 
@@ -184,6 +186,12 @@
       </div>
 
       <div class="btn-group">
+        <Button
+          variant="secondary"
+          size="medium"
+          title="Create a private Dossier pack from everything on this issue"
+          on:click={() => (showDossier = true)}
+        >📁 Dossier</Button>
         <ProtectedButton
           action="modify"
           variant="secondary"
@@ -341,6 +349,8 @@
     </div>
   {/if}
 </div>
+
+<IssueDossierDialog bind:show={showDossier} {issue} />
 
 <ConfirmDialog
   show={showDeleteConfirm}

@@ -59,8 +59,6 @@ function unimported() {
 
 const KEPT = {
   'src/lib/index.js': "SvelteKit's #lib entry stub",
-  'src/lib/apps/dossier/public.js':
-    "the app's cross-app interface, deliberately empty until another app needs Dossier's data",
 };
 
 describe('every file under src/lib is used', () => {

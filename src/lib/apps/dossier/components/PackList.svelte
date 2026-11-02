@@ -60,6 +60,10 @@
       <Button admin size="small" title="A template other people start their dossiers from" on:click={() => dispatch('newTemplate', { folderId: showArchived ? null : templateFolderId })}>+ New Template</Button>
     {/if}
 
+    <ProtectedButton action="modify" variant="secondary" size="small" title="Build a whole pack from a script and the files it names" on:click={() => dispatch('importScript', { folderId: showArchived ? null : dossierFolderId })}>
+      Import script…
+    </ProtectedButton>
+
     <ProtectedButton action="modify" variant="primary" size="small" on:click={() => dispatch('new', { folderId: showArchived ? null : dossierFolderId })}>
       + New Pack
     </ProtectedButton>

@@ -13,6 +13,7 @@
 
   import { dossierStore } from './stores/dossierStore.js';
   import PackList         from './components/PackList.svelte';
+  import ImportScriptModal from './components/ImportScriptModal.svelte';
   import PackFormModal    from './components/PackFormModal.svelte';
   import PackWorkspace    from './components/PackWorkspace.svelte';
   import DuplicatePackModal from './components/DuplicatePackModal.svelte';
@@ -22,6 +23,8 @@
   /** A caught value is `unknown`; narrow it without asserting a type. */
 
   let appError      = '';
+  let showScript = false;
+  let scriptFolderId = null;
   let showPackModal = false;
   let editingPack   = null;
   let creatingTemplate = false;   // the form is making a template, not a dossier
@@ -310,6 +313,7 @@
         loading={!ready || $dossierStore.loading}
         on:new={(e) => openNewPack('', e.detail?.folderId ?? null)}
         on:newTemplate={(e) => openNewTemplate(e.detail?.folderId ?? null)}
+        on:importScript={(e) => { scriptFolderId = e.detail?.folderId ?? null; showScript = true; }}
         on:useTemplate={(e) => openNewPack(e.detail.template.id, e.detail.folderId ?? null)}
         on:open={(e)    => handleOpen(e.detail)}
         on:edit={(e)    => openEditPack(e.detail)}
@@ -321,6 +325,12 @@
     {/if}
   </div>
 </div>
+
+<ImportScriptModal
+  bind:show={showScript}
+  folderId={scriptFolderId}
+  on:open={(e) => handleOpen(e.detail)}
+/>
 
 <PackFormModal
   bind:this={packModalRef}
