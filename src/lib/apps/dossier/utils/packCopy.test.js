@@ -285,4 +285,17 @@ describe('shared template files (keepFiles)', () => {
     expect(plan.records[0].document_id).toBe('tpl-file');
     expect(plan.dropped.files).toBe(0);
   });
+
+  it('does not copy document-index rows that list the template files, but copies other rows', () => {
+    const plan = planPackCopy(
+      { docs: [],
+        datasets: [{ id: 'idx', key: 'document_index', title: 'Index' }, { id: 'chron', key: 'chronology', title: 'Chronology' }],
+        records: [
+          { dataset_id: 'idx', document_id: 'tpl-file', fields: { name: 'listed' } },
+          { dataset_id: 'idx', document_id: null, fields: { name: 'typed by hand' } },
+          { dataset_id: 'chron', document_id: 'tpl-file', fields: { name: 'evidence' } },
+        ] },
+      { packId: 'p', includeRecords: true, keepFiles: new Set(['tpl-file']), mint: counter() });
+    expect(plan.records.map(r => r.fields.name)).toEqual(['typed by hand', 'evidence']);
+  });
 });

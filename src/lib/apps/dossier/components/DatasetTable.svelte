@@ -22,13 +22,15 @@
   /** The pack's pages and shelf, for resolving what a row points at. */
   export let docs  = [];
   export let files = [];
+  /** The files the document index may add: the pack's own, plus the template files its pages use. */
+  export let shelfFiles = files;
 
   const dispatch = createEventDispatcher();
 
   // A document index whose files are all already on the shelf should not have
   // to be retyped. Derived here so the button can say how many it would add.
   $: shelfPending = dataset.key === 'document_index'
-    ? unindexedFiles(files, records)
+    ? unindexedFiles(shelfFiles, records)
     : [];
 
   let error = '';

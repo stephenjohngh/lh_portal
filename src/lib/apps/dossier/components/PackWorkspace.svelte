@@ -186,6 +186,10 @@
   // its own plus the template's. The document index and the Files panel use ownFiles.
   $: ownFiles = $dossierStore.files;
   $: files = [...ownFiles, ...$dossierStore.inheritedFiles];
+  // What the document index may list: the pack's own files, and only those template
+  // files a page already shows (a template of hundreds must not fill the index).
+  $: pageFileIds = referencedFileIds({ docs, records: [] });
+  $: indexableFiles = [...ownFiles, ...$dossierStore.inheritedFiles.filter(f => pageFileIds.has(f.id))];
   $: templatePack = pack.template_id ? $dossierStore.packs.find(p => p.id === pack.template_id) ?? null : null;
 
   async function handlePickAsset(file) {
@@ -425,7 +429,7 @@
 
   async function handleAddFromShelf() {
     const dataset = selectedDataset;      // capture before the await
-    const rows = shelfIndexRows(unindexedFiles(ownFiles, records.filter(
+    const rows = shelfIndexRows(unindexedFiles(indexableFiles, records.filter(
       r => r.dataset_id === dataset.id)));
     if (!rows.length) return;
     try {
@@ -1078,6 +1082,7 @@
           {canEdit}
           {docs}
           {files}
+          shelfFiles={indexableFiles}
           on:linkPage={(e)   => startLinkPage(e.detail)}
           on:linkFile={(e)   => startLinkFile(e.detail)}
           on:clearLink={(e)  => clearRecordLink(e.detail)}

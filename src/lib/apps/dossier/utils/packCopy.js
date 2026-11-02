@@ -189,9 +189,16 @@ export function planPackCopy(
     title:   d.title,
   }));
 
+  // A document index made from a template lists the TEMPLATE'S whole shelf. Copied into
+  // a dossier, every one of those rows would pull its file into the dossier (and into
+  // anything published from it), used or not. So an index row that points at a shared
+  // template file is not copied; the dossier's own index is filled from its own files
+  // and the template files its pages actually use.
+  const indexSets = new Set(datasets.filter(d => d.key === 'document_index').map(d => d.id));
   const newRecords = includeRecords
     ? records
         .filter(r => setMap.has(r.dataset_id))
+        .filter(r => !(indexSets.has(r.dataset_id) && r.document_id && keepFiles.has(r.document_id)))
         .map((r) => {
           const shared = !!r.document_id && keepFiles.has(r.document_id);
           const file = r.document_id ? files.get(r.document_id) : null;
