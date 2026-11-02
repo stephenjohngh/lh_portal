@@ -42,7 +42,7 @@ const para = (text) => ({ type: 'paragraph', content: text ? [{ type: 'text', te
 export function blockToNodes(block, ctx) {
   const mint = ctx.mint ?? newUuid;
   const md = (text) => {
-    const nodes = ctx.htmlToNodes(markdownToHtml(String(text ?? ''), { tables: true }));
+    const nodes = ctx.htmlToNodes(markdownToHtml(String(text ?? ''), { tables: true, internalLinks: true }));
     return nodes.length ? nodes : [para('')];
   };
 
@@ -101,10 +101,27 @@ export function blockToNodes(block, ctx) {
   }
 }
 
+/**
+ * Give each page link (`[x](./slug.md)`) the id of the page it names, as well as
+ * the slug it was written with. A slug naming no page in the pack is left alone:
+ * the broken-reference panel reports it, as it does for a link typed in the editor.
+ */
+function resolvePageLinks(node, ctx) {
+  if (!node || typeof node !== 'object') return node;
+  const bySlug = new Map([...ctx.pages.values()].map(p => [p.slug, p.id]));
+  const out = { ...node };
+  if (Array.isArray(out.marks)) {
+    out.marks = out.marks.map(m => (m?.type === 'docLink' && m.attrs?.target_slug && bySlug.has(m.attrs.target_slug)
+      ? { ...m, attrs: { ...m.attrs, target_doc_id: bySlug.get(m.attrs.target_slug) } } : m));
+  }
+  if (Array.isArray(out.content)) out.content = out.content.map(c => resolvePageLinks(c, ctx));
+  return out;
+}
+
 /** A whole page's `blocks` JSON. */
 export function pageBlocksJson(page, ctx) {
   const content = (page?.blocks ?? []).flatMap(b => blockToNodes(b, ctx));
-  return { type: 'doc', content: content.length ? content : [para('')] };
+  return resolvePageLinks({ type: 'doc', content: content.length ? content : [para('')] }, ctx);
 }
 
 // Re-exported so callers building the context need one import.

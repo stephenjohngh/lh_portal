@@ -134,6 +134,13 @@ describe('plan to blocks (real schema, jsdom)', () => {
     expect(doc.content[0].type).toBe('table');
   });
 
+  it('turns [x](./slug.md) into a page link carrying the page id, and leaves an unknown slug unresolved', () => {
+    const doc = pageBlocksJson({ blocks: [{ type: 'text', markdown: 'See [the timeline](./timeline.md) and [gone](./nowhere.md).' }] },
+      { ...ctx, pages: new Map([['background/timeline', { id: 'pg2', slug: 'timeline', title: 'Timeline' }]]) });
+    const marks = doc.content[0].content.flatMap(c => c.marks ?? []).filter(m => m.type === 'docLink');
+    expect(marks.map(m => [m.attrs.target_slug, m.attrs.target_doc_id])).toEqual([['timeline', 'pg2'], ['nowhere', null]]);
+  });
+
   it('turns a table into a real table node', () => {
     const nodes = htmlToNodes('<table><tbody><tr><th><p>a</p></th></tr></tbody></table>');
     expect(nodes[0].type).toBe('table');
