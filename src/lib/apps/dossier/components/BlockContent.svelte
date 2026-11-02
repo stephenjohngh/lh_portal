@@ -121,7 +121,7 @@
 
 {#if lightbox}
   <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <div class="dossier-lightbox" role="dialog" aria-modal="true" aria-label="Enlarged picture" data-testid="lightbox" on:click={closeLightbox}>
+  <div class="dossier-lightbox" role="dialog" tabindex="-1" aria-modal="true" aria-label="Enlarged picture" data-testid="lightbox" on:click={closeLightbox}>
     <div class="dossier-lightbox-close">
       <Button variant="secondary" size="small" ariaLabel="Close the enlarged picture" on:click={closeLightbox}>✕ Close</Button>
     </div>
