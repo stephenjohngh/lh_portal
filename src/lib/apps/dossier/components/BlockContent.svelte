@@ -417,22 +417,25 @@
   }
   /* Author-chosen preview width, as a share of the text column so it renders
      the same in the editor, in Preview and in a published pack. */
-  /* The WIDTH belongs to the block, not the picture, so a block narrower than
-     the column no longer takes the whole row: small and medium pictures are
-     inline-blocks and sit side by side (four small, two medium) before wrapping.
-     In the editor the host (.dossier-asset-host) carries the width; in a reader
-     the .dossier-asset itself does — the :not() keeps the editor's inner
-     element from shrinking a second time inside its host. */
+  /* Small and medium pictures have a SET HEIGHT (8rem and 14rem), so pictures
+     of different shapes line up along a row; the width follows each picture's
+     own proportions. The block shrinks to its picture (inline-block, auto
+     width) and several share a row until it is full, then wrap. Never wider
+     than the column. In the editor the host (.dossier-asset-host) carries this;
+     in a reader the .dossier-asset itself does — the :not() keeps the editor's
+     inner element from shrinking a second time inside its host. */
   :global(.dossier-prose .dossier-asset-host[data-width='small']),
-  :global(.dossier-prose .dossier-asset:not(.dossier-asset-inner)[data-kind='image'][data-width='small']) {
-    display: inline-block; vertical-align: top;
-    width: calc(25% - 0.75rem); margin-right: 0.5rem;
-  }
   :global(.dossier-prose .dossier-asset-host[data-width='medium']),
+  :global(.dossier-prose .dossier-asset:not(.dossier-asset-inner)[data-kind='image'][data-width='small']),
   :global(.dossier-prose .dossier-asset:not(.dossier-asset-inner)[data-kind='image'][data-width='medium']) {
     display: inline-block; vertical-align: top;
-    width: calc(50% - 0.75rem); margin-right: 0.5rem;
+    max-width: 100%; margin-right: 0.5rem;
   }
+  :global(.dossier-prose [data-width='small'] .dossier-asset-image) { height: 8rem; width: auto; max-width: 100%; }
+  :global(.dossier-prose [data-width='medium'] .dossier-asset-image) { height: 14rem; width: auto; max-width: 100%; }
+  /* A long description must not stretch a picture's block: it wraps under it. */
+  :global(.dossier-prose [data-width='small'] .dossier-asset-description),
+  :global(.dossier-prose [data-width='medium'] .dossier-asset-description) { width: 0; min-width: 100%; }
   :global(.dossier-prose .dossier-asset-host[data-width='large']),
   :global(.dossier-prose .dossier-asset:not(.dossier-asset-inner)[data-kind='image'][data-width='large']) {
     width: 75%;
