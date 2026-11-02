@@ -206,19 +206,23 @@ describe('dropping files onto the tree', () => {
   const dt = (...fs) => ({ dataTransfer: { types: ['Files'], files: fs } });
   const png = (n) => new File(['x'], n, { type: 'image/png' });
 
-  it('uploads into the folder row it lands on, without opening the upload form', async () => {
+  it('a drop on a folder row opens the upload form aimed at that folder, with the files listed', async () => {
     render(PackFiles, { pack, canEdit: true });
     const row = screen.getAllByTestId('folder-row').find(r => r.textContent.includes('Old plans'));
     await fireEvent.drop(row, dt(png('a.png'), png('b.png')));
+    expect(await screen.findByText(/^Into/)).toHaveTextContent(/Old plans/);
+    expect(screen.getByTestId('selected-files')).toHaveTextContent('a.png');
+    expect(screen.getByTestId('selected-files')).toHaveTextContent('b.png');
+    expect(h.uploadDocument).not.toHaveBeenCalled();
+    await fireEvent.click(screen.getByRole('button', { name: /upload 2 files/i }));
     await waitFor(() => expect(h.uploadDocument).toHaveBeenCalledTimes(2));
-    expect(h.uploadDocument.mock.calls[0][1].folder_path).toMatch(/Old plans \(bbbbbbbb\)$/);
     await waitFor(() => expect(h.store.placeFile).toHaveBeenCalledWith('n-a.png', 'p1', 'bbbbbbbb-2222', 'u1'));
-    expect(screen.queryByTestId('selected-files')).toBeNull();
   });
 
-  it('a drop on a file row goes to that file’s folder', async () => {
+  it('a drop on a file row aims at that file’s folder', async () => {
     render(PackFiles, { pack, canEdit: true });
     await fireEvent.drop(screen.getByText('top floor.png').closest('[data-testid="file-row"]'), dt(png('c.png')));
+    await fireEvent.click(await screen.findByRole('button', { name: /^upload$/i }));
     await waitFor(() => expect(h.store.placeFile).toHaveBeenCalledWith('n-c.png', 'p1', 'bbbbbbbb-2222', 'u1'));
   });
 

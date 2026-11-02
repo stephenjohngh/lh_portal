@@ -295,14 +295,13 @@
     const batch = all.filter(f => f.size <= MAX_BYTES);
     error = tooBig.length ? `Too large (maximum ${fmtBytes(MAX_BYTES)}): ${tooBig.map(f => f.name).join(', ')}` : '';
     if (!batch.length) return;
-    busy = true;
-    if (folderId) { collapsed = { ...collapsed, [folderId]: false }; selected = { kind: 'folder', id: folderId }; }
-    const { failed, lastError } = await uploadBatch(batch, folderId, '');
-    busy = false;
-    if (failed.length) {
-      error = (error ? error + ' · ' : '') +
-        `${batch.length - failed.length} of ${batch.length} uploaded. Not uploaded: ${failed.map(f => f.name).join(', ')} — ${lastError}`;
-    }
+    // Open the upload form with these files, aimed at the folder they were dropped on,
+    // so the description can be entered before they go (one for all; Edit does it per file).
+    selected = folderId ? { kind: 'folder', id: folderId } : null;
+    if (folderId) collapsed = { ...collapsed, [folderId]: false };
+    const have = mode === 'upload' ? toUpload : [];
+    toUpload = [...have, ...batch.filter(f => !have.some(x => x.name === f.name && x.size === f.size))];
+    mode = 'upload';
   }
 
   // A file dropped anywhere that does not take it would make the browser open it
