@@ -1788,6 +1788,47 @@ export type Database = {
             }
           ]
       }
+      dossier_publication_events: {
+        Row: {
+          id: string
+          publication_id: string
+          event: string
+          ip: string | null
+          user_agent: string | null
+          document_id: string | null
+          filename: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          publication_id: string
+          event: string
+          ip?: string | null
+          user_agent?: string | null
+          document_id?: string | null
+          filename?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          publication_id?: string
+          event?: string
+          ip?: string | null
+          user_agent?: string | null
+          document_id?: string | null
+          filename?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dossier_publication_events_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "dossier_publications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dossier_publications: {
         Row: {
           id: string
@@ -1798,6 +1839,7 @@ export type Database = {
           mode: string
           token_hash: string
           token_prefix: string
+          token: string | null
           passphrase_hash: string | null
           passphrase_salt: string | null
           snapshot: Json | null
@@ -1819,6 +1861,7 @@ export type Database = {
           mode?: string
           token_hash: string
           token_prefix: string
+          token?: string | null
           passphrase_hash?: string | null
           passphrase_salt?: string | null
           snapshot?: Json | null
@@ -1840,6 +1883,7 @@ export type Database = {
           mode?: string
           token_hash?: string
           token_prefix?: string
+          token?: string | null
           passphrase_hash?: string | null
           passphrase_salt?: string | null
           snapshot?: Json | null

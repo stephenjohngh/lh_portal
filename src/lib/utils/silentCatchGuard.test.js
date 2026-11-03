@@ -42,6 +42,8 @@ const ALLOWED = {
     'the offline plan viewer: a cache write, and attributes shown only in the detail sheet'],
   'lib/server/documentLibrary.js': [1,
     'binning an emptied folder after the file and its row have gone'],
+  'lib/server/publicationEvents.js': [1,
+    'the access log of a published pack: a log row that cannot be written must never stop a recipient reading the pack'],
   'lib/server/storage/googleDriveProvider.js': [1,
     'a missing mime type falls back to a download, which is the safe way to serve it'],
   'lib/utils/auditLogger.js': [1,

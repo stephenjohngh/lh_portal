@@ -687,14 +687,14 @@ describe('publications', () => {
     await store.loadPackFiles('p1');
   }
 
-  it('stores only the token HASH, and returns the token exactly once', async () => {
+  it('keeps the token on the row (so it can be shown again) beside its hash', async () => {
     await seedPack();
     const { token } = await store.createPublication({ pack, snapshot: reviewed() }, 'u1');
 
     const row = h.api.create.mock.calls.at(-1)[1];
     expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    // The row must not carry the token in any form.
-    expect(JSON.stringify(row)).not.toContain(token);
+    // Migration 277: the link is kept so its owner can show it again.
+    expect(row.token).toBe(token);
     expect(row.token_hash).toMatch(/^[0-9a-f]{64}$/);
     expect(row.token_prefix).toBe(token.slice(0, 8));
   });
@@ -827,7 +827,8 @@ describe('publications', () => {
     expect(patch.token_hash).toMatch(/^[0-9a-f]{64}$/);
     expect(patch).not.toHaveProperty('snapshot');
     expect(patch).not.toHaveProperty('manifest');
-    expect(JSON.stringify(patch)).not.toContain(token);
+    // The new link is kept too, so it can be shown again.
+    expect(patch.token).toBe(token);
   });
 
   it('clears publications when the pack is closed', async () => {

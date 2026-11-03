@@ -16,6 +16,7 @@ import { findServablePublication } from '#lib/server/publicationReader.js';
 import {
   needsPassphrase, mintGrant, grantCookieName, grantCookieOptions,
 } from '#lib/server/publicationPassphrase.js';
+import { recordPublicationEvent } from '#lib/server/publicationEvents.js';
 import { verifyPassphrase } from '#lib/apps/dossier/utils/publicationPassphrase.js';
 
 const WRONG = 'That passphrase was not recognised.';
@@ -48,7 +49,11 @@ export async function POST({ params, request, url, cookies }) {
 
   const ok = await verifyPassphrase(
     body?.passphrase, found.publication.passphrase_hash, found.publication.passphrase_salt);
-  if (!ok) return json({ error: WRONG }, { status: 401 });
+  if (!ok) {
+    await recordPublicationEvent(request, found.publication.id, 'unlock_failed');
+    return json({ error: WRONG }, { status: 401 });
+  }
+  await recordPublicationEvent(request, found.publication.id, 'unlock_ok');
 
   cookies.set(
     grantCookieName(found.publication.id),

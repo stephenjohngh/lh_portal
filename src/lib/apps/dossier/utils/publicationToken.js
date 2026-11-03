@@ -6,14 +6,16 @@
 // only, which is native in browsers and in Node 19+ (Netlify Functions and
 // Northflank both run Node 20+) — the same reasoning as caseVerificationCode.
 //
-// ── Why the token is hashed at rest ──────────────────────────────────────────
-// The obvious objection is that anyone who can read dossier_publications also
-// has the snapshot in the next column, so what does hashing buy? It buys
-// protection against the token leaking ALONE — a log line, a partial export, a
-// `select id, title, token`. That is a real and common failure, and the fact
-// that the row is already sensitive is an argument against weakening it, not
-// for. The cost is that the link cannot be re-shown: it appears once at
-// creation, like an API key, with Regenerate as the recovery path.
+// ── The token is kept in the clear as well as hashed (migration 277) ─────────
+// It used to be hashed only, shown once like an API key. That protected little:
+// anyone who can read dossier_publications also has the snapshot (or the live
+// pack) beside it, and the cost was real — a lost link could only be replaced.
+// So the row now carries `token` too, behind the same RLS (the pack's owner or an
+// admin), and the author can show or copy it at any time (each is audited).
+// `token_hash` remains because it is how the public reader finds a publication
+// without the token ever being a query parameter. The PASSPHRASE is different and
+// stays hashed: it is human-chosen, often reused elsewhere, and never needs reading
+// back.
 //
 // ── Why a fast hash here and a slow one for passphrases ──────────────────────
 // This token is 32 uniformly random bytes. There is nothing to brute-force, so

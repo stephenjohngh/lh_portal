@@ -29,6 +29,7 @@ import { chunk } from '../utils/fileSync.js';
 import { buildSnapshot, buildManifest } from '../utils/snapshot.js';
 import { generateToken, hashToken, tokenPrefix } from '../utils/publicationToken.js';
 import { hashPassphrase } from '../utils/publicationPassphrase.js';
+import { summariseAccess } from '../utils/publicationAccess.js';
 import { storeLoader } from '#lib/utils/storeLoad.js';
 import { policy } from '#lib/utils/policies.js';
 import { fmtDateTime } from '#lib/utils/dates.js';
@@ -838,9 +839,10 @@ function createDossierStore() {
   /**
    * Freeze the pack and issue a link.
    *
-   * Returns `{ publication, token }`. The TOKEN IS RETURNED ONCE AND NEVER
-   * AGAIN — only its SHA-256 reaches the database. The caller must show it to
-   * the author immediately; there is no recovery path but Regenerate.
+   * Returns `{ publication, token }`. The token is kept on the row (`token`) as
+   * well as its SHA-256 (`token_hash`, how the public reader finds it), so the
+   * link can be shown again by its owner or an admin (`recordLinkShown`).
+   * Links issued before migration 277 have no stored token: Regenerate gives them one.
    *
    * The caller passes the SNAPSHOT IT REVIEWED. This method deliberately does
    * not rebuild one: reading live store state here would mean the row persisted
@@ -879,6 +881,7 @@ function createDossierStore() {
       title:           title || pack.title,
       recipient_label: recipientLabel || null,
       mode,
+      token,
       token_hash:      tokenHash,
       token_prefix:    tokenPrefix(token),
       passphrase_hash: secret?.hash ?? null,
@@ -991,7 +994,7 @@ function createDossierStore() {
   async function regeneratePublicationToken(id, userId) {
     const token = generateToken();
     const publication = await api.update('dossier_publications', id, {
-      token_hash: await hashToken(token), token_prefix: tokenPrefix(token),
+      token, token_hash: await hashToken(token), token_prefix: tokenPrefix(token),
       ...touch(userId),
     }, true);
 
@@ -1004,6 +1007,40 @@ function createDossierStore() {
         afterData: { token_prefix: publication.token_prefix },
       });
     return { publication, token };
+  }
+
+  /**
+   * Note that an author viewed or copied a link they had published. The link is the
+   * only key to the pack, so each showing is on the audit trail (the token itself is not).
+   */
+  function recordLinkShown(publication, how = 'shown') {
+    logAudit('read', 'dossier_publication', publication.id,
+      `${publication.title} — link ${how}`, {
+        appId: 'dossier', eventCategory: 'dossier', severity: 'warning',
+        afterData: { token_prefix: publication.token_prefix },
+      });
+  }
+
+  /**
+   * The access log of publications: who opened which link, when, and which files
+   * they took. Written by the public reader (server); read here under RLS, so only
+   * the pack's owner or an admin gets rows.
+   *
+   * @param {string[]} publicationIds
+   * @returns {Promise<Record<string, {opens:number, firstOpen:string|null, lastOpen:string|null, addresses:number, files:number, failedUnlocks:number, refused:number}>>}
+   */
+  async function loadAccessSummary(publicationIds) {
+    const rows = await api.getAllIn('dossier_publication_events', 'publication_id', publicationIds, {
+      select: 'publication_id, event, ip, created_at', orderBy: 'created_at', tiebreak: false,
+    });
+    return summariseAccess(publicationIds, rows);
+  }
+
+  /** The most recent events for one link, newest first. */
+  async function loadPublicationEvents(publicationId, limit = 200) {
+    return api.get('dossier_publication_events', {
+      filters: { publication_id: publicationId }, orderBy: 'created_at', ascending: false, limit,
+    });
   }
 
   // ── Docs ─────────────────────────────────────────────────────────────────
@@ -1253,6 +1290,9 @@ function createDossierStore() {
     saveVersion, loadRevisions, restoreRevision, loadBacklinks,
     loadPublications, loadAllPublications, createPublication, revokePublication, deletePublication,
     regeneratePublicationToken,
+    recordLinkShown,
+    loadAccessSummary,
+    loadPublicationEvents,
   };
 }
 

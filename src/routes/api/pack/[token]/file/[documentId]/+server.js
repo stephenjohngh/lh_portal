@@ -38,6 +38,7 @@ import {
   findServablePublication, resolveManifest, readerRefusal,
 } from '#lib/server/publicationReader.js';
 import { hasGrant } from '#lib/server/publicationPassphrase.js';
+import { recordPublicationEvent } from '#lib/server/publicationEvents.js';
 
 /** Every refusal, whatever the cause. See publicationReader.readerRefusal(). */
 function refuse() {
@@ -91,6 +92,14 @@ export async function GET({ params, request, cookies }) {
     console.error('[PackAsset] fetch failed for', storageId, '—',
       friendlyStorageError(err), err?.code ?? '');
     return refuse();
+  }
+
+  // The access log. Pictures are fetched by the page itself on every open, so
+  // logging them would bury the real events: they are covered by 'opened'. A
+  // document someone actually took (a PDF, a sheet) is recorded by name.
+  if (!String(entry.mime_type ?? '').startsWith('image/')) {
+    await recordPublicationEvent(request, found.publication.id, 'file',
+      { documentId: params.documentId, filename: entry.filename });
   }
 
   // Inline only for the small non-scriptable set the shared allow-list permits;

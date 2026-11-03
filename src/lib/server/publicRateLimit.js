@@ -42,7 +42,7 @@ function getSvc() {
  *   2. LAST x-forwarded-for entry — appended by the closest (platform) proxy.
  *   3. x-real-ip — set by some reverse proxies (Northflank/nginx).
  */
-function getClientIp(request) {
+export function getClientIp(request) {
   const netlify = request.headers.get('x-nf-client-connection-ip');
   if (netlify) return netlify.trim();
 

@@ -91,11 +91,13 @@
     <!-- ── Step 2: the link, shown once ────────────────────────────────── -->
     <div class="space-y-4">
       <div class="p-3 rounded border border-amber-500/40 bg-amber-500/10">
-        <p class="text-sm text-amber-200 font-medium">Copy this link now.</p>
+        <p class="text-sm text-amber-200 font-medium">Here is the link.</p>
         <p class="text-xs text-amber-200/80 mt-1">
-          It is not stored and cannot be shown again. If you lose it, use
-          <span class="font-medium">Regenerate link</span> — which issues a new
-          one and stops the old one working.
+          The portal keeps it for you: open <span class="font-medium">Published
+          links</span> on this pack and use <span class="font-medium">Show link</span>
+          or <span class="font-medium">Copy link</span> whenever you need it.
+          <span class="font-medium">Regenerate link</span> issues a new one and
+          stops this one working.
         </p>
       </div>
 
@@ -241,8 +243,12 @@
           <p class="text-xs text-slate-500 -mt-1">
             A second factor for anything sensitive. Send it to the recipient
             <span class="text-slate-400">separately</span> — by phone, or in a
-            different message — or it protects nothing. Like the link, it is
-            stored hashed and cannot be shown again.
+            different message — or it protects nothing.
+            <span class="text-amber-300/90 font-medium">Unlike the link, the
+            passphrase is never kept: only a scrambled form is stored, so nobody
+            — not you, not an administrator — can ever read it back.</span>
+            It is the one thing here that cannot be recovered. Write it down now;
+            if it is lost, publish a new link with a new passphrase.
           </p>
 
           {#if mode === 'latest'}

@@ -77,6 +77,24 @@ export async function findServablePublication(token, now = Date.now()) {
 }
 
 /**
+ * For the access log only: when a well-formed token was refused, which publication
+ * it names and why (revoked or expired). `null` for a token nobody issued, which is
+ * not logged (there is no publication to attach it to). The refusal the RECIPIENT
+ * sees is unchanged and uniform; this never reaches them.
+ *
+ * @param {string} token
+ * @returns {Promise<{ id: string, why: 'revoked'|'expired' }|null>}
+ */
+export async function refusedPublication(token, now = Date.now()) {
+  if (!isWellFormedToken(token)) return null;
+  const { data } = await svc().from('dossier_publications')
+    .select('id, expires_at, revoked_at').eq('token_hash', await hashToken(token)).maybeSingle();
+  if (!data) return null;
+  if (isServable(data, now)) return null;
+  return { id: data.id, why: data.revoked_at ? 'revoked' : 'expired' };
+}
+
+/**
  * The content a publication serves.
  *
  * 'snapshot' — the frozen jsonb, returned as stored. Nothing is queried at all,

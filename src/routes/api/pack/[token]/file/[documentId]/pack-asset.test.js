@@ -18,7 +18,9 @@ const h = vi.hoisted(() => ({
   hasGrant: vi.fn(() => true),
   sbStream: vi.fn(() => Promise.resolve({ data: Buffer.from('sb bytes') })),
   providersForFileIds: vi.fn(async () => new Map([['drive-1', 'google_drive']])),
+  recordPublicationEvent: vi.fn(() => Promise.resolve()),
 }));
+vi.mock('#lib/server/publicationEvents.js', () => ({ recordPublicationEvent: h.recordPublicationEvent }));
 
 vi.mock('#lib/server/storage/index.js', () => ({
   ownerOf: (name) => {
@@ -86,6 +88,27 @@ describe('the happy path', () => {
     // and find nothing.
     await call('drive-1');
     expect(h.getFileStream).not.toHaveBeenCalled();
+  });
+});
+
+describe('the access log', () => {
+  it('records a document that was taken, by name', async () => {
+    await call();
+    expect(h.recordPublicationEvent).toHaveBeenCalledWith(
+      expect.any(Request), 'pub1', 'file', { documentId: 'doc-1', filename: 'Notice.pdf' });
+  });
+
+  it('does not record pictures — the page fetches those on every open', async () => {
+    const png = { files: [{ ...MANIFEST.files[0], mime_type: 'image/png', filename: 'p.png' }] };
+    h.resolveManifest.mockResolvedValue(png);
+    await call();
+    expect(h.recordPublicationEvent).not.toHaveBeenCalled();
+  });
+
+  it('records nothing for a refused request', async () => {
+    h.findServablePublication.mockResolvedValue({ ok: false, message: 'x' });
+    await call();
+    expect(h.recordPublicationEvent).not.toHaveBeenCalled();
   });
 });
 

@@ -11,6 +11,8 @@
   import { permissions } from '#lib/stores/permissions.js';
   import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
   import { fmtDateTime } from '#lib/utils/dates.js';
+  import { publicationUrl } from '../utils/publicationToken.js';
+  import { describeAccess, EVENT_LABEL, EVENT_CONCERN } from '../utils/publicationAccess.js';
   import {
     publicationState, describePublication, STATE_LABEL, STATE_BADGE,
   } from '../utils/publicationState.js';
@@ -22,8 +24,44 @@
   /** { id, message } from the most recent file check. */
   export let verifyResult = null;
   export let verifyingId = null;
+  /** publication id → figures from summariseAccess(). Missing = not loaded yet. */
+  export let access = {};
+  /** publication id → its recent events (newest first), once opened. */
+  export let events = {};
+  export let eventsLoadingId = null;
 
   const dispatch = createEventDispatcher();
+
+  /** The link currently revealed, and whether it has just been copied. */
+  let shownId = null;
+  let copiedId = null;
+  let copyError = '';
+  let logOpenId = null;
+
+  const origin = () => (typeof window !== 'undefined' ? window.location.origin : '');
+  const linkOf = (p) => publicationUrl(origin(), p.token);
+
+  function toggleLink(p) {
+    shownId = shownId === p.id ? null : p.id;
+    if (shownId) dispatch('linkShown', p);
+  }
+
+  async function copy(p) {
+    copyError = '';
+    try {
+      await navigator.clipboard.writeText(linkOf(p));
+      copiedId = p.id;
+      dispatch('linkCopied', p);
+      setTimeout(() => { if (copiedId === p.id) copiedId = null; }, 3000);
+    } catch {
+      copyError = 'Could not copy automatically — select the link and copy it.';
+    }
+  }
+
+  function toggleLog(p) {
+    logOpenId = logOpenId === p.id ? null : p.id;
+    if (logOpenId) dispatch('loadEvents', p);
+  }
 </script>
 
 <div class="space-y-2">
@@ -71,6 +109,39 @@
           {#if publication.manifest?.files?.length}<p>{publication.manifest.files.length} file{publication.manifest.files.length === 1 ? '' : 's'} included</p>{/if}
         </div>
 
+        <!-- Who has used this link. Written by the public reader; the address is
+             the caller's, as the host reported it. -->
+        <p class="text-[11px] text-slate-400" data-testid="pub-access">
+          {access[publication.id] ? describeAccess(access[publication.id], fmtDateTime) : 'Access not loaded'}
+          {#if access[publication.id]?.files}· {access[publication.id].files} file{access[publication.id].files === 1 ? '' : 's'} taken{/if}
+          {#if access[publication.id]?.failedUnlocks}<span class="text-amber-300/90">· {access[publication.id].failedUnlocks} wrong passphrase{access[publication.id].failedUnlocks === 1 ? '' : 's'}</span>{/if}
+          {#if access[publication.id]?.refused}<span class="text-amber-300/90">· {access[publication.id].refused} attempt{access[publication.id].refused === 1 ? '' : 's'} after it stopped working</span>{/if}
+        </p>
+
+        {#if canEdit && state !== 'revoked'}
+          {#if publication.token}
+            <div class="flex gap-1.5 items-center pt-0.5">
+              <Button variant="tertiary" size="xs" on:click={() => toggleLink(publication)}>
+                {shownId === publication.id ? 'Hide link' : 'Show link'}
+              </Button>
+              <Button variant="tertiary" size="xs" on:click={() => copy(publication)}>
+                {copiedId === publication.id ? 'Copied' : 'Copy link'}
+              </Button>
+            </div>
+            {#if shownId === publication.id}
+              <input readonly value={linkOf(publication)} aria-label="Publication link"
+                     class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[11px] text-slate-200 font-mono"
+                     on:focus={(e) => e.currentTarget.select()} />
+            {/if}
+            {#if copyError}<p class="text-[11px] text-amber-300/90">{copyError}</p>{/if}
+          {:else}
+            <p class="text-[11px] text-slate-500" data-testid="pub-link-not-kept">
+              This link was issued before links were kept, so it cannot be shown.
+              <span class="text-slate-400">Regenerate link</span> gives a new one that can.
+            </p>
+          {/if}
+        {/if}
+
         {#if canEdit && state !== 'revoked'}
           <div class="flex gap-1.5 pt-0.5">
             <ProtectedButton requireAdmin={false} variant="secondary" size="small"
@@ -89,6 +160,9 @@
         {/if}
 
         {#if canEdit}
+          <Button variant="tertiary" size="xs" on:click={() => toggleLog(publication)}>
+            {logOpenId === publication.id ? 'Hide access log' : 'Access log'}
+          </Button>
           <Button variant="tertiary" size="xs" disabled={verifyingId === publication.id} on:click={() => dispatch('verify', publication)}>{verifyingId === publication.id ? 'Checking files…' : 'Check files'}</Button>
 
           {#if $permissions.isAdmin}
@@ -97,6 +171,26 @@
                  discards it, and takes the pinned copies of the files with it. -->
             <span class="ml-2"><Button admin size="xs" disabled={busyId === publication.id}
               on:click={() => dispatch('deletePublication', publication)}>Delete</Button></span>
+          {/if}
+
+          {#if logOpenId === publication.id}
+            <div class="mt-1 max-h-48 overflow-y-auto rounded border border-slate-700/70 bg-slate-900/50" data-testid="pub-log">
+              {#if eventsLoadingId === publication.id}
+                <p class="text-[11px] text-slate-500 p-2">Loading…</p>
+              {:else if !(events[publication.id]?.length)}
+                <p class="text-[11px] text-slate-500 p-2">Nothing has been recorded for this link yet.</p>
+              {:else}
+                <ul class="divide-y divide-slate-800">
+                  {#each events[publication.id] as ev (ev.id)}
+                    <li class="px-2 py-1 text-[11px] {EVENT_CONCERN.has(ev.event) ? 'text-amber-300/90' : 'text-slate-400'}">
+                      <span class="text-slate-500">{fmtDateTime(ev.created_at)}</span>
+                      · {EVENT_LABEL[ev.event] ?? ev.event}{#if ev.filename}: {ev.filename}{/if}
+                      · <span class="font-mono">{ev.ip ?? 'unknown address'}</span>
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
+            </div>
           {/if}
 
           {#if verifyResult?.id === publication.id}

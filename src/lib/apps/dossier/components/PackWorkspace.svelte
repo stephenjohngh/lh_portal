@@ -810,6 +810,33 @@
     dossierStore.loadPublications(pack.id).catch(() => {});
   }
 
+  // The access log: figures for every link (loaded when the links are, and
+  // keyed on a primitive — the ids — not on the array, which Svelte treats as always
+  // changed), and one link's recent events on demand.
+  let access = {};
+  let pubEvents = {};
+  let eventsLoadingId = null;
+  let accessFor = '';
+  $: pubIdsKey = publications.map(p => p.id).join(',');
+  $: if (pubsOpen && pubIdsKey && pubIdsKey !== accessFor) {
+    accessFor = pubIdsKey;
+    dossierStore.loadAccessSummary(pubIdsKey.split(','))
+      .then((s) => { access = s; })
+      .catch(() => { access = {}; });
+  }
+
+  async function handleLoadEvents(publication) {
+    eventsLoadingId = publication.id;
+    try {
+      const rows = await dossierStore.loadPublicationEvents(publication.id);
+      pubEvents = { ...pubEvents, [publication.id]: rows ?? [] };
+    } catch (/** @type {any} */ err) {
+      treeError = err.message;
+    } finally {
+      eventsLoadingId = null;
+    }
+  }
+
   function requestDelete(doc) { pendingDelete = doc; }
 
   async function confirmDelete() {
@@ -1057,6 +1084,12 @@
               {publications}
               {canEdit}
               busyId={pubBusyId}
+              {access}
+              events={pubEvents}
+              {eventsLoadingId}
+              on:loadEvents={(e) => handleLoadEvents(e.detail)}
+              on:linkShown={(e) => dossierStore.recordLinkShown(e.detail, 'shown')}
+              on:linkCopied={(e) => dossierStore.recordLinkShown(e.detail, 'copied')}
               on:regenerate={(e) => handleRegenerate(e.detail)}
               on:revoke={(e) => pendingRevoke = e.detail}
               on:verify={(e) => handleVerify(e.detail)}

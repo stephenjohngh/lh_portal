@@ -14,8 +14,9 @@
 
 import {
   findServablePublication, readPublicationContent, publicPublicationFields,
-  stripStorageIds, readerRefusal,
+  stripStorageIds, readerRefusal, refusedPublication,
 } from '#lib/server/publicationReader.js';
+import { recordPublicationEvent } from '#lib/server/publicationEvents.js';
 import { checkRateLimit } from '#lib/server/publicRateLimit.js';
 import { needsPassphrase, hasGrant } from '#lib/server/publicationPassphrase.js';
 import { serverWording } from '#lib/server/wording.js';
@@ -32,7 +33,13 @@ export async function load({ params, request, setHeaders, cookies }) {
   }
 
   const found = await findServablePublication(params.token);
-  if (!found.ok) return { refused: true, message: found.message };
+  if (!found.ok) {
+    // The recipient sees the one uniform refusal; the owner's access log learns
+    // that a revoked or expired link was tried.
+    const refused = await refusedPublication(params.token);
+    if (refused) await recordPublicationEvent(request, refused.id, `refused_${refused.why}`);
+    return { refused: true, message: found.message };
+  }
 
   // A passphrase, when the author set one. Note what is NOT returned in this
   // branch: no title, no dates, nothing about the pack. Someone who has the
@@ -46,6 +53,9 @@ export async function load({ params, request, setHeaders, cookies }) {
   // `found` carries no message on its ok branch, so this must not reach for
   // one — a recipient would get the refusal layout with an empty paragraph.
   if (!content) return { refused: true, message: readerRefusal().message };
+
+  // Served: this is an open. (A locked page above is not one until it is answered.)
+  await recordPublicationEvent(request, found.publication.id, 'opened');
 
   // A published pack is private to whoever holds the link. It must not be
   // cached by a shared proxy, and it must not turn up in a search index.
