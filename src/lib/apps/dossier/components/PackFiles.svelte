@@ -46,6 +46,13 @@
   $: hasInherited = $dossierStore.inheritedFiles.length > 0 || $dossierStore.inheritedFolders.length > 0;
   let tplSelected = null;
   let tplCollapsed = {};
+  // The template's folders start CLOSED (only the top-level names show), once per pack
+  // once they have loaded. Keyed on a primitive so later re-renders do not re-close them.
+  let tplClosedFor = '';
+  $: if (pack?.id && !$dossierStore.inheritedLoading && $dossierStore.inheritedFolders.length && tplClosedFor !== pack.id) {
+    tplClosedFor = pack.id;
+    tplCollapsed = Object.fromEntries($dossierStore.inheritedFolders.map(f => [f.id, true]));
+  }
   $: tplFile = tplSelected?.kind === 'file' ? $dossierStore.inheritedFiles.find(f => f.id === tplSelected.id) : null;
 
   /** @type {{ kind: 'folder'|'file', id: string }|null} */

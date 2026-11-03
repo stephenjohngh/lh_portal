@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
+import { render, screen, within, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
 
 const h = vi.hoisted(() => {
   /** @type {Set<(v: any) => void>} */
@@ -110,6 +110,9 @@ describe('PackFiles', () => {
     const tpl = screen.getByTestId('template-files');
     expect(tpl).toHaveTextContent('Surveyor template');
     expect(tpl).toHaveTextContent('New plans');
+    // the template's folders start closed: only the top-level names show
+    expect(tpl).not.toHaveTextContent('ground floor.png');
+    await fireEvent.click(within(tpl).getByTitle('Expand'));
     expect(tpl).toHaveTextContent('ground floor.png');
     // selecting a template file offers Open and nothing that changes it
     await fireEvent.click(screen.getByText('ground floor.png'));
