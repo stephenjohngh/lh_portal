@@ -11,6 +11,7 @@ import * as Sentry from '@sentry/sveltekit';
 // Public env via $app/env/public — NOT import.meta.env, which doesn't
 // expose PUBLIC_* vars in SvelteKit (Vite envPrefix is VITE_).
 import * as env from '$app/env/public';
+import { scrubDeep } from '#lib/utils/scrubSecrets.js';
 
 const SENTRY_DSN = env.PUBLIC_SENTRY_DSN ?? '';
 
@@ -23,6 +24,9 @@ Sentry.init({
   // overhead) — this is a low-traffic app where errors are the only signal
   // worth capturing.
   tracesSampleRate: 0,
+  // A published pack's address is its key: never send it to Sentry.
+  beforeSend: (event) => scrubDeep(event),
+  beforeBreadcrumb: (crumb) => scrubDeep(crumb),
 });
 
 /** @type {import('@sveltejs/kit').Handle} */

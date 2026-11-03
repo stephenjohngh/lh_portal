@@ -24,7 +24,7 @@ import { PUBLIC_SUPABASE_URL } from '$app/env/public';
 import * as env from '$app/env/private';
 import { hashToken, isWellFormedToken } from '#lib/apps/dossier/utils/publicationToken.js';
 import { isServable, READER_REFUSAL }   from '#lib/apps/dossier/utils/publicationState.js';
-import { buildSnapshot, buildManifest, withCurrentFieldKeys } from '#lib/apps/dossier/utils/snapshot.js';
+import { buildSnapshot, buildManifest, withCurrentFieldKeys, referencedFileIds } from '#lib/apps/dossier/utils/snapshot.js';
 import { readAllPages, chunks } from '#lib/utils/readAllPages.js';
 
 let _svc = null;
@@ -194,6 +194,7 @@ export async function resolveManifest(publication) {
  */
 export function stripStorageIds(content) {
   if (!content) return content;
+  const used = referencedFileIds(content);
 
   const scrubNode = (node) => {
     if (!node || typeof node !== 'object') return node;
@@ -207,7 +208,11 @@ export function stripStorageIds(content) {
   return {
     ...content,
     docs: (content.docs ?? []).map(doc => ({ ...doc, blocks: scrubNode(doc.blocks) })),
-    files: (content.files ?? []).map(({ provider_file_id, ...rest }) => rest),
+    // ⛔ And only the files the content refers to: a frozen snapshot from before
+    // 2026-11-03 listed the whole shelf, names and descriptions included.
+    files: (content.files ?? [])
+      .filter(f => used.has(f.id))
+      .map(({ provider_file_id, ...rest }) => rest),
   };
 }
 

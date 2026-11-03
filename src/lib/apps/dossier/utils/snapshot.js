@@ -71,6 +71,9 @@ export function buildSnapshot({
 } = {}) {
   const datasetIds = new Set(datasets.map(d => d.id));
   const keyOf = new Map(datasets.map(d => [d.id, d.key]));
+  const used = referencedFileIds({
+    docs, records: records.filter(r => datasetIds.has(r.dataset_id)),
+  });
 
   return {
     format: SNAPSHOT_FORMAT,
@@ -102,7 +105,11 @@ export function buildSnapshot({
         document_id: r.document_id ?? null,
         doc_id:      r.doc_id ?? null,
       })),
-    files: files.map(snapshotFile),
+    // ⛔ ONLY the files a page or a table refers to (security review, 2026-11-03).
+    // The snapshot goes to the recipient's browser whole, so every shelf file
+    // listed here sent its name and description to an outsider — and was pinned
+    // at publish — even though the manifest refused its bytes.
+    files: files.filter(f => used.has(f.id)).map(snapshotFile),
   };
 }
 

@@ -9,6 +9,7 @@
 
 import * as Sentry from '@sentry/sveltekit';
 import * as env from '$app/env/public';
+import { scrubDeep } from '#lib/utils/scrubSecrets.js';
 
 const SENTRY_DSN = env.PUBLIC_SENTRY_DSN ?? '';
 
@@ -21,6 +22,9 @@ Sentry.init({
   // them. The relay (src/routes/api/monitoring/+server.js) forwards to Sentry
   // server-side. Path avoids the word "sentry" on purpose (some lists match it).
   tunnel: '/api/monitoring',
+  // A published pack's address is its key: never send it to Sentry.
+  beforeSend: (event) => scrubDeep(event),
+  beforeBreadcrumb: (crumb) => scrubDeep(crumb),
   // @sentry/sveltekit adds BrowserTracing by default, which patches
   // history.pushState/replaceState for navigation spans. We set no
   // tracesSampleRate, so it produces nothing — but the history patch makes

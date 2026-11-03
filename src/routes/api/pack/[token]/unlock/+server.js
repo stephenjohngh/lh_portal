@@ -10,7 +10,7 @@
 // exist — for the same reason every other refusal in this app is uniform.
 
 import { json }               from '@sveltejs/kit';
-import { checkRateLimit }     from '#lib/server/publicRateLimit.js';
+import { checkRateLimit, checkKeyRateLimit } from '#lib/server/publicRateLimit.js';
 import { isSameOrigin }       from '#lib/server/verifyOrigin.js';
 import { findServablePublication } from '#lib/server/publicationReader.js';
 import {
@@ -46,6 +46,12 @@ export async function POST({ params, request, url, cookies, getClientAddress }) 
   // valid by watching this endpoint's status codes.
   if (!found.ok || !needsPassphrase(found.publication)) {
     return json({ error: WRONG }, { status: 401 });
+  }
+
+  // And per LINK, across every address: the per-address limit above does not
+  // stop many addresses guessing one link's passphrase together.
+  if (!await checkKeyRateLimit(`link:${found.publication.id}`, 'pack_unlock_link')) {
+    return json({ error: 'Too many attempts. Please try again shortly.' }, { status: 429 });
   }
 
   const ok = await verifyPassphrase(

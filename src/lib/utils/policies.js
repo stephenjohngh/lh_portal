@@ -38,6 +38,10 @@ export const RATE_LIMIT_WINDOWS = Object.freeze({
   pack_read:     { windowMinutes: 15, label: 'Published Dossier pack page views, per address',        default: 120, max: 2000 },
   pack_asset:    { windowMinutes: 15, label: 'Published Dossier pack files and images, per address',  default: 300, max: 5000 },
   pack_unlock:   { windowMinutes: 15, label: 'Passphrase attempts on a published pack, per address',  default: 10,  max: 50 },
+  // Per LINK, from every address together: the per-address limit alone lets many
+  // addresses keep guessing one link's passphrase. Higher than the per-address
+  // one so a guesser cannot easily lock the real recipient out.
+  pack_unlock_link: { windowMinutes: 15, label: 'Passphrase attempts on one published link, from all addresses', default: 30, max: 200 },
   pack_archive:  { windowMinutes: 15, label: 'Whole-pack downloads, per person',                     default: 10,  max: 100 },
 });
 

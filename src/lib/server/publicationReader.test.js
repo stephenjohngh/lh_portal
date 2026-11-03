@@ -240,6 +240,14 @@ describe('stripStorageIds', () => {
     expect(JSON.stringify(content)).toBe(before);
   });
 
+  it('drops shelf files the content does not use, from an older frozen snapshot', () => {
+    const old = { ...content, files: [...content.files,
+      { id: 'f9', filename: 'internal-notes.docx', description: 'not for them', provider_file_id: 'drive-9' }] };
+    const out = stripStorageIds(old);
+    expect(out.files.map(f => f.id)).toEqual(['f1']);
+    expect(JSON.stringify(out)).not.toContain('internal-notes');
+  });
+
   it('handles empty and missing content', () => {
     expect(stripStorageIds(null)).toBeNull();
     expect(stripStorageIds({})).toMatchObject({ docs: [], files: [] });

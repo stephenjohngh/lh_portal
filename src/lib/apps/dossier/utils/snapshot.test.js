@@ -195,6 +195,13 @@ describe('buildManifest', () => {
     expect(!!manifestEntry(manifest, 'f9')).toBe(false);
   });
 
+  it('carries no shelf file a page or table does not use — not even its name', () => {
+    // The snapshot goes to the recipient's browser whole (security review 2026-11-03).
+    const snap = snapshot();
+    expect(snap.files.map(f => f.id)).toEqual(['f1']);
+    expect(JSON.stringify(snap)).not.toContain('Unrelated');
+  });
+
   it('refuses an id it has never heard of', () => {
     const manifest = buildManifest(snapshot());
     expect(!!manifestEntry(manifest, 'not-a-file')).toBe(false);
