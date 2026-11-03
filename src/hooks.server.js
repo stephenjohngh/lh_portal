@@ -12,6 +12,7 @@ import * as Sentry from '@sentry/sveltekit';
 // expose PUBLIC_* vars in SvelteKit (Vite envPrefix is VITE_).
 import * as env from '$app/env/public';
 import { scrubDeep } from '#lib/utils/scrubSecrets.js';
+import { resolveClientAddress, rememberClientAddress } from '#lib/server/clientAddress.js';
 
 const SENTRY_DSN = env.PUBLIC_SENTRY_DSN ?? '';
 
@@ -95,7 +96,18 @@ async function securityHeaders({ event, resolve }) {
   return response;
 }
 
-export const handle = sequence(Sentry.sentryHandle(), securityHeaders);
+/**
+ * Who is asking — worked out ONCE per request, by one rule, and remembered, so the
+ * sign-in lockout, the rate limits, the Dossier access log and the audit log can
+ * never disagree about it (#lib/server/clientAddress.js).
+ * @type {import('@sveltejs/kit').Handle}
+ */
+async function clientAddressHandle({ event, resolve }) {
+  rememberClientAddress(event.request, resolveClientAddress(event));
+  return resolve(event);
+}
+
+export const handle = sequence(clientAddressHandle, Sentry.sentryHandle(), securityHeaders);
 
 /**
  * Custom error handler for Sentry's wrapper. Sentry already skips *capturing*

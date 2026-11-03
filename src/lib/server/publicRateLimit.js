@@ -12,6 +12,7 @@ import { PUBLIC_SUPABASE_URL } from '$app/env/public';
 import * as env from '$app/env/private';
 import { getLogger } from '#lib/utils/logger.js';
 import { serverRateLimit } from '#lib/server/policies.js';
+import { clientAddressOf } from '#lib/server/clientAddress.js';
 
 const logger = getLogger('publicRateLimit');
 
@@ -30,29 +31,14 @@ function getSvc() {
 }
 
 /**
- * Extract the caller's IP from request headers — TRUSTED sources only (M1,
- * 2026-07-02 security review). The FIRST x-forwarded-for entry is client-
- * controlled (proxies APPEND; attackers prepend), so keying the limiter on it
- * let a scripted caller mint a fresh identity per request and bypass every
- * public rate limit — including the status-lookup limit that the verification
- * code's brute-force resistance depends on.
- *
- * Order of trust:
- *   1. x-nf-client-connection-ip — set by Netlify itself, not spoofable.
- *   2. LAST x-forwarded-for entry — appended by the closest (platform) proxy.
- *   3. x-real-ip — set by some reverse proxies (Northflank/nginx).
+ * The caller's address — the one rule, #lib/server/clientAddress.js (TRUSTED
+ * sources only: the FIRST x-forwarded-for entry is the caller's own, so keying
+ * the limiter on it let a script mint a fresh identity per request — M1,
+ * 2026-07-02). Kept under this name for its existing callers.
+ * @param {Request} request
  */
 export function getClientIp(request) {
-  const netlify = request.headers.get('x-nf-client-connection-ip');
-  if (netlify) return netlify.trim();
-
-  const xff = request.headers.get('x-forwarded-for');
-  if (xff) {
-    const parts = xff.split(',').map((s) => s.trim()).filter(Boolean);
-    if (parts.length) return parts[parts.length - 1];
-  }
-
-  return request.headers.get('x-real-ip') ?? '0.0.0.0';
+  return clientAddressOf(request);
 }
 
 /**

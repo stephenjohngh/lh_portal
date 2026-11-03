@@ -35,6 +35,11 @@ export const variables = defineEnvVars({
   DOSSIER_LINK_SECRET:       privateDynamic,
   GT_CRON_SECRET:            privateDynamic,
 
+  // adapter-node (Northflank) reads these itself to know which header names the
+  // visitor; the app only REPORTS them, on Admin → Limits and timing → Visitor address.
+  ADDRESS_HEADER: privateDynamic,
+  XFF_DEPTH:      privateDynamic,
+
   STORAGE_PROVIDER:                privateDynamic,
   STORAGE_WITHIN_ROOT_ONLY:        privateDynamic,
   STORAGE_DELETE_WITHIN_ROOT_ONLY: privateDynamic,

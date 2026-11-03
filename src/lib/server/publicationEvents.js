@@ -16,7 +16,7 @@
 import { createClient }          from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL }   from '$app/env/public';
 import * as env                  from '$app/env/private';
-import { getClientIp }           from '#lib/server/publicRateLimit.js';
+import { clientAddressOf }       from '#lib/server/clientAddress.js';
 import { getLogger }             from '#lib/utils/logger.js';
 
 const logger = getLogger('publicationEvents');
@@ -48,8 +48,9 @@ function svc() {
 export async function recordPublicationEvent(request, publicationId, event, extra = {}) {
   try {
     if (!publicationId) return;
-    const fromHeader = getClientIp(request);
-    const ip = fromHeader !== '0.0.0.0' ? fromHeader : (extra.address || fromHeader);
+    // The one rule (clientAddress.js); `extra.address` is SvelteKit's own, for a
+    // request the hook did not see.
+    const ip = clientAddressOf(request, extra.address ? () => extra.address : undefined);
     const db = svc();
 
     if (event === 'opened') {

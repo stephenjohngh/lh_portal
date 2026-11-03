@@ -38,6 +38,7 @@ export const SECTION_GROUPS = [
       { id: 'due-windows',      label: 'Due windows' },
       { id: 'non-working-days', label: 'Non-working days' },
       { id: 'policies',         label: 'Policies' },
+      { id: 'visitor-address',  label: 'Visitor address' },
     ] },
     { id: 'wording', icon: '✍', label: 'Wording', adminOnly: true },
   ] },

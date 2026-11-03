@@ -21,7 +21,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$app/env/public';
 import * as env from '$app/env/private';
-import { logFailedLogin, getIpAddress, getUserAgent } from '#lib/server/auditLogger.js';
+import { logFailedLogin, getUserAgent } from '#lib/server/auditLogger.js';
+import { clientAddressOf } from '#lib/server/clientAddress.js';
 import { lockoutState, lockoutLimits } from '#lib/server/loginLockout.js';
 import { loadServerPolicies } from '#lib/server/policies.js';
 import { signInOutcome } from '#lib/server/signInOutcome.js';
@@ -73,17 +74,13 @@ async function recordAttempt(emailLower, ip, userAgent, succeeded) {
 }
 
 /**
- * The caller's address as the PLATFORM sees it — Netlify's own client IP —
- * rather than a header a caller can write; the header is the fallback only.
+ * The caller's address — the one rule, #lib/server/clientAddress.js, never a
+ * header a caller can write.
  * @param {Request} request
  * @param {() => string} [getClientAddress]
  */
 function clientAddress(request, getClientAddress) {
-  try {
-    const a = getClientAddress?.();
-    if (a) return a;
-  } catch { /* not available on this platform */ }
-  return getIpAddress(request);
+  return clientAddressOf(request, getClientAddress);
 }
 
 /**

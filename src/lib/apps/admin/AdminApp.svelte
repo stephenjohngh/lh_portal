@@ -26,6 +26,7 @@
   import WordingPanel from './components/WordingPanel.svelte';
   import DocumentCategoriesPanel from './components/DocumentCategoriesPanel.svelte';
   import NonWorkingDaysPanel from './components/NonWorkingDaysPanel.svelte';
+  import VisitorAddressPanel from './components/VisitorAddressPanel.svelte';
   import DocumentsTab    from './components/DocumentsTab.svelte';
   import AdminNav        from './components/AdminNav.svelte';
   import { NEEDS_BUILDING_DATA, leavesOf, sectionOf } from './utils/adminSections.js';
@@ -314,6 +315,9 @@
 
   {:else if activeTab === 'policies'}
     <PoliciesPanel />
+
+  {:else if activeTab === 'visitor-address'}
+    <VisitorAddressPanel />
 
   {:else if activeTab === 'wording'}
     <WordingPanel />

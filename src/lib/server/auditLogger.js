@@ -3,6 +3,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { getLogger } from '#lib/utils/logger.js';
+import { clientAddressOf, UNKNOWN_ADDRESS } from '#lib/server/clientAddress.js';
 import { PUBLIC_SUPABASE_URL } from '$app/env/public';
 import * as env from '$app/env/private';
 
@@ -38,13 +39,15 @@ function getSupabaseAdmin() {
 }
 
 /**
- * Extract IP address from request
+ * The caller's address for an audit entry — the one rule
+ * (#lib/server/clientAddress.js). ⛔ It read the FIRST x-forwarded-for entry
+ * until 2026-11-03, which the caller writes, so an audit line could carry any
+ * address someone chose. null when unknown.
  */
 export function getIpAddress(request) {
-  return request?.headers?.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-         request?.headers?.get('x-real-ip') ||
-         request?.headers?.get('cf-connecting-ip') ||
-         null;
+  if (!request) return null;
+  const a = clientAddressOf(request);
+  return a === UNKNOWN_ADDRESS ? null : a;
 }
 
 /**
