@@ -49,12 +49,12 @@
     <div class="flex-1"></div>
 
     {#if archivedCount > 0 || showArchived}
-      <Button variant="tertiary" size="xs" on:click={() => showArchived = !showArchived}>{showArchived ? '← Back to active' : `Archived (${archivedCount})`}</Button>
+      <Button variant="secondary" size="small" on:click={() => showArchived = !showArchived}>{showArchived ? '← Back to active' : `Archived (${archivedCount})`}</Button>
     {/if}
 
     <!-- Not a filter on this list: it shows PUBLICATIONS, of which one pack can
          have several, and the question it answers spans every pack. -->
-    <Button variant="tertiary" size="xs" title="Every link issued from every pack" on:click={() => dispatch('showPublished')}>Published links</Button>
+    <Button variant="secondary" size="small" title="Every link issued from every pack" on:click={() => dispatch('showPublished')}>Published links</Button>
 
     {#if isAdmin}
       <Button admin size="small" title="A template other people start their dossiers from" on:click={() => dispatch('newTemplate', { folderId: showArchived ? null : templateFolderId })}>+ New Template</Button>
