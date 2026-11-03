@@ -12,6 +12,7 @@
   import UserStats from './components/UserStats.svelte';
   import CreateUserModal from './components/modals/CreateUserModal.svelte';
   import PasswordResetModal from './components/modals/PasswordResetModal.svelte';
+  import EditUserModal from './components/modals/EditUserModal.svelte';
   import ManageAppsModal from './components/modals/ManageAppsModal.svelte';
   import DeleteUserModal from './components/modals/DeleteUserModal.svelte';
   import AuditLogsView from './components/AuditLogsView.svelte';
@@ -48,6 +49,7 @@
   // Modal states
   let showCreateModal = false;
   let showPasswordResetModal = false;
+  let showEditUserModal = false;
   let showManageAppsModal = false;
   let showDeleteModal = false;
   let selectedUser = null;
@@ -91,6 +93,11 @@
       ready = true;
     }
   });
+
+  function handleEditUser(event) {
+    selectedUser = event.detail;
+    showEditUserModal = true;
+  }
 
   function handlePasswordReset(event) {
     selectedUser = event.detail;
@@ -254,6 +261,7 @@
         {#each filteredUsers as user (user.id)}
           <UserCard
             {user}
+            on:editUser={handleEditUser}
             on:resetPassword={handlePasswordReset}
             on:manageApps={handleManageApps}
             on:deleteUser={handleDeleteUser}
@@ -341,6 +349,12 @@
   bind:show={showCreateModal}
   on:success={handleCreateSuccess}
   on:close={handleCreateClose}
+/>
+
+<EditUserModal
+  bind:show={showEditUserModal}
+  user={selectedUser}
+  on:close={() => { showEditUserModal = false; selectedUser = null; }}
 />
 
 <PasswordResetModal 

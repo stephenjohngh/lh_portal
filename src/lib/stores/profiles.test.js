@@ -11,11 +11,11 @@ const h = vi.hoisted(() => ({ api: { get: vi.fn(() => Promise.resolve([])) } }))
 vi.mock('#lib/utils/api.js',    () => ({ api: h.api }));
 vi.mock('#lib/utils/logger.js', () => ({ getLogger: () => () => {} }));
 
-const { profiles, profilesStore } = await import('./profiles.js');
+const { profiles, profilesStore, pickerLabel, shortLabel, withShortName, assigneeChoices } = await import('./profiles.js');
 
 beforeEach(() => {
   vi.clearAllMocks();
-  h.api.get.mockResolvedValue([{ id: 'u1', full_name: 'Alice' }, { id: 'u2', full_name: 'Bob' }]);
+  h.api.get.mockResolvedValue([{ id: 'u1', full_name: 'Alice', short_name: 'AL' }, { id: 'u2', full_name: 'Bob', short_name: null }]);
 });
 
 describe('load', () => {
@@ -46,11 +46,12 @@ describe('load', () => {
 });
 
 describe('assigneeOptions', () => {
-  it('builds {value,label} options from full_name, with a blank first and extras last', async () => {
+  it('offers only people with a short name, as "AL (Alice)", with a blank first and extras last', async () => {
     await profilesStore.load({ force: true });
     const opts = get(profilesStore.assigneeOptions());
     expect(opts[0]).toEqual({ value: '', label: '' });
-    expect(opts).toContainEqual({ value: 'Alice', label: 'Alice' });
+    expect(opts).toContainEqual({ value: 'AL', label: 'AL (Alice)' });
+    expect(opts.some((o) => o.label.includes('Bob'))).toBe(false);
     expect(opts.at(-1)).toEqual({ value: 'External', label: 'External' });   // default extra
   });
 
@@ -58,5 +59,28 @@ describe('assigneeOptions', () => {
     await profilesStore.load({ force: true });
     const opts = get(profilesStore.assigneeOptions([{ value: 'Contractor', label: 'Contractor' }]));
     expect(opts.at(-1)).toEqual({ value: 'Contractor', label: 'Contractor' });
+  });
+});
+
+const people = [
+  { id: 'a', full_name: 'Stephen Pallett', short_name: 'SP' },
+  { id: 'b', full_name: 'Chloe K', short_name: 'CK' },
+  { id: 'c', full_name: 'No Initials', short_name: null },
+];
+
+describe('how Management names people', () => {
+  it('offers "SP (Stephen Pallett)" and shows "SP" once chosen', () => {
+    expect(pickerLabel(people[0])).toBe('SP (Stephen Pallett)');
+    expect(shortLabel(people[0])).toBe('SP');
+    expect(shortLabel(people[2])).toBe('No Initials');
+  });
+  it('offers only people with a short name, in short-name order', () => {
+    expect(withShortName(people).map((p) => p.short_name)).toEqual(['CK', 'SP']);
+  });
+  it('assignee options store the short name, and keep an old recorded name', () => {
+    const opts = assigneeChoices(people);
+    expect(opts.map((o) => o.value)).toEqual(['', 'CK', 'SP', 'External']);
+    expect(opts.find((o) => o.value === 'SP').label).toBe('SP (Stephen Pallett)');
+    expect(assigneeChoices(people, undefined, 'Chloe').map((o) => o.value)).toContain('Chloe');
   });
 });

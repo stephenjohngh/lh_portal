@@ -14,7 +14,7 @@
 <script>
   import { onMount }              from 'svelte';
   import { fmtDate, fmtDateLong, fmtDateTime } from '#lib/utils/dates.js';
-  import { profiles, profilesStore }           from '#lib/stores/profiles.js';
+  import { profiles, profilesStore, shortLabel }           from '#lib/stores/profiles.js';
   import { buildFieldSummary }                 from '../reports/reportUtils.js';
   import { sanitizeHtml }                       from '#lib/utils/sanitizeHtml.js';
   import { buildMeetingMinutes }               from '../../utils/meetingMinutes.js';
@@ -36,7 +36,7 @@
     const p = meeting?.participants;
     if (!p) return [];
     const profileNames = (p.profile_ids ?? [])
-      .map(id => $profiles.list.find(pr => pr.id === id)?.full_name)
+      .map(id => shortLabel($profiles.list.find(pr => pr.id === id)))
       .filter(Boolean);
     return [...profileNames, ...(p.extras ?? [])];
   })();

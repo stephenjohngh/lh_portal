@@ -5,7 +5,7 @@
   // to open the full issue; tap an activity to see it in full (ActivitySheet).
 
   import { createEventDispatcher, onMount } from 'svelte';
-  import { profiles, profilesStore } from '#lib/stores/profiles.js';
+  import { profiles, profilesStore, shortLabel } from '#lib/stores/profiles.js';
   import { ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPE, getActionStatusLabel } from '#lib/utils/constants.js';
   import { actionStatusColor } from '../utils/mobileTheme.js';
   import { fmtDate, fmtDateTime } from '#lib/utils/dates.js';
@@ -19,7 +19,7 @@
 
   onMount(() => profilesStore.load());
 
-  $: profileNameById = Object.fromEntries(($profiles.list ?? []).map(p => [p.id, p.full_name]));
+  $: profileNameById = Object.fromEntries(($profiles.list ?? []).map(p => [p.id, shortLabel(p)]));
   $: attendees = meetingAttendees(meeting, profileNameById);
   $: ({ minutes, totals } = buildMeetingMinutes(meeting, issues));
 

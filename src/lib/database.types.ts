@@ -5197,6 +5197,7 @@ export type Database = {
           id: string
           email: string
           full_name: string | null
+          short_name: string | null
           created_at: string | null
           updated_at: string | null
           is_admin: boolean | null
@@ -5207,6 +5208,7 @@ export type Database = {
           id: string
           email: string
           full_name?: string | null
+          short_name?: string | null
           created_at?: string | null
           updated_at?: string | null
           is_admin?: boolean | null
@@ -5217,6 +5219,7 @@ export type Database = {
           id?: string
           email?: string
           full_name?: string | null
+          short_name?: string | null
           created_at?: string | null
           updated_at?: string | null
           is_admin?: boolean | null

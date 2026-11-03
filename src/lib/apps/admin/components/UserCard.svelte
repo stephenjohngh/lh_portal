@@ -13,6 +13,10 @@
 
   const dispatch = createEventDispatcher();
 
+  function handleEdit() {
+    dispatch('editUser', user);
+  }
+
   function handleResetPassword() {
     dispatch('resetPassword', user);
   }
@@ -40,7 +44,7 @@
       
       <div class="flex-1 min-w-0">
         <h3 class="font-semibold text-white truncate">
-          {user.full_name || user.email}
+          {user.full_name || user.email}{#if user.short_name}<span class="ml-2 text-xs font-mono text-slate-300 border border-slate-600 rounded px-1.5 py-0.5" title="Short name">{user.short_name}</span>{/if}
         </h3>
         <p class="text-muted-sm truncate">{user.email}</p>
       </div>
@@ -77,6 +81,16 @@
   <!-- Actions -->
   {#if $permissions.isAdmin}
     <div class="btn-group-wrap">
+      <ProtectedButton
+        action="modify"
+        variant="secondary"
+        size="small"
+        icon="edit"
+        on:click={handleEdit}
+      >
+        Edit
+      </ProtectedButton>
+
       <ProtectedButton
         action="modify"
         variant="secondary"

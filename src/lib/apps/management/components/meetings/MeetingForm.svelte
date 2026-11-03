@@ -16,7 +16,7 @@
   import ToggleChip from '#lib/components/common/ToggleChip.svelte';
   import { today } from '#lib/utils/dates.js';
   import { onMount, createEventDispatcher } from 'svelte';
-  import { profiles, profilesStore } from '#lib/stores/profiles.js';
+  import { profiles, profilesStore, withShortName, pickerLabel, shortLabel } from '#lib/stores/profiles.js';
   import { meetingsStore }  from '../../stores/meetingsStore';
   import Modal              from '#lib/components/common/Modal.svelte';
   import Button             from '#lib/components/common/Button.svelte';
@@ -34,6 +34,13 @@
   let meeting_date    = '';     // yyyy-mm-dd
   let notes           = '';
   let profile_ids     = [];     // uuid[]
+
+  // People with a short name are offered, as "SP (Stephen Pallett)"; anyone
+  // already at this meeting without one is kept, so editing never drops them.
+  $: attendeeChoices = [
+    ...withShortName($profiles.list),
+    ...$profiles.list.filter((p) => !p.short_name && profile_ids.includes(p.id)),
+  ];
   let extras          = [];     // text[]
   let newExtra        = '';
   let openImmediately = true;   // only relevant when creating
@@ -225,12 +232,12 @@
 
       <!-- Profiles: chip-style toggle list -->
       <div class="flex flex-wrap gap-1.5 p-2 bg-slate-700/40 border border-slate-700 rounded mb-2">
-        {#if $profiles.list.length === 0}
-          <p class="text-xs text-gray-500 italic">No users loaded.</p>
+        {#if attendeeChoices.length === 0}
+          <p class="text-xs text-gray-500 italic">No one has a short name yet — an admin sets them in Admin → Users.</p>
         {:else}
-          {#each $profiles.list as p (p.id)}
+          {#each attendeeChoices as p (p.id)}
             {@const selected = profile_ids.includes(p.id)}
-            <ToggleChip pill={false} active={selected} on:click={() => toggleProfile(p.id)}>{selected ? '✓ ' : ''}{p.full_name}</ToggleChip>
+            <ToggleChip pill={false} active={selected} on:click={() => toggleProfile(p.id)}>{selected ? '✓ ' : ''}{selected ? shortLabel(p) : pickerLabel(p)}</ToggleChip>
           {/each}
         {/if}
       </div>

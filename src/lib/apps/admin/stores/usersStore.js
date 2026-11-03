@@ -3,8 +3,11 @@
 // access token in the Authorization header — requireAdmin() on the server
 // verifies it. Never send a user id in the body to identify the caller.
 
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import { supabase } from '#lib/supabaseClient.js';
+import { profilesStore } from '#lib/stores/profiles.js';
+import { normaliseShortName } from '#lib/utils/shortName.js';
+import { logAudit } from '#lib/utils/auditLogger.js';
 import { api } from '#lib/utils/api.js';
 import { postJson } from '#lib/utils/request.js';
 import { getLogger } from '#lib/utils/logger.js';
@@ -58,6 +61,32 @@ function createUsersStore() {
         logger('Failed to create user:', err);
         throw err;
       }
+    },
+
+    /**
+     * An admin corrects a person's name and short name (migration 279: only an
+     * admin may). Refreshes the shared people list so Management sees it at once.
+     * @param {string} userId
+     * @param {{ full_name: string, short_name: string|null }} changes
+     */
+    async updateProfile(userId, changes) {
+      const before = /** @type {any} */ (get({ subscribe })).users.find((u) => u.id === userId) ?? {};
+      const data = { full_name: changes.full_name.trim(), short_name: normaliseShortName(changes.short_name) };
+      try {
+        await api.update('profiles', userId, data);
+      } catch (/** @type {any} */ err) {
+        if (String(err?.code ?? err?.message ?? '').includes('23505') || /duplicate|unique/i.test(err?.message ?? '')) {
+          throw new Error(`Someone else already has the short name ${data.short_name}.`);
+        }
+        throw err;
+      }
+      update((s) => ({ ...s, users: s.users.map((u) => (u.id === userId ? { ...u, ...data } : u)) }));
+      profilesStore.load({ force: true });
+      logAudit('update', 'profile', userId, data.full_name || before.email, {
+        appId: 'admin', eventCategory: 'admin', severity: 'info',
+        beforeData: { full_name: before.full_name ?? null, short_name: before.short_name ?? null },
+        afterData: data,
+      });
     },
 
     async resetPassword(userId, newPassword) {

@@ -54,6 +54,13 @@
     }
   }
 
+  // An action assigned before short names (e.g. "Chloe") keeps its assignee as
+  // an option, so editing it does not silently blank who it was given to.
+  $: recorded = action?.name_text ?? '';
+  $: shownOptions = recorded && !assigneeOptions.some((o) => o.value === recorded)
+    ? [assigneeOptions[0] ?? { value: '', label: '' }, { value: recorded, label: `${recorded} (as recorded)` }, ...assigneeOptions.slice(1)]
+    : assigneeOptions;
+
   function handleSubmit() {
     if (!action_text.trim()) return;
     if (action) {
@@ -96,7 +103,7 @@
             bind:value={name_text}
             class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
           >
-            {#each assigneeOptions as option}
+            {#each shownOptions as option}
               <option value={option.value}>{option.label}</option>
             {/each}
           </select>

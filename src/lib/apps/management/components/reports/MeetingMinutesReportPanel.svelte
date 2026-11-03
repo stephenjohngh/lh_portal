@@ -4,7 +4,7 @@
   import Button          from '#lib/components/common/Button.svelte';
   import MeetingMinutesView from '../meetings/MeetingMinutesView.svelte';
   import { meetingsStore }  from '../../stores/meetingsStore';
-  import { profiles, profilesStore } from '#lib/stores/profiles.js';
+  import { profiles, profilesStore, shortLabel } from '#lib/stores/profiles.js';
   import { fmtDate, today }     from '#lib/utils/dates.js';
   import { requestDownload } from '#lib/utils/download.js';
   import { getLogger }   from '#lib/utils/logger.js';
@@ -48,7 +48,7 @@
     const p = selectedMeeting?.participants;
     if (!p) return [];
     const profileNames = (p.profile_ids ?? [])
-      .map(id => $profiles.list.find(pr => pr.id === id)?.full_name)
+      .map(id => shortLabel($profiles.list.find(pr => pr.id === id)))
       .filter(Boolean);
     return [...profileNames, ...(p.extras ?? [])];
   })();

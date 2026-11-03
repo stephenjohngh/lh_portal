@@ -13,7 +13,7 @@
   import { onMount }            from 'svelte';
   import { meetingsStore }      from '../../stores/meetingsStore';
   import { permissions }        from '#lib/stores/permissions.js';
-  import { profiles, profilesStore } from '#lib/stores/profiles.js';
+  import { profiles, profilesStore, shortLabel } from '#lib/stores/profiles.js';
   import { fmtDate, fmtDateTime, today } from '#lib/utils/dates.js';
   import { ACTIVITY_TYPE }      from '#lib/utils/constants.js';
   import { requestDownload } from '#lib/utils/download.js';
@@ -89,7 +89,11 @@
   /** Attendee names, so a meeting is findable by who was at it. */
   function attendeeNames(profileIds, extras) {
     return [
-      ...(profileIds ?? []).map(id => $profiles.list.find(p => p.id === id)?.full_name),
+      // both names, so a meeting is found by "SP" or by "Stephen"
+      ...(profileIds ?? []).flatMap(id => {
+        const p = $profiles.list.find(x => x.id === id);
+        return [p?.short_name, p?.full_name];
+      }),
       ...(extras ?? []),
     ].filter(Boolean);
   }
@@ -162,7 +166,7 @@
     const p = selectedMeeting?.participants;
     if (!p) return [];
     const profileNames = (p.profile_ids ?? [])
-      .map(id => $profiles.list.find(pr => pr.id === id)?.full_name)
+      .map(id => shortLabel($profiles.list.find(pr => pr.id === id)))
       .filter(Boolean);
     return [...profileNames, ...(p.extras ?? [])];
   })();

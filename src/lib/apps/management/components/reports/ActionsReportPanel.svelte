@@ -4,7 +4,7 @@
   import { onMount }      from 'svelte';
   import Button           from '#lib/components/common/Button.svelte';
   import Badge            from '#lib/components/common/Badge.svelte';
-  import { profiles, profilesStore } from '#lib/stores/profiles.js';
+  import { profiles, profilesStore, withShortName, pickerLabel } from '#lib/stores/profiles.js';
   import { meetingsStore }           from '../../stores/meetingsStore';
   import { fmtDate, fmtDateLong, isOverdue, today as todayLondon, calendarDate } from '#lib/utils/dates.js';
   import { requestDownload } from '#lib/utils/download.js';
@@ -172,8 +172,8 @@
       >
         <option value="all">All users</option>
         <option value="unallocated">Unallocated</option>
-        {#each $profiles.list as profile (profile.id)}
-          <option value={profile.full_name}>{profile.full_name}</option>
+        {#each withShortName($profiles.list) as profile (profile.id)}
+          <option value={profile.short_name}>{pickerLabel(profile)}</option>
         {/each}
         <option value="External">External</option>
       </select>

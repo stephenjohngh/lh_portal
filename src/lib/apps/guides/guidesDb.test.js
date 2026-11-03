@@ -208,12 +208,14 @@ describe.skipIf(!RUN)('guides — the database (dev, rolled back)', () => {
       migration,
       ...SETUP_ONLY.map(([n, b, p]) => check(`guides: ${n}`, b, p)),
       // a contractor account to test with (rolled back with everything else)
+      // as the system (no signed-in user): migration 279 lets only an admin change the flag
+      `reset role; select set_config('request.jwt.claims', '', true); select set_config('request.jwt.claim.sub', '', true);`,
       `update profiles set is_contractor = false where id = ${PLAIN};`,
       asUser(ADMIN),
       ...AS_ADMIN.map(([n, b, p]) => check(`guides: ${n}`, b, p)),
       asUser(PLAIN),
       ...AS_PLAIN.map(([n, b, p]) => check(`guides: ${n}`, b, p)),
-      `reset role;`,
+      `reset role; select set_config('request.jwt.claims', '', true); select set_config('request.jwt.claim.sub', '', true);`,
       `update profiles set is_contractor = true where id = ${PLAIN};`,
       asUser(PLAIN),
       ...AS_CONTRACTOR.map(([n, b, p]) => check(`guides: ${n}`, b, p)),
