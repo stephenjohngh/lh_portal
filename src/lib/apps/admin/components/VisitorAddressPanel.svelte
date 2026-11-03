@@ -12,6 +12,7 @@
   import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
   import { getJson } from '#lib/utils/request.js';
   import { errMessage } from '#lib/utils/errors.js';
+  import { authHeaders } from '#lib/utils/authHeaders.js';
 
   /** @type {any} */
   let seen = null;
@@ -30,9 +31,31 @@
                  check: 'border-amber-600 bg-amber-900/30 text-amber-200',
                  problem: 'border-red-700 bg-red-900/30 text-red-200' };
 
+  // A documentation address (RFC 5737): nobody on the internet has it.
+  const FORGED = '203.0.113.7';
+  /** @type {null|'ignored'|'used'|'failed'} */
+  let forgedResult = null;
+
+  /** Ask again with a made-up X-Forwarded-For. Browsers may send that header,
+   *  so this is exactly what a script could do. If the answer changes to the
+   *  made-up address, a caller can choose their own address here. */
+  async function forgedCheck() {
+    try {
+      const res = await fetch('/api/admin/client-address', {
+        headers: { ...(await authHeaders()), 'X-Forwarded-For': FORGED },
+      });
+      if (!res.ok) { forgedResult = 'failed'; return; }
+      const body = await res.json();
+      forgedResult = body.address === FORGED ? 'used' : 'ignored';
+    } catch { forgedResult = 'failed'; }
+  }
+
   async function read() {
-    error = '';
-    try { seen = await getJson('/api/admin/client-address', 'Could not read the address.'); }
+    error = ''; forgedResult = null;
+    try {
+      seen = await getJson('/api/admin/client-address', 'Could not read the address.');
+      await forgedCheck();
+    }
     catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read the address.'); }
     finally { ready = true; }
   }
@@ -59,6 +82,20 @@
       <p class="text-sm mt-1">From {SOURCE[seen.source] ?? seen.source}.</p>
       <p class="text-sm mt-2">{seen.verdict.message}</p>
     </div>
+
+    {#if forgedResult === 'ignored'}
+      <p class="rounded border border-green-700 bg-green-900/30 text-green-200 px-3 py-2 text-sm" data-testid="forged-check">
+        ✓ A made-up address sent in the X-Forwarded-For header was ignored, so a visitor cannot choose their own address here.
+      </p>
+    {:else if forgedResult === 'used'}
+      <p class="rounded border border-red-700 bg-red-900/30 text-red-200 px-3 py-2 text-sm" data-testid="forged-check">
+        ⛔ A made-up address sent in the X-Forwarded-For header was believed. A script could get round the sign-in lockout
+        and the rate limits here. Set ADDRESS_HEADER and XFF_DEPTH on the host (below), or ask the host how its proxy
+        writes that header.
+      </p>
+    {:else if forgedResult === 'failed'}
+      <p class="text-sm text-amber-200" data-testid="forged-check">The check with a made-up address could not be run. Press Check again.</p>
+    {/if}
 
     <p class="text-sm text-slate-300">
       Is that your own address? Compare it with what a site such as <em>whatismyip</em> shows from this

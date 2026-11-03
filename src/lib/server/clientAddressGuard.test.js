@@ -7,7 +7,11 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = join(process.cwd(), 'src');
-const ALLOWED = new Set(['lib/server/clientAddress.js']);
+const ALLOWED = new Set([
+  'lib/server/clientAddress.js',
+  // SENDS a made-up X-Forwarded-For to test that the server ignores it; reads nothing.
+  'lib/apps/admin/components/VisitorAddressPanel.svelte',
+]);
 const HEADERS = /['"`](x-forwarded-for|x-real-ip|x-nf-client-connection-ip|cf-connecting-ip|true-client-ip)['"`]/i;
 
 function files(dir, out = []) {
