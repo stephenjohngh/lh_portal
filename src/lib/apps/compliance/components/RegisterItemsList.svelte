@@ -29,6 +29,7 @@
   import { deadlineBand } from '#lib/workflow/workflowDeadlines.js';
   import { ACTION_STATUS_LABEL } from '../utils/complianceActionWorkflow.js';
   import ActionWorkPanel from './ActionWorkPanel.svelte';
+  import { shortNames } from '#lib/stores/profiles.js';
 
   /** @type {'action'|'absence'|'caveat'} */
   export let kind = 'action';
@@ -181,7 +182,7 @@
                   {#if item.dueDate && item.actionStatus !== 'closed'}
                     <span class="due due-{band ?? 'none'}">Due {fmtDateOnly(item.dueDate)}</span>
                   {/if}
-                  {#if wi?.assigned_to}<span class="with">With {nameById[wi.assigned_to] ?? 'someone'}</span>{/if}
+                  {#if wi?.assigned_to}<span class="with">With {$shortNames[wi.assigned_to] || nameById[wi.assigned_to] || 'someone'}</span>{/if}
                 {/if}
               </div>
               {#if !open && item.description}

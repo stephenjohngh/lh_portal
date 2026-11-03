@@ -20,6 +20,10 @@ vi.mock('#lib/workflow/workflowApi.js', () => ({ itemHistory: async () => [], se
 vi.mock('#lib/workflow/fieldLinks.js', () => ({ loadLinkOptions: async () => ({ component: [], space: [], person: [] }) }));
 vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: () => {} }));
 vi.mock('#lib/utils/download.js', () => ({ downloadBlob: () => {} }));
+vi.mock('#lib/stores/profiles.js', () => {
+  const readable = (/** @type {any} */ v) => ({ subscribe: (/** @type {any} */ r) => { r(v); return () => {}; } });
+  return { profiles: readable({ loaded: true, list: [] }), profilesStore: { load: async () => [] }, shortNames: readable({}) };
+});
 const { default: RegisterItemsList } = await import('./RegisterItemsList.svelte');
 import { render, screen, cleanup, fireEvent } from '@testing-library/svelte';
 import { REGISTER_ITEMS } from '#lib/utils/registerItemsData.js';

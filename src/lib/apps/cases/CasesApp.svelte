@@ -21,7 +21,7 @@
   import { loadLinkOptions } from '#lib/workflow/fieldLinks.js';
   import { permissions } from '#lib/stores/permissions.js';
   import { auth } from '#lib/stores/auth.js';
-  import { profiles, profilesStore } from '#lib/stores/profiles.js';
+  import { profiles, profilesStore, shortNames } from '#lib/stores/profiles.js';
   import { isFinished } from '#lib/workflow/workflowModel.js';
   import { deadlineBand, deadlineWords } from '#lib/workflow/workflowDeadlines.js';
   import { matchesSearch } from '#lib/utils/textSearch.js';
@@ -169,7 +169,7 @@
                     <td class="py-2 pr-3 font-mono text-slate-200">{c.reference}</td>
                     <td class="py-2 pr-3 text-slate-200">{c.title}</td>
                     <td class="py-2 pr-3 text-xs text-slate-300">{stepOf(c.id)?.name ?? '—'}</td>
-                    <td class="py-2 pr-3 text-xs text-slate-300" data-testid="case-list-with">{isFinished(stepOf(c.id)?.kind ?? '') ? '' : (itemFor(c.id)?.assigned_to ? nameById[itemFor(c.id)?.assigned_to] ?? 'A user no longer listed' : '')}</td>
+                    <td class="py-2 pr-3 text-xs text-slate-300" data-testid="case-list-with">{isFinished(stepOf(c.id)?.kind ?? '') ? '' : (itemFor(c.id)?.assigned_to ? $shortNames[itemFor(c.id)?.assigned_to] || 'A user no longer listed' : '')}</td>
                     <td class="py-2 text-xs whitespace-nowrap {BAND_CLS[deadlineBand(dueOf(c.id)) ?? 'ok']}">{dueOf(c.id) ? deadlineWords(dueOf(c.id)) : ''}</td>
                   </tr>
                 {/each}

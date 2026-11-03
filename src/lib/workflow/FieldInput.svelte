@@ -70,6 +70,8 @@
   const id = `case-field-${Math.random().toString(36).slice(2, 9)}`;
   const cls = 'w-full px-2 py-1.5 text-sm bg-slate-900 border border-slate-600 rounded text-slate-200';
   $: options = field.type === 'component' || field.type === 'space' || field.type === 'person' ? links?.[field.type] ?? [] : [];
+  // A person is offered only with a short name; one chosen before keeps showing.
+  $: shown = field.type === 'person' ? options.filter((/** @type {any} */ o) => o.offered) : options;
 </script>
 
 <div class="space-y-1">
@@ -107,11 +109,11 @@
       <option value="">—</option>
       {#each field.options ?? [] as o (o)}<option value={o}>{o}</option>{/each}
     </select>
-  {:else if options.length || field.type === 'component' || field.type === 'space' || field.type === 'person'}
+  {:else if shown.length || field.type === 'component' || field.type === 'space' || field.type === 'person'}
     <select {id} class={cls} bind:value {disabled}>
       <option value="">—</option>
-      {#each options as o (o.id)}<option value={o.id}>{o.text}</option>{/each}
-      {#if value && !options.some((/** @type {any} */ o) => o.id === value)}<option value={value}>No longer in the portal</option>{/if}
+      {#each shown as o (o.id)}<option value={o.id}>{o.text}</option>{/each}
+      {#if value && !shown.some((/** @type {any} */ o) => o.id === value)}<option value={value}>{options.find((/** @type {any} */ o) => o.id === value)?.short ?? 'No longer in the portal'}</option>{/if}
     </select>
   {:else}
     <input {id} type="text" class={cls} bind:value {disabled} />

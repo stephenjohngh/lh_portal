@@ -13,6 +13,7 @@
   import { statusMeta, isOpen } from '../utils/complaintLifecycle.js';
   import { categoryLabel } from '../utils/complaintOptions.js';
   import { deadlineBand, deadlineWords } from '#lib/workflow/workflowDeadlines.js';
+  import { shortNames } from '#lib/stores/profiles.js';
 
   export let cases = [];
   /** The workflow's items (migration 252): each complaint's deadline and who has it. */
@@ -62,7 +63,7 @@
             · {categoryLabel(complaint.category)}
             {#if complaint.dwelling_ref} · {complaint.dwelling_ref}{/if}
             {#if itemFor(complaint.id)?.assigned_to}
-              · <span class="text-slate-400" data-testid="complaint-list-with">with {nameById[itemFor(complaint.id)?.assigned_to] ?? 'a user no longer listed'}</span>
+              · <span class="text-slate-400" data-testid="complaint-list-with">with {$shortNames[itemFor(complaint.id)?.assigned_to] || nameById[itemFor(complaint.id)?.assigned_to] || 'a user no longer listed'}</span>
             {/if}
           </p>
           {#if itemFor(complaint.id)?.due_on && isOpen(complaint.status)}

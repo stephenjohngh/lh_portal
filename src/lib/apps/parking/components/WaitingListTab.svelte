@@ -22,7 +22,7 @@
   import { deadlineBand, deadlineWords } from '#lib/workflow/workflowDeadlines.js';
   import WorkflowItemControls from '#lib/workflow/WorkflowItemControls.svelte';
   import { permissions } from '#lib/stores/permissions.js';
-  import { profiles, profilesStore } from '#lib/stores/profiles.js';
+  import { profiles, profilesStore, shortNames } from '#lib/stores/profiles.js';
   import { auth } from '#lib/stores/auth.js';
   import { fmtDate } from '#lib/utils/dates.js';
   import { errMessage } from '#lib/utils/errors.js';
@@ -63,7 +63,8 @@
   $: me = $auth.user?.id ?? null;
   $: nameById = Object.fromEntries(/** @type {Array<{ id: string, full_name: string|null }>} */ ($profiles.list)
     .map((p) => [p.id, p.full_name || 'A user with no name set']));
-  $: withName = (/** @type {string|null|undefined} */ uid) => (uid ? nameById[uid] || 'A user no longer listed' : '');
+  // The "With" column shows the short name ("SP") — user, 2026-11-03.
+  $: withName = (/** @type {string|null|undefined} */ uid) => (uid ? $shortNames[uid] || 'A user no longer listed' : '');
 
   let show = 'open';            // 'open' | 'mine' | 'all'
   let error = '';

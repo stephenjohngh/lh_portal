@@ -15,6 +15,11 @@ vi.mock('#lib/workflow/workflowApi.js', () => ({ itemHistory: async () => h.hist
 vi.mock('#lib/workflow/fieldLinks.js', () => ({ loadLinkOptions: async () => ({ component: [], space: [], person: [] }) }));
 
 vi.mock('#lib/supabaseClient.js', () => ({ supabase: {} }));
+vi.mock('#lib/stores/profiles.js', () => {
+  const readable = (/** @type {any} */ v) => ({ subscribe: (/** @type {any} */ r) => { r(v); return () => {}; } });
+  const list = [{ id: 'me', full_name: 'Pat Smith', short_name: 'PS' }, { id: 'u2', full_name: 'Sam Lee', short_name: 'SL' }];
+  return { profiles: readable({ loaded: true, list }), profilesStore: { load: async () => list }, shortNames: readable({ me: 'PS', u2: 'SL' }) };
+});
 const store = vi.hoisted(() => ({ added: /** @type {any[]} */ ([]), updated: /** @type {any[]} */ ([]) }));
 vi.mock('../stores/complaintsStore.js', () => ({ complaintsStore: {
   addAction: async (/** @type {string} */ id, /** @type {any} */ d) => { store.added.push([id, d]); },

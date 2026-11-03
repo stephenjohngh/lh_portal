@@ -17,9 +17,19 @@ describe('workflowFieldValues', () => {
     expect([...LINK_TYPES]).toEqual(['component', 'space', 'person']);
   });
 
-  it('a person is a portal user, by name; sorted', () => {
-    const l = linkOptions({ people: [{ id: 'b', full_name: 'Zoe' }, { id: 'a', full_name: null }] });
-    expect(l.person).toEqual([{ id: 'a', text: 'A user with no name set' }, { id: 'b', text: 'Zoe' }]);
+  it('a person is a portal user, offered only with a short name, as "SP (Full Name)"; sorted', () => {
+    const l = linkOptions({ people: [{ id: 'b', full_name: 'Zoe', short_name: 'ZQ' }, { id: 'a', full_name: null }] });
+    expect(l.person).toEqual([
+      { id: 'a', text: 'A user with no name set', short: 'A user with no name set', full: 'A user with no name set', offered: false },
+      { id: 'b', text: 'ZQ (Zoe)', short: 'ZQ', full: 'Zoe', offered: true },
+    ]);
+  });
+
+  it('a chosen person reads as their short name, and by full name on the printable record', () => {
+    const links = linkOptions({ people: [{ id: 'p1', full_name: 'Sam Lee', short_name: 'SL' }, { id: 'p2', full_name: 'No Initials' }] });
+    expect(fieldText({ type: 'person' }, 'p1', links)).toBe('SL');
+    expect(fieldText({ type: 'person' }, 'p1', links, { full: true })).toBe('Sam Lee');
+    expect(fieldText({ type: 'person' }, 'p2', links)).toBe('No Initials');
   });
 
   it('a value reads as words; a link to something gone says so rather than an id', () => {

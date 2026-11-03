@@ -43,6 +43,9 @@
   import { errMessage } from '#lib/utils/errors.js';
   import { formatVerificationCode } from '#lib/utils/caseVerificationCode.js';
   import { logAudit } from '#lib/utils/auditLogger.js';
+  import { onMount } from 'svelte';
+  import { profiles, profilesStore } from '#lib/stores/profiles.js';
+  import { pickerLabel, shortLabel, withShortName } from '#lib/utils/personLabels.js';
 
   /** The item (null until its workflow is set up). @type {any} */ export let item = null;
   /** @type {any} */ export let workflow = null;
@@ -120,7 +123,8 @@
   $: if (needsLinks && workflow && linksFor !== workflow.id) { linksFor = workflow.id; readLinks(); }
   async function readLinks() {
     try {
-      links = await loadLinkOptions(fields, Object.entries(nameById).map(([id, full_name]) => ({ id, full_name })));
+      const people = /** @type {any[]} */ (await profilesStore.load().catch(() => []));
+      links = await loadLinkOptions(fields, people.length ? people : Object.entries(nameById).map(([id, full_name]) => ({ id, full_name })));
     } catch (/** @type {any} */ err) { error = errMessage(err, 'Could not read what the link fields offer.'); }
   }
 
@@ -181,7 +185,15 @@
     finally { busy = ''; }
   }
   $: lastMoverId = [...history].reverse().find(isMoveEvent)?.by ?? null;
+  // The full name — for the history, sign-offs and the printable record.
   $: withName = (/** @type {string|null|undefined} */ uid) => (uid ? nameById[uid] || 'A user no longer listed' : '');
+  // Who it is WITH is chosen and shown by short name (user, 2026-11-03): only
+  // people with a short name are offered, as "SP (Stephen Pallett)", and shown
+  // as "SP". Someone chosen before keeps showing.
+  onMount(() => { profilesStore.load().catch(() => { /* names fall back to the full ones */ }); });
+  $: personById = new Map((/** @type {any[]} */ ($profiles.list ?? [])).map((p) => [p.id, p]));
+  $: shortOf = (/** @type {string|null|undefined} */ uid) => (uid ? shortLabel(personById.get(uid)) || withName(uid) : '');
+  $: offeredPeople = withShortName(assignees.map((p) => personById.get(p.id)).filter(Boolean));
   $: due = item?.due_on && !finished ? item.due_on : null;
   $: changes = fieldChanges(fields, draft, item?.fields ?? {});
   $: fieldsDirty = Object.keys(changes).length > 0;
@@ -227,7 +239,7 @@
     busy = 'assign'; error = ''; done = '';
     try {
       const result = await onAssign(uid);
-      if (result?.changed !== false) done = `${ref}: ${uid ? `now with ${withName(uid)}` : 'now with no one'}.`;
+      if (result?.changed !== false) done = `${ref}: ${uid ? `now with ${shortOf(uid)}` : 'now with no one'}.`;
       dispatch('changed', { assigned: uid });
       await readHistory();
     } catch (/** @type {any} */ err) { error = errMessage(err, 'That could not be done.'); assignNonce += 1; }
@@ -263,7 +275,7 @@
       const events = await itemHistory(it.id);
       const subject = rec.subject();
       const withFields = { ...subject, facts: [...(subject.facts ?? []),
-        ...fields.map((f) => /** @type {[string, string]} */ ([f.label, fieldText(f, it.fields?.[f.key], links)]))] };
+        ...fields.map((f) => /** @type {[string, string]} */ ([f.label, fieldText(f, it.fields?.[f.key], links, { full: true })]))] };
       const model = itemRecordModel({ workflow, steps, item: it, events, people: nameById, todayISO: today(), subject: withFields });
       const { buildItemRecord } = await import('#lib/docx/itemRecordDocx.js');
       const { bytes, filename } = await buildItemRecord(model, {
@@ -307,7 +319,7 @@
       <p class="text-xs text-slate-400" data-testid="wf-held">⏸ Paused for {item.held_days} day{item.held_days === 1 ? '' : 's'} in all; a deadline counted from the start is later by that.</p>
     {/if}
     {#if step?.escalate_after_days && step?.escalate_to && !finished}
-      <p class="text-xs text-slate-500" data-testid="wf-escalation">If it is {step.escalate_after_days} day{Number(step.escalate_after_days) === 1 ? '' : 's'} past its deadline it goes to {withName(step.escalate_to)}.</p>
+      <p class="text-xs text-slate-500" data-testid="wf-escalation">If it is {step.escalate_after_days} day{Number(step.escalate_after_days) === 1 ? '' : 's'} past its deadline it goes to {shortOf(step.escalate_to)}.</p>
     {/if}
     {#if timed && timerOn && !finished}
       <p class="text-xs text-slate-400" data-testid="wf-timer">⏲ <strong>{timed.label}</strong> happens by itself on {fmtDate(timerOn)}
@@ -327,17 +339,20 @@
               value={item.assigned_to ?? ''} disabled={!!busy}
               on:change={(e) => assign(/** @type {HTMLSelectElement} */ (e.currentTarget).value || null)}>
               <option value="">No one</option>
-              {#each assignees as p (p.id)}<option value={p.id}>{p.full_name || 'A user with no name set'}{p.id === me ? ' (me)' : ''}</option>{/each}
-              {#if item.assigned_to && !assignees.some((p) => p.id === item.assigned_to)}
-                <option value={item.assigned_to}>{withName(item.assigned_to)} (can no longer work these)</option>
+              {#each offeredPeople as p (p.id)}<option value={p.id}>{pickerLabel(p)}{p.id === me ? ' (me)' : ''}</option>{/each}
+              {#if item.assigned_to && !offeredPeople.some((p) => p.id === item.assigned_to)}
+                <option value={item.assigned_to}>{shortOf(item.assigned_to)} ({assignees.some((p) => p.id === item.assigned_to) ? 'no short name set' : 'can no longer work these'})</option>
               {/if}
             </select>
           {/key}
-          {#if me && item.assigned_to !== me && assignees.some((p) => p.id === me)}
+          {#if me && item.assigned_to !== me && offeredPeople.some((p) => p.id === me)}
             <Button variant="tertiary" size="xs" disabled={!!busy} on:click={() => assign(me)}>Take it</Button>
           {/if}
+          {#if !offeredPeople.length}
+            <span class="text-xs text-slate-500" data-testid="wf-no-short-names">No one who can work these has a short name yet — an admin sets them in Admin → Users.</span>
+          {/if}
         {:else}
-          <span class="text-slate-100">{withName(item.assigned_to) || 'No one'}</span>
+          <span class="text-slate-100">{shortOf(item.assigned_to) || 'No one'}</span>
         {/if}
       </div>
     {/if}

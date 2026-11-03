@@ -13,6 +13,7 @@ import { buildComponentRef } from '#lib/utils/componentRef.js';
 import { buildSpaceRef } from '#lib/utils/spaceRef.js';
 import { fmtDateOnly } from '#lib/utils/dates.js';
 import { fieldMissing } from './workflowModel.js';
+import { pickerLabel, shortLabel } from '#lib/utils/personLabels.js';
 
 /** The link field types: their value is the id of a portal record. */
 export const LINK_TYPES = Object.freeze(['component', 'space', 'person']);
@@ -20,14 +21,19 @@ export const LINK_TYPES = Object.freeze(['component', 'space', 'person']);
 /**
  * What each link field offers, as { id, text } sorted by text.
  * @param {{ components?: any[], spaces?: any[], floors?: any[], types?: any[], people?: any[] }} refs
- * @returns {{ component: Array<{id: string, text: string}>, space: Array<{id: string, text: string}>, person: Array<{id: string, text: string}> }}
+ * @returns {{ component: Array<{id: string, text: string}>, space: Array<{id: string, text: string}>, person: Array<{id: string, text: string, short: string, full: string, offered: boolean}> }}
  */
 export function linkOptions({ components = [], spaces = [], floors = [], types = [], people = [] } = {}) {
   const byText = (/** @type {any} */ a, /** @type {any} */ b) => a.text.localeCompare(b.text, 'en-GB', { numeric: true });
   return {
     component: components.map((c) => ({ id: c.id, text: `${buildComponentRef(c, floors, types)}${c.label ? ` — ${c.label}` : ''}` })).sort(byText),
     space: spaces.map((s) => ({ id: s.id, text: `${buildSpaceRef(s, floors)}${s.label || s.name ? ` — ${s.label || s.name}` : ''}` })).sort(byText),
-    person: people.map((p) => ({ id: p.id, text: p.full_name || 'A user with no name set' })).sort(byText),
+    // A person is offered only with a short name (user, 2026-11-03): `text` is
+    // "SP (Stephen Pallett)" for the picker, `short` is shown once chosen and
+    // `full` goes on the printable record. Everyone stays in the list so a value
+    // chosen before short names still reads as its person.
+    person: people.map((p) => ({ id: p.id, text: pickerLabel(p) || 'A user with no name set', short: shortLabel(p) || 'A user with no name set',
+      full: p.full_name || 'A user with no name set', offered: !!p.short_name })).sort(byText),
   };
 }
 
@@ -37,14 +43,17 @@ export function linkOptions({ components = [], spaces = [], floors = [], types =
  * @param {{ type: string }} field
  * @param {any} value
  * @param {ReturnType<typeof linkOptions>} [links]
+ * @param {{ full?: boolean }} [opts]  full: a person by full name (the printable record); otherwise "SP"
  */
-export function fieldText(field, value, links) {
+export function fieldText(field, value, links, opts = {}) {
   if (fieldMissing(value)) return '—';
   if (field.type === 'date') return fmtDateOnly(String(value));
   if (field.type === 'document') return 'A document is attached';
   if (LINK_TYPES.includes(field.type)) {
     const list = /** @type {Array<{id: string, text: string}>} */ (/** @type {any} */ (links ?? {})[field.type] ?? []);
-    return list.find((o) => o.id === value)?.text ?? 'No longer in the portal';
+    const o = /** @type {any} */ (list.find((x) => x.id === value));
+    if (!o) return 'No longer in the portal';
+    return field.type === 'person' ? (opts.full ? o.full : o.short) ?? o.text : o.text;
   }
   return String(value);
 }

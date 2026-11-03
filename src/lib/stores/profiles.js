@@ -59,29 +59,15 @@ async function load({ force = false } = {}) {
 }
 
 // ── Short names (migration 279) ─────────────────────────────────────────────
-// A person's short name ("SP") is set by an admin (Admin → Users → ✎ Edit).
-// Management offers ONLY people who have one, as "SP (Stephen Pallett)", and
-// shows "SP" once chosen (user, 2026-11-03). Other apps keep the full name.
+// The labels live in #lib/utils/personLabels.js (pure); re-exported here so
+// Management's imports stay where they were.
+import { pickerLabel, shortLabel, withShortName, shortLabelById } from '#lib/utils/personLabels.js';
+export { pickerLabel, shortLabel, withShortName, shortLabelById };
 
-/** @typedef {{ id: string, full_name?: string|null, short_name?: string|null }} Person */
+/** @typedef {import('#lib/utils/personLabels.js').Person} Person */
 
-/** "SP (Stephen Pallett)" — how a person is offered in a Management picker. @param {Person} p */
-export function pickerLabel(p) {
-  if (!p) return '';
-  if (!p.short_name) return p.full_name ?? '';
-  return p.full_name ? `${p.short_name} (${p.full_name})` : p.short_name;
-}
-
-/** "SP" — how a chosen person is shown in Management; the full name when none is set. @param {Person|undefined} p */
-export function shortLabel(p) {
-  return p?.short_name || p?.full_name || '';
-}
-
-/** The people Management may offer: those with a short name, by short name. @param {Person[]} list */
-export function withShortName(list) {
-  return (list ?? []).filter((p) => p.short_name)
-    .sort((a, b) => String(a.short_name).localeCompare(String(b.short_name)));
-}
+/** id → "SP": how a chosen person is shown in a list's "With" column. */
+export const shortNames = derived(_state, ($s) => shortLabelById($s.list));
 
 /**
  * [{value, label}] for an action-assignee <select>: one option per person WITH a

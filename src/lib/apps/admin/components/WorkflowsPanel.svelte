@@ -18,6 +18,7 @@
   import { today } from '#lib/utils/dates.js';
   import { definitionOf, definitionChanged, workflowDiff, CHANGE_EVENTS } from '#lib/workflow/workflowModel.js';
   import { profiles, profilesStore } from '#lib/stores/profiles.js';
+  import { pickerLabel, withShortName } from '#lib/utils/personLabels.js';
   import { fmtDateTime } from '#lib/utils/dates.js';
   import Modal from '#lib/components/common/Modal.svelte';
   import FormInput from '#lib/components/common/FormInput.svelte';
@@ -605,7 +606,9 @@
                         placeholder="—" aria-label="{st.name}: escalate after (days past its deadline)" />
                       days late → <select class={inputCls} bind:value={st.escalate_to} on:change={() => (steps = steps)} aria-label="{st.name}: escalate to">
                         <option value="">no one</option>
-                        {#each $profiles.list ?? [] as person (person.id)}<option value={person.id}>{person.full_name || person.email}</option>{/each}</select>
+                        {#each withShortName($profiles.list ?? []) as person (person.id)}<option value={person.id}>{pickerLabel(person)}</option>{/each}
+                        {#if st.escalate_to && !withShortName($profiles.list ?? []).some((p) => p.id === st.escalate_to)}
+                          <option value={st.escalate_to}>{nameOf(st.escalate_to)} (no short name set)</option>{/if}</select>
                     </div>
                   {/if}
                 </td>

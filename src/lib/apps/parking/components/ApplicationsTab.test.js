@@ -19,7 +19,8 @@ vi.mock('../stores/requestStore.js', () => ({ requestStore: {
   history: async () => h.hist ?? [{ id: 1, from_key: null, to_key: 'received', note: 'Received from the online form', at: '2026-10-17T09:00:00Z' }],
   move: async (r, to, note) => { h.moved.push([r.reference, to, note]); return { step: to, action: h.action }; },
   assign: async (r, uid) => { h.assigned.push([r.reference, uid]); return { assigned_to: uid, changed: true }; },
-  assignees: async () => [{ id: 'me', full_name: 'Pat Smith' }, { id: 'u2', full_name: 'Sam Lee' }],
+  // u3 can work these but has no short name, so is never offered (user, 2026-11-03).
+  assignees: async () => [{ id: 'me', full_name: 'Pat Smith' }, { id: 'u2', full_name: 'Sam Lee' }, { id: 'u3', full_name: 'Nora None' }],
 } }));
 vi.mock('../stores/parkingStore.js', () => ({ parkingStore: { subscribe: h.park.subscribe, load: async () => { h.parkingLoads += 1; } } }));
 vi.mock('../stores/waitingListStore.js', () => ({ waitingListStore: { subscribe: h.wl.subscribe, load: async () => {} } }));
@@ -31,10 +32,16 @@ vi.mock('#lib/workflow/workflowApi.js', () => ({
   { item_id: 'ia', from_key: null, to_key: 'received', at: '2026-10-17T09:00:00Z' }] }) }));
 vi.mock('#lib/workflow/fieldLinks.js', () => ({ loadLinkOptions: async () => ({ component: [], space: [], person: [] }) }));
 vi.mock('#lib/stores/permissions.js', () => ({ permissions: { subscribe: h.perms.subscribe } }));
-vi.mock('#lib/stores/profiles.js', () => ({
-  profiles: { subscribe: (r) => { r({ loaded: true, list: [{ id: 'me', full_name: 'Pat Smith' }, { id: 'u2', full_name: 'Sam Lee' }] }); return () => {}; } },
-  profilesStore: { load: async () => [] },
-}));
+vi.mock('#lib/stores/profiles.js', () => {
+  const list = [{ id: 'me', full_name: 'Pat Smith', short_name: 'PS' }, { id: 'u2', full_name: 'Sam Lee', short_name: 'SL' },
+    { id: 'u3', full_name: 'Nora None', short_name: null }];
+  const readable = (/** @type {any} */ v) => ({ subscribe: (/** @type {any} */ r) => { r(v); return () => {}; } });
+  return {
+    profiles: readable({ loaded: true, list }),
+    profilesStore: { load: async () => list },
+    shortNames: readable({ me: 'PS', u2: 'SL' }),
+  };
+});
 vi.mock('#lib/stores/auth.js', () => ({ auth: { subscribe: (r) => { r({ user: { id: 'me', email: 'pat@x.co' } }); return () => {}; } } }));
 const dl = vi.hoisted(() => ({ files: /** @type {any[]} */ ([]), audits: /** @type {any[]} */ ([]) }));
 vi.mock('#lib/utils/download.js', () => ({ downloadBlob: (blob, name) => { dl.files.push([blob, name]); } }));
@@ -152,7 +159,8 @@ describe('Parking → Applications', () => {
     h.req.set(state([REQ('a', 'PKR-2026-000001', 'checking', null, 'u2'), REQ('b', 'PKR-2026-000002', 'received', null, 'me')]));
     render(ApplicationsTab, { canEdit: true });
     const withCells = await screen.findAllByTestId('application-with');
-    expect(withCells.map((c) => c.textContent?.trim())).toEqual(['Sam Lee', 'Pat Smith']);
+    expect(withCells.map((c) => c.textContent?.trim())).toEqual(['SL', 'PS']);
+    expect(screen.queryAllByRole('option').map((o) => o.textContent)).not.toContain('Sam Lee');
     await fireEvent.change(screen.getByLabelText('Which applications'), { target: { value: 'mine' } });
     await waitFor(() => expect(screen.getByTestId('application-list').textContent).not.toMatch(/PKR-2026-000001/));
     expect(screen.getByTestId('application-list').textContent).toMatch(/PKR-2026-000002/);
@@ -160,7 +168,9 @@ describe('Parking → Applications', () => {
     await fireEvent.click(await screen.findByText('PKR-2026-000001'));
     await fireEvent.click(await screen.findByRole('button', { name: 'Take it' }));
     await waitFor(() => expect(h.assigned).toEqual([['PKR-2026-000001', 'me']]));
-    expect(await screen.findByRole('status')).toHaveTextContent('PKR-2026-000001: now with Pat Smith.');
+    expect(await screen.findByRole('status')).toHaveTextContent('PKR-2026-000001: now with PS.');
+    const picker = /** @type {HTMLSelectElement} */ (screen.getByLabelText('Who it is with'));
+    expect([...picker.options].map((o) => o.textContent)).toEqual(['No one', 'PS (Pat Smith) (me)', 'SL (Sam Lee)']);
     await fireEvent.change(screen.getByLabelText('Who it is with'), { target: { value: '' } });
     await waitFor(() => expect(h.assigned).toEqual([['PKR-2026-000001', 'me'], ['PKR-2026-000001', null]]));
   });
@@ -171,7 +181,7 @@ describe('Parking → Applications', () => {
     render(ApplicationsTab, { canEdit: false });
     await fireEvent.click(await screen.findByText('PKR-2026-000001'));
     const box = await screen.findByTestId('wf-with');
-    expect(box.textContent).toMatch(/Sam Lee/);
+    expect(box.textContent).toMatch(/SL/);
     expect(screen.queryByLabelText('Who it is with')).toBeNull();
   });
 
