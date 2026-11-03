@@ -64,9 +64,7 @@
       <div>
         <FormInput label="Short name" bind:value={shortName} placeholder="e.g. SP" error={shortProblem} />
         <p class="text-xs text-slate-400 mt-1">
-          Initials used in Management for meeting attendees and action assignees, shown there as
-          “SP (Stephen Pallett)” when choosing. People with no short name are not offered there.
-          Up to 10 letters, numbers, dots or hyphens; no two people may share one.
+          Initials used in e.g. Management attendees.
         </p>
       </div>
 
