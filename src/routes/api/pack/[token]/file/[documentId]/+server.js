@@ -38,14 +38,14 @@ import {
   findServablePublication, resolveManifest, readerRefusal,
 } from '#lib/server/publicationReader.js';
 import { hasGrant } from '#lib/server/publicationPassphrase.js';
-import { recordPublicationEvent } from '#lib/server/publicationEvents.js';
+import { recordPublicationEvent, safeAddress } from '#lib/server/publicationEvents.js';
 
 /** Every refusal, whatever the cause. See publicationReader.readerRefusal(). */
 function refuse() {
   return json({ error: readerRefusal().message }, { status: 404 });
 }
 
-export async function GET({ params, request, cookies }) {
+export async function GET({ params, request, cookies, getClientAddress }) {
   const allowed = await checkRateLimit(request, 'pack_asset');
   if (!allowed) return json({ error: 'Too many requests.' }, { status: 429 });
 
@@ -99,7 +99,7 @@ export async function GET({ params, request, cookies }) {
   // document someone actually took (a PDF, a sheet) is recorded by name.
   if (!String(entry.mime_type ?? '').startsWith('image/')) {
     await recordPublicationEvent(request, found.publication.id, 'file',
-      { documentId: params.documentId, filename: entry.filename });
+      { documentId: params.documentId, filename: entry.filename, address: safeAddress(getClientAddress) });
   }
 
   // Inline only for the small non-scriptable set the shared allow-list permits;

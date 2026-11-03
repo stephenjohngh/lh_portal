@@ -64,6 +64,7 @@ import * as datasetTemplates   from '#lib/apps/dossier/utils/datasetTemplates.js
 import * as spaceTypeOptions   from '#lib/apps/building_assets/utils/spaceTypeOptions.js';
 import * as spaceLabelSize     from '#lib/apps/building_assets/utils/spaceLabelSize.js';
 import * as maintenanceJobWf    from '#lib/apps/maintenance/utils/maintenanceJobWorkflow.js';
+import { EVENT_LABEL as publicationEvents } from '#lib/apps/dossier/utils/publicationAccess.js';
 import { ISSUE_STATUS }        from '#lib/utils/constants.js';
 import { AVAILABLE_APPS }      from '#lib/apps/apps.js';
 import { RATE_LIMIT_WINDOWS }  from '#lib/utils/policies.js';
@@ -112,6 +113,7 @@ const VALUE_LISTS = {
   'workflow_steps.kind':              () => values(workflowModel.STEP_KINDS),             // migration 247
   'workflow_steps.deadline_basis':    () => values(workflowDeadlines.DEADLINE_BASES),     // migration 248
   'workflow_steps.deadline_from':     () => values(workflowDeadlines.DEADLINE_FROM),      // migration 248
+  'dossier_publication_events.event': () => Object.keys(publicationEvents),             // migration 277
   'workflow_events.kind':             () => values(workflowModel.EVENT_KINDS),            // migration 250
   'workflow_moves.who':               () => values(workflowModel.MOVE_WHO),               // migration 251
   'workflow_moves.timer_basis':       () => values(workflowModel.TIMER_BASES),            // migration 259

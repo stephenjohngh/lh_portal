@@ -553,6 +553,14 @@
             "resident",
             "unknown"
         ],
+        "dossier_publication_events.event": [
+            "file",
+            "opened",
+            "refused_expired",
+            "refused_revoked",
+            "unlock_failed",
+            "unlock_ok"
+        ],
         "parking_agreements.vat_treatment": [
             "exempt",
             "not_charged",

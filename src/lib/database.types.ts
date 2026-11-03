@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema39.csv
+// Source: docs/ops/supabase_lhportal_schema40.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -1820,14 +1820,14 @@ export type Database = {
           created_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "dossier_publication_events_publication_id_fkey"
-            columns: ["publication_id"]
-            isOneToOne: false
-            referencedRelation: "dossier_publications"
-            referencedColumns: ["id"]
-          },
-        ]
+            {
+              foreignKeyName: "dossier_publication_events_publication_id_fkey"
+              columns: ["publication_id"]
+              isOneToOne: false
+              referencedRelation: "dossier_publications"
+              referencedColumns: ["id"]
+            }
+          ]
       }
       dossier_publications: {
         Row: {
@@ -1839,7 +1839,6 @@ export type Database = {
           mode: string
           token_hash: string
           token_prefix: string
-          token: string | null
           passphrase_hash: string | null
           passphrase_salt: string | null
           snapshot: Json | null
@@ -1851,6 +1850,7 @@ export type Database = {
           created_by: string
           updated_at: string | null
           updated_by: string | null
+          token: string | null
         }
         Insert: {
           id?: string
@@ -1861,7 +1861,6 @@ export type Database = {
           mode?: string
           token_hash: string
           token_prefix: string
-          token?: string | null
           passphrase_hash?: string | null
           passphrase_salt?: string | null
           snapshot?: Json | null
@@ -1873,6 +1872,7 @@ export type Database = {
           created_by: string
           updated_at?: string | null
           updated_by?: string | null
+          token?: string | null
         }
         Update: {
           id?: string
@@ -1883,7 +1883,6 @@ export type Database = {
           mode?: string
           token_hash?: string
           token_prefix?: string
-          token?: string | null
           passphrase_hash?: string | null
           passphrase_salt?: string | null
           snapshot?: Json | null
@@ -1895,6 +1894,7 @@ export type Database = {
           created_by?: string
           updated_at?: string | null
           updated_by?: string | null
+          token?: string | null
         }
         Relationships: [
             {
@@ -6370,15 +6370,15 @@ export type Database = {
               foreignKeyName: "workflow_items_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
+              referencedRelation: "workflows"
+              referencedColumns: ["id"]
             },
             {
               foreignKeyName: "workflow_items_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
-              referencedRelation: "workflows"
-              referencedColumns: ["id"]
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
             },
             {
               foreignKeyName: "workflow_items_step_key_fkey"
@@ -6457,22 +6457,22 @@ export type Database = {
               foreignKeyName: "workflow_moves_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
+            },
+            {
+              foreignKeyName: "workflow_moves_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
+            },
+            {
+              foreignKeyName: "workflow_moves_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
               referencedRelation: "workflows"
               referencedColumns: ["id"]
-            },
-            {
-              foreignKeyName: "workflow_moves_workflow_id_fkey"
-              columns: ["workflow_id"]
-              isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
-            },
-            {
-              foreignKeyName: "workflow_moves_workflow_id_fkey"
-              columns: ["workflow_id"]
-              isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
             },
             {
               foreignKeyName: "workflow_moves_from_key_fkey"

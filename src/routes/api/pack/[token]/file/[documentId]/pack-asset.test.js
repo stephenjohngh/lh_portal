@@ -20,7 +20,7 @@ const h = vi.hoisted(() => ({
   providersForFileIds: vi.fn(async () => new Map([['drive-1', 'google_drive']])),
   recordPublicationEvent: vi.fn(() => Promise.resolve()),
 }));
-vi.mock('#lib/server/publicationEvents.js', () => ({ recordPublicationEvent: h.recordPublicationEvent }));
+vi.mock('#lib/server/publicationEvents.js', () => ({ recordPublicationEvent: h.recordPublicationEvent, safeAddress: () => undefined }));
 
 vi.mock('#lib/server/storage/index.js', () => ({
   ownerOf: (name) => {
@@ -95,7 +95,7 @@ describe('the access log', () => {
   it('records a document that was taken, by name', async () => {
     await call();
     expect(h.recordPublicationEvent).toHaveBeenCalledWith(
-      expect.any(Request), 'pub1', 'file', { documentId: 'doc-1', filename: 'Notice.pdf' });
+      expect.any(Request), 'pub1', 'file', { documentId: 'doc-1', filename: 'Notice.pdf', address: undefined });
   });
 
   it('does not record pictures — the page fetches those on every open', async () => {

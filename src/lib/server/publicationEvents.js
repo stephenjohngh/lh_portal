@@ -23,6 +23,11 @@ const logger = getLogger('publicationEvents');
 
 export const OPEN_QUIET_MINUTES = 5;
 
+/** SvelteKit's getClientAddress() throws where it cannot tell; the log just goes without. */
+export function safeAddress(getClientAddress) {
+  try { return getClientAddress?.() || undefined; } catch { return undefined; }
+}
+
 let _svc = null;
 function svc() {
   _svc ??= createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY ?? '', {
@@ -35,13 +40,16 @@ function svc() {
  * @param {Request} request
  * @param {string} publicationId
  * @param {'opened'|'unlock_ok'|'unlock_failed'|'file'|'refused_revoked'|'refused_expired'} event
- * @param {{ documentId?: string, filename?: string }} [extra]
+ * @param {{ documentId?: string, filename?: string, address?: string }} [extra]
+ *   address: SvelteKit's own getClientAddress(), used when no proxy header names the
+ *   caller (a dev server, or a host that sets none) — the header would read 0.0.0.0
  * @returns {Promise<void>}  never rejects
  */
 export async function recordPublicationEvent(request, publicationId, event, extra = {}) {
   try {
     if (!publicationId) return;
-    const ip = getClientIp(request);
+    const fromHeader = getClientIp(request);
+    const ip = fromHeader !== '0.0.0.0' ? fromHeader : (extra.address || fromHeader);
     const db = svc();
 
     if (event === 'opened') {

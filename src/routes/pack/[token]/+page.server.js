@@ -16,13 +16,14 @@ import {
   findServablePublication, readPublicationContent, publicPublicationFields,
   stripStorageIds, readerRefusal, refusedPublication,
 } from '#lib/server/publicationReader.js';
-import { recordPublicationEvent } from '#lib/server/publicationEvents.js';
+import { recordPublicationEvent, safeAddress } from '#lib/server/publicationEvents.js';
 import { checkRateLimit } from '#lib/server/publicRateLimit.js';
 import { needsPassphrase, hasGrant } from '#lib/server/publicationPassphrase.js';
 import { serverWording } from '#lib/server/wording.js';
 
 /** @type {import('./$types').PageServerLoad} */
-export async function load({ params, request, setHeaders, cookies }) {
+export async function load({ params, request, setHeaders, cookies, getClientAddress }) {
+  const address = safeAddress(getClientAddress);
   // Throttle by IP before any lookup. The token is unguessable, so this is not
   // the primary defence — it is what makes enumeration pointless rather than
   // merely impractical, and it is the same table-backed limiter the MOR public
@@ -37,7 +38,7 @@ export async function load({ params, request, setHeaders, cookies }) {
     // The recipient sees the one uniform refusal; the owner's access log learns
     // that a revoked or expired link was tried.
     const refused = await refusedPublication(params.token);
-    if (refused) await recordPublicationEvent(request, refused.id, `refused_${refused.why}`);
+    if (refused) await recordPublicationEvent(request, refused.id, `refused_${refused.why}`, { address });
     return { refused: true, message: found.message };
   }
 
@@ -55,7 +56,7 @@ export async function load({ params, request, setHeaders, cookies }) {
   if (!content) return { refused: true, message: readerRefusal().message };
 
   // Served: this is an open. (A locked page above is not one until it is answered.)
-  await recordPublicationEvent(request, found.publication.id, 'opened');
+  await recordPublicationEvent(request, found.publication.id, 'opened', { address });
 
   // A published pack is private to whoever holds the link. It must not be
   // cached by a shared proxy, and it must not turn up in a search index.
