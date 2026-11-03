@@ -19,6 +19,8 @@
   import DuplicatePackModal from './components/DuplicatePackModal.svelte';
   import PublishedPacksList from './components/PublishedPacksList.svelte';
   import { copyTitle }    from './utils/packCopy.js';
+  import { hasAppAccess } from '#lib/utils/appAccess.js';
+  import { createPackFromPlan } from './public.js';
 
   /** A caught value is `unknown`; narrow it without asserting a type. */
 
@@ -31,6 +33,7 @@
   let startTemplateId  = '';      // a template to start the new dossier from
   let newFolderId      = null;    // the folder the new pack or template goes into
   let packModalRef;
+  let issueChoices = [];          // Management issues a new dossier can be built from
 
   // null = the pack list; set = the authoring workspace for that pack.
   let openPackId = null;
@@ -115,7 +118,21 @@
 
   // ── Pack CRUD ─────────────────────────────────────────────────────────────
 
-  function openNewPack(templateId = '', folderId = null) { editingPack = null; creatingTemplate = false; startTemplateId = templateId; newFolderId = folderId; showPackModal = true; }
+  function openNewPack(templateId = '', folderId = null) {
+    editingPack = null; creatingTemplate = false; startTemplateId = templateId; newFolderId = folderId; showPackModal = true;
+    loadIssueChoices();
+  }
+
+  /** The issues a dossier can start from — only for someone who may read Management. */
+  async function loadIssueChoices() {
+    if (!hasAppAccess($permissions, 'management')) { issueChoices = []; return; }
+    try {
+      const { listIssuesForPicker } = await import('../management/public.js');
+      issueChoices = await listIssuesForPicker();
+    } catch (err) {
+      issueChoices = [];   // the option is simply not offered; the rest of the form still works
+    }
+  }
   function openNewTemplate(folderId = null) { editingPack = null; creatingTemplate = true; startTemplateId = ''; newFolderId = folderId; showPackModal = true; }
   function openEditPack(p)   { editingPack = p; creatingTemplate = false; startTemplateId = ''; newFolderId = null; showPackModal = true; }
 
@@ -130,6 +147,19 @@
         await dossierStore.updatePack(target.id, data, userId);
       } else if (data.isTemplate) {
         await dossierStore.createPack({ ...data, is_template: true, folder_id: newFolderId }, userId);
+      } else if (data.issueId) {
+        // Management hands over the issue as plain data; the pack is built here.
+        const { planFromIssue } = await import('../management/public.js');
+        const plan = await planFromIssue(data.issueId);
+        if (data.title) plan.title = data.title;
+        const made = await createPackFromPlan(plan, { folderId: newFolderId });
+        showPackModal = false;
+        packModalRef?.done();
+        await handleOpen({ id: made.pack.id });
+        if (made.skipped?.length) {
+          appError = `Made “${made.pack.title}”, but these files could not be copied: ${made.skipped.map(s => `${s.name} (${s.reason})`).join('; ')}`;
+        }
+        return;
       } else if (data.templateId) {
         // One-off copy of the template's pages and tables; its files are READ,
         // not copied. Later changes to the template do not reach this dossier.
@@ -339,6 +369,7 @@
   isTemplate={creatingTemplate}
   templates={packs.filter(p => p.is_template && p.status !== 'archived')}
   {startTemplateId}
+  issues={issueChoices}
   on:save={handlePackSave}
   on:close={() => showPackModal = false}
 />

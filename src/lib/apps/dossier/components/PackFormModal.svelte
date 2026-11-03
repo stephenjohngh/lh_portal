@@ -18,6 +18,8 @@
   export let templates = [];
   /** Pre-selected when the person came from a template's own button. */
   export let startTemplateId = '';
+  /** Management issues a new dossier can be built from: { id, issue_number, name }. Empty = not offered. */
+  export let issues = [];
 
   const dispatch = createEventDispatcher();
 
@@ -27,17 +29,19 @@
   let error       = '';
   let titleError  = '';
   let templateId  = '';
+  let issueId     = '';
 
   $: if (show) {
     title       = pack?.title       ?? '';
     description = pack?.description ?? '';
     templateId  = pack ? '' : startTemplateId;
+    issueId     = '';
     error       = '';
     titleError  = '';
   }
 
   function validate() {
-    titleError = title.trim() ? '' : (isTemplate ? 'A template needs a title' : 'A pack needs a title');
+    titleError = (title.trim() || issueId) ? '' : (isTemplate ? 'A template needs a title' : 'A pack needs a title');
     return !titleError;
   }
 
@@ -49,6 +53,7 @@
       description: description.trim() || null,
       isTemplate,
       templateId: templateId || null,
+      issueId: issueId || null,
     });
   }
 
@@ -77,13 +82,24 @@
       disabled={saving}
     />
 
+    {#if !pack && !isTemplate && issues.length}
+      <FormSelect
+        label="Create from a Management issue (optional)"
+        bind:value={issueId}
+        options={issues.map(i => ({ value: i.id, label: `${i.issue_number ? `#${i.issue_number} — ` : ''}${i.name}` }))}
+        placeholder="— not from an issue —"
+        disabled={saving || !!templateId}
+        helpText="Copies EVERYTHING on the issue into a private pack: the description, every activity (internal notes and historic entries too), every action and every document. The title above is used if you give one. Nothing is published — check every page before you publish any of it."
+      />
+    {/if}
+
     {#if !pack && !isTemplate && templates.length}
       <FormSelect
         label="Start from a template (optional)"
         bind:value={templateId}
         options={templates.map(t => ({ value: t.id, label: t.title }))}
         placeholder="— a blank dossier —"
-        disabled={saving}
+        disabled={saving || !!issueId}
         helpText="Copies the template's pages and tables once, and lets you use its files. Changes made to the template later do not reach this dossier."
       />
     {:else if pack?.template_id}
@@ -107,7 +123,7 @@
     <Button variant="primary" size="large" fullWidth={true}
             loading={saving} disabled={saving}
             on:click={handleSubmit}>
-      {pack ? 'Save Changes' : isTemplate ? 'Create Template' : templateId ? 'Create from template' : 'Create Pack'}
+      {pack ? 'Save Changes' : isTemplate ? 'Create Template' : issueId ? 'Create from issue' : templateId ? 'Create from template' : 'Create Pack'}
     </Button>
   </div>
 </Modal>
