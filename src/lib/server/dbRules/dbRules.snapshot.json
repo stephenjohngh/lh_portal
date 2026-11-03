@@ -500,6 +500,7 @@
             "pack_asset",
             "pack_read",
             "pack_unlock",
+            "pack_unlock_link",
             "parking_apply",
             "photo_upload",
             "status_lookup"

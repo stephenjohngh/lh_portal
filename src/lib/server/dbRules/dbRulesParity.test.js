@@ -158,7 +158,7 @@ describe('MOR timeline', () => {
 // the four Dossier actions did until migration 233 (§6ccc item 10, 2026-10-04).
 // ⏳ TEMPORARY, until the migration named is applied and `npm run db:rules` run:
 // then the second test below fails, saying to remove the entry.
-const AWAITING_MIGRATION = { pack_unlock_link: '278_external_review_fixes.sql' };
+const AWAITING_MIGRATION = {};
 
 describe('rate limits', () => {
   it('an allowance for a migration not yet applied goes once it is', () => {
