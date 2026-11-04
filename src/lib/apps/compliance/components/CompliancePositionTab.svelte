@@ -41,7 +41,7 @@
   import { jobEventsFromJobs } from '#lib/utils/obligationSchedule.js';
   import {
     compliancePosition, positionSummary, filterRows, sortRows, groupRows,
-    evidenceHistory, SORTS, SORT_LABEL, ROW_STATUS, ROW_STATUS_LABEL,
+    evidenceHistory, SORTS, SORT_LABEL, ROW_STATUS, ROW_STATUS_LABEL, notCheckedText,
     HISTORY_MODES, HISTORY_MODE_LABEL, historyCountText,
   } from '#lib/utils/obligationReport.js';
   import {
@@ -233,6 +233,7 @@
             lastOutcome: r.lastOutcome, nextDue: r.nextDue,
             status: r.status, statusLabel: ROW_STATUS_LABEL[r.status],
             assuranceOnly: r.assuranceOnly ?? null,
+            notChecked: notCheckedText(r.notChecked),
             handledBy: HANDLED_BY_LABEL[r.handledBy] ?? r.handledBy,
             intervalBreached: r.intervalBreached,
             exclusionReason: r.exclusion?.reason ?? null,
@@ -434,6 +435,7 @@
                   {#if r.assuranceOnly}
                     <span class="assurance-note">This does not discharge the duty — that is done by {r.assuranceOnly}</span>
                   {/if}
+                  {#if r.notChecked}<span class="assurance-note">{notCheckedText(r.notChecked)}</span>{/if}
                   {#if r.intervalBreached}<span class="pill breach">Max interval</span>{/if}
                 </div>
               </div>
@@ -537,6 +539,7 @@
   .sum.st-attention .sum-n { color: rgb(251 191 36); }
   .sum.st-ok .sum-n { color: rgb(134 239 172); }
   .sum.st-assured .sum-n { color: rgb(196 181 253); }
+  .sum.st-best_endeavours .sum-n { color: rgb(103 232 249); }
   .sum.st-superseded .sum-n, .sum.st-retired .sum-n { color: rgb(148 163 184); }
 
   .degraded { font-size: 0.8rem; color: rgb(252 211 77); background: rgb(251 191 36 / 0.1);
@@ -613,6 +616,7 @@
   /* Violet, and deliberately outside the pass/fail palette: green would claim
      the statutory duty is met, amber would claim this control is failing.
      Neither is true — it is running, and it answers a different question. */
+  .pill.st-best_endeavours { background: rgb(6 182 212 / 0.18); color: rgb(103 232 249); }
   .pill.st-assured { background: rgb(139 92 246 / 0.18); color: rgb(196 181 253); }
   .pill.st-elsewhere { background: rgb(56 189 248 / 0.14); color: rgb(125 211 252); }
   .assurance-note {

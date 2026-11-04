@@ -57,6 +57,7 @@ import { DAY_MS } from './dates.js';
  * is deliberately optional: the due-date computation must not acquire an
  * opinion about it, so adding a field here can never change a due date.
  * @property {string}  [sourceId]     walk_sessions.id or maintenance_jobs.id
+ * @property {number}  [notSeen]      a finished best-endeavours round: how many were not seen
  * @property {string}  [title]        what the occurrence was called
  * @property {string}  [result]       job result, where one was recorded
  * @property {string}  [by]           engineer, contractor or the session's owner

@@ -452,6 +452,7 @@ export const REGISTER = [
     evidenceRequired: 'Dated check record per door, plus a record of access attempts where entry was refused',
     handledBy: 'inspection',
     handlingNote: 'The walk’s “No access” outcome exists for this duty — best endeavours, evidenced.',
+    accessBestEndeavours: true,
     evidencedBy: 'inspection',
     appliesWhen: 'Always — the building is above 11 metres (the reg 10 threshold) and has flat entrance doors onto common parts',
   }),

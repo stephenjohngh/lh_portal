@@ -5742,6 +5742,7 @@ export type Database = {
           retired_reason: string | null
           retired_by: string | null
           fail_response: string
+          access_best_endeavours: boolean
         }
         Insert: {
           id?: string
@@ -5776,6 +5777,7 @@ export type Database = {
           retired_reason?: string | null
           retired_by?: string | null
           fail_response?: string
+          access_best_endeavours?: boolean
         }
         Update: {
           id?: string
@@ -5810,6 +5812,7 @@ export type Database = {
           retired_reason?: string | null
           retired_by?: string | null
           fail_response?: string
+          access_best_endeavours?: boolean
         }
         Relationships: [
             {
@@ -5864,6 +5867,7 @@ export type Database = {
           scope_note: string | null
           operationally_incomplete: boolean
           assurance_only: string | null
+          access_best_endeavours: boolean | null
           reviewer_note: string | null
           superseded_on: string | null
           superseded_by: string | null
@@ -5920,6 +5924,7 @@ export type Database = {
           scope_note?: string | null
           operationally_incomplete?: boolean
           assurance_only?: string | null
+          access_best_endeavours?: boolean | null
           reviewer_note?: string | null
           superseded_on?: string | null
           superseded_by?: string | null
@@ -5976,6 +5981,7 @@ export type Database = {
           scope_note?: string | null
           operationally_incomplete?: boolean
           assurance_only?: string | null
+          access_best_endeavours?: boolean | null
           reviewer_note?: string | null
           superseded_on?: string | null
           superseded_by?: string | null

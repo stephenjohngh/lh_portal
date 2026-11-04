@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import {
   compliancePosition, positionSummary, filterRows, sortRows, groupRows,
   evidenceHistory, outcomeText, ROW_STATUS, ROW_STATUS_LABEL, NON_FAILING,
-  historyCountText, HISTORY_MODE_LABEL,
+  historyCountText, HISTORY_MODE_LABEL, notCheckedText,
 } from './obligationReport.js';
 import { STATUTORY_TEMPLATE, templateEntry } from './statutoryTemplate.js';
 
@@ -508,5 +508,32 @@ describe('evidenceHistory', () => {
   it('tolerates junk and no window', () => {
     expect(evidenceHistory({ events: [null, {}], obligations }, {})).toEqual([]);
     expect(evidenceHistory({ events, obligations }, {}).length).toBe(2);
+  });
+});
+
+describe('a round finished on best endeavours (migration 283)', () => {
+  const key = 'fser_flat_entrance_doors';
+  const ob = { id: 'o1', template_key: key, active: true, frequency_days: 365, access_best_endeavours: true };
+  const at = (/** @type {number} */ daysAgo) => new Date(Date.now() - daysAgo * 86400000).toISOString();
+  const done = (/** @type {number} */ daysAgo, notSeen = 3) => ({ obligationId: 'o1', kind: 'walk', at: at(daysAgo), status: 'completed', notSeen, inScope: 71, covered: 71 - notSeen });
+  const row = (/** @type {any} */ e) => compliancePosition({ obligations: [ob], events: [e] }).find((r) => r.key === key);
+
+  it('is neither On schedule nor In breach, and says how many', () => {
+    const r = row(done(10));
+    expect(r.status).toBe('best_endeavours');
+    expect(r.notChecked).toEqual({ count: 3, inScope: 71 });
+    expect(notCheckedText(r.notChecked)).toBe('3 of 71 not checked. The attempts are recorded.');
+    expect(NON_FAILING.has('best_endeavours')).toBe(true);
+  });
+  it('a round with everything seen is On schedule', () => {
+    expect(row(done(10, 0)).status).toBe('ok');
+  });
+  it('overdue is still a breach, with the number kept', () => {
+    const r = row(done(400));
+    expect(r.status).toBe('breach');
+    expect(r.notChecked.count).toBe(3);
+  });
+  it('is counted in the summary', () => {
+    expect(positionSummary([row(done(10))]).best_endeavours).toBe(1);
   });
 });

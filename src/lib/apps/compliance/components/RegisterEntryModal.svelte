@@ -65,7 +65,7 @@
     responsibleParty: '', statutoryDutyHolder: '', competencyRequired: null,
     evidenceRequired: '', retentionBasis: null, retentionPeriodMonths: 36,
     handlingNote: '', reviewerNote: null,
-    operationallyIncomplete: false, completionActionKey: null,
+    operationallyIncomplete: false, completionActionKey: null, accessBestEndeavours: false,
     ...(entry ?? {}),
   };
 
@@ -315,6 +315,8 @@
       <div class="sec-body">
         <Checkbox bind:checked={e.operationallyIncomplete}
           label="Operationally incomplete — an interim measure that is not yet a usable control" />
+        <Checkbox bind:checked={e.accessBestEndeavours}
+          label="Access is best endeavours — the law asks for recorded attempts, not that everything is reached" />
         <!-- W4 (migration 257): a link to the action that closes this row. Its
              owner, due date and status are the action's, set on the action. -->
         <FormSelect label="Completion action" options={actionOptions} placeholder=""

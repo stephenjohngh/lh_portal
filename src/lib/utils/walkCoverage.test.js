@@ -162,3 +162,66 @@ describe('the newest attempt', () => {
     expect(evs.filter((e) => e.status === 'attempted').pop()).toMatchObject({ covered: 15, inScope: 104 });
   });
 });
+
+describe('best endeavours (migration 283)', () => {
+  const DAY = 86400000;
+  const t0 = Date.parse('2026-03-02T10:00:00Z');
+  const scope = new Set(['a', 'b']);
+  const seenA = [{ componentId: 'a', at: t0, sessionId: 's1' }];
+  const tried = (/** @type {number[]} */ ...days) => days.map((d, i) => ({ componentId: 'b', at: t0 + d * DAY, sessionId: `n${i}` }));
+
+  it('without it, NO ACCESS never finishes a round however often it is recorded', () => {
+    const c = coverageOf(scope, seenA, 365);
+    expect(c.completeAt).toBeNull();
+  });
+  it('one attempt is not enough', () => {
+    expect(coverageOf(scope, seenA, 365, { attempts: tried(1), attemptsNeeded: 2 }).completeAt).toBeNull();
+  });
+  it('two attempts on one day are one attempt', () => {
+    const attempts = [{ componentId: 'b', at: t0 + 3600000 }, { componentId: 'b', at: t0 + 7200000 }];
+    expect(coverageOf(scope, seenA, 365, { attempts, attemptsNeeded: 2 }).completeAt).toBeNull();
+  });
+  it('attempts on enough different days finish the round, and it says what was not seen', () => {
+    const c = coverageOf(scope, seenA, 365, { attempts: tried(1, 8), attemptsNeeded: 2 });
+    expect(c.completeAt).toBe(t0 + 8 * DAY);
+    expect(c.completeSession).toBe('n1');
+    expect(c.notSeen).toBe(1);
+    expect(c.covered).toBe(0);                     // the round after it has seen nothing
+  });
+  it('attempts too far apart for the window do not count together', () => {
+    expect(coverageOf(scope, seenA, 30, { attempts: tried(1, 40), attemptsNeeded: 2 }).completeAt).toBeNull();
+  });
+  it('a door reached after the round finished is no longer "not seen"', () => {
+    const obs = [...seenA, { componentId: 'b', at: t0 + 20 * DAY, sessionId: 's2' }];
+    expect(coverageOf(scope, obs, 365, { attempts: tried(1, 8), attemptsNeeded: 2 }).notSeen).toBe(0);
+  });
+  it('last year’s attempts do not carry into this year’s round', () => {
+    const round1 = [...seenA, { componentId: 'b', at: t0, sessionId: 's2' }];
+    const round2 = [{ componentId: 'a', at: t0 + 400 * DAY, sessionId: 's3' }];
+    const c = coverageOf(scope, [...round1, ...round2], 365, { attempts: tried(-5, -3), attemptsNeeded: 2 });
+    expect(c.completeAt).toBe(t0);                 // this year's round has not finished
+    expect(c.notSeen).toBe(0);
+  });
+
+  describe('as schedule evidence', () => {
+    const session = (/** @type {string} */ id, /** @type {number} */ d, inspected = 1) => ({ id, definition_id: 'ob', status: 'closed', closed_at: new Date(t0 + d * DAY).toISOString(), created_at: new Date(t0 + d * DAY).toISOString(), inspected_count: inspected, total_count: inspected });
+    const row = (/** @type {string} */ s, /** @type {string} */ c, /** @type {string} */ r, /** @type {number} */ d) => ({ walk_session_id: s, component_id: c, inspection_result: r, inspected_at: new Date(t0 + d * DAY).toISOString() });
+    const inspections = [row('s1', 'a', 'ok', 0), row('s2', 'b', 'no_access', 1), row('s3', 'b', 'no_access', 8)];
+    const sessions = [session('s1', 0), session('s2', 1), session('s3', 8)];
+    const events = (/** @type {boolean} */ on) => walkEventsWithCoverage({ sessions, inspections,
+      obligations: [{ id: 'ob', frequency_days: 365, access_best_endeavours: on }], scopeIdsByObligation: { ob: scope } });
+
+    it('a duty not marked best endeavours stays unfinished', () => {
+      expect(events(false).some((e) => e.status === 'completed')).toBe(false);
+    });
+    it('a marked duty finishes the round, reporting 1 of 2 covered', () => {
+      const done = events(true).find((e) => e.status === 'completed');
+      expect(done).toMatchObject({ notSeen: 1, covered: 1, inScope: 2 });
+      expect(done.title).toContain('not all checked');
+    });
+    it('and the clock starts from it', () => {
+      const [st] = computeObligationSchedule([{ id: 'ob', frequency_days: 365 }], events(true), { now: new Date(t0 + 30 * DAY) });
+      expect(st.band).toBe('ok');
+    });
+  });
+});

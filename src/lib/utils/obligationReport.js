@@ -31,7 +31,7 @@ const todayISO = () => today();
 
 /** Row status, worst first — the order the summary counts read in. */
 export const ROW_STATUS = [
-  'breach', 'gap', 'attention', 'ok', 'assured', 'elsewhere', 'unhomed', 'excluded',
+  'breach', 'gap', 'attention', 'best_endeavours', 'ok', 'assured', 'elsewhere', 'unhomed', 'excluded',
   'superseded', 'retired',
 ];
 
@@ -39,6 +39,7 @@ export const ROW_STATUS_LABEL = {
   breach:     'In breach',
   gap:        'Not scheduled',
   attention:  'Needs attention',
+  best_endeavours: 'Not all checked — best endeavours recorded',
   ok:         'On schedule',
   assured:    'Assurance confirmed — NOT the statutory duty',
   elsewhere:  'Tracked in another app',
@@ -54,7 +55,7 @@ export const ROW_STATUS_LABEL = {
  * point of flagging rather than deleting, and three surfaces need to agree on
  * it: the summary colours, the Word document, and anyone reading either.
  */
-export const NON_FAILING = new Set(['ok', 'assured', 'elsewhere', 'excluded', 'superseded', 'retired']);
+export const NON_FAILING = new Set(['ok', 'assured', 'best_endeavours', 'elsewhere', 'excluded', 'superseded', 'retired']);
 
 /**
  * ⛔ An ASSURANCE-ONLY row must never render as "On schedule".
@@ -74,6 +75,15 @@ export const NON_FAILING = new Set(['ok', 'assured', 'elsewhere', 'excluded', 's
  * not at all. assuranceOnly on the register entry names where.
  */
 export const ASSURANCE_ONLY_STATUS = 'assured';
+
+/**
+ * ⛔ A round finished on best endeavours is neither a pass nor a breach (migration
+ * 283). Some things were never seen, so On schedule would be untrue; the attempts
+ * the law asks for are on record, so In breach would be untrue too. Same reason
+ * as `assured`: a status of its own, never a softened one. Only the good outcome
+ * is reinterpreted: overdue or due soon still says so, with the number beside it.
+ */
+export const BEST_ENDEAVOURS_STATUS = 'best_endeavours';
 
 /** Latest completed and latest attempted evidence per obligation id. */
 function latestEvidence(events) {
@@ -141,7 +151,7 @@ function oldestAcrossAll(events) {
   return [...events].sort((a, b) => (Date.parse(a.at) || 0) - (Date.parse(b.at) || 0))[0];
 }
 
-function statusOf({ entry, obligations, state, excluded, retired, superseded }) {
+function statusOf({ entry, obligations, state, excluded, retired, superseded, notSeen = 0 }) {
   // Withdrawn beats everything: if the law no longer requires it, whether we
   // happen to be doing it is not a compliance question.
   if (superseded) return 'superseded';
@@ -153,6 +163,7 @@ function statusOf({ entry, obligations, state, excluded, retired, superseded }) 
   if (state?.intervalBreached) return 'breach';
   if (state?.band === 'never_run' || state?.band === 'overdue') return 'breach';
   if (state?.band === 'due_soon') return 'attention';
+  if (notSeen > 0) return BEST_ENDEAVOURS_STATUS;
   // ⚠ Only the GREEN outcome is reinterpreted. An assurance row that is overdue
   // or has never run is still a breach of that control, and says so — softening
   // that would be the opposite mistake.
@@ -218,6 +229,8 @@ export function compliancePosition({ obligations = [], events = [], exclusions =
     // never-done ones would flatter it just as much.
     const completed = oldestAcrossAll(linked.map(o => evidence.get(o.id)?.completed ?? null));
     const attempted = oldestAcrossAll(linked.map(o => evidence.get(o.id)?.attempted ?? null));
+    // The latest finished round of each planned obligation: what it did not see.
+    const notChecked = linked.map(o => evidence.get(o.id)?.completed).find(e => e?.notSeen > 0) ?? null;
 
     rows.push({
       key: entry.key,
@@ -241,7 +254,8 @@ export function compliancePosition({ obligations = [], events = [], exclusions =
       exclusion: decision ?? null,
       retiredOn: entry.supersededOn ?? null,
       retiredReason: withdrawn ? supersededNote(entry) : null,
-      status: statusOf({ entry, obligations: linked, state, excluded, superseded: withdrawn }),
+      notChecked: notChecked ? { count: notChecked.notSeen, inScope: notChecked.inScope } : null,
+      status: statusOf({ entry, obligations: linked, state, excluded, superseded: withdrawn, notSeen: notChecked?.notSeen ?? 0 }),
     });
   }
 
@@ -275,12 +289,16 @@ export function compliancePosition({ obligations = [], events = [], exclusions =
       exclusion: null,
       retiredOn: o.retired_on ?? null,
       retiredReason: o.retired_reason ?? null,
-      status: statusOf({ entry: null, obligations: [o], state, excluded: false, retired }),
+      notChecked: ev?.completed?.notSeen > 0 ? { count: ev.completed.notSeen, inScope: ev.completed.inScope } : null,
+      status: statusOf({ entry: null, obligations: [o], state, excluded: false, retired, notSeen: ev?.completed?.notSeen ?? 0 }),
     });
   }
 
   return rows;
 }
+
+/** What a best-endeavours row must always say beside its status. @param {{ count: number, inScope: number }|null|undefined} n */
+export const notCheckedText = (n) => (n ? `${n.count} of ${n.inScope} not checked. The attempts are recorded.` : '');
 
 /** Counts by status, worst first — the report's headline. */
 export function positionSummary(rows) {

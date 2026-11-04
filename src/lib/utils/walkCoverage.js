@@ -20,13 +20,19 @@
 //   · An empty scope is never complete — a walk of nothing is not evidence.
 //   · ROTATING duties are not judged here: each period's session IS the cycle
 //     (the trigger and what it exercises), so the session's own counts stand.
+//   · BEST ENDEAVOURS (migration 283): where the law asks for recorded attempts
+//     rather than that everything is reached (FSER reg 10(4)–(5)), NO ACCESS on
+//     enough different days lets the round finish WITHOUT that component. It is
+//     still not seen: the event carries `notSeen`, and the position reads "Not
+//     all checked", never On schedule. The number of days is an admin policy.
 //
 // A session itself can only ever be an ATTEMPT for a duty judged this way —
 // evidence that someone tried — and the position reads "Partial — 7 of 104
 // observed" rather than implying more.
 
 import { walkEventsFromSessions } from './obligationSchedule.js';
-import { DAY_MS } from './dates.js';
+import { DAY_MS, calendarDate } from './dates.js';
+import { policy } from './policies.js';
 
 /** A result that actually looked at the component. */
 const isObserved = (result) => result !== 'no_access';
@@ -51,16 +57,20 @@ function msOf(v) {
  * @param {Array<{ componentId: string, at: number, sessionId?: string }>} obs
  *        observations that saw a component (already filtered to observed)
  * @param {number|null} windowDays frequency_days, or null for no window
+ * @param {{ attempts?: Array<{ componentId: string, at: number, sessionId?: string }>, attemptsNeeded?: number }} [bestEndeavours]
+ *        NO ACCESS results, and on how many different days they let a round
+ *        finish without the component. Absent: every component must be seen.
  * @returns {{
  *   inScope: number,
  *   covered: number,                 components seen towards the current round
  *   completeAt: number|null,         when the last finished round completed
  *   completeSession: string|null,    the session whose result completed it
+ *   notSeen: number,                 of that round, still not seen by anyone
  * }}
  */
-export function coverageOf(scopeIds, obs, windowDays) {
+export function coverageOf(scopeIds, obs, windowDays, { attempts = [], attemptsNeeded = 0 } = {}) {
   const inScope = scopeIds.size;
-  const none = { inScope, covered: 0, completeAt: null, completeSession: null };
+  const none = { inScope, covered: 0, completeAt: null, completeSession: null, notSeen: 0 };
   if (inScope === 0) return none;
 
   /** @type {Map<string, Array<{at: number, sessionId?: string}>>} */
@@ -72,10 +82,22 @@ export function coverageOf(scopeIds, obs, windowDays) {
     list.push({ at: o.at, sessionId: o.sessionId });
   }
   for (const list of byComp.values()) list.sort((a, b) => a.at - b.at);
-  if (byComp.size === 0) return none;
+
+  /** @type {Map<string, Array<{at: number, sessionId?: string}>>} */
+  const triedByComp = new Map();
+  if (attemptsNeeded > 0) {
+    for (const a of attempts) {
+      if (!scopeIds.has(a.componentId)) continue;
+      let list = triedByComp.get(a.componentId);
+      if (!list) triedByComp.set(a.componentId, (list = []));
+      list.push({ at: a.at, sessionId: a.sessionId });
+    }
+    for (const list of triedByComp.values()) list.sort((a, b) => a.at - b.at);
+  }
+  if (byComp.size === 0 && triedByComp.size === 0) return none;
 
   const windowMs = windowDays ? windowDays * DAY_MS : Infinity;
-  const times = [...new Set([...byComp.values()].flatMap((l) => l.map((x) => x.at)))]
+  const times = [...new Set([...byComp.values(), ...triedByComp.values()].flatMap((l) => l.map((x) => x.at)))]
     .sort((a, b) => a - b);
 
   // Latest observation of one component in (after, upTo].
@@ -85,7 +107,17 @@ export function coverageOf(scopeIds, obs, windowDays) {
     return best;
   };
 
+  // The latest attempt in (after, upTo], if enough different days were tried
+  // inside the window. Days, not attempts: two knocks one morning is one try.
+  const triedEnough = (list, after, upTo) => {
+    if (!list) return null;
+    const inRound = list.filter((x) => x.at > after && x.at <= upTo && upTo - x.at < windowMs);
+    if (new Set(inRound.map((x) => calendarDate(new Date(x.at).toISOString()))).size < attemptsNeeded) return null;
+    return inRound[inRound.length - 1];
+  };
+
   let boundary = -Infinity;
+  let roundStart = -Infinity;      // where the last finished round began
   let completeAt = null;
   let completeSession = null;
 
@@ -97,8 +129,9 @@ export function coverageOf(scopeIds, obs, windowDays) {
       let sessionAtT = null;
       for (const id of scopeIds) {
         const list = byComp.get(id);
-        const x = list ? latestBetween(list, boundary, T) : null;
-        if (!x || T - x.at >= windowMs) { all = false; break; }
+        const seen = list ? latestBetween(list, boundary, T) : null;
+        const x = seen && T - seen.at < windowMs ? seen : triedEnough(triedByComp.get(id), boundary, T);
+        if (!x) { all = false; break; }
         if (x.at === T) sessionAtT = x.sessionId ?? sessionAtT;
       }
       if (all) { found = { T, sessionAtT }; break; }
@@ -106,6 +139,7 @@ export function coverageOf(scopeIds, obs, windowDays) {
     if (!found) break;
     completeAt = found.T;
     completeSession = found.sessionAtT;
+    roundStart = boundary;
     boundary = found.T;
   }
 
@@ -117,7 +151,13 @@ export function coverageOf(scopeIds, obs, windowDays) {
     const x = list ? latestBetween(list, boundary, L) : null;
     if (x && L - x.at < windowMs) covered++;
   }
-  return { inScope, covered, completeAt, completeSession };
+  // Seen at any time since that round began counts, so a door reached after the
+  // round finished stops reading as not checked.
+  let notSeen = 0;
+  if (completeAt !== null) {
+    for (const id of scopeIds) if (!(byComp.get(id) ?? []).some((x) => x.at > roundStart)) notSeen++;
+  }
+  return { inScope, covered, completeAt, completeSession, notSeen };
 }
 
 /**
@@ -141,14 +181,16 @@ export function walkEventsWithCoverage({ sessions, inspections, obligations, sco
   // Observations per obligation, from closed sessions that belong to it.
   /** @type {Map<string, Array<{componentId: string, at: number, sessionId: string}>>} */
   const obsByOb = new Map();
+  /** @type {Map<string, Array<{componentId: string, at: number, sessionId: string}>>} */
+  const noAccessByOb = new Map();
   for (const r of inspections ?? []) {
-    if (!isObserved(r.inspection_result)) continue;
     const s = sessionById.get(r.walk_session_id);
     if (!s || s.status !== 'closed' || !s.definition_id) continue;
     const at = msOf(r.inspected_at ?? r.created_at);
     if (at === null) continue;
-    let list = obsByOb.get(s.definition_id);
-    if (!list) obsByOb.set(s.definition_id, (list = []));
+    const into = isObserved(r.inspection_result) ? obsByOb : noAccessByOb;
+    let list = into.get(s.definition_id);
+    if (!list) into.set(s.definition_id, (list = []));
     list.push({ componentId: r.component_id, at, sessionId: s.id });
   }
 
@@ -171,7 +213,9 @@ export function walkEventsWithCoverage({ sessions, inspections, obligations, sco
     if (!scope) continue;                                // cannot judge: attempts only
 
     const observations = obsByOb.get(obId) ?? [];
-    const cov = coverageOf(scope, observations, ob.frequency_days ?? null);
+    const cov = coverageOf(scope, observations, ob.frequency_days ?? null, ob.access_best_endeavours
+      ? { attempts: noAccessByOb.get(obId) ?? [], attemptsNeeded: policy('bestEndeavoursAttempts') }
+      : undefined);
 
     // Each attempt says what ITS session saw of the whole duty: "7 of 104".
     for (const attempt of attempts) {
@@ -200,8 +244,8 @@ export function walkEventsWithCoverage({ sessions, inspections, obligations, sco
         obligationId: obId, kind: /** @type {const} */ ('walk'),
         at, status: /** @type {const} */ ('completed'),
         sourceId: cov.completeSession ?? undefined,
-        title: 'Whole scope covered',
-        covered: cov.inScope, inScope: cov.inScope,
+        title: cov.notSeen > 0 ? 'Round finished, not all checked: best endeavours recorded' : 'Whole scope covered',
+        covered: cov.inScope - cov.notSeen, inScope: cov.inScope, notSeen: cov.notSeen,
       };
       const i = finisher ? out.indexOf(finisher) : -1;
       if (i >= 0) out.splice(i, 0, done); else out.push(done);

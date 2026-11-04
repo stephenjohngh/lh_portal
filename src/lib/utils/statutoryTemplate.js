@@ -295,6 +295,7 @@ export function templateToObligation(entry, opts = {}) {
     frequency_days:          entry.frequencyDays,
     presentation_order:      opts.presentationOrder ?? 0,
     evidenced_by:            entry.evidencedBy,
+    access_best_endeavours:  !!entry.accessBestEndeavours,
     statutory_ref:           entry.statutoryRef,
     max_interval_days:       entry.maxIntervalDays,
     responsible_party:       entry.responsibleParty,

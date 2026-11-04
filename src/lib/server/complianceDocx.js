@@ -32,6 +32,8 @@ const STATUS_COLOUR = {
   ok:        COLOURS.passGreen,
   // ⛔ NOT passGreen. An assurance control on schedule is not the duty met.
   assured:   '7C3AED',
+  // ⛔ NOT passGreen and not failRed: neither a pass nor a breach.
+  best_endeavours: '0E7490',
   elsewhere: '3B82F6',
   unhomed:   COLOURS.failRed,
   excluded:   '9CA3AF',
@@ -41,6 +43,7 @@ const STATUS_COLOUR = {
 
 const STATUS_LABEL = {
   breach: 'In breach', gap: 'Not scheduled', attention: 'Needs attention',
+  best_endeavours: 'Not all checked — best endeavours recorded',
   ok: 'On schedule', assured: 'Assurance confirmed — NOT the statutory duty',
   elsewhere: 'Tracked in another app',
   unhomed: 'Nothing deals with it', excluded: 'Recorded as not applicable',
@@ -123,6 +126,7 @@ export function positionTable(rows) {
     if (r.assuranceOnly) {
       nameLines.push(`Assurance control only — does NOT discharge the statutory duty. The operative control is ${r.assuranceOnly}`);
     }
+    if (r.notChecked) nameLines.push(r.notChecked);
     if (r.exclusionReason) {
       nameLines.push(`Not applicable — “${r.exclusionReason}” (${d(r.exclusionDecidedAt)})`);
       if (r.exclusionReviewDue) nameLines.push(`Review this decision ${d(r.exclusionReviewDue)}`);

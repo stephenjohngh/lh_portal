@@ -52,6 +52,7 @@ const HEADERS = {
   suggested_scope:            'What it covers (proposed)',
   scope_note:                 'What it covers (note)',
   operationally_incomplete:   'Operationally incomplete',
+  access_best_endeavours:     'Access is best endeavours',
   completion_action_key:      'Completion action',
   assurance_only:             'Assurance only',
   reviewer_note:              'Reviewer note',

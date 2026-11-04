@@ -270,4 +270,14 @@ describe('the summary row', () => {
     // Each count appears in the summary: 1..N, one per status.
     for (let n = 1; n <= ROW_STATUS.length; n++) expect(text).toContain(String(n));
   });
+
+  // ⛔ A file that leaves the building must carry the number, not just the status.
+  it('a best-endeavours row prints what was not checked', async () => {
+    const base = payload({});
+    const rows = [{ ...(base.rows?.[0] ?? {}), name: 'Fire door checks', status: 'best_endeavours',
+      statusLabel: 'Not all checked — best endeavours recorded', notChecked: '3 of 71 not checked. The attempts are recorded.' }];
+    const text = await textOf(await packs({ ...base, rows }));
+    expect(text).toContain('3 of 71 not checked');
+    expect(text).toContain('Not all checked');
+  });
 });

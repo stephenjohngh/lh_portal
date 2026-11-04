@@ -52,6 +52,7 @@ function toRow(data, uid, { isCreate }) {
     pass_fail_rule:     data.pass_fail_rule === 'all_checks_pass' ? 'all_checks_pass' : 'manual',
     // What a failed check means on this walk (migration 273): carry on and gather ('collect'), or respond now.
     fail_response:      data.fail_response === 'immediate' ? 'immediate' : 'collect',
+    access_best_endeavours: !!data.access_best_endeavours,
     frequency_days:     data.frequency_days == null || data.frequency_days === '' ? null : Number(data.frequency_days),
     // Rotating-only; harmless defaults when standard.
     link_source:        data.link_source === 'self_only' ? 'self_only' : 'component_links',
