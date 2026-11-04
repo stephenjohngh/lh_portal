@@ -525,6 +525,10 @@ describe('a round finished on best endeavours (migration 283)', () => {
     expect(notCheckedText(r.notChecked)).toBe('3 of 71 not checked. The attempts are recorded.');
     expect(NON_FAILING.has('best_endeavours')).toBe(true);
   });
+  it('never says all were checked: found on screen, 2026-11-04', () => {
+    expect(row(done(10)).lastOutcome).toBe('Round finished — 68 of 71 checked');
+    expect(row(done(10)).lastOutcome).not.toContain('all');
+  });
   it('a round with everything seen is On schedule', () => {
     expect(row(done(10, 0)).status).toBe('ok');
   });

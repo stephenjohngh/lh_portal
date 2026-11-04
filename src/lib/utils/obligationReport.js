@@ -118,6 +118,8 @@ function latestEvidence(events) {
 export function outcomeText(event) {
   if (!event) return null;
   if (event.kind === 'walk') {
+    // ⛔ A round finished on best endeavours did not check them all (migration 283).
+    if (event.status === 'completed' && event.notSeen > 0) return `Round finished — ${event.covered ?? 0} of ${event.inScope ?? 0} checked`;
     if (event.status === 'completed') return `Completed — all ${event.inScope ?? 0} checked`;
     const covered = event.covered ?? 0;
     const scope = event.inScope ?? 0;
