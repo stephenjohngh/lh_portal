@@ -361,9 +361,9 @@ const RUNTIME = [
     perform case_open((select id from workflows where key = 'dbtest_fixby'), 'FIXBY', null, '{}');
     if (select i.due_on from workflow_items i join cases c on c.id = i.subject_id where c.title = 'FIXBY') is not null then raise exception 'a deadline with no date'; end if;
     perform workflow_set_fields((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'FIXBY'), '{"fix_by":"2027-03-01"}');
-    if (select i.due_on from workflow_items i join cases c on c.id = i.subject_id where c.title = 'FIXBY') <> '2027-03-01' then raise exception 'the date did not set the deadline'; end if;
+    if (select i.due_on from workflow_items i join cases c on c.id = i.subject_id where c.title = 'FIXBY') is distinct from '2027-03-01'::date then raise exception 'the date did not set the deadline'; end if;
     perform workflow_set_fields((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'FIXBY'), '{"fix_by":"2027-02-01"}');
-    if (select i.due_on from workflow_items i join cases c on c.id = i.subject_id where c.title = 'FIXBY') <> '2027-02-01' then raise exception 'a changed date did not move it'; end if;
+    if (select i.due_on from workflow_items i join cases c on c.id = i.subject_id where c.title = 'FIXBY') is distinct from '2027-02-01'::date then raise exception 'a changed date did not move it'; end if;
     perform workflow_move((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'FIXBY'), 'back', null);
     perform workflow_move((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'FIXBY'), 'open', null);
     if (select i.due_on from workflow_items i join cases c on c.id = i.subject_id where c.title = 'FIXBY') is not null then raise exception 'the cleared date left a deadline'; end if;`, null],
