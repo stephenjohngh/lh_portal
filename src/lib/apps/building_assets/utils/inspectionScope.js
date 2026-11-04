@@ -20,8 +20,6 @@ export function scopeToCriteria(scope = {}) {
   const floorIds = scope.floorIds ?? [];
   return {
     floorPreset:         floorIds.length ? 'custom' : 'all',
-    residentialFloorIds: new Set(),
-    basementFloorIds:    new Set(),
     filterFloorIds:      new Set(floorIds),
     filterSystemIds:     new Set(scope.systemIds ?? []),
     filterTypeCodes:     new Set(scope.typeCodes ?? []),

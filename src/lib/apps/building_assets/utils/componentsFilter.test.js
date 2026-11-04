@@ -25,8 +25,6 @@ const comps = [
 
 const emptyCriteria = (over = {}) => ({
   floorPreset: 'all',
-  residentialFloorIds: new Set(['fG', 'f1']),
-  basementFloorIds:    new Set(['fX']),
   filterFloorIds:  new Set(),
   filterSystemIds: new Set(),
   filterTypeCodes: new Set(),
@@ -44,9 +42,9 @@ describe('filterComponents', () => {
     expect(ids(filterComponents(comps, emptyCriteria(), ctx))).toEqual(['c1', 'c2', 'c3']);
   });
 
-  it('residential / basement floor presets', () => {
-    expect(ids(filterComponents(comps, emptyCriteria({ floorPreset: 'residential' }), ctx))).toEqual(['c1', 'c2']);
-    expect(ids(filterComponents(comps, emptyCriteria({ floorPreset: 'basement' }), ctx))).toEqual(['c3']);
+  it('a floor group shows only its floors', () => {
+    expect(ids(filterComponents(comps, emptyCriteria({ floorPreset: 'g1', groupFloorIds: new Set(['fG', 'f1']) }), ctx))).toEqual(['c1', 'c2']);
+    expect(ids(filterComponents(comps, emptyCriteria({ floorPreset: 'g2', groupFloorIds: new Set(['fX']) }), ctx))).toEqual(['c3']);
   });
 
   it('custom floor set', () => {

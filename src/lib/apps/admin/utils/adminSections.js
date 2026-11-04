@@ -27,6 +27,7 @@ export const SECTION_GROUPS = [
     { id: 'identity', icon: '🏠', label: 'Building & business', adminOnly: true },
     { id: 'floors-spaces', icon: '🏢', label: 'Floors and spaces', adminOnly: true, leaves: [
       { id: 'floors', label: 'Floors' },
+      { id: 'floor-groups', label: 'Floor groups' },
       { id: 'space-types', label: 'Space types' },
     ] },
     { id: 'types', icon: '🗂', label: 'Component types', adminOnly: true },
@@ -70,4 +71,4 @@ export function sectionOf(screenId) {
 }
 
 /** The screens that need the building's type hierarchy loaded first. */
-export const NEEDS_BUILDING_DATA = ['types', 'floors', 'space-types'];
+export const NEEDS_BUILDING_DATA = ['types', 'floors', 'floor-groups', 'space-types'];

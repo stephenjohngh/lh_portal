@@ -2,7 +2,7 @@
 <!-- Components tab: list, create, detail-edit, and inspect components.
      Reads all data from buildingAssetsStore directly.
      Uses ComponentInventoryTable for the shared list/summary view.
-     Floor presets: All · Residential (G–7) · Basement (X,L,G) · Single floor. -->
+     Floor buttons: All, then the floor groups set in Admin. -->
 
 <script>
   import SegmentedControl from '#lib/components/common/SegmentedControl.svelte';
@@ -42,6 +42,7 @@
   import { buildSpaceRef, KIND_LABEL } from '#lib/utils/spaceRef.js';
   import { generateXlsxDocument } from './plan/xlsxReportGenerator.js';
   import { filterComponents, describeComponentFilters } from '../utils/componentsFilter.js';
+  import { floorGroupOptions, floorGroupOf, floorGroupLabel } from '../utils/floorGroups.js';
   import { fmtGenerated, today }   from '#lib/utils/dates.js';
   import { downloadCsvRows } from '#lib/utils/download.js';
 
@@ -61,13 +62,13 @@
   $: spaces         = store.spaces;
   $: spaceOverrides = store.spaceOverrides ?? [];
 
-  // -- Floor presets -------------------------------------------------
-  // short_name sets that define each preset
-  const RESIDENTIAL_SHORT = new Set(['G','1','2','3','4','5','6','7']);
-  const BASEMENT_SHORT    = new Set(['X','L','G']);
+  // -- Floor groups --------------------------------------------------
+  // The buttons beside All are the building's own floor groups, set in
+  // Admin → Floors and spaces → Floor groups (migration 280).
+  $: floorGroups = store.floorGroups ?? [];
 
   // -- Filter state --------------------------------------------------
-  let floorPreset     = 'all';   // 'all' | 'residential' | 'basement' | 'custom'
+  let floorPreset     = 'all';   // 'all' | 'custom' | a floor group's id
   let filterFloorIds  = new Set();   // only used when floorPreset === 'custom'
   let filterSystemIds = new Set();   // empty = all systems
   let filterTypeCodes = new Set();
@@ -171,7 +172,7 @@
   function applyPreset(e) {
     const { filters: f, columns: c, report: r } = presetToState(e.detail);
     searchQuery          = f.searchQuery;
-    floorPreset          = f.floorPreset;
+    floorPreset          = f.floorPreset === 'custom' || floorGroupOf(f.floorPreset, floorGroups) ? f.floorPreset : 'all';
     filterFloorIds       = new Set(f.filterFloorIds);
     filterSystemIds      = new Set(f.filterSystemIds);
     filterTypeCodes      = new Set(f.filterTypeCodes);
@@ -312,7 +313,7 @@
   // Human-readable filter description for the report document header
   $: reportFilterSummary = (() => {
     const base = describeComponentFilters(
-      { floorPreset, filterFloorIds, filterSystemIds, filterTypeCodes, filterStatuses, searchQuery },
+      { floorPreset, floorGroupName: activeFloorGroup?.name ?? '', filterFloorIds, filterSystemIds, filterTypeCodes, filterStatuses, searchQuery },
       { floors, systems, types },
     );
     // Append the space-side filters (not covered by describeComponentFilters).
@@ -423,14 +424,15 @@
   }
 
   // -- Floor sets for presets ----------------------------------------
-  $: residentialFloorIds = new Set(floors.filter(f => RESIDENTIAL_SHORT.has(f.short_name)).map(f => f.id));
-  $: basementFloorIds    = new Set(floors.filter(f => BASEMENT_SHORT.has(f.short_name)).map(f => f.id));
+  // A preset naming a group since deleted reads as All, and says All.
+  $: activeFloorGroup = floorGroupOf(floorPreset, floorGroups);
+  $: groupFloorIds    = activeFloorGroup ? new Set(activeFloorGroup.floorIds) : null;
 
   // -- Filtered component list ---------------------------------------
   $: filteredComponents = filterComponents(
     components,
     {
-      floorPreset, residentialFloorIds, basementFloorIds, filterFloorIds,
+      floorPreset, groupFloorIds, filterFloorIds,
       filterSystemIds, filterTypeCodes, filterStatuses, searchQuery,
       fixedAttrFilters, conditionAttrFilters, spaceFilterIds: targetSpaceIds,
     },
@@ -439,8 +441,7 @@
 
   // -- Active filter label (for table title) -------------------------
   $: floorLabel = (() => {
-    if (floorPreset === 'residential') return 'Residential (G–7)';
-    if (floorPreset === 'basement')    return 'Basement (X, L, G)';
+    if (activeFloorGroup) return floorGroupLabel(activeFloorGroup, floors);
     if (floorPreset === 'custom' && filterFloorIds.size > 0) {
       if (filterFloorIds.size === 1) {
         const fl = floors.find(f => filterFloorIds.has(f.id));
@@ -708,7 +709,7 @@
           <p class="text-[10px] text-slate-300 uppercase tracking-wide font-semibold">Floor</p>
           <div class="flex items-center gap-1.5">
             <!-- Named presets -->
-            <SegmentedControl size="small" label="Floor group" options={[{ value: 'all', label: 'All' }, { value: 'residential', label: 'Residential' }, { value: 'basement', label: 'Basement' }]}
+            <SegmentedControl size="small" label="Floor group" options={floorGroupOptions(floorGroups)}
                 value={floorPreset} on:change={(e) => { floorPreset = e.detail; filterFloorIds = new Set(); }} />
             <!-- Individual floor multi-select -->
             <MultiSelectDropdown
@@ -720,6 +721,7 @@
               on:change={() => floorPreset = filterFloorIds.size > 0 ? 'custom' : 'all'}
             />
           </div>
+          {#if store.floorGroupsError}<p class="text-xs text-amber-300" data-testid="floor-groups-error">{store.floorGroupsError}</p>{/if}
         </div>
 
         <!-- System filter — multi-select dropdown -->

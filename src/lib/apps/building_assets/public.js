@@ -164,6 +164,19 @@ export function updateFloor(id, fields) {
   return api.update('floors', id, fields);
 }
 
+// -- Floor groups (the buttons beside All on the Components tab) ---------------
+// Set in Admin → Floors and spaces → Floor groups (migration 280).
+
+/** Save a group and its floors together; a null id makes a new one. Returns its id. */
+export function saveFloorGroup({ id = null, name, position = 0, floorIds = [] }) {
+  return api.rpc('floor_group_save', { p_id: id, p_name: name, p_position: position, p_floor_ids: floorIds });
+}
+
+/** Delete a group. Its floors and components are untouched. */
+export function deleteFloorGroup(id) {
+  return api.delete('floor_groups', id);
+}
+
 // -- Space types (admin-configurable list driving the space type pickers) ------
 // `spaces.type` is free text; this list just supplies the options + the register
 // filter. Managed from the Admin app (Building → Space types).

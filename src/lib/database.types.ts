@@ -2049,6 +2049,51 @@ export type Database = {
             }
           ]
       }
+      floor_group_floors: {
+        Row: {
+          group_id: string
+          floor_id: string
+        }
+        Insert: {
+          group_id: string
+          floor_id: string
+        }
+        Update: {
+          group_id?: string
+          floor_id?: string
+        }
+        Relationships: []
+      }
+      floor_groups: {
+        Row: {
+          id: string
+          name: string
+          position: number
+          created_at: string
+          created_by: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          position?: number
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          position?: number
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       floors: {
         Row: {
           id: string

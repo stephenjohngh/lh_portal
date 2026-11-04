@@ -18,6 +18,7 @@
   import AuditLogsView from './components/AuditLogsView.svelte';
   import ComponentTypesTab from './components/ComponentTypesTab.svelte';
   import FloorPanel from './components/FloorPanel.svelte';
+  import FloorGroupsPanel from './components/FloorGroupsPanel.svelte';
   import SpaceTypesPanel from './components/SpaceTypesPanel.svelte';
   import PortalSettingsPanel from './components/PortalSettingsPanel.svelte';
   import DueWindowsPanel from './components/DueWindowsPanel.svelte';
@@ -293,6 +294,17 @@
         floors={$buildingAssetsStore.floors}
         facilities={$buildingAssetsStore.facilities}
         on:saved={() => buildingAssetsStore.load()}
+      />
+    {/if}
+
+  {:else if activeTab === 'floor-groups'}
+    {#if $buildingAssetsStore.loading}
+      <LoadingSpinner />
+    {:else}
+      <FloorGroupsPanel
+        groups={$buildingAssetsStore.floorGroups ?? []}
+        floors={$buildingAssetsStore.floors}
+        on:saved={() => buildingAssetsStore.loadFloorGroups()}
       />
     {/if}
 

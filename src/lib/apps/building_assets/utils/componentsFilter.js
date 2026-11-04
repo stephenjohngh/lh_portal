@@ -10,8 +10,8 @@ import { matchesSearch } from '#lib/utils/textSearch.js';
  *
  * @param {Array} components
  * @param {object} criteria  Sets where noted:
- *   { floorPreset:'all'|'residential'|'basement'|'custom',
- *     residentialFloorIds:Set, basementFloorIds:Set, filterFloorIds:Set,
+ *   { floorPreset:'all'|'custom'|<floor group id>,
+ *     groupFloorIds:Set|null (the chosen group's floors), filterFloorIds:Set,
  *     filterSystemIds:Set, filterTypeCodes:Set, filterStatuses:Set,
  *     searchQuery:string, fixedAttrFilters:Array, conditionAttrFilters:Array,
  *     spaceFilterIds:Set|null }   // null/absent = space filter inactive
@@ -21,7 +21,7 @@ import { matchesSearch } from '#lib/utils/textSearch.js';
  */
 export function filterComponents(components, criteria, ctx) {
   const {
-    floorPreset, residentialFloorIds, basementFloorIds, filterFloorIds,
+    floorPreset, groupFloorIds = null, filterFloorIds,
     filterSystemIds, filterTypeCodes, filterStatuses, searchQuery = '',
     fixedAttrFilters = [], conditionAttrFilters = [], spaceFilterIds = null,
   } = criteria;
@@ -30,10 +30,8 @@ export function filterComponents(components, criteria, ctx) {
   let list = components;
 
   // Floor
-  if (floorPreset === 'residential') {
-    list = list.filter(c => residentialFloorIds.has(c.floor_id));
-  } else if (floorPreset === 'basement') {
-    list = list.filter(c => basementFloorIds.has(c.floor_id));
+  if (groupFloorIds) {
+    list = list.filter(c => groupFloorIds.has(c.floor_id));
   } else if (floorPreset === 'custom' && filterFloorIds.size > 0) {
     list = list.filter(c => filterFloorIds.has(c.floor_id));
   }
@@ -86,16 +84,15 @@ export function filterComponents(components, criteria, ctx) {
 
 /**
  * Human-readable description of the active filters (report header / UI).
- * @param {object} criteria { floorPreset, filterFloorIds, filterSystemIds,
+ * @param {object} criteria { floorPreset, floorGroupName, filterFloorIds, filterSystemIds,
  *   filterTypeCodes, filterStatuses, searchQuery } (Sets where noted)
  * @param {object} refData  { floors, systems, types }
  */
 export function describeComponentFilters(criteria, refData) {
-  const { floorPreset, filterFloorIds, filterSystemIds, filterTypeCodes, filterStatuses, searchQuery = '' } = criteria;
+  const { floorPreset, floorGroupName = '', filterFloorIds, filterSystemIds, filterTypeCodes, filterStatuses, searchQuery = '' } = criteria;
   const { floors, systems, types } = refData;
   const parts = [];
-  if (floorPreset === 'residential') parts.push('Floors: Residential');
-  else if (floorPreset === 'basement') parts.push('Floors: Basement');
+  if (floorGroupName) parts.push(`Floors: ${floorGroupName}`);
   else if (floorPreset === 'custom' && filterFloorIds.size > 0) {
     const names = floors.filter(f => filterFloorIds.has(f.id)).map(f => f.short_name).join(', ');
     parts.push(`Floors: ${names}`);

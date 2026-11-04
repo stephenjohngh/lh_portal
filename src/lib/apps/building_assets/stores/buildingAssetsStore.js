@@ -14,6 +14,7 @@ import { api }                          from '#lib/utils/api.js';
 import { getLogger }                    from '#lib/utils/logger.js';
 import { supabase }                     from '#lib/supabaseClient.js';
 import { resolveHierarchy }             from '#lib/utils/attrResolution.js';
+import { toFloorGroups }                from '../utils/floorGroups.js';
 import { createTypeHierarchyActions }   from './typeHierarchyActions.js';
 import { createComponentActions }       from './componentActions.js';
 import { createPlanActions }            from './planActions.js';
@@ -28,6 +29,8 @@ function createBuildingAssetsStore() {
     // Location hierarchy
     facilities:        [],   // facilities[]
     floors:            [],   // floors[] ordered by level_order
+    floorGroups:       [],   // the Components tab's floor buttons (Admin → Floor groups)
+    floorGroupsError:  '',   // said on the tab when they could not be read
     // Type hierarchy
     systems:           [],   // building_systems[]
     types:             [],   // component_types[]
@@ -57,6 +60,16 @@ function createBuildingAssetsStore() {
   const planActions  = createPlanActions(update, supabase);
   const spaceActions = createSpaceActions(update);
   const annActions   = createAnnotationActions(update);
+
+  async function readFloorGroups() {
+    return toFloorGroups(await api.getAll('floor_groups', { select: 'id, name, position, floor_group_floors(floor_id)', orderBy: 'position' }));
+  }
+
+  /** Re-read the floor groups after Admin changes them. */
+  async function loadFloorGroups() {
+    const floorGroups = await readFloorGroups();
+    update((s) => ({ ...s, floorGroups, floorGroupsError: '' }));
+  }
 
   // -- Top-level load -----------------------------------------------------
   // Loads the full type hierarchy, location hierarchy, plans, spaces and
@@ -89,8 +102,19 @@ function createBuildingAssetsStore() {
         logger('space_types unavailable (pre-migration?) — using fallback list:', e.message);
       }
 
+      // Floor groups fail alone: without them the Components tab offers All and
+      // the floor list, which still works.
+      let floorGroups = [];
+      let floorGroupsError = '';
+      try {
+        floorGroups = await readFloorGroups();
+      } catch (/** @type {any} */ e) {
+        logger('floor_groups unavailable (pre-migration 280?):', e.message);
+        floorGroupsError = 'The floor groups could not be read, so only All and the floor list are offered.';
+      }
+
       return {
-        facilities, floors,
+        facilities, floors, floorGroups, floorGroupsError,
         systems, types, attrDefs, systemAttrDefs, attrOptions,
         plans, spaces, spaceOverrides, spaceTypes, annotations,
       };
@@ -113,6 +137,7 @@ function createBuildingAssetsStore() {
     subscribe,
     load,
     loadSpaceTypes,
+    loadFloorGroups,
     ...typeActions,
     ...compActions,
     ...planActions,
