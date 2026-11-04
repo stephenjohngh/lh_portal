@@ -121,6 +121,8 @@ export function simulateDeadlines({ steps, items, events, today, nonWorking = []
     if (!st || finished(st.kind)) continue;
     open += 1;
     if (i.due_on && i.due_on < today) overdueNow += 1;
+    // A date on the item (migration 284) is not changed by editing days.
+    if (st.deadline_field) { if (i.due_on && i.due_on < today) overdueThen += 1; continue; }
     const days = st.deadline_days === '' || st.deadline_days == null ? null : Number(st.deadline_days);
     if (!days) continue;
     const from = st.deadline_from === 'started' ? i.started_at : (reached.get(`${i.id}>${i.step_key}`) ?? i.started_at);

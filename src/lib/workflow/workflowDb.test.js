@@ -352,6 +352,21 @@ const RUNTIME = [
     if exists (select 1 from workflow_items i join workflows w on w.id = i.workflow_id
                 where w.key = 'guide' and not exists (select 1 from guides g where g.id = i.subject_id))
       then raise exception 'left behind'; end if;`, null],
+  // Migration 284: a step's deadline can be a date on the item.
+  ['a deadline follows a date field, and goes when the field is cleared', `
+    perform workflow_save('dbtest_fixby', 'DB test fix by', 'cases', null,
+      '[{"key":"open","name":"Open","kind":"start","position":1,"deadline_field":"fix_by"},{"key":"back","name":"Back","kind":"open","position":2,"deadline_days":3},{"key":"done","name":"Done","kind":"done","position":3}]',
+      '[{"from_key":"open","to_key":"back","label":"Back","clears_fields":["fix_by"],"position":1},{"from_key":"back","to_key":"open","label":"Again","position":2},{"from_key":"back","to_key":"done","label":"Finish","position":3}]',
+      null, null, null, '[{"key":"fix_by","label":"Fix by","type":"date","position":1}]', null);
+    perform case_open((select id from workflows where key = 'dbtest_fixby'), 'FIXBY', null, '{}');
+    if (select i.due_on from workflow_items i join cases c on c.id = i.subject_id where c.title = 'FIXBY') is not null then raise exception 'a deadline with no date'; end if;
+    perform workflow_set_fields((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'FIXBY'), '{"fix_by":"2027-03-01"}');
+    if (select i.due_on from workflow_items i join cases c on c.id = i.subject_id where c.title = 'FIXBY') <> '2027-03-01' then raise exception 'the date did not set the deadline'; end if;
+    perform workflow_set_fields((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'FIXBY'), '{"fix_by":"2027-02-01"}');
+    if (select i.due_on from workflow_items i join cases c on c.id = i.subject_id where c.title = 'FIXBY') <> '2027-02-01' then raise exception 'a changed date did not move it'; end if;
+    perform workflow_move((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'FIXBY'), 'back', null);
+    perform workflow_move((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'FIXBY'), 'open', null);
+    if (select i.due_on from workflow_items i join cases c on c.id = i.subject_id where c.title = 'FIXBY') is not null then raise exception 'the cleared date left a deadline'; end if;`, null],
   // Migration 282: a move can clear fields, keeping what they held in the history.
   ['a move clears its fields, says what they held, and the step asks again', `
     perform workflow_save('dbtest_clear', 'DB test clear', 'cases', null,

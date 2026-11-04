@@ -81,8 +81,8 @@
   }
   $: stats = showUse && usage ? workflowStats({ steps, moves, items: usage.items, events: usage.events, today: today() }) : null;
   // "What if": the deadlines in the editor laid over the items as they stand (roadmap §6).
-  $: deadlinesEdited = !!loadedDef && JSON.stringify(steps.map((x) => [x.key, x.deadline_days === '' ? null : Number(x.deadline_days ?? NaN) || null, x.deadline_basis, x.deadline_from]))
-    !== JSON.stringify(loadedDef.steps.map((/** @type {any} */ x) => [x.key, x.deadline_days, x.deadline_basis, x.deadline_from]));
+  $: deadlinesEdited = !!loadedDef && JSON.stringify(steps.map((x) => [x.key, x.deadline_days === '' ? null : Number(x.deadline_days ?? NaN) || null, x.deadline_basis, x.deadline_from, x.deadline_field || null]))
+    !== JSON.stringify(loadedDef.steps.map((/** @type {any} */ x) => [x.key, x.deadline_days, x.deadline_basis, x.deadline_from, x.deadline_field ?? null]));
   $: simulated = stats && current ? simulateDeadlines({ steps, items: usage.items, events: usage.events, today: today(),
     nonWorking: offDays.map((d) => d.day), subjectDue: !!contractFor(current.app_id, current.key)?.subjectDue }) : null;
   let review = { reviewedBy: '', reviewedAgainst: '', note: '' };
@@ -187,7 +187,7 @@
   // Pause, sign-offs and escalation (migration 267). A step carries its sign-offs as
   // a list; the editor edits them as lines of text (`signoffsText`, kept off the saved copy).
   function withStepExtras(/** @type {any} */ s) {
-    return { ...s, pauses_clock: !!s.pauses_clock, signoffs: s.signoffs ?? [],
+    return { ...s, deadline_field: s.deadline_field ?? '', pauses_clock: !!s.pauses_clock, signoffs: s.signoffs ?? [],
       signoffsText: (s.signoffs ?? []).map((/** @type {any} */ x) => x.label).join('\n'),
       escalate_after_days: s.escalate_after_days ?? '', escalate_to: s.escalate_to ?? '' };
   }
@@ -393,6 +393,7 @@
   }
   function removeField(/** @type {any} */ f) {
     fields = fields.filter((x) => x !== f);
+    steps = steps.map((s) => (s.deadline_field === f.key ? { ...s, deadline_field: '' } : s));
     moves = moves.map((m) => ({ ...m, required_fields: (m.required_fields ?? []).filter((/** @type {string} */ k) => k !== f.key),
       clears_fields: (m.clears_fields ?? []).filter((/** @type {string} */ k) => k !== f.key) }));
   }
@@ -592,12 +593,21 @@
                 <td class="py-1 pr-2 whitespace-nowrap">
                   {#if isFinished(st.kind)}<span class="text-xs text-slate-500">—</span>
                   {:else}
-                    <input type="number" min="1" max="365" class="{inputCls} w-16" bind:value={st.deadline_days}
-                      on:input={() => (steps = steps)} placeholder="none" aria-label="Deadline days" />
-                    <select class={inputCls} bind:value={st.deadline_basis} on:change={() => (steps = steps)} aria-label="Deadline counts">
-                      {#each DEADLINE_BASES as b}<option value={b.value}>{b.label}</option>{/each}</select>
-                    <select class={inputCls} bind:value={st.deadline_from} on:change={() => (steps = steps)} aria-label="Deadline from">
-                      {#each DEADLINE_FROM as f}<option value={f.value}>{f.label}</option>{/each}</select>
+                    {#if !st.deadline_field}
+                      <input type="number" min="1" max="365" class="{inputCls} w-16" bind:value={st.deadline_days}
+                        on:input={() => (steps = steps)} placeholder="none" aria-label="Deadline days" />
+                      <select class={inputCls} bind:value={st.deadline_basis} on:change={() => (steps = steps)} aria-label="Deadline counts">
+                        {#each DEADLINE_BASES as b}<option value={b.value}>{b.label}</option>{/each}</select>
+                      <select class={inputCls} bind:value={st.deadline_from} on:change={() => (steps = steps)} aria-label="Deadline from">
+                        {#each DEADLINE_FROM as f}<option value={f.value}>{f.label}</option>{/each}</select>
+                    {/if}
+                    <!-- A date on the item instead of a number of days (migration 284). -->
+                    {#if fields.some((f) => f.type === 'date') && !st.pauses_clock}
+                      <select class={inputCls} bind:value={st.deadline_field} aria-label="{st.name}: deadline from a date field"
+                        on:change={() => { if (st.deadline_field) st.deadline_days = ''; steps = steps; }}>
+                        <option value="">or a date field…</option>
+                        {#each fields.filter((f) => f.type === 'date') as f (f.key)}<option value={f.key}>{f.label}</option>{/each}</select>
+                    {/if}
                   {/if}
                 </td>
                 <td class="py-1 pr-2 align-top text-xs text-slate-300" data-testid="step-extras">
@@ -744,10 +754,10 @@
         {/if}
       </div>
 
-      {#if steps.some((st) => st.deadline_days)}
+      {#if steps.some((st) => st.deadline_days || st.deadline_field)}
         <ul class="text-xs text-slate-400 list-disc pl-5" data-testid="workflow-deadlines">
-          {#each steps.filter((st) => st.deadline_days && !isFinished(st.kind)) as st (st)}
-            <li><span class="text-slate-300">{st.name}:</span> {describeDeadline({ ...st, deadline_days: Number(st.deadline_days) })}.</li>
+          {#each steps.filter((st) => (st.deadline_days || st.deadline_field) && !isFinished(st.kind)) as st (st)}
+            <li><span class="text-slate-300">{st.name}:</span> {describeDeadline({ ...st, deadline_days: Number(st.deadline_days) }, fields)}.</li>
           {/each}
         </ul>
         <p class="text-xs text-slate-500">Saving re-dates what is in each step now. Working days skip weekends and the days below.</p>

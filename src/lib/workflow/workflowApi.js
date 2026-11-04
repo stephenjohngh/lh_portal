@@ -55,7 +55,7 @@ export function saveWorkflow({ key, name, appId, description = null, steps, move
     p_review: review ? { reviewed_by: review.reviewedBy, reviewed_against: review.reviewedAgainst, note: review.note ?? null } : null,
     p_steps: steps.map((s, i) => ({ key: s.key, name: s.name, public_name: s.public_name ?? null, kind: s.kind, position: i + 1,
       deadline_days: s.deadline_days === '' || s.deadline_days == null ? null : Number(s.deadline_days),
-      deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered',
+      deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered', deadline_field: s.deadline_field || null,
       // Pause, sign-offs and escalation (migration 267).
       pauses_clock: !!s.pauses_clock, signoffs: (s.signoffs ?? []).map((x) => ({ key: x.key, label: x.label })),
       escalate_after_days: s.escalate_after_days === '' || s.escalate_after_days == null ? null : Number(s.escalate_after_days),

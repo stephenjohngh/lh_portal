@@ -63,3 +63,12 @@ describe('what workflow_save() refuses about deadlines, said first', () => {
     expect(workflowProblem({ steps: steps({ deadline_days: 3, deadline_basis: 'hours' }), moves, appId: 'parking' })).toMatch(/calendar or working/);
   });
 });
+
+describe('a deadline from a date field (migration 284)', () => {
+  it('names the field', () => {
+    expect(describeDeadline({ deadline_field: 'fix_by' }, [{ key: 'fix_by', label: 'Fix by' }])).toBe('By the date in “Fix by”');
+  });
+  it('still says something where the fields are not to hand', () => {
+    expect(describeDeadline({ deadline_field: 'fix_by' })).toBe('By the date set on this item');
+  });
+});

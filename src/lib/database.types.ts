@@ -6628,6 +6628,7 @@ export type Database = {
           kind: string
           position: number
           deadline_days: number | null
+          deadline_field: string | null
           deadline_basis: string
           deadline_from: string
           pauses_clock: boolean
@@ -6643,6 +6644,7 @@ export type Database = {
           kind: string
           position?: number
           deadline_days?: number | null
+          deadline_field?: string | null
           deadline_basis?: string
           deadline_from?: string
           pauses_clock?: boolean
@@ -6658,6 +6660,7 @@ export type Database = {
           kind?: string
           position?: number
           deadline_days?: number | null
+          deadline_field?: string | null
           deadline_basis?: string
           deadline_from?: string
           pauses_clock?: boolean

@@ -222,6 +222,13 @@ export function workflowProblem({ steps, moves, appId, key = '', fields = [] }) 
       return `The field "${f.label}": only a Cases process is opened with a form, so only its fields can be needed to open one.`;
     }
   }
+  // A deadline taken from a date field on the item (migration 284).
+  for (const s of steps) {
+    if (!s.deadline_field) continue;
+    if (!fields.some((f) => f.key === s.deadline_field && f.type === 'date')) return `Step "${s.name}": its deadline must come from a date field of the process.`;
+    if (s.deadline_days != null && s.deadline_days !== '') return `Step "${s.name}": a deadline is a number of days or a date field, not both.`;
+    if (isFinished(s.kind) || s.pauses_clock) return `Step "${s.name}" has no deadline, so a date field cannot set one.`;
+  }
   const byKey = new Map(steps.map((s) => [s.key, s]));
   const pairs = new Set();
   for (const m of moves) {
@@ -333,7 +340,7 @@ export function definitionOf({ name, description = null, reviewRequired = false,
     name, description: n(description), review_required: !!reviewRequired, review_reason: reviewRequired ? n(reviewReason) : null,
     steps: steps.map((s) => ({ key: s.key, name: s.name, public_name: n(s.public_name), kind: s.kind,
       deadline_days: s.deadline_days === '' || s.deadline_days == null ? null : Number(s.deadline_days),
-      deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered',
+      deadline_basis: s.deadline_basis ?? 'calendar', deadline_from: s.deadline_from ?? 'entered', deadline_field: s.deadline_field || null,
       pauses_clock: !!s.pauses_clock, signoffs: (s.signoffs ?? []).map((x) => ({ key: x.key, label: x.label })),
       escalate_after_days: s.escalate_after_days === '' || s.escalate_after_days == null ? null : Number(s.escalate_after_days),
       escalate_to: s.escalate_to || null })),
@@ -362,7 +369,9 @@ export function workflowDiff(before, after) {
   if (!before) return ['Set up.'];
   /** @type {string[]} */
   const out = [];
-  const deadline = (/** @type {any} */ s) => (s?.deadline_days
+  const deadline = (/** @type {any} */ s) => (s?.deadline_field
+    ? `the date in “${[...(after.fields ?? []), ...(before.fields ?? [])].find((/** @type {any} */ f) => f.key === s.deadline_field)?.label ?? s.deadline_field}”`
+    : s?.deadline_days
     ? `${s.deadline_days} ${s.deadline_basis === 'working' ? 'working' : 'calendar'} ${Number(s.deadline_days) === 1 ? 'day' : 'days'} from ${s.deadline_from === 'started' ? 'the start' : 'reaching it'}`
     : 'none');
   if (before.name !== after.name) out.push(`Renamed “${before.name}” → “${after.name}”.`);

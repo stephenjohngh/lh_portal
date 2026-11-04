@@ -20,7 +20,12 @@ export const DEADLINE_FROM = Object.freeze([
 ]);
 
 /** The deadline in words, or '' when the step has none. @param {{ deadline_days?: number|null, deadline_basis?: string, deadline_from?: string }} step */
-export function describeDeadline(step) {
+export function describeDeadline(step, fields = []) {
+  // A date on the item (migration 284): the step says whose, not how many days.
+  if (step?.deadline_field) {
+    const label = fields.find((f) => f.key === step.deadline_field)?.label;
+    return label ? `By the date in “${label}”` : 'By the date set on this item';
+  }
   const n = step?.deadline_days;
   if (!n) return '';
   const basis = DEADLINE_BASES.find((b) => b.value === (step.deadline_basis ?? 'calendar'))?.label ?? 'days';

@@ -325,7 +325,7 @@
       <p class={BAND_CLS[deadlineBand(due) ?? 'ok']} data-testid="wf-due">{deadlineWords(due)} — {fmtDate(due)}
         <!-- A date the subject sets itself (an action's due date, migration 255)
              comes with no step rule to describe. -->
-        {#if describeDeadline(step ?? {})}<span class="block text-xs text-slate-500">{describeDeadline(step ?? {})}.</span>{/if}</p>
+        {#if describeDeadline(step ?? {}, fields)}<span class="block text-xs text-slate-500">{describeDeadline(step ?? {}, fields)}.</span>{/if}</p>
     {/if}
     {#if step?.pauses_clock && !finished}
       <p class="text-xs text-sky-300" data-testid="wf-paused">⏸ The clock is paused while it is here — it has no deadline, and the days spent here are added back when it leaves.</p>

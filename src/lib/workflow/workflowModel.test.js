@@ -94,3 +94,11 @@ describe('workflowDiff and a move that clears fields', () => {
     expect(workflowDiff(old, def([]))).toEqual(['Nothing that is kept changed.']);
   });
 });
+
+describe('workflowDiff and a deadline from a date field', () => {
+  const def = (/** @type {any} */ step) => ({ moves: [], fields: [{ key: 'by', label: 'Fix by', type: 'date' }],
+    steps: [{ key: 'o', name: 'Open', kind: 'start', ...step }, { key: 'd', name: 'Done', kind: 'done' }] });
+  it('says so in words', () => {
+    expect(workflowDiff(def({ deadline_days: 5 }), def({ deadline_field: 'by' })).join(' ')).toContain('the date in “Fix by”');
+  });
+});

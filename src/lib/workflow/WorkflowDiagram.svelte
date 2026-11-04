@@ -79,9 +79,9 @@
       {@const s = stepOf.get(n.key)}
       {@const st = stats?.step?.[n.key]}
       <g data-testid="workflow-diagram-step">
-        <title>{s?.name}{s?.deadline_days ? ` — ${describeDeadline({ ...s, deadline_days: Number(s.deadline_days) })}` : ''}{st ? ` — ${st.now} here now, ${st.ever} ever${st.medianDays != null ? `, median ${fmtDays(st.medianDays)} here` : ''}` : ''}</title>
+        <title>{s?.name}{s?.deadline_days || s?.deadline_field ? ` — ${describeDeadline({ ...s, deadline_days: Number(s.deadline_days) })}` : ''}{st ? ` — ${st.now} here now, ${st.ever} ever${st.medianDays != null ? `, median ${fmtDays(st.medianDays)} here` : ''}` : ''}</title>
         <rect x={n.x} y={n.y} width={n.w} height={n.h} rx="8" fill={FILL[s?.kind ?? 'open']} stroke={STROKE[s?.kind ?? 'open']} stroke-width="1.5" />
-        <text x={n.x + n.w / 2} y={n.y + (st ? 18 : 27)} text-anchor="middle" font-size="12" fill="#f1f5f9" class="select-none">{s?.name}{s?.deadline_days ? ' ⏱' : ''}</text>
+        <text x={n.x + n.w / 2} y={n.y + (st ? 18 : 27)} text-anchor="middle" font-size="12" fill="#f1f5f9" class="select-none">{s?.name}{s?.deadline_days || s?.deadline_field ? ' ⏱' : ''}</text>
         {#if st}
           <text x={n.x + n.w / 2} y={n.y + 35} text-anchor="middle" font-size="10" fill="#94a3b8" class="select-none">
             {st.now} now{st.medianDays != null ? ` · ${fmtDays(st.medianDays)}` : ''}
