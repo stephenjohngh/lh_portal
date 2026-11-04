@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema44.csv
+// Source: docs/ops/supabase_lhportal_schema45.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -6544,22 +6544,22 @@ export type Database = {
               foreignKeyName: "workflow_moves_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
-            },
-            {
-              foreignKeyName: "workflow_moves_workflow_id_fkey"
-              columns: ["workflow_id"]
-              isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
-            },
-            {
-              foreignKeyName: "workflow_moves_workflow_id_fkey"
-              columns: ["workflow_id"]
-              isOneToOne: false
               referencedRelation: "workflows"
               referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "workflow_moves_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
+            },
+            {
+              foreignKeyName: "workflow_moves_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
             },
             {
               foreignKeyName: "workflow_moves_from_key_fkey"
@@ -6628,13 +6628,13 @@ export type Database = {
           kind: string
           position: number
           deadline_days: number | null
-          deadline_field: string | null
           deadline_basis: string
           deadline_from: string
           pauses_clock: boolean
           signoffs: Json
           escalate_after_days: number | null
           escalate_to: string | null
+          deadline_field: string | null
         }
         Insert: {
           workflow_id: string
@@ -6644,13 +6644,13 @@ export type Database = {
           kind: string
           position?: number
           deadline_days?: number | null
-          deadline_field?: string | null
           deadline_basis?: string
           deadline_from?: string
           pauses_clock?: boolean
           signoffs?: Json
           escalate_after_days?: number | null
           escalate_to?: string | null
+          deadline_field?: string | null
         }
         Update: {
           workflow_id?: string
@@ -6660,13 +6660,13 @@ export type Database = {
           kind?: string
           position?: number
           deadline_days?: number | null
-          deadline_field?: string | null
           deadline_basis?: string
           deadline_from?: string
           pauses_clock?: boolean
           signoffs?: Json
           escalate_after_days?: number | null
           escalate_to?: string | null
+          deadline_field?: string | null
         }
         Relationships: [
             {
