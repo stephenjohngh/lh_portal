@@ -393,11 +393,18 @@
   }
   function removeField(/** @type {any} */ f) {
     fields = fields.filter((x) => x !== f);
-    moves = moves.map((m) => ({ ...m, required_fields: (m.required_fields ?? []).filter((/** @type {string} */ k) => k !== f.key) }));
+    moves = moves.map((m) => ({ ...m, required_fields: (m.required_fields ?? []).filter((/** @type {string} */ k) => k !== f.key),
+      clears_fields: (m.clears_fields ?? []).filter((/** @type {string} */ k) => k !== f.key) }));
   }
   function toggleNeeded(/** @type {any} */ m, /** @type {string} */ key) {
     const has = (m.required_fields ?? []).includes(key);
     m.required_fields = has ? m.required_fields.filter((/** @type {string} */ k) => k !== key) : [...(m.required_fields ?? []), key];
+    moves = moves;
+  }
+
+  function toggleClears(/** @type {any} */ m, /** @type {string} */ key) {
+    const has = (m.clears_fields ?? []).includes(key);
+    m.clears_fields = has ? m.clears_fields.filter((/** @type {string} */ k) => k !== key) : [...(m.clears_fields ?? []), key];
     moves = moves;
   }
 
@@ -668,6 +675,7 @@
             <th class="py-1 pr-2 font-medium">Admin only</th><th class="py-1 pr-2 font-medium">Who may</th>
             <th class="py-1 pr-2 font-medium" title="Not the person who made the last move">Four-eyes</th>
             <th class="py-1 pr-2 font-medium">Action</th><th class="py-1 pr-2 font-medium" title="Held until the step's sign-offs are all given">Needs sign-offs</th><th class="py-1 pr-2 font-medium">Fields needed</th>
+                <th class="py-1 pr-2 font-medium" title="Emptied when this move is made, so the step asks again. What they held goes in the history.">Clears</th>
             <th class="py-1 pr-2 font-medium" title="Made by the system, overnight, once an item has been this long in the step">By itself after</th><th></th></tr></thead>
           <tbody>
             {#each moves as m (m)}
@@ -697,6 +705,20 @@
                       <input type="checkbox" checked={(m.required_fields ?? []).includes(f.key)} on:change={() => toggleNeeded(m, f.key)}
                         aria-label="{m.label} needs {f.label}" /> {f.label}</label>
                   {:else}<span class="text-xs text-slate-500">—</span>{/each}
+                </td>
+                <!-- Fields a move clears (migration 282), so a step gone back to asks
+                     again. Folded away: most moves clear nothing. -->
+                <td class="py-1 pr-2" data-testid="move-fields-cleared">
+                  {#if fields.length}
+                    <details>
+                      <summary class="text-xs text-slate-300 cursor-pointer whitespace-nowrap">{(m.clears_fields ?? []).length || 'None'}</summary>
+                      {#each fields as f (f.key)}
+                        <label class="flex items-center gap-1 text-xs text-slate-300 whitespace-nowrap">
+                          <input type="checkbox" checked={(m.clears_fields ?? []).includes(f.key)} on:change={() => toggleClears(m, f.key)}
+                            aria-label="{m.label} clears {f.label}" /> {f.label}</label>
+                      {/each}
+                    </details>
+                  {:else}<span class="text-xs text-slate-500">—</span>{/if}
                 </td>
                 <!-- Timers (migration 259): the move the system makes, overnight,
                      once an item has sat this long in the step — or (262) this

@@ -2,7 +2,7 @@
 // workflow_save() and workflow_move() in the database, which were rehearsed
 // against these cases on dev.
 import { describe, it, expect } from 'vitest';
-import { workflowProblem, movesFrom, stepKeyFor, isFinished, STEP_KINDS } from './workflowModel.js';
+import { workflowProblem, movesFrom, stepKeyFor, isFinished, STEP_KINDS, fieldsMoveClears, workflowDiff } from './workflowModel.js';
 import { actionsFor, WORKFLOW_ACTIONS } from './workflowActions.js';
 import { DEFAULT_APPLICATION_WORKFLOW } from '#lib/apps/parking/utils/applicationWorkflow.js';
 
@@ -69,5 +69,28 @@ describe('the rest', () => {
   it('every action belongs to an app, and Parking offers the waiting-list one', () => {
     expect(WORKFLOW_ACTIONS.every((a) => a.appId && a.key && a.label)).toBe(true);
     expect(actionsFor('parking').map((a) => a.key)).toEqual(['parking_add_to_waiting_list']);
+  });
+});
+
+describe('fieldsMoveClears', () => {
+  const fields = [{ key: 'b', label: 'Second', type: 'text', position: 2 }, { key: 'a', label: 'First', type: 'text', position: 1 }, { key: 'c', label: 'Empty', type: 'text', position: 3 }];
+  it('names only fields holding something, in the process order', () => {
+    expect(fieldsMoveClears({ clears_fields: ['b', 'a', 'c'] }, fields, { a: 'x', b: 'y', c: '  ' })).toEqual(['First', 'Second']);
+  });
+  it('names nothing for a move that clears nothing', () => {
+    expect(fieldsMoveClears({}, fields, { a: 'x' })).toEqual([]);
+  });
+});
+
+describe('workflowDiff and a move that clears fields', () => {
+  const def = (clears) => ({ steps: [{ key: 'o', name: 'Open', kind: 'start' }, { key: 'd', name: 'Done', kind: 'done' }],
+    fields: [{ key: 'e', label: 'Evidence', type: 'text' }], moves: [{ from_key: 'o', to_key: 'd', label: 'Finish', clears_fields: clears }] });
+  it('says so in words, both ways', () => {
+    expect(workflowDiff(def([]), def(['e'])).join(' ')).toContain('Move “Finish”: clears Evidence.');
+    expect(workflowDiff(def(['e']), def([])).join(' ')).toContain('Move “Finish”: clears no fields.');
+  });
+  it('a definition saved before 282 is not a change', () => {
+    const old = def([]); delete old.moves[0].clears_fields;
+    expect(workflowDiff(old, def([]))).toEqual(['Nothing that is kept changed.']);
   });
 });

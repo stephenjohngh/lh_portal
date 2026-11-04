@@ -119,6 +119,18 @@ export function moveRefusal(m, { userId = null, assignedTo = null, lastMoverId =
 }
 
 /**
+ * What a move will clear (migration 282), in the process's order: only fields
+ * holding something, because the person is being told what they will lose.
+ * @param {Move} m @param {Field[]} fields @param {Record<string, any>} values
+ * @returns {string[]} the labels
+ */
+export function fieldsMoveClears(m, fields = [], values = {}) {
+  const keys = new Set(m.clears_fields ?? []);
+  return [...fields].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+    .filter((f) => keys.has(f.key) && !fieldMissing(values?.[f.key])).map((f) => f.label);
+}
+
+/**
  * What a history row records (migration 250): a MOVE between steps, an
  * ASSIGN — who the item is with changed, the step did not — or (254) FIELDS,
  * its field values changed, the note naming which. ⚠ Anything that
@@ -224,6 +236,13 @@ export function workflowProblem({ steps, moves, appId, key = '', fields = [] }) 
     if ((m.required_fields ?? []).some((k) => !fieldKeys.has(k))) {
       return `The move "${m.label}" needs a field the process does not have.`;
     }
+    // A move can clear fields (migration 282), so a step gone back to asks again.
+    if ((m.clears_fields ?? []).some((k) => !fieldKeys.has(k))) {
+      return `The move "${m.label}" clears a field the process does not have.`;
+    }
+    if ((m.clears_fields ?? []).some((k) => (m.required_fields ?? []).includes(k))) {
+      return `The move "${m.label}" both needs and clears the same field.`;
+    }
     if (!['anyone', 'assignee'].includes(m.who ?? 'anyone')) {
       return `The move "${m.label}": who may make it is anyone who can edit, or only the person it is with.`;
     }
@@ -320,7 +339,7 @@ export function definitionOf({ name, description = null, reviewRequired = false,
       escalate_to: s.escalate_to || null })),
     moves: moves.map((m) => ({ from_key: m.from_key, to_key: m.to_key, label: m.label, note_required: !!m.note_required,
       admin_only: !!m.admin_only, action: n(m.action), who: m.who ?? 'anyone', four_eyes: !!m.four_eyes,
-      required_fields: [...(m.required_fields ?? [])],
+      required_fields: [...(m.required_fields ?? [])], clears_fields: [...(m.clears_fields ?? [])],
       timer_days: m.timer_days === '' || m.timer_days == null ? null : Number(m.timer_days),
       timer_basis: m.timer_basis ?? 'calendar', needs_signoffs: !!m.needs_signoffs })),
     fields: fields.map((f) => ({ key: f.key, label: f.label, type: f.type, options: (f.options ?? []).map(String),
@@ -390,7 +409,8 @@ export function workflowDiff(before, after) {
     if (!was) {
       const extras = [m.note_required && 'needs a note', m.admin_only && 'admin only', (m.who ?? 'anyone') === 'assignee' && 'only the person it is with',
         m.four_eyes && 'four-eyes', m.needs_signoffs && 'needs its sign-offs', m.action && `action ${m.action}`, m.timer_days && `by itself ${timerPhrase(m)}`,
-        (m.required_fields ?? []).length && `needs ${(m.required_fields ?? []).map((/** @type {string} */ k) => after.fields?.find((/** @type {any} */ f) => f.key === k)?.label ?? k).join(', ')} filled`].filter(Boolean);
+        (m.required_fields ?? []).length && `needs ${(m.required_fields ?? []).map((/** @type {string} */ k) => after.fields?.find((/** @type {any} */ f) => f.key === k)?.label ?? k).join(', ')} filled`,
+        (m.clears_fields ?? []).length && `clears ${(m.clears_fields ?? []).map((/** @type {string} */ k) => after.fields?.find((/** @type {any} */ f) => f.key === k)?.label ?? k).join(', ')}`].filter(Boolean);
       out.push(`Move added: “${m.label}” (${where})${extras.length ? ` — ${extras.join('; ')}` : ''}.`);
       continue;
     }
@@ -429,6 +449,8 @@ export function workflowDiff(before, after) {
     if (!was) continue;
     const a = [...(m.required_fields ?? [])].sort().join(','), b = [...(was.required_fields ?? [])].sort().join(',');
     if (a !== b) out.push(`Move “${m.label}”: ${a ? `needs ${(m.required_fields ?? []).map(fieldName).join(', ')} filled` : 'needs no fields filled'}.`);
+    const c = [...(m.clears_fields ?? [])].sort().join(','), d = [...(was.clears_fields ?? [])].sort().join(',');
+    if (c !== d) out.push(`Move “${m.label}”: ${c ? `clears ${(m.clears_fields ?? []).map(fieldName).join(', ')}` : 'clears no fields'}.`);
   }
   return out.length ? out : ['Nothing that is kept changed.'];
 }

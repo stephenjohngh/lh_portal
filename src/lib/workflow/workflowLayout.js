@@ -21,7 +21,7 @@ export const LABEL = Object.freeze({ wrapAt: 24, lineH: 11, charW: 5.6 });
 
 /** The marks after a move's name on the diagram (✎ needs a note, 🔒 admin only, …). @param {any} m */
 export function moveMarks(m) {
-  return `${m.note_required ? ' ✎' : ''}${m.admin_only ? ' 🔒' : ''}${m.who === 'assignee' ? ' 👤' : ''}${m.four_eyes ? ' 👥' : ''}${m.action ? ' ⚙' : ''}${m.timer_days ? ' ⏲' : ''}`;
+  return `${m.note_required ? ' ✎' : ''}${m.admin_only ? ' 🔒' : ''}${m.who === 'assignee' ? ' 👤' : ''}${m.four_eyes ? ' 👥' : ''}${m.action ? ' ⚙' : ''}${m.timer_days ? ' ⏲' : ''}${(m.clears_fields ?? []).length ? ' ↺' : ''}`;
 }
 
 /**

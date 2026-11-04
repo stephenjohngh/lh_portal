@@ -31,7 +31,7 @@
   import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import FieldInput from './FieldInput.svelte';
-  import { movesFrom, moveRefusal, isFinished, isMoveEvent, STEP_KIND_LABEL, timerPhrase } from './workflowModel.js';
+  import { movesFrom, moveRefusal, fieldsMoveClears, isFinished, isMoveEvent, STEP_KIND_LABEL, timerPhrase } from './workflowModel.js';
   import { deadlineBand, deadlineWords, describeDeadline } from './workflowDeadlines.js';
   import { actionLabel } from './workflowActions.js';
   import { itemRecordModel, assignWords } from './itemRecord.js';
@@ -415,6 +415,12 @@
       </div>
       {#each reasons as why (why)}
         <p class="text-xs text-amber-300" data-testid="wf-move-refusal">{why}</p>
+      {/each}
+      {#each offered as m (m.to_key)}
+        {@const clears = fieldsMoveClears(m, fields, item?.fields ?? {})}
+        {#if clears.length}
+          <p class="text-xs text-slate-400" data-testid="wf-move-clears">{m.label} clears {clears.join(', ')}. What they hold is kept in the history.</p>
+        {/if}
       {/each}
     </div>
   {:else if item && !finished}

@@ -352,6 +352,45 @@ const RUNTIME = [
     if exists (select 1 from workflow_items i join workflows w on w.id = i.workflow_id
                 where w.key = 'guide' and not exists (select 1 from guides g where g.id = i.subject_id))
       then raise exception 'left behind'; end if;`, null],
+  // Migration 282: a move can clear fields, keeping what they held in the history.
+  ['a move clears its fields, says what they held, and the step asks again', `
+    perform workflow_save('dbtest_clear', 'DB test clear', 'cases', null,
+      '[{"key":"open","name":"Open","kind":"start","position":1},{"key":"check","name":"Check","kind":"open","position":2},{"key":"done","name":"Done","kind":"done","position":3}]',
+      '[{"from_key":"open","to_key":"check","label":"Send","required_fields":["evidence"],"position":1},{"from_key":"check","to_key":"open","label":"Failed","clears_fields":["evidence","empty"],"position":2},{"from_key":"check","to_key":"done","label":"Passed","position":3}]',
+      null, null, null,
+      '[{"key":"evidence","label":"Evidence","type":"text","position":1},{"key":"keep","label":"Keep","type":"text","position":2},{"key":"empty","label":"Never filled","type":"text","position":3}]', null);
+    perform case_open((select id from workflows where key = 'dbtest_clear'), 'CLEAR', null, '{"evidence":"First repair","keep":"Stays"}');
+    perform workflow_move((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'CLEAR'), 'check', null);
+    perform workflow_move((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'CLEAR'), 'open', null);
+    if (select i.fields from workflow_items i join cases c on c.id = i.subject_id where c.title = 'CLEAR') <> '{"keep":"Stays"}'::jsonb
+      then raise exception 'wrong fields left'; end if;
+    if not exists (select 1 from workflow_events e join workflow_items i on i.id = e.item_id join cases c on c.id = i.subject_id
+                    where c.title = 'CLEAR' and e.kind = 'fields' and e.note = 'Cleared by the move. It held: Evidence: First repair')
+      then raise exception 'the history does not say what it held'; end if;`, null],
+  ['the cleared field holds the next move', `
+    perform workflow_move((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'CLEAR'), 'check', null);`, 'Fill in "Evidence" first'],
+  ['a move clearing only empty fields adds nothing to the history', `
+    perform workflow_set_fields((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'CLEAR'), '{"evidence":"Second repair"}');
+    perform workflow_move((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'CLEAR'), 'check', null);
+    perform workflow_clear_fields((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'CLEAR'), '{empty}', 'check', null);
+    if (select count(*) from workflow_events e join workflow_items i on i.id = e.item_id join cases c on c.id = i.subject_id
+         where c.title = 'CLEAR' and e.note like 'Cleared%') <> 1 then raise exception 'an empty clear was recorded'; end if;`, null],
+  ['a timed move clears its fields too, by nobody', `
+    perform workflow_save('dbtest_clear_t', 'DB test clear timer', 'cases', null,
+      '[{"key":"open","name":"Open","kind":"start","position":1},{"key":"done","name":"Done","kind":"done","position":2}]',
+      '[{"from_key":"open","to_key":"done","label":"Lapse","timer_days":1,"clears_fields":["evidence"],"position":1}]',
+      null, null, null, '[{"key":"evidence","label":"Evidence","type":"text","position":1}]', null);
+    perform case_open((select id from workflows where key = 'dbtest_clear_t'), 'CLEAR T', null, '{"evidence":"Old"}');
+    update workflow_items i set started_at = i.started_at - interval '5 days' from cases c where c.id = i.subject_id and c.title = 'CLEAR T';
+    update workflow_events e set at = e.at - interval '5 days' from workflow_items i, cases c where i.id = e.item_id and c.id = i.subject_id and c.title = 'CLEAR T';
+    perform workflow_run_timers();
+    if (select i.step_key || (i.fields::text) from workflow_items i join cases c on c.id = i.subject_id where c.title = 'CLEAR T') <> 'done{}'
+      then raise exception 'the timer did not clear'; end if;
+    if not exists (select 1 from workflow_events e join workflow_items i on i.id = e.item_id join cases c on c.id = i.subject_id
+                    where c.title = 'CLEAR T' and e.by is null and e.note like 'Cleared by the move%') then raise exception 'no history row'; end if;`, null],
+  ['nobody signed in can clear fields directly', `
+    set local role authenticated;
+    perform workflow_clear_fields((select i.id from workflow_items i join cases c on c.id = i.subject_id where c.title = 'CLEAR'), '{evidence}', 'check', null);`, 'permission denied'],
   // Migration 259: timers — a move the system makes after N days in its step.
   ['a timed move is made by the run once due, by nobody, with its reason', `
     perform workflow_save('dbtest_timer', 'DB test timer', 'cases', null,

@@ -63,7 +63,7 @@ export function saveWorkflow({ key, name, appId, description = null, steps, move
     p_moves: moves.map((m, i) => ({
       from_key: m.from_key, to_key: m.to_key, label: m.label,
       note_required: !!m.note_required, admin_only: !!m.admin_only, action: m.action || null,
-      who: m.who || 'anyone', four_eyes: !!m.four_eyes, required_fields: m.required_fields ?? [], position: i + 1,
+      who: m.who || 'anyone', four_eyes: !!m.four_eyes, required_fields: m.required_fields ?? [], clears_fields: m.clears_fields ?? [], position: i + 1,
       // Timers (migration 259): the system makes the move after N days in its step.
       timer_days: m.timer_days === '' || m.timer_days == null ? null : Number(m.timer_days),
       timer_basis: m.timer_basis ?? 'calendar',

@@ -105,7 +105,7 @@
     {/each}
   </svg>
   <p class="mt-1 text-xs text-slate-500">
-    Teal: start · grey: in progress · green: accepted · red: not accepted · <span class="text-amber-400">amber dashed: a move back</span> · ✎ needs a note · 🔒 admin only · 👤 only the person it is with · 👥 four-eyes · ⚙ runs an action · ⏲ made by itself after a time · ⏱ has a deadline{stats ? ' · thicker arrow: used more · red badge: overdue · “d”: median days spent there' : ''}
+    Teal: start · grey: in progress · green: accepted · red: not accepted · <span class="text-amber-400">amber dashed: a move back</span> · ✎ needs a note · 🔒 admin only · 👤 only the person it is with · 👥 four-eyes · ⚙ runs an action · ⏲ made by itself after a time · ↺ clears fields · ⏱ has a deadline{stats ? ' · thicker arrow: used more · red badge: overdue · “d”: median days spent there' : ''}
   </p>
   {#if late.length}
     <div class="mt-1 text-xs text-red-300" data-testid="workflow-diagram-late">

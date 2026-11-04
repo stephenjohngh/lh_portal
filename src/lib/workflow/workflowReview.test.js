@@ -23,6 +23,7 @@ describe('definitionOf — the shape the database keeps', () => {
     expect(d.moves[0]).toEqual({ from_key: 'received', to_key: 'checking', label: 'Start checking', note_required: false, admin_only: false, action: null,
       who: 'anyone', four_eyes: false,      // migration 251: the database's definition carries both
       required_fields: [],                  // migration 253
+      clears_fields: [],                    // migration 282
       timer_days: null, timer_basis: 'calendar',   // migration 259
       needs_signoffs: false });                    // migration 267
     expect(d.fields).toEqual([]);

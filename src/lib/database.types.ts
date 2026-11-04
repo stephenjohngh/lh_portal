@@ -6494,6 +6494,7 @@ export type Database = {
           who: string
           four_eyes: boolean
           required_fields: string[]
+          clears_fields: string[]
           timer_days: number | null
           timer_basis: string
           needs_signoffs: boolean
@@ -6510,6 +6511,7 @@ export type Database = {
           who?: string
           four_eyes?: boolean
           required_fields?: string[]
+          clears_fields?: string[]
           timer_days?: number | null
           timer_basis?: string
           needs_signoffs?: boolean
@@ -6526,6 +6528,7 @@ export type Database = {
           who?: string
           four_eyes?: boolean
           required_fields?: string[]
+          clears_fields?: string[]
           timer_days?: number | null
           timer_basis?: string
           needs_signoffs?: boolean
