@@ -95,6 +95,20 @@
     itemFor = item?.id ?? '';
     note = ''; done = ''; error = '';
     draft = fieldDraft(fields, item?.fields ?? {});
+    savedFor = JSON.stringify(item?.fields ?? {});
+    saved = item?.fields ?? {};
+  }
+  // The saved values can change under an open form: a move that clears fields
+  // (migration 282), a timer, somebody else. The form follows them, or it would
+  // offer the old answers to be saved back. Edits not yet saved are never lost.
+  let savedFor = '';
+  /** @type {Record<string, any>} */
+  let saved = {};
+  $: if (JSON.stringify(item?.fields ?? {}) !== savedFor) {
+    const clean = Object.keys(fieldChanges(fields, draft, saved)).length === 0;
+    savedFor = JSON.stringify(item?.fields ?? {});
+    saved = item?.fields ?? {};
+    if (clean) draft = fieldDraft(fields, saved);
   }
   // …and again whenever it reaches another step, however it got there: a move
   // handed to the app (handOff — Parking's offer, Maintenance's completion) or
