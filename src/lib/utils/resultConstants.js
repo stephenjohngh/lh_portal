@@ -35,6 +35,7 @@ export const RESULT_RANK = { failed: 0, problem: 1, no_access: 2, ok: 3, inactiv
 
 // -- Why a component could not be assessed (no_access rows) -------------------
 export const NO_ACCESS_REASONS = [
+  { value: 'no_answer',  label: 'No answer' },
   { value: 'locked',     label: 'Locked / no key' },
   { value: 'refused',    label: 'Resident refused' },
   { value: 'obstructed', label: 'Obstructed' },

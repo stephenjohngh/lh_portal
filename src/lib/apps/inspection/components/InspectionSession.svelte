@@ -359,6 +359,7 @@
           failCount={statsFailed}
           problemCount={statsProblem}
           inactiveCount={statsInactive}
+          noAccessCount={statsNoAccess}
         />
         <!-- Not everything checked — make the choice explicit rather than
              silently closing an incomplete run (it will not count as done). -->
