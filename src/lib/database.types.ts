@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema42.csv
+// Source: docs/ops/supabase_lhportal_schema43.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -6448,15 +6448,15 @@ export type Database = {
               foreignKeyName: "workflow_items_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
+              referencedRelation: "workflows"
+              referencedColumns: ["id"]
             },
             {
               foreignKeyName: "workflow_items_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
-              referencedRelation: "workflows"
-              referencedColumns: ["id"]
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
             },
             {
               foreignKeyName: "workflow_items_step_key_fkey"
@@ -6494,10 +6494,10 @@ export type Database = {
           who: string
           four_eyes: boolean
           required_fields: string[]
-          clears_fields: string[]
           timer_days: number | null
           timer_basis: string
           needs_signoffs: boolean
+          clears_fields: string[]
         }
         Insert: {
           workflow_id: string
@@ -6511,10 +6511,10 @@ export type Database = {
           who?: string
           four_eyes?: boolean
           required_fields?: string[]
-          clears_fields?: string[]
           timer_days?: number | null
           timer_basis?: string
           needs_signoffs?: boolean
+          clears_fields?: string[]
         }
         Update: {
           workflow_id?: string
@@ -6528,32 +6528,32 @@ export type Database = {
           who?: string
           four_eyes?: boolean
           required_fields?: string[]
-          clears_fields?: string[]
           timer_days?: number | null
           timer_basis?: string
           needs_signoffs?: boolean
+          clears_fields?: string[]
         }
         Relationships: [
             {
               foreignKeyName: "workflow_moves_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
-            },
-            {
-              foreignKeyName: "workflow_moves_workflow_id_fkey"
-              columns: ["workflow_id"]
-              isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
-            },
-            {
-              foreignKeyName: "workflow_moves_workflow_id_fkey"
-              columns: ["workflow_id"]
-              isOneToOne: false
               referencedRelation: "workflows"
               referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "workflow_moves_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
+            },
+            {
+              foreignKeyName: "workflow_moves_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
             },
             {
               foreignKeyName: "workflow_moves_from_key_fkey"
