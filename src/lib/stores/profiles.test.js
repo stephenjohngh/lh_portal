@@ -63,24 +63,24 @@ describe('assigneeOptions', () => {
 });
 
 const people = [
-  { id: 'a', full_name: 'Stephen Pallett', short_name: 'SP' },
+  { id: 'a', full_name: 'Jane Smith', short_name: 'JS' },
   { id: 'b', full_name: 'Chloe K', short_name: 'CK' },
   { id: 'c', full_name: 'No Initials', short_name: null },
 ];
 
 describe('how Management names people', () => {
-  it('offers "SP (Stephen Pallett)" and shows "SP" once chosen', () => {
-    expect(pickerLabel(people[0])).toBe('SP (Stephen Pallett)');
-    expect(shortLabel(people[0])).toBe('SP');
+  it('offers "JS (Jane Smith)" and shows "JS" once chosen', () => {
+    expect(pickerLabel(people[0])).toBe('JS (Jane Smith)');
+    expect(shortLabel(people[0])).toBe('JS');
     expect(shortLabel(people[2])).toBe('No Initials');
   });
   it('offers only people with a short name, in short-name order', () => {
-    expect(withShortName(people).map((p) => p.short_name)).toEqual(['CK', 'SP']);
+    expect(withShortName(people).map((p) => p.short_name)).toEqual(['CK', 'JS']);
   });
   it('assignee options store the short name, and keep an old recorded name', () => {
     const opts = assigneeChoices(people);
-    expect(opts.map((o) => o.value)).toEqual(['', 'CK', 'SP', 'External']);
-    expect(opts.find((o) => o.value === 'SP').label).toBe('SP (Stephen Pallett)');
+    expect(opts.map((o) => o.value)).toEqual(['', 'CK', 'JS', 'External']);
+    expect(opts.find((o) => o.value === 'JS').label).toBe('JS (Jane Smith)');
     expect(assigneeChoices(people, undefined, 'Chloe').map((o) => o.value)).toContain('Chloe');
   });
 });

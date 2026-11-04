@@ -35,7 +35,7 @@
   let notes           = '';
   let profile_ids     = [];     // uuid[]
 
-  // People with a short name are offered, as "SP (Stephen Pallett)"; anyone
+  // People with a short name are offered, as "JS (Jane Smith)"; anyone
   // already at this meeting without one is kept, so editing never drops them.
   $: attendeeChoices = [
     ...withShortName($profiles.list),

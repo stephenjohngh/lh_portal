@@ -2,8 +2,8 @@
 //
 // How a portal user is shown when someone CHOOSES them (user, 2026-11-03):
 //   · only people with a SHORT NAME are offered (Admin → Users → Edit);
-//   · offered as "SP (Stephen Pallett)";
-//   · shown as "SP" once chosen.
+//   · offered as "JS (Jane Smith)";
+//   · shown as "JS" once chosen.
 // Used by Management (attendees, action assignees) and the workflow manager
 // (who an item is with, a step's escalation, a Cases "person" field).
 // ⛔ Records that leave the building — an item's history, the printable
@@ -12,14 +12,14 @@
 
 /** @typedef {{ id: string, full_name?: string|null, short_name?: string|null, email?: string|null }} Person */
 
-/** "SP (Stephen Pallett)" — how a person is offered in a picker. @param {Person} p */
+/** "JS (Jane Smith)" — how a person is offered in a picker. @param {Person} p */
 export function pickerLabel(p) {
   if (!p) return '';
   if (!p.short_name) return p.full_name ?? '';
   return p.full_name ? `${p.short_name} (${p.full_name})` : p.short_name;
 }
 
-/** "SP" — how a chosen person is shown; the full name when none is set. @param {Person|undefined|null} p */
+/** "JS" — how a chosen person is shown; the full name when none is set. @param {Person|undefined|null} p */
 export function shortLabel(p) {
   return p?.short_name || p?.full_name || '';
 }
@@ -30,7 +30,7 @@ export function withShortName(list) {
     .sort((a, b) => String(a.short_name).localeCompare(String(b.short_name)));
 }
 
-/** id → "SP" (or the full name when none is set). @param {Person[]} list */
+/** id → "JS" (or the full name when none is set). @param {Person[]} list */
 export function shortLabelById(list) {
   return Object.fromEntries((list ?? []).map((p) => [p.id, shortLabel(p)]));
 }

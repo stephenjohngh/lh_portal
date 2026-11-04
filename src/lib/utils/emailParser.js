@@ -125,7 +125,7 @@ export function parseEmailPaste(text) {
   }
 
   // Final pass: strip any header-format lines that remain in the body
-  // (catches no-space headers like "From:stephen" missed by earlier scan).
+  // (catches no-space headers like "From:jane" missed by earlier scan).
   body = body
     .split('\n')
     .filter(l => !HEADER_LINE.test(l.trim()))

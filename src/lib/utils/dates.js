@@ -19,7 +19,7 @@ export const BUILDING_TIME_ZONE = 'Europe/London';
 const LONDON = { timeZone: BUILDING_TIME_ZONE };
 
 /**
- * "23 Feb 2026" — or "23 Feb 2026 (Stephen)" when userName is given.
+ * "23 Feb 2026" — or "23 Feb 2026 (Jane)" when userName is given.
  * @param {string|null} iso
  * @param {string|null} [userName]  Optional name appended in parentheses.
  */

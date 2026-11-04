@@ -66,13 +66,13 @@ export { pickerLabel, shortLabel, withShortName, shortLabelById };
 
 /** @typedef {import('#lib/utils/personLabels.js').Person} Person */
 
-/** id → "SP": how a chosen person is shown in a list's "With" column. */
+/** id → "JS": how a chosen person is shown in a list's "With" column. */
 export const shortNames = derived(_state, ($s) => shortLabelById($s.list));
 
 /**
  * [{value, label}] for an action-assignee <select>: one option per person WITH a
  * short name — value the short name (an action stores its assignee as text),
- * label "SP (Stephen Pallett)" — then `extras`. A `current` value that is none
+ * label "JS (Jane Smith)" — then `extras`. A `current` value that is none
  * of these (an action assigned before short names, e.g. "Chloe") is kept as an
  * option so editing that action does not silently blank it.
  * @param {Person[]} list

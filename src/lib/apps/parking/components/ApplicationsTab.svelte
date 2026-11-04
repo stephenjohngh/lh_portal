@@ -62,7 +62,7 @@
 
   $: nameById = Object.fromEntries(/** @type {Array<{ id: string, full_name: string|null }>} */ ($profiles.list)
     .map((p) => [p.id, p.full_name || 'A user with no name set']));
-  // The "With" column shows the short name ("SP") — user, 2026-11-03.
+  // The "With" column shows the short name ("JS") — user, 2026-11-03.
   $: withName = (/** @type {string|null|undefined} */ uid) => (uid ? $shortNames[uid] || 'A user no longer listed' : '');
   $: me = $auth.user?.id ?? null;
 

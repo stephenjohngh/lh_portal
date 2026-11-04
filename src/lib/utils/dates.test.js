@@ -16,7 +16,7 @@ describe('fmtDate', () => {
     expect(fmtDate(NOON)).toBe('23 Feb 2026');
   });
   it('appends the user name in parentheses', () => {
-    expect(fmtDate(NOON, 'Stephen')).toBe('23 Feb 2026 (Stephen)');
+    expect(fmtDate(NOON, 'Jane')).toBe('23 Feb 2026 (Jane)');
   });
   it('returns an em dash for null/empty', () => {
     expect(fmtDate(null)).toBe('—');

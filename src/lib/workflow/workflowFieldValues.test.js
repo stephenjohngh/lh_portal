@@ -17,7 +17,7 @@ describe('workflowFieldValues', () => {
     expect([...LINK_TYPES]).toEqual(['component', 'space', 'person']);
   });
 
-  it('a person is a portal user, offered only with a short name, as "SP (Full Name)"; sorted', () => {
+  it('a person is a portal user, offered only with a short name, as "JS (Jane Smith)"; sorted', () => {
     const l = linkOptions({ people: [{ id: 'b', full_name: 'Zoe', short_name: 'ZQ' }, { id: 'a', full_name: null }] });
     expect(l.person).toEqual([
       { id: 'a', text: 'A user with no name set', short: 'A user with no name set', full: 'A user with no name set', offered: false },

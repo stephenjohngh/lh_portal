@@ -12,9 +12,9 @@ vi.mock('#lib/stores/permissions', async () => {
 
 import ActionForm from './ActionForm.svelte';
 
-const action = { id: 'a1', action_text: 'Get two quotes', name_text: 'SP', date_deadline: '2026-11-04', status: 'in-progress',
+const action = { id: 'a1', action_text: 'Get two quotes', name_text: 'JS', date_deadline: '2026-11-04', status: 'in-progress',
                  created_at: '2026-10-27T10:00:00Z', updated_at: '2026-10-27T10:00:00Z' };
-const options = [{ value: 'SP', label: 'SP' }, { value: '', label: '—' }];
+const options = [{ value: 'JS', label: 'JS' }, { value: '', label: '—' }];
 
 function form(props) {
   const sent = [];

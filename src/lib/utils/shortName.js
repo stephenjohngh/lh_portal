@@ -1,5 +1,5 @@
 // src/lib/utils/shortName.js
-// A person's SHORT NAME — initials such as "SP" (migration 279). Set by an admin;
+// A person's SHORT NAME — initials such as "JS" (migration 279). Set by an admin;
 // Management shows it for meeting attendees and action assignees. The database
 // holds the same rule (profiles_short_name_check + a unique index ignoring case);
 // this copy says why BEFORE the save is refused.

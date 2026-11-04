@@ -188,8 +188,8 @@
   // The full name — for the history, sign-offs and the printable record.
   $: withName = (/** @type {string|null|undefined} */ uid) => (uid ? nameById[uid] || 'A user no longer listed' : '');
   // Who it is WITH is chosen and shown by short name (user, 2026-11-03): only
-  // people with a short name are offered, as "SP (Stephen Pallett)", and shown
-  // as "SP". Someone chosen before keeps showing.
+  // people with a short name are offered, as "JS (Jane Smith)", and shown
+  // as "JS". Someone chosen before keeps showing.
   onMount(() => { profilesStore.load().catch(() => { /* names fall back to the full ones */ }); });
   $: personById = new Map((/** @type {any[]} */ ($profiles.list ?? [])).map((p) => [p.id, p]));
   $: shortOf = (/** @type {string|null|undefined} */ uid) => (uid ? shortLabel(personById.get(uid)) || withName(uid) : '');

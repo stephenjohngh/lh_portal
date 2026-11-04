@@ -12,12 +12,12 @@ import {
 
 const OUTLOOK_THREAD = `From: Jane Patel <jane@lawfirm.co.uk>
 Sent: Tuesday, 14 January 2025 09:12
-To: Stephen Hall <stephen@example.com>
+To: Sam Hall <sam@example.com>
 Subject: RE: Section 20 consultation
 
 Thanks — noted. We will respond by Friday.
 
-From: Stephen Hall <stephen@example.com>
+From: Sam Hall <sam@example.com>
 Sent: Monday, 13 January 2025 16:40
 To: Jane Patel <jane@lawfirm.co.uk>
 Subject: Section 20 consultation
@@ -30,7 +30,7 @@ const GMAIL_THREAD = `Yes, that works for us.
 On Tue, 14 Jan 2025 at 09:12, Jane Patel <jane@lawfirm.co.uk> wrote:
 
 From: Jane Patel <jane@lawfirm.co.uk>
-To: Stephen Hall <stephen@example.com>
+To: Sam Hall <sam@example.com>
 Subject: Meeting on site
 Date: 14 January 2025
 
@@ -39,7 +39,7 @@ Could we meet on site on Thursday morning?
 
 const SINGLE = `From: Jane Patel <jane@lawfirm.co.uk>
 Sent: 14 January 2025 09:12
-To: Stephen Hall <stephen@example.com>
+To: Sam Hall <sam@example.com>
 Subject: Section 20 consultation
 
 The notice is attached.
@@ -86,11 +86,11 @@ describe('splitEmailThread', () => {
 describe('emailToCorrespondence', () => {
   it('maps the parser output onto the template fields', () => {
     const fields = emailToCorrespondence({
-      from: 'Jane Patel', to: 'Stephen Hall', subject: 'Roof works',
+      from: 'Jane Patel', to: 'Sam Hall', subject: 'Roof works',
       email_date: '2025-01-14', body: 'Please confirm.',
     });
     expect(fields).toEqual({
-      date: '2025-01-14', from: 'Jane Patel', to: 'Stephen Hall',
+      date: '2025-01-14', from: 'Jane Patel', to: 'Sam Hall',
       // The subject fills the one column a reader scans; the message goes to
       // `body`, which renders on a line of its own.
       subject: 'Roof works', body: 'Please confirm.',
@@ -131,7 +131,7 @@ describe('parsePastedEmails', () => {
   it('extracts display names, not raw addresses', () => {
     const { rows } = parsePastedEmails(SINGLE);
     expect(rows[0].from).toBe('Jane Patel');
-    expect(rows[0].to).toBe('Stephen Hall');
+    expect(rows[0].to).toBe('Sam Hall');
   });
 
   it('keeps the body as the message', () => {

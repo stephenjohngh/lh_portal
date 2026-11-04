@@ -29,7 +29,7 @@ export function linkOptions({ components = [], spaces = [], floors = [], types =
     component: components.map((c) => ({ id: c.id, text: `${buildComponentRef(c, floors, types)}${c.label ? ` — ${c.label}` : ''}` })).sort(byText),
     space: spaces.map((s) => ({ id: s.id, text: `${buildSpaceRef(s, floors)}${s.label || s.name ? ` — ${s.label || s.name}` : ''}` })).sort(byText),
     // A person is offered only with a short name (user, 2026-11-03): `text` is
-    // "SP (Stephen Pallett)" for the picker, `short` is shown once chosen and
+    // "JS (Jane Smith)" for the picker, `short` is shown once chosen and
     // `full` goes on the printable record. Everyone stays in the list so a value
     // chosen before short names still reads as its person.
     person: people.map((p) => ({ id: p.id, text: pickerLabel(p) || 'A user with no name set', short: shortLabel(p) || 'A user with no name set',
@@ -43,7 +43,7 @@ export function linkOptions({ components = [], spaces = [], floors = [], types =
  * @param {{ type: string }} field
  * @param {any} value
  * @param {ReturnType<typeof linkOptions>} [links]
- * @param {{ full?: boolean }} [opts]  full: a person by full name (the printable record); otherwise "SP"
+ * @param {{ full?: boolean }} [opts]  full: a person by full name (the printable record); otherwise "JS"
  */
 export function fieldText(field, value, links, opts = {}) {
   if (fieldMissing(value)) return '—';

@@ -89,7 +89,7 @@
   /** Attendee names, so a meeting is findable by who was at it. */
   function attendeeNames(profileIds, extras) {
     return [
-      // both names, so a meeting is found by "SP" or by "Stephen"
+      // both names, so a meeting is found by "JS" or by "Jane"
       ...(profileIds ?? []).flatMap(id => {
         const p = $profiles.list.find(x => x.id === id);
         return [p?.short_name, p?.full_name];

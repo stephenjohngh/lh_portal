@@ -1,6 +1,6 @@
 <!-- src/lib/apps/admin/components/modals/EditUserModal.svelte -->
 <!-- Admin → Users → ✎ Edit: correct a person's name and set their SHORT NAME
-     (initials, e.g. "SP"). Management offers only people with a short name as
+     (initials, e.g. "JS"). Management offers only people with a short name as
      meeting attendees and action assignees (migration 279). Only an admin may
      change these; the database refuses anyone else. -->
 <script>
@@ -62,7 +62,7 @@
       <FormInput label="Name" bind:value={fullName} error={nameProblem} required />
 
       <div>
-        <FormInput label="Short name" bind:value={shortName} placeholder="e.g. SP" error={shortProblem} />
+        <FormInput label="Short name" bind:value={shortName} placeholder="e.g. JS" error={shortProblem} />
         <p class="text-xs text-slate-400 mt-1">
           Initials used in e.g. Management attendees.
         </p>
