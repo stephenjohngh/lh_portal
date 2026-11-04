@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema43.csv
+// Source: docs/ops/supabase_lhportal_schema44.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -5867,7 +5867,6 @@ export type Database = {
           scope_note: string | null
           operationally_incomplete: boolean
           assurance_only: string | null
-          access_best_endeavours: boolean | null
           reviewer_note: string | null
           superseded_on: string | null
           superseded_by: string | null
@@ -5895,6 +5894,7 @@ export type Database = {
           sort_order: number | null
           id: string
           completion_action_key: string | null
+          access_best_endeavours: boolean | null
         }
         Insert: {
           template_key: string
@@ -5924,7 +5924,6 @@ export type Database = {
           scope_note?: string | null
           operationally_incomplete?: boolean
           assurance_only?: string | null
-          access_best_endeavours?: boolean | null
           reviewer_note?: string | null
           superseded_on?: string | null
           superseded_by?: string | null
@@ -5952,6 +5951,7 @@ export type Database = {
           sort_order?: number | null
           id?: string
           completion_action_key?: string | null
+          access_best_endeavours?: boolean | null
         }
         Update: {
           template_key?: string
@@ -5981,7 +5981,6 @@ export type Database = {
           scope_note?: string | null
           operationally_incomplete?: boolean
           assurance_only?: string | null
-          access_best_endeavours?: boolean | null
           reviewer_note?: string | null
           superseded_on?: string | null
           superseded_by?: string | null
@@ -6009,6 +6008,7 @@ export type Database = {
           sort_order?: number | null
           id?: string
           completion_action_key?: string | null
+          access_best_endeavours?: boolean | null
         }
         Relationships: [
             {
@@ -6544,22 +6544,22 @@ export type Database = {
               foreignKeyName: "workflow_moves_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
+            },
+            {
+              foreignKeyName: "workflow_moves_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
+            },
+            {
+              foreignKeyName: "workflow_moves_workflow_id_fkey"
+              columns: ["workflow_id"]
+              isOneToOne: false
               referencedRelation: "workflows"
               referencedColumns: ["id"]
-            },
-            {
-              foreignKeyName: "workflow_moves_workflow_id_fkey"
-              columns: ["workflow_id"]
-              isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
-            },
-            {
-              foreignKeyName: "workflow_moves_workflow_id_fkey"
-              columns: ["workflow_id"]
-              isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
             },
             {
               foreignKeyName: "workflow_moves_from_key_fkey"
