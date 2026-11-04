@@ -16,6 +16,7 @@
   import ComponentLinks              from './ComponentLinks.svelte';
   import ComponentInspectionHistory  from './ComponentInspectionHistory.svelte';
   import ComponentMaintenanceHistory from './ComponentMaintenanceHistory.svelte';
+  import ComponentCases              from './ComponentCases.svelte';
   import ConditionChecklistChips     from './ConditionChecklistChips.svelte';
   import { sec, STATUSES }           from '../ui.js';
   import { fmtDate, fmtDateTime }    from '#lib/utils/dates.js';
@@ -227,6 +228,7 @@
     <ComponentInspectionHistory componentId={component.id} typeCode={component.type_code} />
 
     <!-- -- Maintenance history ------------------------------------------ -->
+    <ComponentCases componentId={component.id} />
     <ComponentMaintenanceHistory componentId={component.id} />
 
     <!-- -- Metadata ----------------------------------------------------- -->

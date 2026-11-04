@@ -12,6 +12,7 @@
   import AttrField                   from './AttrField.svelte';
   import ComponentInspectionHistory  from './ComponentInspectionHistory.svelte';
   import ComponentMaintenanceHistory from './ComponentMaintenanceHistory.svelte';
+  import ComponentCases              from './ComponentCases.svelte';
   import ComponentLinks              from './ComponentLinks.svelte';
   import ConditionChecklistChips     from './ConditionChecklistChips.svelte';
   import { inp, sec, STATUSES }      from '../ui.js';
@@ -451,6 +452,7 @@
     <ComponentInspectionHistory componentId={component.id} typeCode={component.type_code} />
 
     <!-- -- Maintenance history -------------------------------------- -->
+    <ComponentCases componentId={component.id} />
     <ComponentMaintenanceHistory componentId={component.id} />
 
     <!-- -- Metadata ------------------------------------------------- -->

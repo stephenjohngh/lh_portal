@@ -63,6 +63,19 @@ describe('cases', () => {
     expect(get(casesStore).chosen).toBe('case_change');
   });
 
+  it('several cases: one that fails does not stop the rest, and the answer says which', async () => {
+    h.api.rpc.mockResolvedValueOnce({ id: 'c5', reference: 'CAS-5' })
+      .mockRejectedValueOnce(new Error('Fill in "Door" to open a case.'))
+      .mockResolvedValueOnce({ id: 'c7', reference: 'CAS-7' });
+    const r = await casesStore.createMany([
+      { text: '1/A/01', title: 'One', fields: { door: 'a' } },
+      { text: '1/A/02', title: 'Two', fields: { door: 'b' } },
+      { text: '1/A/03', title: 'Three', fields: { door: 'c' } },
+    ]);
+    expect(r.opened).toEqual(['CAS-5', 'CAS-7']);
+    expect(r.failed).toEqual([{ text: '1/A/02', error: 'Fill in "Door" to open a case.' }]);
+  });
+
   it('a case is opened through case_open() in the chosen process, and the audit names its reference only', async () => {
     await casesStore.create({ title: ' Boiler ', description: '', fields: { contractor: 'ACME' } });
     expect(h.api.rpc).toHaveBeenCalledWith('case_open', { p_workflow: 'w1', p_title: 'Boiler', p_description: null, p_fields: { contractor: 'ACME' } });

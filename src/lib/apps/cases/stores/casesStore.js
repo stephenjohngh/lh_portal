@@ -15,6 +15,7 @@ import { logAudit } from '#lib/utils/auditLogger.js';
 import { storeLoader } from '#lib/utils/storeLoad.js';
 import { requireUserId } from '#lib/utils/currentUser.js';
 import { deleteDocumentsFor } from '#lib/utils/documentApi.js';
+import { errMessage } from '#lib/utils/errors.js';
 import { loadWorkflow, listItems, itemHistory, moveItem, assignItem, listAssignees } from '#lib/workflow/workflowApi.js';
 
 const AUDIT = { appId: 'cases', eventCategory: 'cases' };
@@ -79,6 +80,27 @@ function createCasesStore() {
     return row;
   }
 
+  /**
+   * Open several cases, one by one: one that fails does not stop the rest, and the
+   * answer says which opened and which did not. One re-read at the end.
+   * @param {Array<{ text: string, title: string, fields: Record<string, string> }>} rows
+   * @returns {Promise<{ opened: string[], failed: Array<{ text: string, error: string }> }>}
+   */
+  async function createMany(rows) {
+    const wf = state().workflow;
+    if (!wf) throw new Error('Choose a process first.');
+    const opened = []; const failed = [];
+    for (const r of rows) {
+      try {
+        const row = await api.rpc('case_open', { p_workflow: wf.id, p_title: r.title.trim(), p_description: null, p_fields: r.fields });
+        logAudit('create', 'case', row.id, row.reference, { ...AUDIT, afterData: { reference: row.reference, process: wf.key } });
+        opened.push(row.reference);
+      } catch (/** @type {any} */ err) { failed.push({ text: r.text, error: errMessage(err, 'It could not be opened.') }); }
+    }
+    await reload();
+    return { opened, failed };
+  }
+
   /** Edit a case's title and description — never its process or reference (field values are the item's). */
   async function save(/** @type {CaseRow} */ c, /** @type {{ title: string, description?: string|null }} */ data) {
     const reference = c.reference;                    // captured before the await
@@ -139,7 +161,7 @@ function createCasesStore() {
     return itemHistory(itemId);
   }
 
-  return { subscribe, load, reload, create, save, remove, move, assign, assignees, history };
+  return { subscribe, load, reload, create, createMany, save, remove, move, assign, assignees, history };
 }
 
 export const casesStore = createCasesStore();

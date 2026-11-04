@@ -78,6 +78,19 @@ export async function listWalkInspections(sessions) {
 }
 
 /**
+ * The latest check of one component, or null. For the Cases app, so a case says what
+ * was found. The result and notes only.
+ * @param {string} componentId
+ */
+export async function latestInspectionOf(componentId) {
+  const rows = await api.get('component_inspections', {
+    select: 'inspection_result, no_access_reason, inspector_notes, inspected_at',
+    filters: { component_id: componentId }, orderBy: 'inspected_at', ascending: false, limit: 1,
+  });
+  return rows?.[0] ?? null;
+}
+
+/**
  * All walk sessions, newest first, with the inspector's name joined. The
  * cross-app read for Compliance → Inspection walks and the compliance position
  * report (the Inspection app's

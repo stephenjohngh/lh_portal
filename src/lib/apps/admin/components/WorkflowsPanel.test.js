@@ -11,6 +11,7 @@ import { DEFAULT_APPLICATION_WORKFLOW as WF } from '#lib/apps/parking/utils/appl
 const h = vi.hoisted(() => ({ saved: /** @type {any[]} */ ([]), marked: false, changes: /** @type {any[]} */ ([]), app: 'parking', renamed: false,
   timerRuns: /** @type {any[]} */ ([]), ran: 0, publicOn: false, switched: /** @type {any[]} */ ([]),
   loads: 0, dueOn: '2000-01-01', retired: /** @type {any[]} */ ([]), deleted: /** @type {any[]} */ ([]) }));
+vi.mock('#lib/utils/api.js', () => ({ api: { getAll: async () => [{ id: 't1', code: 'door_apartment_door', name: 'Apartment Door' }] } }));
 vi.mock('#lib/utils/download.js', () => ({ downloadBlob: () => {} }));
 vi.mock('#lib/workflow/workflowApi.js', () => ({
   setPublicStatus: async (key, on, review) => { h.switched.push({ key, on, review }); return { changed: true }; },

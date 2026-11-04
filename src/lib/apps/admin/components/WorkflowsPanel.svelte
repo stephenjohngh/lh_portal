@@ -32,6 +32,7 @@
   import { fmtDate } from '#lib/utils/dates.js';
   import { isFinished } from '#lib/workflow/workflowModel.js';
   import { logAudit } from '#lib/utils/auditLogger.js';
+  import { api } from '#lib/utils/api.js';
   import { errMessage } from '#lib/utils/errors.js';
   import Button from '#lib/components/common/Button.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
@@ -325,7 +326,7 @@
   /** The fields as saved: choices from their lines, none on a field that is not a choice. */
   function fieldsOut(/** @type {any[]} */ list) {
     return list.map(({ optionsText, isNew, ...f }) => ({ ...f,
-      options: f.type === 'choice' ? String(optionsText ?? '').split('\n').map((o) => o.trim()).filter(Boolean) : [] }));
+      options: f.type === 'choice' || f.type === 'component' ? String(optionsText ?? '').split('\n').map((o) => o.trim()).filter(Boolean) : [] }));
   }
   $: problem = current
     ? workflowProblem({ steps, moves, appId: current.app_id, key: current.key, fields: fieldsOut(fields) })
@@ -403,6 +404,19 @@
     moves = moves;
   }
 
+  // A component field can be limited to types (2026-11-04). Reference data, read when first opened.
+  /** @type {Array<{ code: string, name: string }>} */ let componentTypes = [];
+  async function readComponentTypes() {
+    if (componentTypes.length) return;
+    try { componentTypes = await api.getAll('component_types', { select: 'id, code, name', orderBy: 'name', ascending: true }); }
+    catch (/** @type {any} */ err) { error = errMessage(err, 'The component types could not be read.'); }
+  }
+  const typesPicked = (/** @type {any} */ f) => String(f.optionsText ?? '').split('\n').map((o) => o.trim()).filter(Boolean);
+  function toggleType(/** @type {any} */ f, /** @type {string} */ code) {
+    const now = typesPicked(f);
+    f.optionsText = (now.includes(code) ? now.filter((c) => c !== code) : [...now, code]).join('\n');
+    fields = fields;
+  }
   function toggleClears(/** @type {any} */ m, /** @type {string} */ key) {
     const has = (m.clears_fields ?? []).includes(key);
     m.clears_fields = has ? m.clears_fields.filter((/** @type {string} */ k) => k !== key) : [...(m.clears_fields ?? []), key];
@@ -658,7 +672,19 @@
                   <td class="py-1 pr-2"><select class={inputCls} bind:value={f.type} on:change={() => (fields = fields)} aria-label="Field type">
                     {#each FIELD_TYPES as t (t.value)}<option value={t.value}>{t.label}</option>{/each}</select></td>
                   <td class="py-1 pr-2">{#if f.type === 'choice'}<textarea class="{inputCls} w-44" rows="2" bind:value={f.optionsText}
-                    on:input={() => (fields = fields)} aria-label="Choices"></textarea>{:else}<span class="text-xs text-slate-500">—</span>{/if}</td>
+                    on:input={() => (fields = fields)} aria-label="Choices"></textarea>
+                    {:else if f.type === 'component'}
+                      <details on:toggle={readComponentTypes}>
+                        <summary class="text-xs text-slate-300 cursor-pointer whitespace-nowrap">{typesPicked(f).length ? `${typesPicked(f).length} ${typesPicked(f).length === 1 ? 'type' : 'types'}` : 'Any type'}</summary>
+                        <div class="max-h-48 overflow-y-auto">
+                          {#each componentTypes as t (t.code)}
+                            <label class="flex items-center gap-1 text-xs text-slate-300 whitespace-nowrap">
+                              <input type="checkbox" checked={typesPicked(f).includes(t.code)} on:change={() => toggleType(f, t.code)}
+                                aria-label="{f.label} offers {t.name}" /> {t.name}</label>
+                          {/each}
+                        </div>
+                      </details>
+                    {:else}<span class="text-xs text-slate-500">—</span>{/if}</td>
                   {#if isCases}<td class="py-1 pr-2 text-center"><input type="checkbox" bind:checked={f.required_on_create} on:change={() => (fields = fields)} aria-label="Needed to open a case" /></td>{/if}
                   <td class="py-1 pr-2"><input class="{inputCls} w-48" bind:value={f.help} on:input={() => (fields = fields)} placeholder="(optional)" aria-label="Field help" /></td>
                   <td class="py-1 pr-2 font-mono text-xs text-slate-500">{f.key}</td>

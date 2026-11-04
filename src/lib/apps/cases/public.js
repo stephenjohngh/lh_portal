@@ -9,6 +9,7 @@
 
 import { api } from '#lib/utils/api.js';
 import { listDeadlines } from '#lib/workflow/workflowApi.js';
+import { isFinished } from '#lib/workflow/workflowModel.js';
 import { today as todayISO } from '#lib/utils/dates.js';
 
 /**
@@ -35,4 +36,34 @@ export async function listCaseDueDates(to = null) {
       date: d.due_on,
       overdue: d.due_on < today,
     }));
+}
+
+/**
+ * The cases that name a component in one of their component fields, open first:
+ * reference, process and step only (see the header). Every read is of the Cases
+ * app's own rows, which RLS gates on the grant, so without it this returns nothing.
+ *
+ * @param {string} componentId
+ * @returns {Promise<Array<{ id: string, reference: string, process: string, step: string, finished: boolean }>>}
+ */
+export async function listCasesForComponent(componentId) {
+  const processes = await api.getAll('workflows', { select: 'id, key, name', filters: { app_id: 'cases' }, orderBy: 'key' });
+  if (!processes.length) return [];
+  const ids = processes.map((p) => p.id);
+  const fields = await api.getAllIn('workflow_fields', 'workflow_id', ids, { select: 'workflow_id, key', filters: { type: 'component' }, orderBy: 'key', tiebreak: false });
+  const usable = new Set(fields.map((f) => f.workflow_id));
+  if (!usable.size) return [];
+  const [items, steps] = await Promise.all([
+    api.getAllIn('workflow_items', 'workflow_id', [...usable], { select: 'id, workflow_id, step_key, label, fields' }),
+    api.getAllIn('workflow_steps', 'workflow_id', [...usable], { select: 'workflow_id, key, name, kind', orderBy: 'key', tiebreak: false }),
+  ]);
+  const name = new Map(processes.map((p) => [p.id, p.name]));
+  const stepOf = new Map(steps.map((s) => [`${s.workflow_id}>${s.key}`, s]));
+  return items
+    .filter((i) => fields.some((f) => f.workflow_id === i.workflow_id && i.fields?.[f.key] === componentId))
+    .map((i) => {
+      const st = stepOf.get(`${i.workflow_id}>${i.step_key}`);
+      return { id: i.id, reference: i.label ?? '', process: name.get(i.workflow_id) ?? '', step: st?.name ?? i.step_key, finished: isFinished(st?.kind ?? '') };
+    })
+    .sort((a, b) => Number(a.finished) - Number(b.finished) || b.reference.localeCompare(a.reference));
 }

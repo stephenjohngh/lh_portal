@@ -26,7 +26,7 @@ export const LINK_TYPES = Object.freeze(['component', 'space', 'person']);
 export function linkOptions({ components = [], spaces = [], floors = [], types = [], people = [] } = {}) {
   const byText = (/** @type {any} */ a, /** @type {any} */ b) => a.text.localeCompare(b.text, 'en-GB', { numeric: true });
   return {
-    component: components.map((c) => ({ id: c.id, text: `${buildComponentRef(c, floors, types)}${c.label ? ` — ${c.label}` : ''}` })).sort(byText),
+    component: components.map((c) => ({ id: c.id, typeCode: c.type_code, text: `${buildComponentRef(c, floors, types)}${c.label ? ` — ${c.label}` : ''}` })).sort(byText),
     space: spaces.map((s) => ({ id: s.id, text: `${buildSpaceRef(s, floors)}${s.label || s.name ? ` — ${s.label || s.name}` : ''}` })).sort(byText),
     // A person is offered only with a short name (user, 2026-11-03): `text` is
     // "JS (Jane Smith)" for the picker, `short` is shown once chosen and

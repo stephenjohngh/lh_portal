@@ -71,7 +71,12 @@
   const cls = 'w-full px-2 py-1.5 text-sm bg-slate-900 border border-slate-600 rounded text-slate-200';
   $: options = field.type === 'component' || field.type === 'space' || field.type === 'person' ? links?.[field.type] ?? [] : [];
   // A person is offered only with a short name; one chosen before keeps showing.
-  $: shown = field.type === 'person' ? options.filter((/** @type {any} */ o) => o.offered) : options;
+  // A component field can be limited to types (its options hold the type codes);
+  // a value chosen before keeps showing.
+  $: shown = field.type === 'person' ? options.filter((/** @type {any} */ o) => o.offered)
+    : field.type === 'component' && field.options?.length
+      ? options.filter((/** @type {any} */ o) => field.options?.includes(o.typeCode) || o.id === value)
+      : options;
 </script>
 
 <div class="space-y-1">

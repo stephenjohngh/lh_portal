@@ -12,6 +12,7 @@
   import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import WorkflowItemControls from '#lib/workflow/WorkflowItemControls.svelte';
+  import CaseLatestChecks from './CaseLatestChecks.svelte';
   import { DOC_FOLDERS, entityFolderPath } from '#lib/utils/documentUtils.js';
   import { fmtDateTime, today } from '#lib/utils/dates.js';
   import { errMessage } from '#lib/utils/errors.js';
@@ -106,6 +107,7 @@
           {#if c.description}<p class="text-slate-300 whitespace-pre-line">{c.description}</p>{/if}
         {/if}
       </div>
+      <CaseLatestChecks {fields} values={item?.fields ?? {}} />
       <div class="border-t border-slate-700 pt-3">
         <AttachedDocuments entityType="case" entityId={c.id} {canEdit} canDelete={isAdmin}
           folderPath={entityFolderPath(DOC_FOLDERS.CASES, `${c.reference} ${c.title}`, c.id)} title="Documents" />

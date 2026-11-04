@@ -16,6 +16,8 @@
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import FieldInput from '#lib/workflow/FieldInput.svelte';
   import CasePanel from './components/CasePanel.svelte';
+  import BulkOpenModal from './components/BulkOpenModal.svelte';
+  import { bulkField } from './utils/bulkOpen.js';
   import { casesStore } from './stores/casesStore.js';
   import { missingToOpen, fieldChanges, LINK_TYPES } from '#lib/workflow/workflowFieldValues.js';
   import { loadLinkOptions } from '#lib/workflow/fieldLinks.js';
@@ -93,6 +95,10 @@
   /** @type {Record<string, any>} */
   let newValues = {};
   let creating = false;
+  // Open a case each for several failed components, where the process allows it.
+  let showBulk = false;
+  $: bulk = bulkField(s.fields);
+
   let newError = '';
   function startNew() {
     newTitle = ''; newDescription = ''; newError = '';
@@ -120,6 +126,7 @@
       <label class="flex items-center gap-1 text-xs text-slate-400">
         <input type="checkbox" bind:checked={showRetired} /> Show retired processes</label>
     {/if}
+    {#if ready && s.workflow && !s.workflow.retired_at && canEdit && bulk}<Button variant="secondary" size="small" on:click={() => (showBulk = true)}>+ Open for failed components</Button>{/if}
     {#if ready && s.workflow && !s.workflow.retired_at && canEdit}<Button variant="primary" size="small" on:click={startNew}>+ Open a case</Button>{/if}
   </div>
   <ErrorDisplay message={error || s.error || ''} onDismiss={() => (error = '')} />
@@ -185,6 +192,11 @@
     {/if}
   </AppGate>
 </div>
+
+{#if bulk}
+  <BulkOpenModal show={showBulk} field={bulk} workflow={s.workflow} steps={s.steps} items={s.items} cases={s.cases} {links}
+    on:close={() => (showBulk = false)} />
+{/if}
 
 <Modal show={showNew} title={s.workflow ? `Open a case — ${s.workflow.name}` : 'Open a case'} size="medium" on:close={() => (showNew = false)}>
   <div class="space-y-3 text-sm" data-testid="new-case-form">
