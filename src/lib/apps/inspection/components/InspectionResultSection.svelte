@@ -369,7 +369,7 @@
   .cl-sel-fail    { border-color:#ef4444; background:#1f0a0a; color:#f87171; }
   .cl-help-btn    { background:none; border:none; color:#7dd3fc; font-size:0.85rem; cursor:pointer; padding:0; line-height:1; flex-shrink:0; opacity:0.7; transition:opacity 0.15s; }
   .cl-help-btn:hover, .cl-help-active { opacity:1; color:#38bdf8; }
-  .cl-help-popup  { font-size:0.76rem; color:#bae6fd; background:#0c1a2e; border:1px solid #1e3a5f; border-radius:6px; padding:0.5rem 0.65rem; line-height:1.5; }
+  .cl-help-popup  { font-size:0.76rem; color:#bae6fd; background:#0c1a2e; border:1px solid #1e3a5f; border-radius:6px; padding:0.5rem 0.65rem; line-height:1.5; white-space:pre-line; }
   /* Auto-generated fail note — read-only, shown above the notes textarea */
   .auto-note { font-size:0.76rem; color:#f87171; background:#1f0a0a; border:1px solid #7f1d1d; border-radius:6px; padding:0.45rem 0.65rem; line-height:1.5; }
 
