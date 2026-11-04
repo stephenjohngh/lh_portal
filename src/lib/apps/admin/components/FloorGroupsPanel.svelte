@@ -123,7 +123,7 @@
     <div class="border border-slate-700 rounded-lg p-3 space-y-3" data-testid="floor-group">
       <div class="flex items-start gap-2 flex-wrap">
         <div class="w-56">
-          <FormInput label="Name" bind:value={row.name} on:input={() => { row.dirty = true; }} error={row.dirty ? problemOf(row) : ''} />
+          <FormInput label="Name" bind:value={row.name} on:input={() => { row.dirty = true; }} error={row.dirty && (row.id || row.name) ? problemOf(row) : ''} />
         </div>
         <div class="flex items-center gap-1 ml-auto">
           <Button variant="tertiary" size="xs" ariaLabel="Move {row.name} earlier" on:click={() => swap(i, i - 1)} disabled={busy || i === 0}>↑</Button>
@@ -146,6 +146,6 @@
 </div>
 
 <ConfirmDialog show={!!pendingDelete} danger={true} processing={busy}
-  title="Delete this floor group?"
+  title="Delete this floor group?" confirmText="Delete group"
   message={`"${pendingDelete?.name ?? ''}" goes from the Components tab. The floors and components are not changed. A saved preset that uses it will show all floors.`}
   on:confirm={confirmDelete} on:cancel={() => (pendingDelete = null)} />

@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema41.csv
+// Source: docs/ops/supabase_lhportal_schema42.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -2062,7 +2062,22 @@ export type Database = {
           group_id?: string
           floor_id?: string
         }
-        Relationships: []
+        Relationships: [
+            {
+              foreignKeyName: "floor_group_floors_group_id_fkey"
+              columns: ["group_id"]
+              isOneToOne: false
+              referencedRelation: "floor_groups"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "floor_group_floors_floor_id_fkey"
+              columns: ["floor_id"]
+              isOneToOne: false
+              referencedRelation: "floors"
+              referencedColumns: ["id"]
+            }
+          ]
       }
       floor_groups: {
         Row: {
@@ -2092,7 +2107,22 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+            {
+              foreignKeyName: "floor_groups_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "floor_groups_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
       }
       floors: {
         Row: {
