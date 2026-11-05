@@ -19,14 +19,15 @@
 // obligation statuses. `PROJECT_STATUS.md` §6nn and the design doc §11.
 //
 // ── What it deliberately does NOT look at ───────────────────────────────────
-// Only works schedules. A corrective MAINTENANCE JOB would also be real
-// coverage, but a job reaches a component through `maintenance_job_components`,
+// Works schedules and live Cases (2026-11-05: a failed door with a case open read
+// as neglected). ⛔ A live case is shown as its own figure and never as coverage:
+// it says somebody is working on the fault, not that the fault is dealt with.
+// A corrective MAINTENANCE JOB would also be real coverage, but a job reaches a component through `maintenance_job_components`,
 // which this report does not load — and there are zero jobs, so wiring a second
 // coverage source today would be machinery with no users (the mistake recorded
 // against `outOfScope`). ⚠ The honesty is carried by the LABEL rather than by a
-// caveat: the third figure says *no works schedule issued*, which stays true
-// whatever else may be happening, instead of *nothing is being done*, which
-// would not.
+// caveat: the last figure says *with neither*, which stays true whatever else may
+// be happening, instead of *nothing is being done*, which would not.
 
 /** A component in one of these statuses is an open fault. */
 export const FAULT_STATUSES = ['failed', 'problem'];
@@ -45,20 +46,25 @@ export const COVERING_SCHEDULE_STATUSES = ['issued', 'completed'];
  * @typedef {{ component_id: string, action?: string|null,
  *             schedule?: { id: string, title?: string|null, reference?: string|null,
  *                          status?: string|null } | null }} WorksItem
+ * @typedef {{ component_id: string, id: string, reference?: string|null,
+ *             process?: string|null, step?: string|null }} OpenCase
  */
 
 /**
  * The open-fault band.
  *
- * @param {{ components?: FaultComponent[], worksItems?: WorksItem[] }} input
+ * `covered`, `withCase` and `neither` add up to `open`: a fault on an issued
+ * schedule counts as covered even if it has a case too.
+ *
+ * @param {{ components?: FaultComponent[], worksItems?: WorksItem[], cases?: OpenCase[] }} input
  * @returns {{
  *   open: number, failed: number, problem: number,
- *   covered: number, uncovered: number,
+ *   covered: number, uncovered: number, withCase: number, neither: number,
  *   rows: Array<FaultComponent & { schedules: Array<{ id: string, title: string|null,
- *           reference: string|null, status: string }> }>
+ *           reference: string|null, status: string }>, cases: OpenCase[] }>
  * }}
  */
-export function correctiveSummary({ components = [], worksItems = [] } = {}) {
+export function correctiveSummary({ components = [], worksItems = [], cases = [] } = {}) {
   // Coverage first, so the per-component lookup is one pass rather than a scan
   // per fault. Only schedules that have actually gone out count.
   /** @type {Map<string, Array<{id: string, title: string|null, reference: string|null, status: string}>>} */
@@ -84,9 +90,14 @@ export function correctiveSummary({ components = [], worksItems = [] } = {}) {
 
   const rows = components
     .filter(c => c && FAULT_STATUSES.includes(c.status ?? ''))
-    .map(c => ({ ...c, schedules: covering.get(c.id) ?? [] }));
+    .map(c => ({
+      ...c,
+      schedules: covering.get(c.id) ?? [],
+      cases: cases.filter(k => k?.component_id === c.id),
+    }));
 
   const covered = rows.filter(r => r.schedules.length > 0).length;
+  const withCase = rows.filter(r => r.schedules.length === 0 && r.cases.length > 0).length;
 
   return {
     open: rows.length,
@@ -94,6 +105,8 @@ export function correctiveSummary({ components = [], worksItems = [] } = {}) {
     problem: rows.filter(r => r.status === 'problem').length,
     covered,
     uncovered: rows.length - covered,
+    withCase,
+    neither: rows.length - covered - withCase,
     rows,
   };
 }

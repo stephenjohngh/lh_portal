@@ -49,7 +49,7 @@ export const SOURCES = {
   gt_competence: { key: 'gt_competence', label: 'Competence expiry',  app: 'Golden Thread', appId: 'golden_thread', category: 'compliance' },
   // Issued works schedules on their expected completion date (migration 219).
   works_due:     { key: 'works_due',     label: 'Works due',          app: 'Building Assets', appId: 'building_assets', category: 'maintenance' },
-  // Phase 3: open faults with no works schedule issued. The data is Building
+  // Phase 3: open faults with no works schedule issued and no live case. The data is Building
   // Assets' components; the rule is the compliance position's fault band.
   fault:         { key: 'fault',         label: 'Open fault',         app: 'Building Assets', appId: 'building_assets', category: 'maintenance' },
   // Parking, 2026-09-26: agreements ending, notice running out, drafts not
@@ -329,7 +329,7 @@ export function fromUnaddressedFault(row, today) {
     id: row?.id,
     title: `Fault: ${row?.label ?? 'component'}`,
     date: today,
-    detail: `${row?.status === 'failed' ? 'Failed' : 'Problem'} — no works schedule issued`,
+    detail: `${row?.status === 'failed' ? 'Failed' : 'Problem'} — no works schedule issued, no live case`,
     needsArranging: true,
   });
 }

@@ -146,3 +146,27 @@ describe('faultLabel', () => {
     expect(faultLabel({ id: '244739a8-0000-0000-0000-000000000000' })).toBe('Unnamed component');
   });
 });
+
+describe('a live case, beside the works schedules', () => {
+  const faults = [comp('a', 'failed'), comp('b', 'failed'), comp('c', 'problem')];
+  const line = (id) => ({ component_id: id, schedule: { id: 's', status: 'issued' } });
+  const live = (id) => ({ component_id: id, id: `k-${id}`, reference: 'CAS-1', step: 'Assess' });
+
+  it('is counted on its own, and never as coverage', () => {
+    const s = correctiveSummary({ components: faults, cases: [live('a')] });
+    expect(s).toMatchObject({ covered: 0, uncovered: 3, withCase: 1, neither: 2 });
+  });
+  it('the three figures add up to the open faults, a fault with both counting once', () => {
+    const s = correctiveSummary({ components: faults, worksItems: [line('a')], cases: [live('a'), live('b')] });
+    expect(s).toMatchObject({ covered: 1, withCase: 1, neither: 1 });
+    expect(s.covered + s.withCase + s.neither).toBe(s.open);
+  });
+  it('a case on a component that is not a fault changes nothing', () => {
+    const s = correctiveSummary({ components: [comp('z', 'ok'), ...faults], cases: [live('z')] });
+    expect(s).toMatchObject({ open: 3, withCase: 0, neither: 3 });
+  });
+  it('each row carries its cases', () => {
+    const s = correctiveSummary({ components: faults, cases: [live('a')] });
+    expect(s.rows.find((r) => r.id === 'a').cases.map((k) => k.reference)).toEqual(['CAS-1']);
+  });
+});

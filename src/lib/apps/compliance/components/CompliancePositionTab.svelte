@@ -35,6 +35,7 @@
   // migration 206 — see compliance/public.js.
   import { listPlannedObligations, listStatutoryExclusions, loadWalkCoverage, walkEvents } from '../public.js';
   import { listComponentsByStatus, listWorksLinesFor } from '#lib/apps/building_assets/public.js';
+  import { listOpenCaseLinks } from '#lib/apps/cases/public.js';
   import { correctiveSummary, faultLabel, FAULT_STATUSES } from '../utils/correctiveWork.js';
   import { permissions } from '#lib/stores/permissions.js';
   import { requestDownload } from '#lib/utils/download.js';
@@ -75,6 +76,9 @@
   let walkEvidenceNote = '';
   let jobEvidenceNote = '';
   let exclusionsNote = '';
+  /** @type {any[]} */
+  let openCases = [];
+  let casesNote = '';
   let faultsAvailable = true;
   /** What each walk covered and what each duty covers — null until read, or when it could not be. */
   let coverage = null;
@@ -154,6 +158,13 @@
         faultsAvailable = false;
         logger('⚠ open faults unavailable:', err.message);
       }
+      try {
+        if (faults.length) openCases = await listOpenCaseLinks();
+      } catch (/** @type {any} */ err) {
+        // ⛔ Without them a fault with a live case reads as having neither.
+        casesNote = 'The live cases could not be read, so a fault with a case may be counted as having neither.';
+        logger('⚠ open cases unavailable:', err.message);
+      }
     } else {
       faultsAvailable = false;
     }
@@ -166,7 +177,7 @@
   // no duty, so adding it to the obligation counts would make an open fault
   // list look like compliance progress. An invisible open fault is the "reads
   // plausibly while saying something untrue" failure; a summed one is worse.
-  $: corrective = correctiveSummary({ components: faults, worksItems: worksLines });
+  $: corrective = correctiveSummary({ components: faults, worksItems: worksLines, cases: openCases });
   let showFaults = false;
 
   // -- The two reports ---------------------------------------------------------
@@ -309,20 +320,23 @@
             <span class="faults-sub">
               {corrective.failed} failed · {corrective.problem} problem ·
               {corrective.covered} on an issued works schedule ·
-              <strong>{corrective.uncovered} with no works schedule issued</strong>
+              {corrective.withCase} with a live case ·
+              <strong>{corrective.neither} with neither</strong>
             </span>
           </span>
           <span class="faults-toggle">{showFaults ? 'Hide' : 'Show'}</span>
         </div>
         <p class="faults-why">
           Corrective work — a component found broken. It discharges no compliance obligation,
-          so it is counted here and not above. ⚠ Coverage means a works schedule that has been
-          <em>issued</em>; a draft has not been sent to anybody, and a corrective maintenance job
-          is not counted at all.
+          so it is counted here and not above. ⚠ A works schedule counts once it has been
+          <em>issued</em>; a draft has not been sent to anybody. A live case means somebody is
+          working on it, not that it is dealt with. A corrective maintenance job is not counted
+          at all.
         </p>
+        {#if casesNote}<p class="degraded">⚠ {casesNote}</p>{/if}
         {#if showFaults}
           <div class="tbl faultlist">
-            <div class="th"><div>Component</div><div>Status</div><div>Works schedule</div></div>
+            <div class="th"><div>Component</div><div>Status</div><div>Works schedule or case</div></div>
             {#each corrective.rows as f (f.id)}
               <div class="tr">
                 <div class="c-name"><span class="nm">{faultLabel(f)}</span>
@@ -330,12 +344,14 @@
                 </div>
                 <div><span class="pill {f.status === 'failed' ? 'st-breach' : 'st-attention'}">{f.status === 'failed' ? 'Failed' : 'Problem'}</span></div>
                 <div>
-                  {#if f.schedules.length}
-                    {#each f.schedules as sched (sched.id)}
-                      <span class="sched">{sched.reference ?? sched.title} · {sched.status}</span>
-                    {/each}
-                  {:else}
-                    <span class="none">None issued</span>
+                  {#each f.schedules as sched (sched.id)}
+                    <span class="sched">{sched.reference ?? sched.title} · {sched.status}</span>
+                  {/each}
+                  {#each f.cases as c (c.id)}
+                    <span class="sched">{c.reference} · {c.step}</span>
+                  {/each}
+                  {#if !f.schedules.length && !f.cases.length}
+                    <span class="none">Neither</span>
                   {/if}
                 </div>
               </div>

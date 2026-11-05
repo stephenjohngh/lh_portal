@@ -74,3 +74,25 @@ describe('listUnaddressedFaults', () => {
     expect(f.label).toBe('C-a');
   });
 });
+
+describe('listUnaddressedFaults and live cases', () => {
+  beforeEach(() => {
+    h.tables.components = [{ id: 'a', status: 'failed', label: 'A' }, { id: 'b', status: 'failed', label: 'B' }];
+    h.tables.workflows = [{ id: 'w', key: 'k', name: 'P', app_id: 'cases' }];
+    h.tables.workflow_fields = [{ workflow_id: 'w', key: 'door', type: 'component' }];
+    h.tables.workflow_steps = [{ workflow_id: 'w', key: 'open', name: 'Assess', kind: 'start' }, { workflow_id: 'w', key: 'done', name: 'Closed', kind: 'done' }];
+  });
+  it('a fault with an open case is arranged, so it leaves the list', async () => {
+    h.tables.workflow_items = [{ id: 'i', workflow_id: 'w', step_key: 'open', label: 'CAS-1', fields: { door: 'a' } }];
+    expect((await listUnaddressedFaults()).map((f) => f.id)).toEqual(['b']);
+  });
+  it('a finished case leaves the fault on the list', async () => {
+    h.tables.workflow_items = [{ id: 'i', workflow_id: 'w', step_key: 'done', label: 'CAS-1', fields: { door: 'a' } }];
+    expect((await listUnaddressedFaults()).map((f) => f.id).sort()).toEqual(['a', 'b']);
+  });
+  it('with no Cases grant no case is read, and the fault stays listed', async () => {
+    h.tables.workflows = [];
+    h.tables.workflow_items = [{ id: 'i', workflow_id: 'w', step_key: 'open', label: 'CAS-1', fields: { door: 'a' } }];
+    expect((await listUnaddressedFaults()).map((f) => f.id).sort()).toEqual(['a', 'b']);
+  });
+});

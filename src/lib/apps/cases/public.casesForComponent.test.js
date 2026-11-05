@@ -7,7 +7,7 @@ vi.mock('#lib/utils/api.js', () => ({ api: {
 } }));
 vi.mock('#lib/workflow/workflowApi.js', () => ({ listDeadlines: async () => [] }));
 
-import { listCasesForComponent } from './public.js';
+import { listCasesForComponent, listOpenCaseLinks } from './public.js';
 
 beforeEach(() => {
   h.processes = [{ id: 'w', key: 'k', name: 'Fire door defect' }];
@@ -33,5 +33,20 @@ describe('listCasesForComponent', () => {
   it('is empty without the grant, because RLS returns no processes', async () => {
     h.processes = [];
     expect(await listCasesForComponent('a')).toEqual([]);
+  });
+});
+
+describe('listOpenCaseLinks', () => {
+  it('lists open cases by the component they name, and no finished case', async () => {
+    const rows = await listOpenCaseLinks();
+    expect(rows.map((r) => [r.component_id, r.reference]).sort()).toEqual([['a', 'CAS-2'], ['b', 'CAS-3']]);
+  });
+  it('⛔ says nothing a case holds beyond its reference, process and step', async () => {
+    const [row] = await listOpenCaseLinks();
+    expect(Object.keys(row).sort()).toEqual(['component_id', 'id', 'process', 'reference', 'step']);
+  });
+  it('is empty without the grant', async () => {
+    h.processes = [];
+    expect(await listOpenCaseLinks()).toEqual([]);
   });
 });

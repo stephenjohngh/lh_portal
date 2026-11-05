@@ -47,6 +47,27 @@ export async function listCaseDueDates(to = null) {
  * @returns {Promise<Array<{ id: string, reference: string, process: string, step: string, finished: boolean }>>}
  */
 export async function listCasesForComponent(componentId) {
+  return (await readCaseRows())
+    .filter((c) => c.components.includes(componentId))
+    .map(({ components, ...row }) => row)
+    .sort((a, b) => Number(a.finished) - Number(b.finished) || b.reference.localeCompare(a.reference));
+}
+
+/**
+ * Every open case that names a component, one row per case and component, for
+ * the compliance position's open-fault band (2026-11-05). The same limits as
+ * above: reference, process and step only, and nothing without the grant.
+ *
+ * @returns {Promise<Array<{ component_id: string, id: string, reference: string, process: string, step: string }>>}
+ */
+export async function listOpenCaseLinks() {
+  return (await readCaseRows())
+    .filter((c) => !c.finished)
+    .flatMap(({ components, finished, ...row }) => components.map((component_id) => ({ component_id, ...row })));
+}
+
+/** Every case in a process with a component field, with the components it names. */
+async function readCaseRows() {
   const processes = await api.getAll('workflows', { select: 'id, key, name', filters: { app_id: 'cases' }, orderBy: 'key' });
   if (!processes.length) return [];
   const ids = processes.map((p) => p.id);
@@ -59,11 +80,9 @@ export async function listCasesForComponent(componentId) {
   ]);
   const name = new Map(processes.map((p) => [p.id, p.name]));
   const stepOf = new Map(steps.map((s) => [`${s.workflow_id}>${s.key}`, s]));
-  return items
-    .filter((i) => fields.some((f) => f.workflow_id === i.workflow_id && i.fields?.[f.key] === componentId))
-    .map((i) => {
-      const st = stepOf.get(`${i.workflow_id}>${i.step_key}`);
-      return { id: i.id, reference: i.label ?? '', process: name.get(i.workflow_id) ?? '', step: st?.name ?? i.step_key, finished: isFinished(st?.kind ?? '') };
-    })
-    .sort((a, b) => Number(a.finished) - Number(b.finished) || b.reference.localeCompare(a.reference));
+  return items.map((i) => {
+    const st = stepOf.get(`${i.workflow_id}>${i.step_key}`);
+    const components = fields.filter((f) => f.workflow_id === i.workflow_id).map((f) => i.fields?.[f.key]).filter(Boolean);
+    return { id: i.id, reference: i.label ?? '', process: name.get(i.workflow_id) ?? '', step: st?.name ?? i.step_key, finished: isFinished(st?.kind ?? ''), components };
+  });
 }
