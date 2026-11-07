@@ -42,6 +42,7 @@ import {
   COLOURS, BORDERS, CELL_PAD,
 } from '#lib/server/docxHelpers.js';
 import { fmtGenerated, fmtDate, fmtDateTime, fmtTime, fmtDuration, today } from '#lib/utils/dates.js';
+import { noAccessReasonLabel } from '#lib/utils/resultConstants.js';
 
 const logger = getLogger('generateInspectionsReport');
 
@@ -54,13 +55,7 @@ function resultColor(result) {
        : '6B7280';
 }
 
-const NO_ACCESS_REASON_LABELS = {
-  locked: 'Locked / no key', refused: 'Resident refused', obstructed: 'Obstructed',
-  unsafe: 'Unsafe to access', other: 'Other',
-};
-function noAccessReasonLabel(v) {
-  return NO_ACCESS_REASON_LABELS[v] ?? v ?? 'reason not given';
-}
+const reasonText = (v) => (v ? noAccessReasonLabel(v) : 'reason not given');
 
 function resultLabel(result) {
   return { ok: 'PASS', failed: 'FAIL', problem: 'PROBLEM', inactive: 'INACTIVE', no_access: 'NO ACCESS' }[result]
@@ -456,7 +451,7 @@ async function buildDetailedSession({ session: s, inspections }, isFirst, includ
         // assessed so the report evidences the "best endeavours" attempt.
         dCell(
           res === 'no_access'
-            ? ['Not assessed — ' + noAccessReasonLabel(ins.no_access_reason), ins.inspector_notes]
+            ? ['Not assessed — ' + reasonText(ins.no_access_reason), ins.inspector_notes]
                 .filter(Boolean).join(' · ')
             : ins.inspector_notes,
           DET_COLS[4], { alt },
@@ -584,7 +579,7 @@ async function buildDetailedSession({ session: s, inspections }, isFirst, includ
         children: [
           new TextRun({ text: `•  ${componentRef(ins)}`, font: 'Arial', size: 18, bold: true, color: COLOURS.textDark }),
           new TextRun({
-            text:  `   ${ins.label || '—'}  ·  ${noAccessReasonLabel(ins.no_access_reason)}`,
+            text:  `   ${ins.label || '—'}  ·  ${reasonText(ins.no_access_reason)}`,
             font:  'Arial', size: 18, color: '475569',
           }),
         ],

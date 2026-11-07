@@ -4,7 +4,8 @@
 // PROJECT_STATUS §6aaa item 7):
 //   · issue priorities and action statuses → #lib/utils/constants.js
 //     (getPriorityLabel, getActionStatusLabel);
-//   · component statuses → #lib/utils/resultConstants.js (statusLabel);
+//   · component statuses and no-access reasons → #lib/utils/resultConstants.js
+//     (statusLabel, noAccessReasonLabel);
 //   · a thrown value as text → #lib/utils/errors.js (errMessage).
 // The phone issues app, Mobile Plan, the plan marker and the component Word
 // report each kept their own copy. A copy agrees until the day one changes.
@@ -40,6 +41,9 @@ const RULES = [
   { what: 'a component status word', owner: 'src/lib/utils/resultConstants.js',
     use: 'statusLabel(status)', pattern: new RegExp("\\b(problem|failed)\\s*:\\s*'[^'#]*\\b(Problem|Failed)\\b"),
     sample: "const STATUS_LABEL = { ok: 'OK', problem: 'Problem', failed: 'Failed' };" },
+  { what: 'a no-access reason word', owner: 'src/lib/utils/resultConstants.js',
+    use: 'noAccessReasonLabel(value)', pattern: new RegExp("'Locked / no key'"),
+    sample: "  locked: 'Locked / no key', refused: 'Resident refused'," },
   { what: 'a thrown value as text', owner: 'src/lib/utils/errors.js',
     use: 'errMessage(err)', pattern: new RegExp('\\?\\.message \\?\\? String\\(|instanceof Error \\?'),
     sample: '      checkError = err?.message ?? String(err);' },
