@@ -38,7 +38,7 @@
   import {
     assetAttrsFromDocument, fileProxyUrl, fetchSheetPreview,
   } from '../utils/assetPreview.js';
-  import { findBrokenReferences, describeBrokenReferences } from '../utils/brokenRefs.js';
+  import { findBrokenReferences, describeBrokenReferences, referenceCheckState } from '../utils/brokenRefs.js';
   import { extractPackReferences } from '../utils/docLinks.js';
   import { unindexedFiles, shelfIndexRows } from '../utils/documentIndex.js';
   import PublishModal      from './PublishModal.svelte';
@@ -540,6 +540,8 @@
   // just as broken as a link in a paragraph.
   $: broken = findBrokenReferences(
     extractPackReferences(docs, datasets, records), docs, files, datasets);
+  // Nothing is called broken until everything it could point at has been read.
+  $: refCheck = referenceCheckState(pack.id, $dossierStore);
 
   // ── Backlinks ─────────────────────────────────────────────────────────────
 
@@ -877,7 +879,12 @@
 
     <div class="flex-1"></div>
 
-    {#if broken.length}
+    {#if refCheck === 'checking'}
+      <span class="text-xs text-slate-500 shrink-0">Checking references…</span>
+    {:else if refCheck === 'unreadable'}
+      <span class="text-xs text-amber-400 shrink-0"
+            title="The pack’s files or tables could not be read. Reopen the pack to try again.">⚠ References not checked</span>
+    {:else if broken.length}
       <!-- A pack about to be handed to someone outside the portal should not
            contain references that go nowhere. -->
       <Button variant="tertiary" size="xs" title="Show which references no longer resolve" on:click={() => showBroken = !showBroken}>⚠ {describeBrokenReferences(broken)}</Button>
@@ -906,7 +913,7 @@
     {/if}
   </div>
 
-  {#if showBroken && broken.length}
+  {#if showBroken && refCheck === 'ready' && broken.length}
     <div class="px-4 py-3 border-b border-amber-500/20 bg-amber-500/5 shrink-0">
       <div class="flex items-start gap-3">
         <div class="flex-1 min-w-0 space-y-1">

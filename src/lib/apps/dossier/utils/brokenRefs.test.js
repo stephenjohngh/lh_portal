@@ -2,7 +2,7 @@
 // Type-1 tests for broken-reference detection.
 
 import { describe, it, expect } from 'vitest';
-import { findBrokenReferences, describeBrokenReferences } from './brokenRefs.js';
+import { findBrokenReferences, describeBrokenReferences, referenceCheckState } from './brokenRefs.js';
 
 const docs  = [{ id: 'd1', title: 'Overview' }, { id: 'd2', title: 'Chronology' }];
 const files = [{ id: 'f1' }];
@@ -119,5 +119,27 @@ describe('describeBrokenReferences', () => {
 
   it('says nothing when everything resolves', () => {
     expect(describeBrokenReferences([])).toBe('');
+  });
+});
+
+describe('referenceCheckState', () => {
+  const read = { filesReadFor: 'p1', datasetsReadFor: 'p1', loadingDocs: false };
+
+  it('waits until the files, the tables and the pages have all been read', () => {
+    expect(referenceCheckState('p1', {})).toBe('checking');
+    expect(referenceCheckState('p1', { ...read, filesReadFor: null })).toBe('checking');
+    expect(referenceCheckState('p1', { ...read, datasetsReadFor: null })).toBe('checking');
+    expect(referenceCheckState('p1', { ...read, loadingDocs: true })).toBe('checking');
+    expect(referenceCheckState('p1', read)).toBe('ready');
+  });
+
+  it('does not trust what was read for another pack', () => {
+    expect(referenceCheckState('p2', read)).toBe('checking');
+  });
+
+  it('says the check could not be done when a read failed', () => {
+    expect(referenceCheckState('p1', { ...read, filesReadFailed: true })).toBe('unreadable');
+    expect(referenceCheckState('p1', { ...read, datasetsReadFailed: true })).toBe('unreadable');
+    expect(referenceCheckState('p1', { ...read, inheritedError: 'no' })).toBe('unreadable');
   });
 });

@@ -224,6 +224,32 @@ describe('loadPackFiles', () => {
     expect(get(store).files).toEqual([]);
   });
 
+  it('says which pack was read only once its files are in', async () => {
+    let finish;
+    h.listDocuments.mockReturnValueOnce(new Promise((r) => { finish = r; }));
+    const reading = store.loadPackFiles('p1');
+    expect(get(store).filesReadFor).toBeNull();
+    finish([{ id: 'f1' }]);
+    await reading;
+    expect(get(store).filesReadFor).toBe('p1');
+  });
+
+  it('keeps the pack marked as read while the same pack reloads', async () => {
+    await store.loadPackFiles('p1');
+    let finish;
+    h.listDocuments.mockReturnValueOnce(new Promise((r) => { finish = r; }));
+    const reading = store.loadPackFiles('p1');
+    expect(get(store).filesReadFor).toBe('p1');
+    finish([]);
+    await reading;
+  });
+
+  it('records a failed read, so empty is not taken for read', async () => {
+    h.listDocuments.mockRejectedValueOnce(new Error('documents down'));
+    await store.loadPackFiles('p1');
+    expect(get(store)).toMatchObject({ filesReadFor: null, filesReadFailed: true });
+  });
+
   it('clears the shelf when the pack is closed', async () => {
     h.listDocuments.mockResolvedValueOnce([{ id: 'f1' }]);
     await store.loadPackFiles('p1');

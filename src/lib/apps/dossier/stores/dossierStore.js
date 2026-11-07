@@ -115,6 +115,10 @@ function createDossierStore() {
     // mixed into `files`: those are the pack's own, the ones it may change.
     inheritedFiles: [], inheritedFolders: [], inheritedPlacements: [],
     inheritedError: null, inheritedLoading: false,
+    // Which pack's files and tables have actually been read, and whether a read
+    // failed. Empty lists mean nothing until these say so: the broken-reference
+    // check reads them (brokenRefs.js referenceCheckState).
+    filesReadFor: null, datasetsReadFor: null, filesReadFailed: false, datasetsReadFailed: false,
     datasets:     [],   // the pack's structured lists (chronology etc.)
     // EVERY record in the pack, not just the open table's. The broken-reference
     // check has to see rows in tables the author has not opened, and P3's
@@ -491,8 +495,11 @@ function createDossierStore() {
 
   async function loadPackFiles(packId) {
     const none = { files: [], folders: [], placements: [], inheritedFiles: [], inheritedFolders: [], inheritedPlacements: [], inheritedError: null, inheritedLoading: false };
-    if (!packId) { update(s => ({ ...s, ...none })); return []; }
+    if (!packId) { update(s => ({ ...s, ...none, filesReadFor: null, filesReadFailed: false })); return []; }
     const templateId = getState().packs.find(p => p.id === packId)?.template_id ?? null;
+    // A reload of the same pack keeps what it has, so adding a file does not
+    // send the check back to "checking".
+    update(s => ({ ...s, filesReadFailed: false, filesReadFor: s.filesReadFor === packId ? packId : null }));
     try {
       const [files, folders, placements] = await Promise.all([
         listDocuments({ entity_type: 'dossier_pack', entity_id: packId }),
@@ -504,7 +511,7 @@ function createDossierStore() {
     } catch (err) {
       // Non-fatal: a pack is still perfectly editable without its shelf.
       logger('⚠ could not load pack files', err);
-      update(s => ({ ...s, ...none }));
+      update(s => ({ ...s, ...none, filesReadFor: null, filesReadFailed: true }));
       return [];
     }
 
@@ -530,6 +537,7 @@ function createDossierStore() {
     } else {
       update(s => ({ ...s, inheritedFiles: [], inheritedFolders: [], inheritedPlacements: [], inheritedError: null, inheritedLoading: false }));
     }
+    update(s => ({ ...s, filesReadFor: packId }));
     return getState().files;
   }
 
@@ -644,7 +652,8 @@ function createDossierStore() {
   // referenced from wherever it is useful.
 
   async function loadDatasets(packId) {
-    if (!packId) { update(s => ({ ...s, datasets: [] })); return []; }
+    if (!packId) { update(s => ({ ...s, datasets: [], datasetsReadFor: null, datasetsReadFailed: false })); return []; }
+    update(s => ({ ...s, datasetsReadFailed: false, datasetsReadFor: s.datasetsReadFor === packId ? packId : null }));
     try {
       const datasets = await api.get('dossier_datasets', {
         filters: { pack_id: packId }, orderBy: 'created_at', ascending: true,
@@ -665,12 +674,12 @@ function createDossierStore() {
         return fields === r.fields ? r : { ...r, fields };
       });
 
-      update(s => ({ ...s, datasets, records }));
+      update(s => ({ ...s, datasets, records, datasetsReadFor: packId }));
       return datasets;
     } catch (err) {
       // Non-fatal: a pack is still editable without its tables.
       logger('⚠ could not load datasets', err);
-      update(s => ({ ...s, datasets: [] }));
+      update(s => ({ ...s, datasets: [], datasetsReadFor: null, datasetsReadFailed: true }));
       return [];
     }
   }
@@ -1065,6 +1074,7 @@ function createDossierStore() {
     update(s => ({
       ...s, activePackId: null, docs: [], files: [], folders: [], placements: [],
       inheritedFiles: [], inheritedFolders: [], inheritedPlacements: [], inheritedError: null, inheritedLoading: false,
+      filesReadFor: null, datasetsReadFor: null, filesReadFailed: false, datasetsReadFailed: false,
       datasets: [], records: [], publications: [],
     }));
   }

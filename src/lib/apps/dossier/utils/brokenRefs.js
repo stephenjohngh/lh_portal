@@ -92,6 +92,21 @@ export function findBrokenReferences(links = [], docs = [], files = [], datasets
     a.origin.title.localeCompare(b.origin.title) || a.label.localeCompare(b.label));
 }
 
+/**
+ * May the pack's references be judged yet? Until its pages, files and tables have
+ * been read, every reference to them looks broken, so "broken" would be untrue.
+ * A failed read is its own answer: the check could not be done.
+ * @param {string} packId
+ * @param {{ loadingDocs?: boolean, filesReadFor?: string|null, datasetsReadFor?: string|null,
+ *           filesReadFailed?: boolean, datasetsReadFailed?: boolean, inheritedError?: string|null }} state
+ * @returns {'checking'|'unreadable'|'ready'}
+ */
+export function referenceCheckState(packId, state) {
+  if (state.filesReadFailed || state.datasetsReadFailed || state.inheritedError) return 'unreadable';
+  const read = state.filesReadFor === packId && state.datasetsReadFor === packId && !state.loadingDocs;
+  return read ? 'ready' : 'checking';
+}
+
 /** One line summarising the state of a pack's references. */
 export function describeBrokenReferences(broken = []) {
   if (!broken.length) return '';
