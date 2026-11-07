@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema45.csv
+// Source: docs/ops/supabase_lhportal_schema46.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -758,6 +758,7 @@ export type Database = {
           walk_session_id: string | null
           no_access_reason: string | null
           readings: Json
+          as_recorded: Json | null
         }
         Insert: {
           id?: string
@@ -771,6 +772,7 @@ export type Database = {
           walk_session_id?: string | null
           no_access_reason?: string | null
           readings?: Json
+          as_recorded?: Json | null
         }
         Update: {
           id?: string
@@ -784,6 +786,7 @@ export type Database = {
           walk_session_id?: string | null
           no_access_reason?: string | null
           readings?: Json
+          as_recorded?: Json | null
         }
         Relationships: [
             {
@@ -3280,6 +3283,24 @@ export type Database = {
               referencedColumns: ["id"]
             }
           ]
+      }
+      inspection_check_sets: {
+        Row: {
+          id: string
+          checks: Json
+          first_used_at: string
+        }
+        Insert: {
+          id: string
+          checks: Json
+          first_used_at?: string
+        }
+        Update: {
+          id?: string
+          checks?: Json
+          first_used_at?: string
+        }
+        Relationships: []
       }
       issues: {
         Row: {
