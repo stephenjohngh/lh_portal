@@ -150,6 +150,7 @@ if (_oauthId && _oauthSecret && _oauthRefresh && _saEmail && _saKey) {
 
 // ── Drive client singleton ─────────────────────────────────────────────────
 let _drive = null;
+let _auth  = null;   // the same credential, for the one call the client library cannot make
 
 /** @returns {import('googleapis').drive_v3.Drive} */
 function getDrive() {
@@ -163,6 +164,7 @@ function getDrive() {
     // The refresh token never expires unless revoked.
     const oauth2 = new google.auth.OAuth2(_oauthId, _oauthSecret);
     oauth2.setCredentials({ refresh_token: _oauthRefresh });
+    _auth  = oauth2;
     _drive = google.drive({ version: 'v3', auth: oauth2 });
     // console.info, not the debug logger: `logger` is namespaced and silent
     // unless DEBUG is set, so which credentials a deployment actually picked
@@ -181,6 +183,7 @@ function getDrive() {
       credentials: { client_email: _saEmail, private_key: _saKey },
       scopes: ['https://www.googleapis.com/auth/drive'],
     });
+    _auth  = auth;
     _drive = google.drive({ version: 'v3', auth });
     console.info('[GoogleDrive] service account mode,', _saEmail);
 
@@ -268,9 +271,107 @@ export function readHeader(headers, name) {
   return undefined;
 }
 
+/** The stored form of a file's address. Never a link to send a browser to. */
+const storedFile = (fileId, folderId) => ({
+  fileId,
+  folderId,
+  webViewUrl:   `https://drive.google.com/uc?export=view&id=${fileId}`,
+  thumbnailUrl: `https://drive.google.com/uc?export=view&id=${fileId}`,
+});
+
+/**
+ * How many bytes Drive holds, from a 308's `Range: bytes=0-N`. No header means
+ * none yet.
+ * @param {string|null|undefined} range
+ */
+export function bytesReceived(range) {
+  const m = /^bytes=0-(\d+)$/.exec(String(range ?? '').trim());
+  return m ? Number(m[1]) + 1 : 0;
+}
+
+/**
+ * What Drive said about a piece of a resumable upload.
+ * 308 means "go on"; 200 or 201 means the file is complete.
+ * @param {Response} res
+ * @returns {Promise<{ done: false, received: number } | { done: true, fileId: string, size: number, sha256: string|null }>}
+ */
+export async function readUploadAnswer(res) {
+  if (res.status === 308) return { done: false, received: bytesReceived(res.headers.get('range')) };
+  if (res.status === 200 || res.status === 201) {
+    const file = await res.json();
+    return { done: true, fileId: file.id, size: Number(file.size), sha256: file.sha256Checksum ?? null };
+  }
+  const err = /** @type {any} */ (new Error(`Google Drive stopped the upload (${res.status}).`));
+  err.status = res.status;
+  throw err;
+}
+
 /** @type {import('./storageProvider.js').StorageProvider} */
 export const googleDriveProvider = {
   name: 'google_drive',
+
+  /**
+   * Open a resumable upload and return its address. A file larger than one
+   * request can carry goes up through sendUploadChunk: Netlify caps a request at
+   * 6 MB, and a survey report with its photos is 30 MB (2026-11-07).
+   * The file stays private, as uploadFile's do. The address needs no credential,
+   * so it is only ever handed out inside a signed ticket (uploadTicket.js).
+   * @param {{ filename: string, mimeType: string, size: number, folderId: string }} f
+   * @returns {Promise<string>}
+   */
+  async startResumableUpload({ filename, mimeType, size, folderId }) {
+    getDrive();
+    const access = await _auth.getAccessToken();
+    const token  = typeof access === 'string' ? access : access?.token;
+    const res = await fetch(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable'
+      + '&supportsAllDrives=true&fields=id,size,sha256Checksum', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json; charset=UTF-8',
+          'X-Upload-Content-Type': mimeType,
+          'X-Upload-Content-Length': String(size),
+        },
+        body: JSON.stringify({ name: filename, parents: [folderId] }),
+      });
+    const address = res.headers.get('location');
+    if (!res.ok || !address) throw new Error(`Google Drive would not start the upload (${res.status}).`);
+    return address;
+  },
+
+  /**
+   * Send one piece. Every piece but the last must be a multiple of 256 KiB.
+   * `redirect: 'manual'` because Drive answers "go on" with a 308.
+   * @param {string} address
+   * @param {{ bytes: Uint8Array, offset: number, total: number }} piece
+   */
+  async sendUploadChunk(address, { bytes, offset, total }) {
+    const res = await fetch(address, {
+      method: 'PUT',
+      redirect: 'manual',
+      headers: { 'Content-Range': `bytes ${offset}-${offset + bytes.byteLength - 1}/${total}` },
+      body: bytes,
+    });
+    return readUploadAnswer(res);
+  },
+
+  /**
+   * Where a resumable upload has got to, for picking up after a dropped request.
+   * @param {string} address
+   * @param {number} total
+   */
+  async uploadProgress(address, total) {
+    const res = await fetch(address, {
+      method: 'PUT',
+      redirect: 'manual',
+      headers: { 'Content-Range': `bytes */${total}` },
+    });
+    return readUploadAnswer(res);
+  },
+
+  /** The stored form of a file a resumable upload finished. @param {string} fileId @param {string} folderId */
+  storedFile,
 
   async uploadFile(buffer, filename, mimeType, folderId, _metadata = {}) {
     const drive  = getDrive();
@@ -297,13 +398,7 @@ export const googleDriveProvider = {
     // The URL below is still the form the rest of the portal stores and
     // recognises (driveUtils.extractDriveFileId); the browser is sent to the
     // proxy for it, never to Google.
-    const fileId = res.data.id;
-    return {
-      fileId,
-      folderId,
-      webViewUrl:   `https://drive.google.com/uc?export=view&id=${fileId}`,
-      thumbnailUrl: `https://drive.google.com/uc?export=view&id=${fileId}`,
-    };
+    return storedFile(res.data.id, folderId);
   },
 
   async getFileUrl(fileId) {

@@ -91,13 +91,36 @@ export async function getDocumentByFileId(fileId) {
  * @returns {Promise<Object>}   The inserted document_library row
  */
 export async function uploadDocument(buffer, filename, mimeType, meta = {}, userId) {
-  const folderPath = meta.folder_path ?? '';
-  const folderId   = await storageProvider.ensurePath(
-    folderPath ? folderPath.split('/').filter(Boolean) : ['documents'],
-  );
+  const folderId = await uploadFolderFor(meta.folder_path);
 
   logger('Uploading:', filename, 'to', folderId);
   const result = await storageProvider.uploadFile(buffer, filename, mimeType, folderId);
+
+  // SHA-256 of the bytes — file integrity (FR-STO-003); pinned by GT ingest.
+  const checksum = createHash('sha256').update(buffer).digest('hex');
+  return recordStoredFile(result, { filename, mimeType, size: buffer.byteLength, checksum }, meta, userId);
+}
+
+/**
+ * The storage folder a document's folder path names, made if it is missing.
+ * @param {string|null|undefined} folderPath
+ * @returns {Promise<string>}
+ */
+export function uploadFolderFor(folderPath) {
+  return storageProvider.ensurePath(folderPath ? folderPath.split('/').filter(Boolean) : ['documents']);
+}
+
+/**
+ * Index a file that is already in storage. Shared by the one-request upload and
+ * the upload in pieces (/api/documents/upload-session).
+ * @param {{ fileId: string, folderId: string, webViewUrl: string, thumbnailUrl: string|null }} result
+ * @param {{ filename: string, mimeType: string, size: number, checksum: string }} file
+ * @param {Object} meta
+ * @param {string} [userId]
+ */
+export async function recordStoredFile(result, { filename, mimeType, size, checksum }, meta = {}, userId) {
+  const folderPath = meta.folder_path ?? '';
+  const folderId   = result.folderId;
 
   // A record's folder is reused under its new name when the record has been
   // renamed (the Drive provider finds it by its short-id ending). The files
@@ -112,9 +135,6 @@ export async function uploadDocument(buffer, filename, mimeType, meta = {}, user
     if (pathErr) logger('⚠ could not update folder paths:', pathErr.message);
   }
 
-  // SHA-256 of the bytes — file integrity (FR-STO-003); pinned by GT ingest.
-  const file_checksum = createHash('sha256').update(buffer).digest('hex');
-
   const db = getDb();
   const { data, error } = await db
     .from('document_library')
@@ -125,8 +145,8 @@ export async function uploadDocument(buffer, filename, mimeType, meta = {}, user
       filename,
       display_name:       meta.display_name      ?? filename,
       mime_type:          mimeType,
-      file_size:          buffer.byteLength,
-      file_checksum,
+      file_size:          size,
+      file_checksum:      checksum,
       web_view_url:       result.webViewUrl,
       thumbnail_url:      result.thumbnailUrl,
       // Derived here rather than at each call site, because every call site got

@@ -11,6 +11,7 @@
 // is why this can't reuse #lib/utils/authHeaders, which forces JSON.
 
 import { accessToken } from '#lib/utils/authHeaders.js';
+import { UPLOAD_CHUNK_BYTES, sha256Hex } from '#lib/utils/uploadChunks.js';
 
 /**
  * Authorization-only header (no Content-Type).
@@ -49,6 +50,10 @@ export async function listDocuments(opts = {}) {
  * @returns {Promise<Object>} the new document_library row
  */
 export async function uploadDocument(file, meta = {}) {
+  if (file.size > UPLOAD_CHUNK_BYTES) {
+    const doc = await uploadInPieces(/** @type {File} */ (file), meta);
+    if (doc) return doc;           // null: this storage cannot take pieces, so send it whole
+  }
   const form = new FormData();
   form.append('file', file);
   for (const [k, v] of Object.entries(meta)) {
@@ -58,6 +63,58 @@ export async function uploadDocument(file, meta = {}) {
   }
   const res = await fetch('/api/documents/upload', { method: 'POST', headers: await bearer(), body: form });
   return parse(res, 'Upload failed');
+}
+
+const PIECE_RETRIES = 4;
+
+/**
+ * Upload a file too large for one request, a piece at a time. A request is capped
+ * at about 6 MB on Netlify, so this is the only way a large file reaches storage.
+ * A dropped piece is retried from wherever the storage says it got to.
+ * @param {File} file
+ * @param {Object} meta
+ * @param {{ pause?: (ms: number) => Promise<void> }} [opts]
+ * @returns {Promise<Object|null>} the new row, or null if storage takes no pieces
+ */
+export async function uploadInPieces(file, meta = {}, { pause = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
+  const start = await fetch('/api/documents/upload-session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(await bearer()) },
+    body: JSON.stringify({ filename: file.name, size: file.size, mimeType: file.type, meta }),
+  });
+  if (start.status === 501) return null;
+  const { ticket } = await parse(start, 'The upload could not start');
+
+  const send = async (headers, body) => parse(await fetch('/api/documents/upload-session', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/octet-stream', 'X-Upload-Ticket': ticket, ...headers, ...(await bearer()) },
+    body,
+  }), 'A part of the file could not be sent');
+
+  let offset = 0;
+  let tries  = 0;
+  let receipt = null;
+  while (!receipt) {
+    try {
+      const end    = Math.min(offset + UPLOAD_CHUNK_BYTES, file.size);
+      const answer = tries === 0
+        ? await send({ 'X-Upload-Offset': String(offset) }, file.slice(offset, end))
+        : await send({ 'X-Upload-Status': '1' });
+      receipt = answer.receipt ?? null;
+      offset  = answer.received ?? offset;
+      tries   = 0;
+    } catch (err) {
+      if (++tries > PIECE_RETRIES) throw err;
+      await pause(500 * 2 ** tries);
+    }
+  }
+
+  const res = await fetch('/api/documents/upload-session/finish', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(await bearer()) },
+    body: JSON.stringify({ receipt, checksum: await sha256Hex(file), meta }),
+  });
+  return parse(res, 'The upload could not be finished');
 }
 
 /** Delete a document — storage file + index row (DELETE /api/documents/:id). */
