@@ -271,6 +271,44 @@ export function readHeader(headers, name) {
   return undefined;
 }
 
+/** A current access token, for the calls the client library cannot make. */
+async function accessToken() {
+  const access = await _auth.getAccessToken();
+  return typeof access === 'string' ? access : access?.token;
+}
+
+export const READ_PIECE_BYTES = 4 * 1024 * 1024;
+
+/**
+ * A file read from Drive one range at a time, each range fetched only as the
+ * reader takes it, so at most two are in memory.
+ * Ranges rather than one streamed response because Drive's stream arrives in 16 KB
+ * pieces: measured on 2026-11-07, 30 MB took 12 seconds that way and 4 read whole.
+ * @param {string} fileId
+ * @param {number} size
+ * @param {() => Promise<string>} [token]
+ * @returns {ReadableStream<Uint8Array>}
+ */
+export function driveFileInRanges(fileId, size, token = accessToken) {
+  const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`;
+  let at = 0;
+  return new ReadableStream({
+    async pull(controller) {
+      const last = Math.min(at + READ_PIECE_BYTES, size) - 1;
+      const res  = await fetch(url, {
+        headers: { Authorization: `Bearer ${await token()}`, Range: `bytes=${at}-${last}` },
+      });
+      if (res.status !== 206 && res.status !== 200) {
+        throw new Error(`Google Drive stopped sending the file (${res.status}).`);
+      }
+      const piece = new Uint8Array(await res.arrayBuffer());
+      at += piece.byteLength;
+      controller.enqueue(piece);
+      if (at >= size) controller.close();
+    },
+  });
+}
+
 /** The stored form of a file's address. Never a link to send a browser to. */
 const storedFile = (fileId, folderId) => ({
   fileId,
@@ -321,8 +359,7 @@ export const googleDriveProvider = {
    */
   async startResumableUpload({ filename, mimeType, size, folderId }) {
     getDrive();
-    const access = await _auth.getAccessToken();
-    const token  = typeof access === 'string' ? access : access?.token;
+    const token = await accessToken();
     const res = await fetch(
       'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable'
       + '&supportsAllDrives=true&fields=id,size,sha256Checksum', {
@@ -606,6 +643,25 @@ export const googleDriveProvider = {
       removeParents: previousParents,
       fields:        'id,parents',
     });
+  },
+
+  /**
+   * Open a file to pass on a little at a time: see openStoredFile.js. The size
+   * and type are read first, so a failure is an ordinary error before any
+   * response has started.
+   * @param {string} fileId
+   */
+  async openFileStream(fileId) {
+    const drive = getDrive();
+    await assertInsideRoot(drive, fileId, 'Read');
+    const meta = await drive.files.get({ fileId, supportsAllDrives: true, fields: 'size, mimeType' });
+    const size = Number(meta.data.size) || 0;
+    const mimeType = meta.data.mimeType || 'application/octet-stream';
+    if (!size) {
+      const { data } = await googleDriveProvider.getFileStream(fileId);
+      return { body: data, size: data.length, mimeType };
+    }
+    return { body: driveFileInRanges(fileId, size), size, mimeType };
   },
 
   async getFileStream(fileId) {

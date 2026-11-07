@@ -34,6 +34,7 @@ import { createClient }         from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL }  from '$app/env/public';
 import * as env from '$app/env/private';
 import { storageProvider }      from '#lib/server/storage/index.js';
+import { openStoredFile }       from '#lib/server/storage/openStoredFile.js';
 import { friendlyStorageError } from '#lib/server/storage/storageErrors.js';
 import { declarableMime }       from '#lib/utils/mimeTypes.js';
 import { fileHeaders }          from '#lib/server/fileResponse.js';
@@ -72,11 +73,11 @@ export async function GET({ params, url, cookies }) {
   if (!canViewFile(refs, viewer)) return notFound();
 
   try {
-    const { data, mimeType } = await storageProvider.getFileStream(fileId);
+    const { body, size, mimeType } = await openStoredFile(storageProvider, fileId);
     const meta = describeFile(refs);
     const mime = declarableMime(meta.mime) || declarableMime(url.searchParams.get('mime')) || mimeType;
-    return new Response(data, {
-      headers: fileHeaders({ mime, filename: meta.filename, length: data.length, cacheControl: 'private, max-age=3600' }),
+    return new Response(body, {
+      headers: fileHeaders({ mime, filename: meta.filename, length: size, cacheControl: 'private, max-age=3600' }),
     });
   } catch (/** @type {any} */ err) {
     // `logger` is debug-namespaced and silent unless DEBUG is set, which made

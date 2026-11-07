@@ -28,6 +28,7 @@
 
 import { json }                 from '@sveltejs/kit';
 import { ownerOf }              from '#lib/server/storage/index.js';
+import { openStoredFile } from '#lib/server/storage/openStoredFile.js';
 import { isStorageId }          from '#lib/server/storage/storageRef.js';
 import { providersForFileIds } from '#lib/server/documentLibrary.js';
 import { friendlyStorageError } from '#lib/server/storage/storageErrors.js';
@@ -76,7 +77,7 @@ export async function GET({ params, request, cookies, getClientAddress }) {
   const pinned = Boolean(entry.pinned_file_id);
   const storageId = String(pinned ? entry.pinned_file_id : (entry.provider_file_id || ''));
 
-  let data;
+  let file;
   try {
     const provider = pinned
       ? (entry.pinned_provider ?? null)
@@ -84,7 +85,7 @@ export async function GET({ params, request, cookies, getClientAddress }) {
           ? entry.provider
           : (await providersForFileIds([storageId])).get(storageId) ?? null);
     if (!isStorageId(storageId, provider)) return refuse();
-    ({ data } = await ownerOf(provider).getFileStream(storageId));
+    file = await openStoredFile(ownerOf(provider), storageId);
   } catch (err) {
     // Deliberately the same refusal as every other failure — a recipient
     // learning that a file exists but cannot be read is of no use to them and
@@ -107,10 +108,10 @@ export async function GET({ params, request, cookies, getClientAddress }) {
   // bytes are user-uploaded and served from our origin, so this is the same
   // caution the media proxy applies, with the same reasoning.
   // The rule lives in #lib/server/fileResponse.js, shared with the media proxy.
-  return new Response(data, {
+  return new Response(file.body, {
     headers: {
       ...fileHeaders({
-        mime: entry.mime_type, filename: entry.filename, length: data.length,
+        mime: entry.mime_type, filename: entry.filename, length: file.size,
         // Private to whoever holds the link: no shared-proxy caching, and a short
         // browser cache only, so a revoked link stops working promptly.
         cacheControl: 'private, max-age=60',

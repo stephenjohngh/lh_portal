@@ -92,8 +92,10 @@
  *
  * @property {(fileId: string) => Promise<{ data: Buffer, mimeType: string }>} getFileStream
  *   Download a file's raw bytes for server-side proxying.
- *   Used by GET /api/media/file/[fileId] to serve images to the browser
- *   without cross-origin restrictions.
+ *   ⚠ Reads the whole file into memory. To serve a file use openStoredFile.js.
+ *
+ * @property {(fileId: string) => Promise<{ body: ReadableStream, size: number|null, mimeType: string }>} [openFileStream]
+ *   Open a file to pass on a little at a time.
  */
 
 // This file contains type definitions only — no runtime exports.

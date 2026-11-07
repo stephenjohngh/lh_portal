@@ -41,7 +41,7 @@ export function contentDisposition(rawName, kind) {
 /**
  * The headers for one stored file.
  *
- * @param {{ mime?: string|null, filename?: string|null, length: number, cacheControl: string }} opts
+ * @param {{ mime?: string|null, filename?: string|null, length?: number|null, cacheControl: string }} opts
  * @returns {Record<string, string>}
  */
 export function fileHeaders({ mime, filename, length, cacheControl }) {
@@ -49,7 +49,7 @@ export function fileHeaders({ mime, filename, length, cacheControl }) {
   /** @type {Record<string, string>} */
   const headers = {
     'Content-Type':        inline || 'application/octet-stream',
-    'Content-Length':      String(length),
+    ...(length ? { 'Content-Length': String(length) } : {}),
     'Content-Disposition': contentDisposition(filename, inline ? 'inline' : 'attachment'),
     'Cache-Control':       cacheControl,
     // Without nosniff a browser may ignore the declared type and sniff the
