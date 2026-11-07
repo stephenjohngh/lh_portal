@@ -386,6 +386,7 @@ async function buildDetailedSession({ session: s, inspections }, isFirst, includ
 
   const metaRows = [
     mkMetaRow('Session Name', s.session_name || '—'),
+    mkMetaRow('Source',       s.source || '—'),
     mkMetaRow('Session Type', (s.session_type ?? '—').charAt(0).toUpperCase() + (s.session_type ?? '').slice(1)),
   ];
   // Statutory basis (G3) — only when recorded on the definition.
@@ -404,6 +405,7 @@ async function buildDetailedSession({ session: s, inspections }, isFirst, includ
       + (st.no_access ? ` — ${st.no_access} could not be accessed` : '')),
   );
   if (s.notes) metaRows.push(mkMetaRow('Closing Notes', s.notes));
+  if (s.checks_note) metaRows.push(mkMetaRow('Please note', s.checks_note, COLOURS.warnAmber));
 
   children.push(new Table({
     width:        { size: CONTENT_W, type: WidthType.DXA },

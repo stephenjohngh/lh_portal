@@ -52,7 +52,8 @@
   import InspectionDetailModal   from './InspectionDetailModal.svelte';
   import ConditionChecklistChips from '#lib/apps/building_assets/components/ConditionChecklistChips.svelte';
   import PhotoLightbox           from '#lib/components/common/PhotoLightbox.svelte';
-  import { typeByCode, conditionChecklistDisplay } from '#lib/apps/building_assets/lookups.js';
+  import { typeByCode } from '#lib/apps/building_assets/lookups.js';
+  import { recordedAnswers } from '#lib/apps/inspection/utils/asRecorded.js';
   import UpcomingInspections from './UpcomingInspections.svelte';
   // walk_sessions + component_inspections belong to the Inspection app — read
   // and delete them through its public interface (one owner of the query shape).
@@ -557,7 +558,7 @@
                         {@const hasPhotosCol = rowInspections.some(i => i.photo_urls?.length > 0)}
                         {@const rowKey       = `${session.id}:${grp.component_id}`}
                         {@const isExpanded   = expandedRowKeys.has(rowKey)}
-                        {@const items        = conditionChecklistDisplay(firstRow, condDefsFor(grp.type_code))}
+                        {@const items        = recordedAnswers(firstRow, condDefsFor(grp.type_code)).conditions}
                         <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
                         <tr class="insp-row insp-row-{worst} row-clickable"
                           on:click={() => openInspDetail(grp, firstRow, session)}

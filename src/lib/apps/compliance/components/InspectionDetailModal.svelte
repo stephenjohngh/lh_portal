@@ -5,7 +5,8 @@
      so the tab stays focused on the session list. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { typeByCode, defsForType, conditionChecklistDisplay, readingsDisplay } from '#lib/apps/building_assets/lookups.js';
+  import { typeByCode, defsForType } from '#lib/apps/building_assets/lookups.js';
+  import { recordedAnswers } from '#lib/apps/inspection/utils/asRecorded.js';
   import { resultBadgeColor, noAccessReasonLabel } from '#lib/utils/resultConstants.js';
   import { resultLabel }      from '#lib/apps/inspection/utils/inspectionHelpers.js';
   import { fmtDateTime }      from '#lib/utils/dates.js';
@@ -25,8 +26,9 @@
 
   $: typeObj = typeByCode(types, group?.type_code);
   $: defs    = defsForType(attrDefs, types, group?.type_code);
-  $: items   = conditionChecklistDisplay(inspection, defs);
-  $: rdgs    = readingsDisplay(inspection, defs);
+  $: answers = recordedAnswers(inspection, defs);
+  $: items   = answers.conditions;
+  $: rdgs    = answers.readings;
   $: result  = inspection?.inspection_result ?? inspection?.result;
 
   let lightboxPhotos = [];

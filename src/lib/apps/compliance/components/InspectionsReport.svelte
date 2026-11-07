@@ -22,8 +22,11 @@
     sessionKindLabel,
   } from '#lib/apps/inspection/utils/inspectionHelpers.js';
   import { fmtDateTime, today } from '#lib/utils/dates.js';
-  import { requestDownload } from '#lib/utils/download.js';
-  import { conditionChecklistDisplay, readingsDisplay } from '#lib/apps/building_assets/lookups.js';
+  import { requestDownload, downloadBlob } from '#lib/utils/download.js';
+  import {
+    recordedAnswers, recordedComponent, sourceLabel, todaysNamesNote, withoutSnapshot,
+  } from '#lib/apps/inspection/utils/asRecorded.js';
+  import { resultsSheetModel, buildResultsWorkbook } from '#lib/apps/inspection/utils/resultsSheet.js';
 
   const logger   = getLogger('InspectionsReport');
   const dispatch = createEventDispatcher();
@@ -43,7 +46,7 @@
   export let inspectionsCache = {};   // { [sessionId]: flattened[] }
 
   // -- Report type -----------------------------------------------------------
-  let reportType    = 'summary';   // 'summary' | 'detailed'
+  let reportType    = 'summary';   // 'summary' | 'detailed' | 'results'
   let includePhotos = true;        // only relevant for 'detailed'
 
   // -- Session selection (default: all) --------------------------------------
@@ -91,7 +94,8 @@
     return {
       ...session,
       floor_short_name:     floorObj?.short_name ?? null,
-      inspector_name:       session.inspector?.full_name ?? '—',
+      inspector_name:       session.inspector_name ?? session.inspector?.full_name ?? '—',
+      source:               sourceLabel(session),
       // The inspection this session ran (e.g. "Fire Doors"). Replaces the old
       // preset, which was retired and always resolved to "Custom".
       definition_name:      def?.name ?? null,
@@ -113,17 +117,25 @@
     return flatRows.map(r => {
       const typeObj = resolveType(r.type_code);
       const defs    = typeObj ? (attrDefs[typeObj.id] ?? []) : [];
+      const comp    = recordedComponent(r);
+      const answers = recordedAnswers(r, defs);
       return {
         ...r,
-        type_initial: typeObj?.initial ?? '?',
-        type_name:    typeObj?.name    ?? r.type_code ?? '?',
-        condition_results: conditionChecklistDisplay(r, defs).map(({ def, passed }) => ({
+        // Kept out of the request: the server is given only what it prints.
+        as_recorded: undefined, recorded_checks: undefined,
+        // The component as it stood, not as it is now.
+        asset_id:     comp?.asset_id     ?? r.asset_id,
+        label:        comp?.label        ?? r.label,
+        floor_name:   comp?.floor        ?? r.floor_name,
+        type_initial: comp?.type_initial ?? typeObj?.initial ?? '?',
+        type_name:    comp?.type_name    ?? typeObj?.name    ?? r.type_code ?? '?',
+        condition_results: answers.conditions.map(({ def, passed }) => ({
           name: def.name,
           passed,
         })),
         // Measured numeric/text readings (G2). Only recorded ones appear —
         // pre-migration-169 inspections carry theirs as prose in the notes.
-        readings: readingsDisplay(r, defs).map(({ def, value }) => ({
+        readings: answers.readings.map(({ def, value }) => ({
           name: def.name,
           value,
         })),
@@ -136,7 +148,7 @@
    * (load rows if not cached, optionally batch-load photos, enrich). Shared by
    * report generation and Golden Thread registration.
    */
-  async function resolveSessionPayload(session, { withPhotos = false } = {}) {
+  async function sessionRows(session, { withPhotos = false } = {}) {
     let flatRows = inspectionsCache[session.id];
     // Load (or, for a detailed report, reload with photos) via the Inspection
     // app's accessor — same query shape the tab uses, in one place.
@@ -144,7 +156,35 @@
       const rows = await loadSessionInspections(session.id, { withPhotos });
       flatRows = flattenInspectionRows(rows);
     }
-    return { session: enrichSession(session), inspections: enrichInspections(flatRows) };
+    return flatRows;
+  }
+
+  async function resolveSessionPayload(session, opts) {
+    const flatRows = await sessionRows(session, opts);
+    return {
+      session: { ...enrichSession(session), checks_note: todaysNamesNote(withoutSnapshot(flatRows)) },
+      inspections: enrichInspections(flatRows),
+    };
+  }
+
+  /** The chosen sessions' results as a spreadsheet, built in the browser. */
+  async function downloadResults() {
+    const payloads = [];
+    for (let i = 0; i < selectedSessions.length; i++) {
+      const session = selectedSessions[i];
+      genProgress = `Loading session ${i + 1} of ${selectedSessions.length}…`;
+      payloads.push({ session: enrichSession(session), rows: await sessionRows(session) });
+    }
+    genProgress = 'Building the spreadsheet…';
+    const model = resultsSheetModel(payloads, {
+      typeOf:       resolveType,
+      defsOf:       (code) => attrDefs[resolveType(code)?.id] ?? [],
+      obligationOf: (id) => definitions.find((d) => d.id === id) ?? null,
+    });
+    const buffer = await buildResultsWorkbook(model);
+    downloadBlob(new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    }), `Inspection_results_${today()}.xlsx`);
   }
 
   // -- Golden Thread registration (per session) ------------------------------
@@ -201,6 +241,12 @@
     generating = true; genError = null; genProgress = '';
 
     try {
+      if (reportType === 'results') {
+        await downloadResults();
+        dispatch('close');
+        return;
+      }
+
       const sessionsWithInspections = [];
 
       for (let i = 0; i < selectedSessions.length; i++) {
@@ -250,6 +296,13 @@
           <div>
             <div class="font-semibold text-sm">Detailed</div>
             <div class="text-xs text-gray-400 mt-0.5">One page per session — every component result + photos</div>
+          </div>
+</Button>
+        <Button variant="plain" on:click={() => reportType = 'results'} className="type-btn {reportType === 'results' ? 'type-btn-active' : ''}">
+<span class="type-icon">📊</span>
+          <div>
+            <div class="font-semibold text-sm">Results spreadsheet</div>
+            <div class="text-xs text-gray-400 mt-0.5">One row per result, with each check — as recorded at the time</div>
           </div>
 </Button>
       </div>

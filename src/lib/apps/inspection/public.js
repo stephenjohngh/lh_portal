@@ -116,6 +116,25 @@ export function listWalkSessions() {
  * @param {string} sessionId
  * @param {{ withPhotos?: boolean }} [opts]
  */
+/**
+ * Put on each result the checks it was judged against (migration 285), as
+ * `recorded_checks`. Read them with utils/asRecorded.js. A result with no snapshot
+ * gets none.
+ * @param {any[]} rows
+ * @returns {Promise<any[]>} the same rows
+ */
+export async function attachRecordedChecks(rows) {
+  const ids = [...new Set(rows.map((r) => r.as_recorded?.checks_set).filter(Boolean))];
+  if (ids.length === 0) return rows;
+  const sets = await api.getAllIn('inspection_check_sets', 'id', ids, { select: 'id, checks' });
+  const byId = new Map(sets.map((s) => [s.id, s.checks]));
+  for (const r of rows) {
+    const checks = byId.get(r.as_recorded?.checks_set);
+    if (checks) r.recorded_checks = checks;
+  }
+  return rows;
+}
+
 export async function loadSessionInspections(sessionId, { withPhotos = true } = {}) {
   // getAll paginates past the 1000-row cap (building-wide sessions can exceed it).
   const rows = await api.getAll('component_inspections', {
@@ -123,6 +142,7 @@ export async function loadSessionInspections(sessionId, { withPhotos = true } = 
     filters: { walk_session_id: sessionId },
   });
   rows.sort((a, b) => new Date(a.inspected_at).getTime() - new Date(b.inspected_at).getTime());
+  await attachRecordedChecks(rows);
 
   if (withPhotos && rows.length > 0) {
     const attachments = await listAttachments('component_inspection', rows.map((r) => r.id));
