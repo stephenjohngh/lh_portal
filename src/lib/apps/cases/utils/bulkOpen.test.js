@@ -32,8 +32,12 @@ describe('bulkTitle', () => {
 
 describe('bulkCandidates', () => {
   it('leaves out a component that is Problem only because nobody got in', () => {
-    const rows = bulkCandidates({ field: { key: 'door' }, components: [c('a', { last_result: 'no_access' }), c('b', { last_result: 'failed' }), c('d')] });
+    const rows = bulkCandidates({ field: { key: 'door' }, components: [c('a', { status: 'problem', last_result: 'no_access' }), c('b', { last_result: 'failed' }), c('d')] });
     expect(rows.map((r) => r.id)).toEqual(['b', 'd']);
+  });
+  it('still offers a Failed door whose latest visit was no access: the Fail was seen', () => {
+    const rows = bulkCandidates({ field: { key: 'door' }, components: [c('a', { status: 'failed', last_result: 'no_access' })] });
+    expect(rows.map((r) => r.id)).toEqual(['a']);
   });
   it('offers only the types the field allows', () => {
     const rows = bulkCandidates({ field: door, components: [c('a'), c('b', { type_code: 'door_fire_door' })] });

@@ -6,8 +6,8 @@
 // ⛔ A component that already has an OPEN case in this process is shown and not
 // offered: two cases for one door is two letters to one owner. A finished case
 // does not stop a new one, because the door can fail again.
-// ⛔ A component whose latest result is No access is not offered: it is Problem
-// because nobody got in (statusRule.js), which is the access process's business.
+// ⛔ A Problem component whose latest result is No access is not offered: it is
+// Problem because nobody got in (statusRule.js), which is the access process's.
 
 import { isFinished, fieldMissing } from '#lib/workflow/workflowModel.js';
 
@@ -51,8 +51,9 @@ export function bulkCandidates({ components = [], field, items = [], cases = [],
   return components
     .filter((c) => !types.length || types.includes(c.type_code))
     // Problem because nobody got in, not because a fault was seen: that is the
-    // access process's, not a defect case (user, 2026-11-08).
-    .filter((c) => c.last_result !== 'no_access')
+    // access process's, not a defect case (user, 2026-11-08). A FAILED door whose
+    // latest visit was no access is still offered: its Fail was seen and stands.
+    .filter((c) => !(c.status === 'problem' && c.last_result === 'no_access'))
     .map((c) => ({ id: c.id, label: c.label ?? null, status: c.status, text: textOf.get(c.id) ?? c.label ?? c.asset_id ?? c.id, openCase: openFor.get(c.id) ?? null }))
     .sort((a, b) => a.text.localeCompare(b.text, 'en-GB', { numeric: true }));
 }

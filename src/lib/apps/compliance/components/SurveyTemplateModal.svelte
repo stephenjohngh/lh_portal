@@ -35,7 +35,9 @@
     try {
       working = 'Reading the components…';
       if (!get(buildingAssetsStore).floors.length) await buildingAssetsStore.load();
-      if (!get(buildingAssetsStore).components.length) await buildingAssetsStore.loadComponents();
+      // Read afresh every time: a copy loaded earlier in the page is stale after a load
+      // or an undo, and the preview would then predict the statuses wrongly (2026-11-08).
+      await buildingAssetsStore.loadComponents();
       const bas = get(buildingAssetsStore);
       if (!bas.components.length) throw new Error(bas.error || 'the components could not be read');
 

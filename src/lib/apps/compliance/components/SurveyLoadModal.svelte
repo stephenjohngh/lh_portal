@@ -42,7 +42,9 @@
     try {
       working = 'Reading the components…';
       if (!get(buildingAssetsStore).floors.length) await buildingAssetsStore.load();
-      if (!get(buildingAssetsStore).components.length) await buildingAssetsStore.loadComponents();
+      // Read afresh every time: a copy loaded earlier in the page is stale after a load
+      // or an undo, and the preview would then predict the statuses wrongly (2026-11-08).
+      await buildingAssetsStore.loadComponents();
       const bas = get(buildingAssetsStore);
       if (!bas.components.length) throw new Error(bas.error || 'the components could not be read');
 
@@ -129,7 +131,7 @@
               <p class="text-slate-300">
                 {s.rows} result{s.rows === 1 ? '' : 's'} over {s.days} day{s.days === 1 ? '' : 's'}
                 {#if s.firstSeen}({fmtDateOnly(s.firstSeen)}{s.lastSeen !== s.firstSeen ? ` to ${fmtDateOnly(s.lastSeen)}` : ''}){/if}:
-                {s.seen} seen, {s.noAccess} no access only. {s.notInFile} of {s.inScope} covered have no row.
+                {s.seen} seen, {s.noAccess} no access only. {s.notInFile} of the {s.inScope} covered {s.notInFile === 1 ? 'has' : 'have'} no row.
               </p>
               {#if changes.length}
                 <p class="text-slate-300">Status changes: {changes.map(([k, n]) => `${n} ${k}`).join(' · ')}</p>
@@ -171,7 +173,7 @@
       <div class="flex justify-end gap-2">
         <Button variant="secondary" on:click={() => dispatch('close')}>Cancel</Button>
         <Button variant="primary" disabled={!canLoad} on:click={load}>
-          Load {checked?.rows?.length ?? ''} result{checked?.rows?.length === 1 ? '' : 's'}
+          {checked?.rows?.length ? `Load ${checked.rows.length} result${checked.rows.length === 1 ? '' : 's'}` : 'Load'}
         </Button>
       </div>
     {/if}
