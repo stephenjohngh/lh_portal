@@ -6,13 +6,12 @@
 <script>
   import Button from '#lib/components/common/Button.svelte';
   import { api }                          from '#lib/utils/api.js';
-  import { fmtDateTime }                  from '#lib/utils/dates.js';
   import { sec }                          from '../ui.js';
   import { statusBadgeCls }               from '#lib/utils/resultConstants.js';
   import { buildingAssetsStore }          from '../stores/buildingAssetsStore.js';
   import { typeByCode } from '../lookups.js';
   import { attachRecordedChecks } from '#lib/apps/inspection/public.js';
-  import { recordedAnswers } from '#lib/apps/inspection/utils/asRecorded.js';
+  import { recordedAnswers, resultWhen } from '#lib/apps/inspection/utils/asRecorded.js';
   import ConditionChecklistChips          from './ConditionChecklistChips.svelte';
   import PhotoLightbox                   from '#lib/components/common/PhotoLightbox.svelte';
 
@@ -85,7 +84,7 @@
         {@const items = recordedAnswers(insp, conditionDefs).conditions}
         <div class="border border-slate-700/60 rounded-lg p-3 bg-slate-800/50 space-y-2">
           <div class="flex items-center gap-2 flex-wrap">
-            <span class="text-xs text-slate-400 tabular-nums">{fmtDateTime(insp.inspected_at)}</span>
+            <span class="text-xs text-slate-400 tabular-nums">{resultWhen(insp)}</span>
             <span class="text-xs px-2 py-0.5 rounded border font-medium {resultBadgeClass(insp.inspection_result)}">
               {resultText(insp.inspection_result)}
             </span>

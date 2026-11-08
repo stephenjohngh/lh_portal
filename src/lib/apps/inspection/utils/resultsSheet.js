@@ -10,11 +10,12 @@
 //
 // The model is pure and tested; buildResultsWorkbook only lays it out.
 
-import { calendarDate, fmtDateOnly, fmtTime, fmtGenerated } from '#lib/utils/dates.js';
+import { calendarDate, fmtDateOnly, fmtGenerated } from '#lib/utils/dates.js';
 import { noAccessReasonLabel, statusLabel } from '#lib/utils/resultConstants.js';
 import { isReadingDef } from '#lib/apps/building_assets/lookups.js';
 import {
   recordedAnswers, recordedChecks, recordedComponent, sourceLabel, todaysNamesNote, withoutSnapshot,
+  resultTime, resultSeenBy,
 } from './asRecorded.js';
 import { recordedCheckApplies } from '#lib/apps/building_assets/utils/checkApplies.js';
 
@@ -93,8 +94,8 @@ function sheetsByType(payloads, typeOf, defsOf) {
         comp?.floor_name ?? comp?.floor ?? row.floor_name ?? '',
         ...[...fixedCols.keys()].map((id) => comp?.fixed.find((f) => f.id === id)?.value ?? ''),
         calendarDate(row.inspected_at),
-        fmtTime(row.inspected_at),
-        seenBy(session),
+        resultTime(row),
+        resultSeenBy(row, session),
         resultWord(result),
         result === 'no_access' ? noAccessReasonLabel(row.no_access_reason) : '',
         ...checkCols.map((d) => {

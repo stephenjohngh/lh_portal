@@ -14,6 +14,12 @@ import { normalisePhotoUrl }             from '#lib/utils/driveUtils.js';
 import { authHeaders }                   from '#lib/utils/authHeaders.js';
 import { registerDocument, findDocumentBySource } from '#lib/apps/golden_thread/public.js';
 import { resolveAwaitingAccess } from './utils/inspectionHelpers.js';
+import { uploadDocument, deleteDocumentsFor } from '#lib/utils/documentApi.js';
+import { DOC_FOLDERS, entityFolderPath } from '#lib/utils/documentUtils.js';
+import { sha256Hex } from '#lib/utils/uploadChunks.js';
+import { logAudit } from '#lib/utils/auditLogger.js';
+import { errMessage } from '#lib/utils/errors.js';
+import { fmtDate } from '#lib/utils/dates.js';
 
 // One place owns the shape of a session's inspection rows: each row joined to its
 // component + floor. Was duplicated verbatim in the Building Assets InspectionsTab
@@ -102,7 +108,8 @@ export function listWalkSessions() {
   // read would make it print "Never · In breach" for a requirement that was
   // genuinely discharged — a silent lie in the document handed to an assessor.
   return api.getAll('walk_sessions', {
-    select:    '*, inspector:profiles!created_by(full_name)',
+    // A survey session (migration 287) carries its source; admin-read, so null for others.
+    select:    '*, inspector:profiles!created_by(full_name), survey:inspection_surveys(firm, reference, lead_surveyor, undone_at)',
     orderBy:   'started_at',
     ascending: false,
   });
@@ -206,6 +213,69 @@ export async function deleteWalkSession(sessionId) {
   const inspRows = await api.getAll('component_inspections', { filters: { walk_session_id: sessionId } });
   await purgeAttachments('component_inspection', inspRows.map((r) => r.id));
   await api.delete('walk_sessions', sessionId);   // FK cascade removes the component_inspections rows
+}
+
+// ── Outside surveys (migration 287) ──────────────────────────────────────────
+// A contractor's report, converted by us into the survey template, loaded as walk
+// results: one closed session per survey day, every row keeping its own time.
+// The checking is utils/surveyLoad.js; this is the saving. Admin only (the
+// database refuses anyone else).
+
+/**
+ * Has this file been loaded already (and not undone)?
+ * @param {string} sha
+ */
+export async function findLoadedSurvey(sha) {
+  const rows = await api.get('inspection_surveys', { filters: { file_sha256: sha } });
+  return rows.find((r) => !r.undone_at) ?? null;
+}
+
+/**
+ * Load a checked survey. The contractor's report and the file loaded are attached
+ * first, so a load can never exist without its evidence; if the load is then
+ * refused, both are deleted again.
+ * @param {{ file: File, report: File, details: any, rows: any[] }} args
+ *   details: surveyDetails(); rows: checkSurvey().rows
+ */
+export async function loadSurvey({ file, report, details, rows }) {
+  const sha = await sha256Hex(file);
+  const already = await findLoadedSurvey(sha);
+  if (already) throw new Error(`This file was loaded on ${fmtDate(already.loaded_at)} (${already.firm}). Undo that load first to load it again.`);
+
+  const id = crypto.randomUUID();
+  const folder_path = entityFolderPath(DOC_FOLDERS.SURVEYS, details.reference || details.firm, id);
+  const meta = { entity_type: 'inspection_survey', entity_id: id, folder_path };
+  try {
+    const reportDoc = await uploadDocument(report, { ...meta, display_name: report.name, description: `Survey report — ${details.firm}` });
+    const fileDoc   = await uploadDocument(file,   { ...meta, display_name: file.name,   description: 'The survey file loaded' });
+    const result = await api.rpc('survey_load', {
+      p_survey: { ...details, id, file_sha256: sha, report_document_id: reportDoc.id, file_document_id: fileDoc.id },
+      p_rows: rows.map(({ ref: _ref, date: _date, ...row }) => row),
+    });
+    logAudit('create', 'inspection_survey', id, `Survey ${details.firm}${details.reference ? ` ${details.reference}` : ''}`, {
+      appId: 'compliance', eventCategory: 'compliance', severity: 'info',
+      afterData: { rows: rows.length, status_changes: result?.status_changes ?? null, definition_id: details.definition_id },
+    });
+    return { id, ...(result ?? {}) };
+  } catch (/** @type {any} */ err) {
+    let tidy = '';
+    try { await deleteDocumentsFor('inspection_survey', id); }
+    catch (/** @type {any} */ e) { tidy = ` The files already uploaded could not be removed: ${errMessage(e)}`; }
+    throw new Error(`${errMessage(err)}${tidy}`);
+  }
+}
+
+/**
+ * Undo a survey load: keeps the record with the reason, removes its sessions and
+ * results, and puts each component's status back where the load had set it.
+ * @param {string} surveyId @param {string} reason
+ */
+export async function undoSurvey(surveyId, reason) {
+  const result = await api.rpc('survey_undo', { p_id: surveyId, p_reason: reason });
+  logAudit('undo', 'inspection_survey', surveyId, 'Survey load undone', {
+    appId: 'compliance', eventCategory: 'compliance', severity: 'warning', afterData: { reason },
+  });
+  return result;
 }
 
 // ── Golden Thread producer ingest (Stage B) ─────────────────────────────────

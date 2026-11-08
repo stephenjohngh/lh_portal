@@ -448,7 +448,7 @@ async function buildDetailedSession({ session: s, inspections }, isFirst, includ
         dCell(componentRef(ins),        DET_COLS[0], { alt, bold: true }),
         dCell(ins.label || '—',         DET_COLS[1], { alt }),
         dCell(resultLabel(res),         DET_COLS[2], { alt, bold: true, color: resultColor(res) }),
-        dCell(fmtTime(ins.inspected_at),DET_COLS[3], { alt }),
+        dCell(ins.time_recorded === false ? 'Not given' : fmtTime(ins.inspected_at),DET_COLS[3], { alt }),
         // A no-access row has no notes of its own; show WHY it could not be
         // assessed so the report evidences the "best endeavours" attempt.
         dCell(

@@ -50,15 +50,18 @@
   import Button              from '#lib/components/common/Button.svelte';
   import InspectionsReport       from './InspectionsReport.svelte';
   import SurveyTemplateModal     from './SurveyTemplateModal.svelte';
+  import SurveyLoadModal         from './SurveyLoadModal.svelte';
+  import Modal                   from '#lib/components/common/Modal.svelte';
+  import FormTextarea            from '#lib/components/common/FormTextarea.svelte';
   import InspectionDetailModal   from './InspectionDetailModal.svelte';
   import ConditionChecklistChips from '#lib/apps/building_assets/components/ConditionChecklistChips.svelte';
   import PhotoLightbox           from '#lib/components/common/PhotoLightbox.svelte';
   import { typeByCode } from '#lib/apps/building_assets/lookups.js';
-  import { recordedAnswers } from '#lib/apps/inspection/utils/asRecorded.js';
+  import { recordedAnswers, resultWhen } from '#lib/apps/inspection/utils/asRecorded.js';
   import UpcomingInspections from './UpcomingInspections.svelte';
   // walk_sessions + component_inspections belong to the Inspection app — read
   // and delete them through its public interface (one owner of the query shape).
-  import { deleteWalkSession, listWalkSessions, loadSessionInspections, listComponentsAwaitingAccess } from '#lib/apps/inspection/public.js';
+  import { deleteWalkSession, undoSurvey, listWalkSessions, loadSessionInspections, listComponentsAwaitingAccess } from '#lib/apps/inspection/public.js';
   // ⛔ Planned obligations come from the Compliance app, which owns
   // `statutory_obligations`. They used to be served by inspection/public.js —
   // an ownership inversion left behind when migration 206 renamed the table.
@@ -82,6 +85,11 @@
   let inspections = {};      // { [sessionId]: flattened inspection[] }
   let showReport  = false;
   let showTemplate = false;   // Survey template (admin)
+  let showLoad     = false;   // Load a survey (admin)
+  /** @type {any} */ let undoing = null;   // the survey session whose load is being undone
+  let undoReason = '';
+  let undoBusy   = false;
+  let undoError  = '';
   let loading     = true;
   let loadingId   = null;
   let error       = null;
@@ -272,6 +280,23 @@
     }
   }
 
+  // A survey's sessions cannot be deleted one by one: the whole load is undone,
+  // which keeps the record with the reason (migration 287).
+  async function confirmUndo() {
+    if (!undoReason.trim()) { undoError = 'Say why the load is being undone.'; return; }
+    const surveyId = undoing.survey_id;
+    undoBusy = true; undoError = '';
+    try {
+      await undoSurvey(surveyId, undoReason.trim());
+      undoing = null; undoReason = '';
+      await loadSessions();
+    } catch (/** @type {any} */ err) {
+      undoError = err.message;
+    } finally {
+      undoBusy = false;
+    }
+  }
+
   function clearFilters() {
     filterSessionType = '';
     filterDefinition  = '';
@@ -288,7 +313,7 @@
   function closeLightbox()         { lightboxPhotos = []; }
 
   function sessionTypeBadge(t) {
-    return { inspection: 'bg-blue-600', test: 'bg-amber-600', repair: 'bg-orange-700' }[t] ?? 'bg-slate-600';
+    return { inspection: 'bg-blue-600', test: 'bg-amber-600', repair: 'bg-orange-700', survey: 'bg-teal-700' }[t] ?? 'bg-slate-600';
   }
   // presetBadge() removed with the preset badge — presets are retired, so every
   // session is 'custom' and the badge could never render. The definition name
@@ -386,9 +411,14 @@
         Report
       </Button>
       <ProtectedButton requireAdmin={true} variant="secondary" size="small" icon="download"
-        title="A spreadsheet for an outside surveyor to fill in"
+        title="The spreadsheet a survey is converted into"
         on:click={() => showTemplate = true}>
         Survey template
+      </ProtectedButton>
+      <ProtectedButton requireAdmin={true} variant="secondary" size="small"
+        title="Load a survey converted into the template"
+        on:click={() => showLoad = true}>
+        Load a survey
       </ProtectedButton>
     </div>
   </div>
@@ -497,6 +527,14 @@
               </span>
 </Button>
 
+            {#if session.survey_id}
+            <!-- A survey's results are undone as a whole load, never deleted one session at a time -->
+            <ProtectedButton requireAdmin={true} variant="danger" size="small"
+              title="Undo the whole survey load this session came from"
+              on:click={() => { undoing = session; undoReason = ''; undoError = ''; }}>
+              Undo load
+            </ProtectedButton>
+            {:else}
             <!-- Admin delete (two-click confirm) -->
             <ProtectedButton
               requireAdmin={true}
@@ -510,6 +548,7 @@
             >
               {#if deletingId === session.id}…{:else if confirmId === session.id}Sure?{:else}🗑{/if}
             </ProtectedButton>
+            {/if}
           </div>
 
           <!-- -- Expanded detail -------------------------------------------- -->
@@ -592,7 +631,7 @@
                               {resultLabel(worst)}
                             </Badge>
                           </td>
-                          <td class="text-sm text-slate-400">{fmtDateTime(firstRow.inspected_at)}</td>
+                          <td class="text-sm text-slate-400">{resultWhen(firstRow)}</td>
                           <td class="text-sm text-slate-400 notes-cell">
                             {#if firstRow.inspector_notes}
                               <span class="notes-lines">{firstRow.inspector_notes}</span>
@@ -671,6 +710,28 @@
     inspectionsCache={inspections}
     on:close={() => showReport = false}
   />
+{/if}
+
+{#if showLoad}
+  <SurveyLoadModal obligations={definitions} on:loaded={loadSessions} on:close={() => showLoad = false} />
+{/if}
+
+{#if undoing}
+  <Modal show title="Undo this survey load" size="medium" on:close={() => undoing = null}>
+    <div class="space-y-3 text-sm">
+      <p class="text-slate-300">
+        This removes every result the load added — {undoing.survey?.firm ?? 'the survey'}{undoing.survey?.reference ? ` (${undoing.survey.reference})` : ''},
+        all its days, not just this one — and puts each component's status back where the load had set it.
+        The survey record, its report and the reason stay on file.
+      </p>
+      <FormTextarea label="Why is it being undone?" id="undo-reason" bind:value={undoReason} rows={3} />
+      {#if undoError}<ErrorDisplay message={undoError} onDismiss={() => undoError = ''} />{/if}
+      <div class="flex justify-end gap-2">
+        <Button variant="secondary" on:click={() => undoing = null}>Cancel</Button>
+        <Button variant="danger" disabled={undoBusy} on:click={confirmUndo}>{undoBusy ? 'Undoing…' : 'Undo the load'}</Button>
+      </div>
+    </div>
+  </Modal>
 {/if}
 
 {#if showTemplate}

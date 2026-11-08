@@ -759,6 +759,9 @@ export type Database = {
           no_access_reason: string | null
           readings: Json
           as_recorded: Json | null
+          seen_by: string | null
+          source_ref: string | null
+          time_recorded: boolean
         }
         Insert: {
           id?: string
@@ -773,6 +776,9 @@ export type Database = {
           no_access_reason?: string | null
           readings?: Json
           as_recorded?: Json | null
+          seen_by?: string | null
+          source_ref?: string | null
+          time_recorded?: boolean
         }
         Update: {
           id?: string
@@ -787,6 +793,9 @@ export type Database = {
           no_access_reason?: string | null
           readings?: Json
           as_recorded?: Json | null
+          seen_by?: string | null
+          source_ref?: string | null
+          time_recorded?: boolean
         }
         Relationships: [
             {
@@ -3299,6 +3308,81 @@ export type Database = {
           id?: string
           checks?: Json
           first_used_at?: string
+        }
+        Relationships: []
+      }
+      inspection_surveys: {
+        Row: {
+          id: string
+          definition_id: string | null
+          obligation_name: string
+          firm: string
+          lead_surveyor: string | null
+          reference: string | null
+          note: string | null
+          template_version: string
+          file_sha256: string
+          report_document_id: string
+          file_document_id: string
+          first_seen: string
+          last_seen: string
+          rows_loaded: number
+          components_seen: number
+          components_no_access: number
+          status_changes: number
+          loaded_by: string | null
+          loaded_at: string
+          undone_by: string | null
+          undone_at: string | null
+          undone_reason: string | null
+        }
+        Insert: {
+          id: string
+          definition_id?: string | null
+          obligation_name: string
+          firm: string
+          lead_surveyor?: string | null
+          reference?: string | null
+          note?: string | null
+          template_version: string
+          file_sha256: string
+          report_document_id: string
+          file_document_id: string
+          first_seen: string
+          last_seen: string
+          rows_loaded: number
+          components_seen: number
+          components_no_access: number
+          status_changes: number
+          loaded_by?: string | null
+          loaded_at?: string
+          undone_by?: string | null
+          undone_at?: string | null
+          undone_reason?: string | null
+        }
+        Update: {
+          id?: string
+          definition_id?: string | null
+          obligation_name?: string
+          firm?: string
+          lead_surveyor?: string | null
+          reference?: string | null
+          note?: string | null
+          template_version?: string
+          file_sha256?: string
+          report_document_id?: string
+          file_document_id?: string
+          first_seen?: string
+          last_seen?: string
+          rows_loaded?: number
+          components_seen?: number
+          components_no_access?: number
+          status_changes?: number
+          loaded_by?: string | null
+          loaded_at?: string
+          undone_by?: string | null
+          undone_at?: string | null
+          undone_reason?: string | null
         }
         Relationships: []
       }
@@ -6170,6 +6254,7 @@ export type Database = {
           definition_id: string | null
           trigger_component_id: string | null
           guide_versions: Json | null
+          survey_id: string | null
         }
         Insert: {
           id?: string
@@ -6195,6 +6280,7 @@ export type Database = {
           definition_id?: string | null
           trigger_component_id?: string | null
           guide_versions?: Json | null
+          survey_id?: string | null
         }
         Update: {
           id?: string
@@ -6220,6 +6306,7 @@ export type Database = {
           definition_id?: string | null
           trigger_component_id?: string | null
           guide_versions?: Json | null
+          survey_id?: string | null
         }
         Relationships: [
             {

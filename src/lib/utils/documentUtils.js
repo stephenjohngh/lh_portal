@@ -202,6 +202,7 @@ export const DOC_FOLDERS = {
   GUIDES:        'Guides',         // a how-to guide's step photos (migration 268)
   CASES:         'Cases',          // a generic case's documents (migration 253)
   EVIDENCE:      'Evidence',       // a workflow item's evidence documents (migration 267)
+  SURVEYS:       'Surveys',        // an outside survey's report and the file loaded (migration 287)
   LOOSE:         'Documents',      // uploaded in the admin tab, attached to nothing
 };
 

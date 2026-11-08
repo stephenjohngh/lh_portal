@@ -6,10 +6,9 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { typeByCode, defsForType } from '#lib/apps/building_assets/lookups.js';
-  import { recordedAnswers } from '#lib/apps/inspection/utils/asRecorded.js';
+  import { recordedAnswers, resultWhen } from '#lib/apps/inspection/utils/asRecorded.js';
   import { resultBadgeColor, noAccessReasonLabel } from '#lib/utils/resultConstants.js';
   import { resultLabel }      from '#lib/apps/inspection/utils/inspectionHelpers.js';
-  import { fmtDateTime }      from '#lib/utils/dates.js';
   import Modal    from '#lib/components/common/Modal.svelte';
   import Badge    from '#lib/components/common/Badge.svelte';
   import ConditionChecklistChips from '#lib/apps/building_assets/components/ConditionChecklistChips.svelte';
@@ -64,7 +63,7 @@
       {resultLabel(result)}
     </Badge>
     <div class="id-meta">
-      <span>{fmtDateTime(inspection.inspected_at)}</span>
+      <span>{resultWhen(inspection)}</span>
       {#if session?.inspector_name}
         <span class="id-inspector">by {session.inspector_name}</span>
       {:else if session?.inspector?.full_name}

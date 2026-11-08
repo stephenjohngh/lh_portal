@@ -12,6 +12,7 @@
 
 import { isReadingDef } from '#lib/apps/building_assets/lookups.js';
 import { recordedCheckApplies } from '#lib/apps/building_assets/utils/checkApplies.js';
+import { fmtDate, fmtDateTime, fmtTime } from '#lib/utils/dates.js';
 
 export const UNKNOWN_CHECK = 'A check no longer on the list';
 
@@ -90,10 +91,30 @@ export function recordedComponent(row) {
 export const withoutSnapshot = (rows) => (rows ?? []).filter((r) => !Array.isArray(r.recorded_checks)).length;
 
 /**
- * Where a session's results came from.
- * @param {any} _session
+ * Where a session's results came from: a walk, or an outside survey (migration 287).
+ * @param {any} session  may carry `survey` ({ firm, reference }) from listWalkSessions
  */
-export const sourceLabel = (_session) => 'In-house walk';
+export function sourceLabel(session) {
+  if (session?.session_type !== 'survey' && !session?.survey_id) return 'In-house walk';
+  const s = session?.survey;
+  return ['Outside survey', s?.firm, s?.reference].filter(Boolean).join(' — ');
+}
+
+/**
+ * When a result was seen. A survey row given a date but no time (migration 287) shows
+ * the date alone, never the midday it is stored at.
+ * @param {any} row
+ */
+export const resultWhen = (row) => (row?.time_recorded === false ? fmtDate(row.inspected_at) : fmtDateTime(row?.inspected_at));
+
+/** The time alone, or '' where none was recorded. @param {any} row */
+export const resultTime = (row) => (row?.time_recorded === false ? '' : fmtTime(row?.inspected_at));
+
+/**
+ * Who saw it: the person named on the row (a survey), else the session's inspector.
+ * @param {any} row @param {any} [session]
+ */
+export const resultSeenBy = (row, session) => row?.seen_by ?? session?.inspector_name ?? session?.inspector?.full_name ?? '';
 
 /**
  * The line a document prints when some names are today's rather than the originals.

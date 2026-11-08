@@ -139,26 +139,26 @@ function readMeLines(obligation, sheets) {
   const hasReadings = sheets.some((s) => s.checks.some(isReadingDef));
   return [
     ['h1', `Survey results: ${obligation.name ?? 'inspection'}`],
-    ['p', 'Please record your results on this spreadsheet, with one row for each visit to a component. It loads straight into our records, so please do not move, rename or delete sheets or columns.'],
+    ['p', 'Use this spreadsheet to put a contractor’s survey into our records. Copy their findings across, one row for each visit to a component, then load it in the portal (Compliance → Inspection walks → Load a survey) with their report. Do not move, rename or delete sheets or columns.'],
     ['h2', 'What to fill in'],
-    ['p', '1.  Survey sheet: fill in the yellow boxes once.'],
+    ['p', '1.  Survey sheet: the firm, their reference, the lead surveyor and their report’s file name.'],
     ['p', many
       ? `2.  Results sheets (${sheets.map((s) => s.name).join(', ')}): there is one row ready for each component. Fill in the yellow columns.`
       : '2.  Results sheet: there is one row ready for each component. Fill in the yellow columns.'],
-    ['p', '3.  Send this file back with your own report and photos. We keep your report with the results.'],
+    ['p', '3.  Their report is attached when you load this file, and kept with the results as the evidence.'],
     ['h2', 'For each component'],
-    ['p', 'Date seen: the day you visited it. Time is optional. Seen by: the person who visited.'],
-    ['p', 'Result: your overall finding. OK, Problem, Failed or No access. Every visit needs one.'],
-    ['p', 'Checks: Pass or Fail, judged only on what that check describes. The Checks sheet gives the wording. A check you did not carry out stays empty. Empty never counts as a pass.'],
+    ['p', 'Date seen: the day they visited it. Time: from their report where it gives one, otherwise leave it empty and only the date is kept. Seen by: who visited, if the report says.'],
+    ['p', 'Result: their overall finding, as OK, Problem, Failed or No access. Every visit needs one.'],
+    ['p', 'Checks: Pass or Fail, only where their findings clearly answer what our check describes (the Checks sheet gives our wording). Anything they did not look at stays empty. Empty never counts as a pass.'],
     ...(hasReadings ? [['p', 'Readings: enter what you measured or saw. Where the heading gives a unit, use that unit.']] : []),
     ...(sheets.some((s) => s.rows.some((r) => r.notApplicable.length))
       ? [['p', `${NOT_APPLICABLE} in a check column means that check does not apply to that component. Leave it as it is.`]] : []),
-    ['p', 'Notes: the reason for any Fail, and anything else you found that is not one of our checks.'],
-    ['p', 'Your reference: your own job sheet number and report page, so a row can be traced back to your report and photos.'],
+    ['p', 'Notes: the reason for any Fail, and anything they found that is not one of our checks, in their words.'],
+    ['p', 'Your reference: their job sheet number and report page, so a row can be traced back to the report and its photos.'],
     ['h2', 'If you could not get in'],
-    ['p', 'Choose No access as the Result and give a reason. Leave the checks and readings empty, because nothing was seen.'],
+    ['p', 'Where they could not get in, choose No access as the Result and give a reason. Leave the checks and readings empty, because nothing was seen.'],
     ['h2', 'More than one visit'],
-    ['p', 'Record each visit on a different day as its own row, because each attempt counts. Use a spare row at the foot of a Results sheet and choose the component from the list in its first column. Two visits on one day need one row: keep the one that saw the component, if either did.'],
+    ['p', 'Each visit on a different day is its own row, because each attempt counts. Use a spare row at the foot of a Results sheet and choose the component from the list in its first column. Two visits on one day need one row: keep the one that saw the component, if either did.'],
     ['p', 'The Example sheet shows finished rows. It is not loaded.'],
   ];
 }

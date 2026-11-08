@@ -312,6 +312,27 @@ export function addDaysLondon(instant, days) {
 }
 
 /**
+ * The instant a London date and wall-clock time name: '2026-10-04' + '10:15' is
+ * 09:15 UTC in summer and 10:15 UTC in winter. For a time read off a report, which
+ * is always London's. null when unreadable.
+ * @param {string} dateStr  'YYYY-MM-DD'
+ * @param {string} [time]   'HH:MM' or 'HH:MM:SS'; midday when absent
+ * @returns {Date|null}
+ */
+export function londonInstant(dateStr, time = '12:00') {
+  const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr ?? ''));
+  const t = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(String(time ?? '').trim());
+  if (!d || !t) return null;
+  const [h, mi, s] = [Number(t[1]), Number(t[2]), Number(t[3] ?? 0)];
+  if (h > 23 || mi > 59 || s > 59) return null;
+  const wall = Date.UTC(Number(d[1]), Number(d[2]) - 1, Number(d[3]), h, mi, s);
+  let at = wall - londonOffsetMs(new Date(wall));
+  at = wall - londonOffsetMs(new Date(at));
+  const back = new Date(at);
+  return calendarDate(back.toISOString()) === dateStr ? back : null;
+}
+
+/**
  * Add whole months to a 'YYYY-MM-DD', returning the same shape, in UTC.
  * A day that does not exist in the target month is clamped to its last day
  * (31 Jan + 1 month = 28/29 Feb), rather than overflowing into the next month

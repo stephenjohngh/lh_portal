@@ -67,9 +67,9 @@
 <Modal show title="Survey template" size="medium" on:close={() => dispatch('close')}>
   <div class="space-y-4">
     <p class="text-sm text-slate-300">
-      A spreadsheet for an outside surveyor to fill in. It has one row ready for each component the
-      planned obligation covers, and a column for each of its checks, worded as on a walk. Send it with
-      your instruction, so the results come back in a form the portal can load.
+      The spreadsheet a contractor's survey is converted into before it is loaded. It has one row ready
+      for each component the planned obligation covers, and a column for each of its checks, worded as on
+      a walk. Copy their findings across, then use <strong>Load a survey</strong>.
     </p>
 
     {#if obligations.length === 0}

@@ -24,6 +24,9 @@ vi.mock('#lib/utils/driveUtils.js',      () => ({ normalisePhotoUrl: (u) => `nor
 // importing the module doesn't pull $env/$app.
 vi.mock('#lib/utils/authHeaders.js',        () => ({ authHeaders: vi.fn(async () => ({})) }));
 vi.mock('#lib/apps/golden_thread/public.js', () => ({ registerDocument: vi.fn(), findDocumentBySource: vi.fn() }));
+// …and the survey load's seams (migration 287), which reach $app/env through the logger.
+vi.mock('#lib/utils/auditLogger.js', () => ({ logAudit: vi.fn() }));
+vi.mock('#lib/utils/documentApi.js', () => ({ uploadDocument: vi.fn(), deleteDocumentsFor: vi.fn() }));
 
 const { deleteWalkSession, listWalkSessions, loadSessionInspections } = await import('./public.js');
 
@@ -58,7 +61,7 @@ describe('listWalkSessions', () => {
   it('reads EVERY walk_session, newest-first, with the inspector joined', async () => {
     await listWalkSessions();
     expect(h.api.getAll).toHaveBeenCalledWith('walk_sessions', {
-      select: '*, inspector:profiles!created_by(full_name)',
+      select: '*, inspector:profiles!created_by(full_name), survey:inspection_surveys(firm, reference, lead_surveyor, undone_at)',
       orderBy: 'started_at', ascending: false,
     });
     expect(h.api.get).not.toHaveBeenCalledWith('walk_sessions', expect.anything());
