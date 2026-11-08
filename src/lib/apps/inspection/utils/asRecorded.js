@@ -11,6 +11,7 @@
 // Pure.
 
 import { isReadingDef } from '#lib/apps/building_assets/lookups.js';
+import { recordedCheckApplies } from '#lib/apps/building_assets/utils/checkApplies.js';
 
 export const UNKNOWN_CHECK = 'A check no longer on the list';
 
@@ -40,6 +41,12 @@ export function recordedAnswers(row, todayDefs = []) {
   const readings = row?.readings ?? {};
   const has = (v) => v !== undefined && v !== null && v !== '';
 
+  // A check that did not apply to this component (migration 286) is not listed
+  // unless answered: "not recorded" would read as a gap. Judged on the component as
+  // it was recorded; with no record of it, a conditional check is left out.
+  const fixed = row?.as_recorded?.fixed;
+  const applied = (def) => (fromSnapshot && fixed ? recordedCheckApplies(def, fixed) : !def.applies_when?.length);
+
   const conditions = [];
   const measured   = [];
   for (const def of checks) {
@@ -47,7 +54,7 @@ export function recordedAnswers(row, todayDefs = []) {
       if (has(readings[def.id])) measured.push({ def, value: readings[def.id] });
     } else {
       const passed = typeof results[def.id] === 'boolean' ? results[def.id] : null;
-      if (def.visible !== false || passed !== null) conditions.push({ def, passed });
+      if (passed !== null || (def.visible !== false && applied(def))) conditions.push({ def, passed });
     }
   }
 

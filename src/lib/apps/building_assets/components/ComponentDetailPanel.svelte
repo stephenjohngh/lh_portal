@@ -8,6 +8,7 @@
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
   import { typeByCode, conditionChecklistDisplay } from '../lookups.js';
+  import { checksFor, checkApplies } from '../utils/checkApplies.js';
   import { permissions }             from '#lib/stores/permissions.js';
   import AttrField                   from './AttrField.svelte';
   import ComponentInspectionHistory  from './ComponentInspectionHistory.svelte';
@@ -81,7 +82,8 @@
 
   // -- Derived ----------------------------------------------------------
   $: selectedType   = types.find(t => t.id === selectedTypeId) ?? null;
-  $: defs           = selectedTypeId ? (attrDefs[selectedTypeId] ?? []) : [];
+  // Only the checks that apply to this component (migration 286).
+  $: defs           = selectedTypeId ? checksFor(attrDefs[selectedTypeId] ?? [], component, { [component?.id]: attrs }) : [];
   $: primaryDef     = defs.find(d => d.is_primary) ?? null;
   // Fixed attributes (checkable=false) are intrinsic to the component;
   // condition attributes (checkable=true) are re-evaluated each inspection

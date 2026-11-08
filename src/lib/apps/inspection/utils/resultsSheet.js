@@ -16,10 +16,14 @@ import { isReadingDef } from '#lib/apps/building_assets/lookups.js';
 import {
   recordedAnswers, recordedChecks, recordedComponent, sourceLabel, todaysNamesNote, withoutSnapshot,
 } from './asRecorded.js';
+import { recordedCheckApplies } from '#lib/apps/building_assets/utils/checkApplies.js';
 
 export const TEMPLATE_VERSION = 'survey-template/1';
 
 /** The Result words a sheet uses, in the order they are offered. */
+/** What a check cell holds where the check does not apply to that component (migration 286). */
+export const NOT_APPLICABLE = 'N/A';
+
 export const RESULT_WORDS = ['OK', 'Problem', 'Failed', 'No access'];
 
 const resultWord = (r) => (r === 'no_access' ? 'No access' : statusLabel(r));
@@ -93,7 +97,11 @@ function sheetsByType(payloads, typeOf, defsOf) {
         seenBy(session),
         resultWord(result),
         result === 'no_access' ? noAccessReasonLabel(row.no_access_reason) : '',
-        ...checkCols.map((d) => (isReadingDef(d) || values.has(d.id) ? values.get(d.id) ?? '' : passWord(passed.get(d.id)))),
+        ...checkCols.map((d) => {
+          const answer = isReadingDef(d) || values.has(d.id) ? values.get(d.id) ?? '' : passWord(passed.get(d.id));
+          // A check that did not apply to this component reads N/A, not as a gap (migration 286).
+          return answer === '' && comp?.fixed && !recordedCheckApplies(d, comp.fixed) ? NOT_APPLICABLE : answer;
+        }),
         row.inspector_notes ?? '',
         row.source_ref ?? '',
       ];

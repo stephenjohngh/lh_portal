@@ -111,3 +111,18 @@ describe('buildResultsWorkbook', () => {
     expect(wb.getWorksheet('Checks').getRow(2).values).toContain('Let it go');
   });
 });
+
+describe('a check that did not apply (migration 286)', () => {
+  it('reads N/A rather than empty', () => {
+    const LIT = { id: 'lit', name: 'Lit after mains off', display_type: 'checkbox', order: 1, visible: true,
+      applies_when: [{ defName: 'Emergency', checkable: false, op: 'is_true' }] };
+    const row = (v) => ({
+      component_id: v, recorded_checks: [LIT], inspection_result: 'ok', inspected_at: '2026-10-04T09:00:00Z', checklist_results: {}, readings: {},
+      as_recorded: { ref: `G/L/${v}`, fixed: [{ id: 'em', name: 'Emergency', display_type: 'checkbox', value: v === 'e' ? 'true' : null }],
+        component: { type_code: 'light', type_name: 'Light' } },
+    });
+    const [sheet] = resultsSheetModel([{ session, rows: [row('e'), row('o')] }], lookups).sheets;
+    expect(sheet.rows.map((r) => cell(sheet, r, 'lit'))).toEqual(['', 'N/A']);
+  });
+});
+

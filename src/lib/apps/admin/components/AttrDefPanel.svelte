@@ -6,6 +6,8 @@
   import { buildingAssetsStore } from '#lib/apps/building_assets/stores/buildingAssetsStore.js';
   import { inp } from '#lib/apps/building_assets/ui.js';
   import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
+  import CheckConditionField from './CheckConditionField.svelte';
+  import { conditionProblem, describeCondition } from '#lib/apps/building_assets/utils/checkApplies.js';
 
   export let attrDefs          = [];   // effective type_attributes[], each with _scope: 'system'|'type'
   export let mode              = null; // 'type' | 'system' | null
@@ -51,6 +53,9 @@
     }
   }
 
+  // What a condition attribute can depend on: the fixed attributes in this list.
+  $: conditionFixedDefs = attrDefs.filter(d => !d.checkable && d.visible !== false);
+
   $: existingPrimary = attrDefs.find(d => d.is_primary && d.id !== editingId);
 
   // In type mode an inherited (system-level) attr is read-only for full editing
@@ -71,7 +76,8 @@
       checkable:          def.checkable ?? false,
       presentation_order: def.presentation_order,
       visible:            def.visible,
-      help_notes:         def.help_notes ?? ''
+      help_notes:         def.help_notes ?? '',
+      applies_when:       def.applies_when ?? null
     };
     error = '';
   }
@@ -88,7 +94,8 @@
       checkable:          false,
       presentation_order: (attrDefs.length + 1) * 10,
       visible:            true,
-      help_notes:         ''
+      help_notes:         '',
+      applies_when:       null
     };
     error = '';
   }
@@ -103,6 +110,9 @@
 
   async function save() {
     if (!form.name?.trim()) { error = 'Name is required'; return; }
+    if (!form.checkable) form.applies_when = null;
+    const conditionError = conditionProblem(form.applies_when);
+    if (conditionError) { error = conditionError; return; }
 
     // In type mode, block names that shadow an inherited system attr
     if (editingId === 'new' && mode === 'type' && inheritedNames.has(form.name.trim())) {
@@ -271,6 +281,9 @@
                   <input type="checkbox" bind:checked={form.checkable} class="rounded accent-green-500" />
                   ◐ Condition attribute (re-evaluated each inspection)
                 </label>
+                {#if form.checkable}
+                  <CheckConditionField bind:value={form.applies_when} fixedDefs={conditionFixedDefs} idPrefix="cond-{editingId}" />
+                {/if}
                 <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
                   <input type="checkbox" bind:checked={form.visible} class="rounded accent-purple-500" />
                   Visible
@@ -320,6 +333,9 @@
                   {/if}
                   {#if def.checkable}
                     <span class="text-green-400 text-xs" title="Condition attribute — re-evaluated each inspection">cond</span>
+                  {/if}
+                  {#if def.applies_when}
+                    <span class="text-green-400/80 text-xs" title={describeCondition(def)}>◑ some</span>
                   {/if}
                   {#if def.help_notes}
                     <span class="text-sky-400 text-xs" title={def.help_notes}>💬</span>
@@ -424,6 +440,9 @@
                 <input type="checkbox" bind:checked={form.checkable} class="rounded accent-green-500" />
                 ◐ Condition attribute (re-evaluated each inspection)
               </label>
+              {#if form.checkable}
+                <CheckConditionField bind:value={form.applies_when} fixedDefs={conditionFixedDefs} idPrefix="cond-new" />
+              {/if}
               <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
                 <input type="checkbox" bind:checked={form.visible} class="rounded accent-purple-500" />
                 Visible

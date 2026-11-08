@@ -18,6 +18,7 @@
   } from '../componentPresets.js';
 
   import { resolveComponentHalo, conditionChecklistDisplay } from '../lookups.js';
+  import { checksFor, checkApplies } from '../utils/checkApplies.js';
   import { generateReportDocument } from './plan/reportGenerator.js';
   import ComponentInventoryTable from './ComponentInventoryTable.svelte';
   import ComponentPresetBar      from './ComponentPresetBar.svelte';
@@ -361,7 +362,7 @@
         // generator to draw a per-component sub-row showing checklist outcomes.
         conditionResultsFn: c => {
           const t    = typeOf(c);
-          const defs = t ? (attrDefs[t.id] ?? []) : [];
+          const defs = t ? checksFor(attrDefs[t.id] ?? [], c, componentAttrs) : [];
           const insp = inspections[c.id] ?? null;
           return conditionChecklistDisplay(insp, defs).map(({ def, passed }) => ({
             name: def.name,
@@ -456,7 +457,8 @@
   $: inspectingType = inspectingComponent
     ? (types.find(t => t.code === inspectingComponent.type_code) ?? null) : null;
   $: inspectingCheckable = inspectingType
-    ? (attrDefs[inspectingType.id] ?? []).filter(d => d.checkable && d.visible) : [];
+    ? (attrDefs[inspectingType.id] ?? []).filter(d => d.checkable && d.visible
+        && checkApplies(d, inspectingComponent, attrDefs[inspectingType.id], componentAttrs)) : [];
   $: inspectingLastInspection = inspectingComponent
     ? (inspections[inspectingComponent.id] ?? null) : null;
 

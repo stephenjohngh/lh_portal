@@ -148,3 +148,30 @@ describe('buildSurveyTemplateWorkbook', () => {
     expect(wb.getWorksheet('Survey').getRow(3).values).toEqual(expect.arrayContaining(['ob1', 'obligation_id']));
   });
 });
+
+describe('a check that applies to only some components (migration 286)', () => {
+  const emDefs = [
+    { id: 'em', name: 'Emergency', checkable: false, visible: true, display_type: 'checkbox', presentation_order: 1 },
+    { id: 'lit', name: 'Lit after mains off', checkable: true, visible: true, display_type: 'checkbox', presentation_order: 2,
+      applies_when: [{ defName: 'Emergency', checkable: false, op: 'is_true' }] },
+  ];
+  const m = model({
+    obligation: { id: 'ob2', name: 'Lights', scope: { typeCodes: ['light'] } },
+    components: [{ id: 'a', type_code: 'light', floor_id: 'fG', asset_id: '1' }, { id: 'b', type_code: 'light', floor_id: 'fG', asset_id: '2' }],
+    attrDefs: { 't-light': emDefs },
+    componentAttrs: { a: [{ type_attribute_id: 'em', value: 'true' }] },
+  });
+
+  it('marks it N/A where it does not apply, and says so', async () => {
+    const [sheet] = m.sheets;
+    expect(sheet.rows.map((r) => r.notApplicable)).toEqual([[], ['lit']]);
+    expect(m.readMe.some(([, t]) => t.startsWith('N/A'))).toBe(true);
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await buildSurveyTemplateWorkbook(m));
+    const ws = wb.getWorksheet('Results');
+    const col = ws.getRow(1).values.indexOf('lit');
+    expect([ws.getRow(3).getCell(col).value, ws.getRow(4).getCell(col).value]).toEqual([null, 'N/A']);
+    expect(wb.getWorksheet('Checks').getRow(2).values).toContain('Only where Emergency is ticked');
+  });
+});
+

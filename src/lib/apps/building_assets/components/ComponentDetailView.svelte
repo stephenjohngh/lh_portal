@@ -10,6 +10,7 @@
   import { createEventDispatcher }   from 'svelte';
   import { buildingAssetsStore }     from '../stores/buildingAssetsStore.js';
   import { typeByCode, conditionChecklistDisplay } from '../lookups.js';
+  import { checksFor, checkApplies } from '../utils/checkApplies.js';
   import { buildSpaceRef }             from '#lib/utils/spaceRef.js';
   import { buildComponentRef }         from '#lib/utils/componentRef.js';
   import { spacesForComponent }        from '../utils/spaceMembership.js';
@@ -38,7 +39,8 @@
   // -- Derived ----------------------------------------------------------
   $: type        = typeByCode(types, component.type_code);
   $: typeId      = type?.id ?? null;
-  $: defs        = typeId ? (attrDefs[typeId] ?? []) : [];
+  // Only the checks that apply to this component (migration 286).
+  $: defs        = typeId ? checksFor(attrDefs[typeId] ?? [], component, { [component.id]: attrs }) : [];
   $: fixedDefs = defs.filter(d => !d.checkable);
   $: conditionDefs     = defs.filter(d =>  d.checkable);
   $: primaryDef   = defs.find(d => d.is_primary) ?? null;

@@ -160,7 +160,8 @@ export function createTypeHierarchyActions(update) {
       checkable:          data.checkable                 ?? false,
       presentation_order: Number(data.presentation_order) || 0,
       visible:            data.visible                   ?? true,
-      help_notes:         data.help_notes?.trim()        || null
+      help_notes:         data.help_notes?.trim()        || null,
+      applies_when:       data.checkable ? (data.applies_when ?? null) : null
     };
     if (data.building_system_id) {
       payload.building_system_id = data.building_system_id;
@@ -183,7 +184,8 @@ export function createTypeHierarchyActions(update) {
       checkable:          data.checkable                 ?? false,
       presentation_order: Number(data.presentation_order) || 0,
       visible:            data.visible,
-      help_notes:         data.help_notes?.trim()        || null
+      help_notes:         data.help_notes?.trim()        || null,
+      applies_when:       data.checkable ? (data.applies_when ?? null) : null
     });
     logAudit('update', 'type_attribute', id, row.name,
       { ...AUDIT_OPTS, afterData: row });

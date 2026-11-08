@@ -17,8 +17,11 @@ import { NO_ACCESS_REASONS } from '#lib/utils/resultConstants.js';
 import { isReadingDef } from '#lib/apps/building_assets/lookups.js';
 import { buildComponentRef } from '#lib/utils/componentRef.js';
 import { isEmptyScope } from '#lib/apps/building_assets/utils/inspectionScope.js';
+import { checkApplies, describeCondition } from '#lib/apps/building_assets/utils/checkApplies.js';
 import { buildWalkComponentsFromScope } from './inspectionWalk.js';
-import { TEMPLATE_VERSION, RESULT_WORDS, sheetName } from './resultsSheet.js';
+import { TEMPLATE_VERSION, RESULT_WORDS, NOT_APPLICABLE, sheetName } from './resultsSheet.js';
+
+export { NOT_APPLICABLE };
 
 /** Rows left empty under the prefilled ones, for a second visit to a component. */
 export const spareRowsFor = (n) => Math.min(200, Math.max(20, Math.ceil(n / 2)));
@@ -91,6 +94,8 @@ export function surveyTemplateModel({
       label: c.label ?? '',
       floor: floorOf.get(c.floor_id)?.name ?? '',
       fixed: fixed.map((d) => ({ id: d.id, name: d.name, value: valueOf(c.id, d) ?? '' })),
+      // Checks that do not apply to this component (migration 286).
+      notApplicable: checks.filter((d) => !checkApplies(d, c, defs, componentAttrs)).map((d) => d.id),
     }));
 
     return {
@@ -146,6 +151,8 @@ function readMeLines(obligation, sheets) {
     ['p', 'Result: your overall finding. OK, Problem, Failed or No access. Every visit needs one.'],
     ['p', 'Checks: Pass or Fail, judged only on what that check describes. The Checks sheet gives the wording. A check you did not carry out stays empty. Empty never counts as a pass.'],
     ...(hasReadings ? [['p', 'Readings: enter what you measured or saw. Where the heading gives a unit, use that unit.']] : []),
+    ...(sheets.some((s) => s.rows.some((r) => r.notApplicable.length))
+      ? [['p', `${NOT_APPLICABLE} in a check column means that check does not apply to that component. Leave it as it is.`]] : []),
     ['p', 'Notes: the reason for any Fail, and anything else you found that is not one of our checks.'],
     ['p', 'Your reference: your own job sheet number and report page, so a row can be traced back to your report and photos.'],
     ['h2', 'If you could not get in'],
@@ -180,7 +187,7 @@ export function exampleRows(sheet) {
     };
     return sheet.columns.map((c) => {
       if (c.key.startsWith('fixed:')) return r.fixed.find((f) => `fixed:${f.id}` === c.key)?.value ?? '';
-      if (c.check) return answers.get(c.key) ?? '';
+      if (c.check) return r.notApplicable.includes(c.key) ? NOT_APPLICABLE : answers.get(c.key) ?? '';
       return values[c.key] ?? '';
     });
   });
@@ -273,7 +280,7 @@ export async function buildSurveyTemplateWorkbook(model) {
         else if (v !== undefined && v !== '') cell.value = v;
         cell.border = box;
         cell.alignment = { vertical: 'top', wrapText: i === iNotes };
-        const greyed = c.given && (i > 0 || n < given);
+        const greyed = (c.given && (i > 0 || n < given)) || v === NOT_APPLICABLE;
         cell.fill = fill(greyed ? GREY : YELLOW);
         if (i === iDate) cell.numFmt = 'dd mmm yyyy';
       });
@@ -332,6 +339,7 @@ export async function buildSurveyTemplateWorkbook(model) {
       if (c.key === 'label') return r.label;
       if (c.key === 'floor') return r.floor;
       if (c.key.startsWith('fixed:')) return r.fixed.find((f) => `fixed:${f.id}` === c.key)?.value ?? '';
+      if (c.check && r.notApplicable.includes(c.key)) return NOT_APPLICABLE;
       return '';
     }));
     results(ws, sheet, prefilled, true);
@@ -340,13 +348,13 @@ export async function buildSurveyTemplateWorkbook(model) {
   results(wb.addWorksheet('Example'), model.sheets[0], exampleRows(model.sheets[0]), false);
 
   const ck = wb.addWorksheet('Checks');
-  ck.columns = [{ width: 18 }, { width: 26 }, { width: 16 }, { width: 92 }, { width: 38 }];
-  const head = ck.addRow(['Sheet', 'Check', 'How to record', 'What it covers', 'Check id']);
+  ck.columns = [{ width: 18 }, { width: 26 }, { width: 16 }, { width: 80 }, { width: 30 }, { width: 38 }];
+  const head = ck.addRow(['Sheet', 'Check', 'How to record', 'What it covers', 'Applies to', 'Check id']);
   head.eachCell((c) => { c.font = { bold: true, color: { argb: WHITE } }; c.fill = fill(NAVY); });
   for (const sheet of model.sheets) {
     for (const d of sheet.checks) {
       const how = !isReadingDef(d) ? 'Pass or Fail' : d.display_type === 'number' ? 'A number' : 'Text';
-      const r = ck.addRow([sheet.name, d.name, how, d.help_notes ?? d.help ?? '', d.id]);
+      const r = ck.addRow([sheet.name, d.name, how, d.help_notes ?? d.help ?? '', describeCondition(d) || 'Every component', d.id]);
       r.getCell(4).alignment = { wrapText: true, vertical: 'top' };
       r.getCell(2).font = { bold: true };
     }

@@ -6094,6 +6094,7 @@ export type Database = {
           building_system_id: string | null
           checkable: boolean
           help_notes: string | null
+          applies_when: Json | null
         }
         Insert: {
           id?: string
@@ -6109,6 +6110,7 @@ export type Database = {
           building_system_id?: string | null
           checkable?: boolean
           help_notes?: string | null
+          applies_when?: Json | null
         }
         Update: {
           id?: string
@@ -6124,6 +6126,7 @@ export type Database = {
           building_system_id?: string | null
           checkable?: boolean
           help_notes?: string | null
+          applies_when?: Json | null
         }
         Relationships: [
             {

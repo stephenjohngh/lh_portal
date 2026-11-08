@@ -78,3 +78,20 @@ describe('saying what is not known', () => {
     expect(todaysNamesNote(3)).toContain('3 results were');
   });
 });
+
+describe('a check that applies to only some components (migration 286)', () => {
+  const LIT = { id: 'lit', name: 'Lit after mains off', display_type: 'checkbox', order: 1, visible: true,
+    applies_when: [{ defName: 'Emergency', checkable: false, op: 'is_true' }] };
+  const fixed = (v) => ({ as_recorded: { ref: 'G/L/1', component: {}, fixed: [{ id: 'em', name: 'Emergency', display_type: 'checkbox', value: v }] } });
+
+  it('lists it unanswered only where it applied', () => {
+    const names = (row) => recordedAnswers({ ...row, recorded_checks: [LIT], checklist_results: {} }).conditions.map((c) => c.def.name);
+    expect(names(fixed('true'))).toEqual(['Lit after mains off']);
+    expect(names(fixed(null))).toEqual([]);
+  });
+
+  it('always keeps an answer', () => {
+    const r = recordedAnswers({ ...fixed(null), recorded_checks: [LIT], checklist_results: { lit: false } });
+    expect(r.conditions).toEqual([{ def: LIT, passed: false }]);
+  });
+});

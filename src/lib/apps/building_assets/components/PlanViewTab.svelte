@@ -10,6 +10,7 @@
   import { matchesSearch } from '#lib/utils/textSearch.js';
   import { buildingAssetsStore }                 from '../stores/buildingAssetsStore.js';
   import { typeByCode, checkableDefs, resolveComponentHalo } from '../lookups.js';
+  import { checksFor, checkApplies } from '../utils/checkApplies.js';
   import { computeMetresPerUnit }         from './plan/planMeasure.js';
   import { ACCENT }                       from '#lib/theme.js';
   import { getPref, setPref, getJSON, setJSON } from '#lib/utils/prefs.js';
@@ -182,7 +183,8 @@
 
   // -- Derived: inspection panel context ----------------------------
   $: selType           = selectedComponent ? typeByCode(types, selectedComponent.type_code) : null;
-  $: selCheckable      = selectedComponent ? checkableDefs(attrDefs, types, selectedComponent.type_code) : [];
+  $: selCheckable      = selectedComponent ? checkableDefs(attrDefs, types, selectedComponent.type_code)
+      .filter(d => checkApplies(d, selectedComponent, attrDefs[selType?.id] ?? [], componentAttrs)) : [];
   $: selLastInspection = selectedComponent ? (inspections[selectedComponent.id] ?? null) : null;
 
   // -- Derived: scale ------------------------------------------------

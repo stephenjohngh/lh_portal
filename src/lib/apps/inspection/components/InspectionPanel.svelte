@@ -12,6 +12,7 @@
   import { buildComponentRef } from '#lib/utils/componentRef.js';
   import { noAccessReasonLabel } from '#lib/utils/resultConstants.js';
   import { applyChecklistMode } from '../utils/checklistRules.js';
+  import { checkApplies } from '#lib/apps/building_assets/utils/checkApplies.js';
   import { fmtDate, fmtTime } from '#lib/utils/dates.js';
   import InspectionResultSection from './InspectionResultSection.svelte';
   import GuideHowTo from './GuideHowTo.svelte';
@@ -45,7 +46,10 @@
   // checklist_mode ('explicit' keeps only its checklist_attr_ids).
   $: typeId         = allTypes.find(t => t.code === component?.type_code)?.id ?? null;
   $: checklistDefs  = applyChecklistMode(
-    typeId ? (attrDefs[typeId] ?? []).filter(d => d.checkable) : [],
+    // ⛔ Only the checks that apply to THIS component (migration 286): "Lit after
+    // mains off" is asked only where Emergency is ticked.
+    typeId ? (attrDefs[typeId] ?? []).filter(d => d.checkable
+      && checkApplies(d, component, attrDefs[typeId], $inspectionStore.allComponentAttrs)) : [],
     definition,
   );
 

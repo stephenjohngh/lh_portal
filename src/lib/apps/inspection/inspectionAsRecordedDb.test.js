@@ -8,7 +8,8 @@
 // that migration first, inside the same transaction.
 //
 // What it proves: a result keeps the door, its fixed attributes and the checks as they
-// stood, whatever is renamed afterwards; identical wording is stored once; the
+// stood, whatever is renamed afterwards; a check that applies to only some components
+// keeps its condition (migration 286); identical wording is stored once; the
 // snapshot cannot be changed; a system-level attribute is included; and a snapshot
 // that cannot be taken does not stop the result being saved.
 
@@ -102,6 +103,24 @@ const AS_SYSTEM = [
   ['a check held at system level is included', `
     ${add(4, SYSTEM_COMPONENT)}
     ${must(`(${ROW(4)}->'fixed')::text like '%' || ${SYSTEM_ATTR} || '%' or ${SET(4)} like '%' || ${SYSTEM_ATTR} || '%'`, 'system attribute missing')}`, null],
+  // Migration 286: a check may apply to only some components.
+  ['a check with no condition is stored as before, with no applies_when key', `
+    ${must(`${SET(1)} not like '%applies_when%'`, 'applies_when written for an unconditional check')}
+    ${must(`(${ROW(1)}->'fixed')::text like '%display_type%'`, 'fixed values lost their display type')}`, null],
+  ['a check that applies to only some components keeps its condition', `
+    insert into type_attributes (component_type_id, name, display_type, checkable, presentation_order, applies_when)
+      values ((select id from component_types where code = 'door_apartment_door'), 'DBT conditional', 'checkbox', true, 999,
+              '[{"defName":"Rating","checkable":false,"op":"in","values":["Nominal FD60"]}]');
+    ${add(6)}
+    ${must(`${SET(6)} like '%DBT conditional%' and ${SET(6)} like '%applies_when%'`, 'condition not kept')}`, null],
+  ['a condition on a fixed attribute is refused', `
+    insert into type_attributes (component_type_id, name, display_type, checkable, applies_when)
+      values ((select id from component_types where code = 'door_apartment_door'), 'DBT bad', 'text', false, '[{"defName":"x","op":"is_true"}]');`,
+    'type_attributes_applies_when_shape'],
+  ['an empty condition is refused', `
+    insert into type_attributes (component_type_id, name, display_type, checkable, applies_when)
+      values ((select id from component_types where code = 'door_apartment_door'), 'DBT empty', 'checkbox', true, '[]');`,
+    'type_attributes_applies_when_shape'],
   ['a snapshot that cannot be taken does not stop the result being saved', `
     alter table inspection_check_sets rename to inspection_check_sets_gone;
     ${add(5)}
