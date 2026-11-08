@@ -386,6 +386,7 @@
         "walk_sessions.session_type": [
             "inspection",
             "repair",
+            "survey",
             "test"
         ],
         "workflow_moves.timer_basis": [

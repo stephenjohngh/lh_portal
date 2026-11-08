@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema47.csv
+// Source: docs/ops/supabase_lhportal_schema48.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -3384,7 +3384,29 @@ export type Database = {
           undone_at?: string | null
           undone_reason?: string | null
         }
-        Relationships: []
+        Relationships: [
+            {
+              foreignKeyName: "inspection_surveys_definition_id_fkey"
+              columns: ["definition_id"]
+              isOneToOne: false
+              referencedRelation: "statutory_obligations"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "inspection_surveys_loaded_by_fkey"
+              columns: ["loaded_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "inspection_surveys_undone_by_fkey"
+              columns: ["undone_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
       }
       issues: {
         Row: {
@@ -6343,6 +6365,13 @@ export type Database = {
               isOneToOne: false
               referencedRelation: "components"
               referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "walk_sessions_survey_id_fkey"
+              columns: ["survey_id"]
+              isOneToOne: false
+              referencedRelation: "inspection_surveys"
+              referencedColumns: ["id"]
             }
           ]
       }
@@ -6565,15 +6594,15 @@ export type Database = {
               foreignKeyName: "workflow_items_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
-              referencedRelation: "workflows"
-              referencedColumns: ["id"]
+              referencedRelation: "workflow_steps"
+              referencedColumns: ["workflow_id"]
             },
             {
               foreignKeyName: "workflow_items_workflow_id_fkey"
               columns: ["workflow_id"]
               isOneToOne: false
-              referencedRelation: "workflow_steps"
-              referencedColumns: ["workflow_id"]
+              referencedRelation: "workflows"
+              referencedColumns: ["id"]
             },
             {
               foreignKeyName: "workflow_items_step_key_fkey"
