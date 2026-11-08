@@ -278,8 +278,8 @@ describe('navigation', () => {
   });
 });
 
-describe('no_access (G1)', () => {
-  it('records the attempt WITHOUT changing the component status', async () => {
+describe('no_access (G1, and Problem since 2026-11-08)', () => {
+  it('records the attempt and makes an OK component Problem — not a Fail, and not OK either', async () => {
     await startWalk();   // comp1 starts 'ok'
     await inspectionStore.recordInspection({
       componentId: 'comp1', result: 'no_access', noAccessReason: 'locked',
@@ -288,16 +288,20 @@ describe('no_access (G1)', () => {
     const inspArg = h.api.upsert.mock.calls.find(c => c[0] === 'component_inspections')[1];
     expect(inspArg).toMatchObject({ inspection_result: 'no_access', no_access_reason: 'locked' });
 
-    // The component patch must carry NO status/status_set_* — not observing a
-    // component says nothing about its condition. Only the pointer advances.
     const compPatch = h.api.update.mock.calls.find(c => c[0] === 'components')[2];
-    expect(compPatch).not.toHaveProperty('status');
-    expect(compPatch).not.toHaveProperty('status_set_by');
-    expect(compPatch).not.toHaveProperty('status_set_at');
-    expect(compPatch).toHaveProperty('last_inspection_id');
+    expect(compPatch).toMatchObject({ status: 'problem', last_inspection_id: inspArg.id });
+    expect(compPatch).toHaveProperty('status_set_at');
 
-    // …and the in-memory copy must match the DB, not drift to 'no_access'.
-    expect(get(inspectionStore).walkComponents.find(c => c.id === 'comp1').status).toBe('ok');
+    // …and the in-memory copy matches the DB, never 'no_access'.
+    expect(get(inspectionStore).walkComponents.find(c => c.id === 'comp1').status).toBe('problem');
+  });
+
+  it('a re-inspect is judged against the status before the walk, not its own earlier result', async () => {
+    await startWalk();   // comp1 starts 'ok'
+    await inspectionStore.recordInspection({ componentId: 'comp1', result: 'failed' });
+    await inspectionStore.recordInspection({ componentId: 'comp1', result: 'no_access', noAccessReason: 'locked' });
+    // The Fail was this walk's own mistake, replaced; before the walk it was OK.
+    expect(get(inspectionStore).walkComponents.find(c => c.id === 'comp1').status).toBe('problem');
   });
 
   it('drops a stale reason when the component is later actually assessed', async () => {

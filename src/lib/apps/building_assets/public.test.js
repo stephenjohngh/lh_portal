@@ -23,7 +23,7 @@ const h = vi.hoisted(() => ({
 vi.mock('#lib/utils/api.js', () => ({ api: h.api }));
 
 const {
-  updateComponent, applyInspectionResult, replaceComponentAttributes, createComponentInspection, updateFloor,
+  updateComponent, applyInspectionResult, statusAfterResult, inspectionResultPatch, replaceComponentAttributes, createComponentInspection, updateFloor,
 } = await import('./public.js');
 
 beforeEach(() => vi.clearAllMocks());
@@ -33,6 +33,24 @@ describe('updateComponent', () => {
     const row = await updateComponent('c1', { label: 'FD-02' }, 'user-9');
     expect(h.api.update).toHaveBeenCalledWith('components', 'c1', { label: 'FD-02', updated_by: 'user-9' });
     expect(row).toMatchObject({ id: 'c1', label: 'FD-02', updated_by: 'user-9' });
+  });
+});
+
+describe('no access (user, 2026-11-08): Problem, but a Fail is never softened', () => {
+  it('makes OK, Problem and an unknown status Problem', () => {
+    for (const held of ['ok', 'problem', null, undefined]) expect(statusAfterResult('no_access', held)).toBe('problem');
+  });
+  it('keeps Failed and Inactive, and writes no status for them', () => {
+    for (const held of ['failed', 'inactive']) {
+      expect(statusAfterResult('no_access', held)).toBe(held);
+      const patch = inspectionResultPatch('no_access', { inspectionId: 'i', userId: 'u', currentStatus: held });
+      expect(patch).not.toHaveProperty('status');
+      expect(patch).not.toHaveProperty('status_set_at');
+      expect(patch.last_inspection_id).toBe('i');
+    }
+  });
+  it('leaves every other result as it is', () => {
+    for (const r of ['ok', 'problem', 'failed', 'inactive']) expect(statusAfterResult(r, 'failed')).toBe(r);
   });
 });
 

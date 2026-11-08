@@ -18,6 +18,7 @@ import { calendarDate, londonInstant, today, fmtDateOnly, DAY_MS } from '#lib/ut
 import { NO_ACCESS_REASONS, statusLabel } from '#lib/utils/resultConstants.js';
 import { isReadingDef } from '#lib/apps/building_assets/lookups.js';
 import { checkApplies } from '#lib/apps/building_assets/utils/checkApplies.js';
+import { statusAfterResult } from '#lib/apps/building_assets/utils/statusRule.js';
 import { TEMPLATE_VERSION, NOT_APPLICABLE } from './resultsSheet.js';
 
 const GIVEN = new Set(['ref', 'label', 'floor']);
@@ -275,12 +276,16 @@ export function checkSurvey(read, ctx) {
 
   if (!rows.length && !refusals.length) refuse('No row has a result filled in.');
 
-  // Status: a result changes a component's status only if it is newer than the one held.
+  // Status: a component's newest result in the survey that SAW it; if the survey never
+  // saw it, its newest no-access visit, which is Problem unless it is held Failed or
+  // Inactive (statusRule.js). Either changes the status only if newer than the one held.
+  // Mirrored in survey_load() (migration 290).
   const newest = new Map();
   for (const r of rows) {
-    if (r.result === 'no_access') continue;
     const prev = newest.get(r.component_id);
-    if (!prev || prev.inspected_at < r.inspected_at) newest.set(r.component_id, r);
+    const seenNow = r.result !== 'no_access';
+    const seenPrev = prev && prev.result !== 'no_access';
+    if (!prev || (seenNow && !seenPrev) || (seenNow === seenPrev && prev.inspected_at < r.inspected_at)) newest.set(r.component_id, r);
   }
   /** @type {Record<string, number>} */
   const changes = {};
@@ -289,8 +294,9 @@ export function checkSurvey(read, ctx) {
     const comp = ctx.componentById.get(id);
     const held = ctx.heldSince?.(id) ?? comp?.status_set_at ?? null;
     if (held && new Date(held).getTime() >= new Date(r.inspected_at).getTime()) { older++; continue; }
-    if (comp?.status !== r.result) {
-      const key = `${statusLabel(comp?.status)} → ${statusLabel(r.result)}`;
+    const after = statusAfterResult(r.result, comp?.status);
+    if (comp?.status !== after) {
+      const key = `${statusLabel(comp?.status)} → ${statusLabel(after)}`;
       changes[key] = (changes[key] ?? 0) + 1;
     }
   }

@@ -1023,7 +1023,13 @@ function createInspectionStore() {
     // The "inspection result → component status" rule, built HERE at record time
     // (so status_set_at is the true observation time even if sync happens hours
     // later) and applied to the component by the syncer. Rule stays in public.js.
-    const statusPatch = inspectionResultPatch(result, { inspectionId, userId, at: now });
+    // No access keeps Failed and Inactive and is otherwise Problem (public.js). It is
+    // judged against the status before this session: a re-inspect replaces this
+    // session's earlier result, so that result is not what it is judged against.
+    const heldBefore = existing
+      ? (state.statusBefore?.[componentId] ?? null)
+      : priorStatus;
+    const statusPatch = inspectionResultPatch(result, { inspectionId, userId, at: now, currentStatus: heldBefore });
     // ⭐ A re-inspect keeps the earlier photos the inspector left in the form
     // (`keptPhotos`) and removes only the ones they took off — never the rest
     // (user, 2026-10-04: "carry them into the form"). Each earlier photo is
@@ -1097,12 +1103,11 @@ function createInspectionStore() {
         };
       }
 
-      // Update in-memory component status to match what applyInspectionResult
-      // actually wrote. 'no_access' writes NO status (the component was not
-      // observed), so the in-memory copy must keep its existing status too —
-      // otherwise the UI would show a status the database does not hold.
-      const statusChanged = result !== 'no_access';
-      const withStatus = (c) => (statusChanged ? { ...c, status: result } : c);
+      // Update in-memory component status to match what the patch writes: a
+      // no-access visit to a Failed or Inactive component writes no status, and
+      // otherwise no access is Problem (statusAfterResult, public.js).
+      const statusChanged = 'status' in statusPatch;
+      const withStatus = (c) => (statusChanged ? { ...c, status: statusPatch.status } : c);
 
       const updatedAllComponents = { ...s.allComponents };
       if (statusChanged) {

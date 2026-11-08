@@ -211,14 +211,17 @@ export function createComponentActions(update) {
 
     // "inspection result → component status" rule lives in ../public.js, shared
     // verbatim with the Inspection app.
-    await applyInspectionResult(componentId, { result, inspectionId: inspection.id, userId });
+    // The status held now: no access keeps Failed and Inactive (public.js statusAfterResult).
+    /** @type {string|null} */ let currentStatus = null;
+    update(s => { currentStatus = s.components.find(c => c.id === componentId)?.status ?? null; return s; });
+    const patch = await applyInspectionResult(componentId, { result, inspectionId: inspection.id, userId, currentStatus });
 
     update(s => ({
       ...s,
       inspections: { ...s.inspections, [componentId]: inspection },
       components:  s.components.map(c =>
         c.id === componentId
-          ? { ...c, status: result, last_inspection_id: inspection.id }
+          ? { ...c, ...('status' in patch ? { status: patch.status } : {}), last_inspection_id: inspection.id }
           : c
       )
     }));

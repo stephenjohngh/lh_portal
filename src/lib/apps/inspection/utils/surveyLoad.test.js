@@ -81,6 +81,29 @@ describe('checkSurvey — a good file', () => {
     expect(summary.noAccess).toBe(1);
   });
 
+  it('makes a door it could not get into Problem, but never softens a Fail (user, 2026-11-08)', async () => {
+    const read = await filled((f) => {
+      visit(f, 'G/A/01', { result: 'No access', no_access_reason: 'No answer' });
+      visit(f, 'G/A/02', { result: 'No access', no_access_reason: 'No answer' });
+    });
+    const failedTwo = new Map(doors.map((d) => [d.id, d.id === 'd2' ? { ...d, status: 'failed' } : d]));
+    expect(checkSurvey(read, ctx({ componentById: failedTwo })).summary.statusChanges).toEqual({ 'OK → Problem': 1 });
+  });
+
+  it('a door the survey saw on one day takes that result, not a later visit with no access', async () => {
+    const read = await filled((f) => {
+      visit(f, 'G/A/01', { result: 'Failed', checks: { c1: 'Fail' } });
+      let spare = 3; while (f.row('G/A/03') >= spare) spare++;
+      // A spare row: the component chosen in column A, a later day, no access.
+      f.set(spare, 'ref', 'G/A/01');
+      f.set(spare, 'date', new Date(Date.UTC(2026, 9, 6))); f.set(spare, 'result', 'No access'); f.set(spare, 'no_access_reason', 'No answer');
+    });
+    const { refusals, rows, summary } = checkSurvey(read, ctx());
+    expect(refusals).toEqual([]);
+    expect(rows).toHaveLength(2);
+    expect(summary.statusChanges).toEqual({ 'OK → Failed': 1 });
+  });
+
   it('reads the Survey sheet', async () => {
     const read = await filled(() => {});
     expect(surveyDetails(read.survey)).toMatchObject({ firm: 'Spartafire', reference: 'J123', lead_surveyor: 'A Surveyor', definition_id: 'ob1' });

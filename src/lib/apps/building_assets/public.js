@@ -48,28 +48,34 @@ export function updateComponent(id, fields, userId) {
  * `status_set_at` — so the two paths drifted. Both now call this, which always
  * writes the full, consistent patch.
  *
- * ⚠ EXCEPTION — 'no_access': the inspector attended but could not assess the
- * component, so NO condition was observed and the status must not move. The
- * component keeps the last value anyone actually saw (and status_set_by/at keep
- * pointing at who set it). Only `last_inspection_id` advances, because the
- * attempt IS the most recent inspection event — that is what makes the UI able
- * to show "OK · last check: no access".
- *
- * Writing the status here would be worse than useless: it would overwrite a
- * known condition with a non-condition. Migration 167 backs this up by leaving
- * components_status_check without 'no_access', so if this guard is ever removed
- * the database raises instead of silently corrupting the record.
+ * ⭐ 'no_access' (user, 2026-11-08): the inspector attended but could not assess
+ * the component. It is not a Fail, and it is not OK either, because the check did
+ * not take place — so it becomes PROBLEM. Two statuses are kept as they are:
+ *   · FAILED: a known failure is never softened by a visit that saw nothing;
+ *   · INACTIVE: out of service is not a condition anyone saw.
+ * The rule is statusAfterResult(), used by the walk, the Building Assets panel, the
+ * survey preview, and mirrored in survey_load() (migration 290). Before this, a
+ * no-access visit left every status as it was (G1, migration 167), so a door nobody
+ * had ever seen read OK after a round in which nobody got in.
+ * ⚠ So a Problem can now mean "not seen": the walk record says which (its latest
+ * result is no_access), and Cases' "Open for failed components" leaves those out
+ * because they go to the access process, not a defect one.
  *
  * Returns the patch applied so the caller can update its own in-memory copy.
  * @param {string} componentId
- * @param {{ result: string, inspectionId: string, userId: string }} args
+ * @param {{ result: string, inspectionId: string, userId: string, currentStatus?: string|null }} args
  * @returns {Promise<Record<string, string>>} the fields actually written
  */
-export async function applyInspectionResult(componentId, { result, inspectionId, userId }) {
-  const patch = inspectionResultPatch(result, { inspectionId, userId });
+export async function applyInspectionResult(componentId, { result, inspectionId, userId, currentStatus = null }) {
+  const patch = inspectionResultPatch(result, { inspectionId, userId, currentStatus });
   await api.update('components', componentId, patch);
   return patch;
 }
+
+// The rule itself is pure, in utils/statusRule.js, so a pure module (the survey check)
+// can use it without loading the database client.
+export { KEPT_ON_NO_ACCESS, statusAfterResult } from './utils/statusRule.js';
+import { statusAfterResult } from './utils/statusRule.js';
 
 /**
  * Build (without writing) the component patch an inspection result produces — the
@@ -77,19 +83,22 @@ export async function applyInspectionResult(componentId, { result, inspectionId,
  * compute the patch at RECORD time (stamping status_set_at with the real
  * observation time) and have the syncer apply it later. The rule stays here; only
  * its execution moves. Keep this in lockstep with applyInspectionResult above.
+ * A status that does not change (a no-access visit to a Failed or Inactive
+ * component) writes no status, so who set it and when stay as they were.
  * @param {string} result  ok | problem | failed | inactive | no_access
- * @param {{ inspectionId: string, userId: string, at?: string }} args
+ * @param {{ inspectionId: string, userId: string, at?: string, currentStatus?: string|null }} args
  * @returns {Record<string, string>} the patch to apply to the component
  */
-export function inspectionResultPatch(result, { inspectionId, userId, at = new Date().toISOString() }) {
-  return result === 'no_access'
+export function inspectionResultPatch(result, { inspectionId, userId, at = new Date().toISOString(), currentStatus = null }) {
+  const status = statusAfterResult(result, currentStatus);
+  return result === 'no_access' && status === currentStatus
     ? {
-        // Attempt recorded; condition unchanged (see applyInspectionResult).
+        // Attempt recorded; a Failed or Inactive status stays as it was.
         last_inspection_id: inspectionId,
         updated_by:         userId,
       }
     : {
-        status:             result,
+        status,
         last_inspection_id: inspectionId,
         status_set_by:      userId,
         status_set_at:      at,
@@ -247,11 +256,19 @@ export function listParkingBaySpaces() {
  *
  * @param {string[]} statuses e.g. ['failed', 'problem']
  */
-export function listComponentsByStatus(statuses) {
-  if (!statuses?.length) return Promise.resolve([]);
-  return api.getAllIn('components', 'status', statuses, {
-    select: 'id, asset_id, label, type_code, status, floor_id',
+export async function listComponentsByStatus(statuses) {
+  if (!statuses?.length) return [];
+  const rows = await api.getAllIn('components', 'status', statuses, {
+    select: 'id, asset_id, label, type_code, status, floor_id, last_inspection_id',
   });
+  // Each one's latest result, so a reader can tell a Problem that was SEEN from one
+  // that is Problem because nobody got in (no_access, 2026-11-08).
+  const ids = [...new Set(rows.map((r) => r.last_inspection_id).filter(Boolean))];
+  const results = ids.length
+    ? await api.getAllIn('component_inspections', 'id', ids, { select: 'id, inspection_result' })
+    : [];
+  const resultOf = new Map(results.map((r) => [r.id, r.inspection_result]));
+  return rows.map((r) => ({ ...r, last_result: resultOf.get(r.last_inspection_id) ?? null }));
 }
 
 /**

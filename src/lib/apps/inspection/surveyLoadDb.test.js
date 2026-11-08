@@ -68,13 +68,18 @@ const survey = (/** @type {string} */ id, /** @type {string} */ sha, /** @type {
     'template_version', 'survey-template/1', 'file_sha256', ${txt(sha)},
     'report_document_id', ${DOC(d1)}, 'file_document_id', ${DOC(d2)})`;
 
-// Door 0: Failed on 4 Oct, OK on 6 Oct (status follows the 6th). Door 1: no access only.
-// Door 2: Failed, but older than the status it holds (set in AS_SYSTEM below).
+// Door 0: Failed on 4 Oct, OK on 6 Oct (status follows the 6th). Door 1: no access only
+// (becomes Problem, migration 290). Door 2: Failed, but older than the status it holds
+// (set in AS_SYSTEM below). Door 3: held Failed, no access only (stays Failed). Door 4:
+// Failed on 4 Oct, no access on 6 Oct (the visit that saw it decides: Failed).
 const ROWS = `jsonb_build_array(
   jsonb_build_object('component_id', ${DOOR(0)}, 'inspected_at', '2026-10-04T09:15:00Z', 'result', 'failed', 'checklist_results', '{}'::jsonb, 'readings', '{}'::jsonb, 'seen_by', 'A Surveyor', 'source_ref', 'Sheet 12'),
   jsonb_build_object('component_id', ${DOOR(0)}, 'inspected_at', '2026-10-06T08:05:00Z', 'result', 'ok'),
   jsonb_build_object('component_id', ${DOOR(1)}, 'inspected_at', '2026-10-04T11:00:00Z', 'time_recorded', false, 'result', 'no_access', 'no_access_reason', 'no_answer'),
-  jsonb_build_object('component_id', ${DOOR(2)}, 'inspected_at', '2026-10-04T10:00:00Z', 'result', 'failed'))`;
+  jsonb_build_object('component_id', ${DOOR(2)}, 'inspected_at', '2026-10-04T10:00:00Z', 'result', 'failed'),
+  jsonb_build_object('component_id', ${DOOR(3)}, 'inspected_at', '2026-10-06T08:30:00Z', 'result', 'no_access', 'no_access_reason', 'locked'),
+  jsonb_build_object('component_id', ${DOOR(4)}, 'inspected_at', '2026-10-04T09:30:00Z', 'result', 'failed'),
+  jsonb_build_object('component_id', ${DOOR(4)}, 'inspected_at', '2026-10-06T08:45:00Z', 'result', 'no_access', 'no_access_reason', 'no_answer'))`;
 
 const docs = (/** @type {string} */ id, /** @type {number} */ a, /** @type {number} */ b) => `
   insert into document_library (id, provider_file_id, filename, entity_type, entity_id) values
@@ -86,7 +91,8 @@ const AS_SYSTEM_BEFORE = [
   ['set up: the evidence, and a door whose status is newer than the survey', `
     ${docs(SID, 1, 2)}
     update components set status = 'ok', status_set_at = '2026-11-01T09:00:00Z' where id = ${DOOR(2)};
-    update components set status = 'ok', status_set_at = null where id in (${DOOR(0)}, ${DOOR(1)});`, null],
+    update components set status = 'ok', status_set_at = null where id in (${DOOR(0)}, ${DOOR(1)}, ${DOOR(4)});
+    update components set status = 'failed', status_set_at = '2026-09-01T09:00:00Z' where id = ${DOOR(3)};`, null],
 ];
 
 /** @type {Array<[string, string, string|null]>} */
@@ -102,13 +108,15 @@ const AS_ADMIN = [
     ${must(`(select count(*) from walk_sessions where survey_id = ${SID} and status = 'closed' and session_type = 'survey') = 2`, 'not two sessions')}
     ${must(`(select started_at from walk_sessions where survey_id = ${SID} order by started_at limit 1) = '2026-10-04T09:15:00Z'`, 'day started at the wrong time')}
     ${must(`(select closed_at from walk_sessions where survey_id = ${SID} order by started_at limit 1) = '2026-10-04T10:00:00Z'`, 'day closed at the wrong time (288: an untimed row at midday must not stretch it)')}
-    ${must(`(select count(*) from component_inspections ci join walk_sessions ws on ws.id = ci.walk_session_id where ws.survey_id = ${SID}) = 4`, 'not four results')}
+    ${must(`(select count(*) from component_inspections ci join walk_sessions ws on ws.id = ci.walk_session_id where ws.survey_id = ${SID}) = 7`, 'not seven results')}
     ${must(`exists (select 1 from component_inspections where component_id = ${DOOR(0)} and inspected_at = '2026-10-04T09:15:00Z' and seen_by = 'A Surveyor' and source_ref = 'Sheet 12')`, 'row lost its time or source')}
     ${must(`exists (select 1 from component_inspections where component_id = ${DOOR(1)} and not time_recorded)`, 'no-time flag lost')}
-    ${must(`(select rows_loaded from inspection_surveys where id = ${SID}) = 4`, 'survey record wrong')}`, null],
-  ['the status follows the newest result, and no access changes nothing', `
+    ${must(`(select rows_loaded from inspection_surveys where id = ${SID}) = 7`, 'survey record wrong')}`, null],
+  ['the status follows the newest result; no access is Problem, but never softens a Fail', `
     ${must(`(select status from components where id = ${DOOR(0)}) = 'ok' and (select status_set_at from components where id = ${DOOR(0)}) = '2026-10-06T08:05:00Z'`, 'status not from the newest result')}
-    ${must(`(select status from components where id = ${DOOR(1)}) = 'ok'`, 'no access changed the status')}
+    ${must(`(select status from components where id = ${DOOR(1)}) = 'problem'`, 'no access did not make it Problem')}
+    ${must(`(select status from components where id = ${DOOR(3)}) = 'failed' and (select status_set_at from components where id = ${DOOR(3)}) = '2026-09-01T09:00:00Z'`, 'no access softened a Fail')}
+    ${must(`(select status from components where id = ${DOOR(4)}) = 'failed'`, 'a later no access outranked the visit that saw it')}
     ${must(`(select status from components where id = ${DOOR(2)}) = 'ok'`, 'an older result changed the status')}`, null],
   ['the same file cannot be loaded twice', `perform survey_load(${survey(SID2, 'dbt-sha-1', 1, 2)}, ${ROWS});`, 'already been loaded'],
   ['a loaded result cannot be changed', `update component_inspections set inspector_notes = 'x' where component_id = ${DOOR(0)} and inspected_at = '2026-10-04T09:15:00Z';`, 'loaded from a survey'],
@@ -119,6 +127,7 @@ const AS_ADMIN = [
     ${must(`(select undone_reason from inspection_surveys where id = ${SID}) = 'Wrong doors'`, 'record not kept')}
     ${must(`not exists (select 1 from walk_sessions where survey_id = ${SID})`, 'sessions not removed')}
     ${must(`(select status_set_at from components where id = ${DOOR(2)}) = '2026-11-01T09:00:00Z'`, 'undo touched a status the load did not set')}
+    ${must(`(select status from components where id = ${DOOR(1)}) = 'ok'`, 'door 1 not put back from Problem')}
     ${must(`(select status from components where id = ${DOOR(0)}) = 'ok' and not exists (select 1 from component_inspections where component_id = ${DOOR(0)} and inspected_at in ('2026-10-04T09:15:00Z', '2026-10-06T08:05:00Z'))`, 'door 0 not put back')}`, null],
   ['after an undo the same file can be loaded again', `
     perform survey_load(${survey(SID2, 'dbt-sha-1', 3, 4)}, ${ROWS});`, 'must both be attached'],

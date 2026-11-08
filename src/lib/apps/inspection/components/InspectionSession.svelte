@@ -483,9 +483,9 @@
         </div>
 
         <!-- Status: what it was on arrival → what this session set it to.
-             A no-access record is NOT a status change — the component was never
-             observed — so it reads "OK · not assessed" rather than an arrow to a
-             status the component does not actually hold. -->
+             A no-access record shows the status it left (Problem, or Failed or
+             Inactive kept: building_assets/utils/statusRule.js) beside "not
+             assessed", so nobody reads it as a fault that was seen. -->
         <div class="cstat">
           <span class="cstat-k">STATUS</span>
           {#if currentInspection?.inspection_result === 'no_access'}
