@@ -3,10 +3,16 @@
 // every current gt_document's file(s) under files/<reference>/, plus a
 // manifest.json (with stored + recomputed SHA-256 checksums) and a README.
 //
-// Admin-only (a whole-register export is a governance action). Builds the ZIP
-// in memory — fine for a single building's register; revisit streaming if a
-// register ever grows very large. The user must have GT access; admin is the
-// stricter gate here.
+// Admin-only (a whole-register export is a governance action). The user must have
+// GT access; admin is the stricter gate here.
+//
+// ⭐ STREAMED (2026-11-08). It used to read every file whole and build the ZIP in
+// memory, so one large document could stop Northflank (about 100 MB to spare). Now
+// each file passes through a piece at a time (zipStream, storedFileChunks), its
+// SHA-256 worked out on the way, and manifest.json and README.txt go at the END,
+// written from what was actually sent. A file that cannot be opened is left out and
+// named in the manifest; one that fails part way breaks the download, never a pack
+// that is silently short.
 
 import { errMessage } from '../../../../lib/utils/errors.js';
 import { json }          from '@sveltejs/kit';
@@ -17,7 +23,8 @@ import { PUBLIC_SUPABASE_URL } from '$app/env/public';
 import * as env from '$app/env/private';
 import { requireAdmin }  from '#lib/server/requireAuth.js';
 import { ownerOf } from '#lib/server/storage/index.js';
-import { buildZip }      from '#lib/server/zip.js';
+import { zipStream }     from '#lib/server/zip.js';
+import { storedFileChunks } from '#lib/server/storage/fileBytes.js';
 import { buildManifest, renderReadme, packPath } from '#lib/server/gtSharePack.js';
 import { getLogger }     from '#lib/utils/logger.js';
 import { readAllPages, chunks } from '#lib/utils/readAllPages.js';
@@ -74,61 +81,58 @@ export async function POST({ request }) {
       return { code: c.code, name: c.name, currentCount, satisfied: currentCount > 0 };
     });
 
-    // Fetch each file, checksum it, and collect zip entries + manifest rows.
-    const seen = new Set();
-    /** @type {Array<{name:string,data:Buffer}>} */
-    const fileEntries  = [];
-    const manifestDocs = [];
-    for (const d of docs ?? []) {
-      const files = [];
-      for (const l of (libByDoc.get(d.id) ?? [])) {
-        const path = packPath(d.reference, l.filename ?? `${d.reference}.bin`, seen);
-        try {
-          // From the provider recorded on the row: a file written before a
-          // storage switch is still where it was written.
-          const { data } = await ownerOf(l.provider).getFileStream(l.provider_file_id);
-          const buf = Buffer.isBuffer(data) ? data : Buffer.from(data);
-          const computed = createHash('sha256').update(buf).digest('hex');
+    const generatedAt = new Date().toISOString();
+    const generatedBy = auth.user.email;
+
+    // Each file, a piece at a time, checksummed as it passes; then the manifest.
+    async function* entries() {
+      const seen = new Set();
+      const manifestDocs = [];
+      for (const d of docs ?? []) {
+        const files = [];
+        for (const l of (libByDoc.get(d.id) ?? [])) {
+          const path = packPath(d.reference, l.filename ?? `${d.reference}.bin`, seen);
+          let opened;
+          try {
+            // From the provider recorded on the row: a file written before a
+            // storage switch is still where it was written.
+            opened = await storedFileChunks(ownerOf(l.provider), l.provider_file_id);
+          } catch (err) {
+            logger('file fetch failed:', l.provider_file_id, errMessage(err));
+            files.push({ path, filename: l.filename, error: 'file could not be retrieved' });
+            continue;
+          }
+          const hash = createHash('sha256');
+          let size = 0;
+          async function* counted() {
+            for await (const piece of opened.chunks) { hash.update(piece); size += piece.byteLength; yield piece; }
+          }
+          yield { name: path, data: counted() };
+          const computed = hash.digest('hex');
           const stored   = l.file_checksum ?? d.file_checksum ?? null;
-          fileEntries.push({ name: path, data: buf });
           files.push({
             path,
             filename: l.filename,
             mime_type: l.mime_type,
-            size_bytes: buf.length,
+            size_bytes: size,
             stored_checksum: stored,
             computed_checksum: computed,
             checksum_ok: stored ? stored === computed : null,
           });
-        } catch (err) {
-          logger('file fetch failed:', l.provider_file_id, errMessage(err));
-          files.push({ path, filename: l.filename, error: 'file could not be retrieved' });
         }
+        manifestDocs.push({ document: d, files });
       }
-      manifestDocs.push({ document: d, files });
+      const manifest = buildManifest({ generatedAt, generatedBy, documents: manifestDocs, completeness });
+      yield { name: 'manifest.json', data: Buffer.from(JSON.stringify(manifest, null, 2), 'utf8') };
+      yield { name: 'README.txt',    data: Buffer.from(renderReadme(manifest), 'utf8') };
     }
 
-    const generatedAt = new Date().toISOString();
-    const manifest = buildManifest({
-      generatedAt,
-      generatedBy: auth.user.email,
-      documents: manifestDocs,
-      completeness,
-    });
-
-    const zip = buildZip([
-      { name: 'manifest.json', data: Buffer.from(JSON.stringify(manifest, null, 2), 'utf8') },
-      { name: 'README.txt',    data: Buffer.from(renderReadme(manifest), 'utf8') },
-      ...fileEntries,
-    ]);
-
     const stamp = generatedAt.slice(0, 10);
-    return new Response(zip, {
+    return new Response(zipStream(entries()), {
       status: 200,
       headers: {
         'Content-Type': 'application/zip',
         'Content-Disposition': `attachment; filename="golden-thread-share-pack-${stamp}.zip"`,
-        'Content-Length': String(zip.length),
         'Cache-Control': 'no-store',
       },
     });

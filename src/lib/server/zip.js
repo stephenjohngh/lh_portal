@@ -4,9 +4,10 @@
 // documents are already-compressed PDFs/images, so deflate buys little, and a
 // store-only writer keeps us dependency-free (no jszip/archiver) and fully
 // deterministic + unit-testable. 32-bit sizes (no ZIP64): fine for individual
-// building documents. Produces a single in-memory Buffer.
+// building documents. buildZip makes one in-memory Buffer (small text entries);
+// zipStream writes as it goes, for anything that carries stored files.
 //
-// Used by the Golden Thread BSR share-pack export (/api/golden-thread/share-pack).
+// zipStream: the Golden Thread share pack and the Dossier pack archive.
 
 import { Buffer } from 'node:buffer';
 
@@ -107,4 +108,103 @@ export function buildZip(entries) {
   eocd.writeUInt16LE(0, 20);                // comment length
 
   return Buffer.concat([...local, centralBuf, eocd]);
+}
+
+/** CRC-32 carried across pieces: start at 0xffffffff, finish with crc32Final. */
+export function crc32Update(c, buf) {
+  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+  return c;
+}
+export const crc32Final = (c) => (c ^ 0xffffffff) >>> 0;
+
+const ZIP32_MAX = 0xffffffff;
+
+/**
+ * A ZIP archive (STORE method) written as it goes, so a large file passes through a
+ * piece at a time instead of the whole archive being held in memory (2026-11-08).
+ * Each file's CRC and size follow its bytes in a data descriptor (flag bit 3), which
+ * every unzip tool reads. Entries come from an async iterable, so the caller can add
+ * an entry built from what was streamed before it (the share pack's manifest).
+ *
+ * A failure part way ERRORS the stream: the download breaks rather than arriving as
+ * an archive that is silently short. A caller opens each file before yielding it, so
+ * an unreadable file is left out (and said so) before any of its bytes are written.
+ *
+ * @param {AsyncIterable<{ name: string, date?: Date, data: Uint8Array|AsyncIterable<Uint8Array> }>} entries
+ * @returns {ReadableStream<Uint8Array>}
+ */
+export function zipStream(entries) {
+  async function* parts() {
+    /** @type {Buffer[]} */ const central = [];
+    let offset = 0;
+    let count = 0;
+    for await (const e of entries) {
+      const nameBuf = Buffer.from(e.name, 'utf8');
+      const { time, date } = dosDateTime(e.date ?? new Date());
+      const lfh = Buffer.alloc(30);
+      lfh.writeUInt32LE(0x04034b50, 0);
+      lfh.writeUInt16LE(20, 4);
+      lfh.writeUInt16LE(0x0808, 6);       // bit 3: sizes in a data descriptor · bit 11: UTF-8 name
+      lfh.writeUInt16LE(0, 8);
+      lfh.writeUInt16LE(time, 10);
+      lfh.writeUInt16LE(date, 12);
+      lfh.writeUInt16LE(nameBuf.length, 26);
+      yield lfh; yield nameBuf;
+
+      let c = 0xffffffff;
+      let size = 0;
+      const pieces = e.data instanceof Uint8Array ? [e.data] : e.data;
+      for await (const piece of pieces) {
+        const buf = Buffer.isBuffer(piece) ? piece : Buffer.from(piece);
+        c = crc32Update(c, buf);
+        size += buf.length;
+        if (size > ZIP32_MAX) throw new Error(`${e.name} is too large for this archive`);
+        yield buf;
+      }
+      const crc = crc32Final(c);
+
+      const dd = Buffer.alloc(16);
+      dd.writeUInt32LE(0x08074b50, 0);
+      dd.writeUInt32LE(crc, 4);
+      dd.writeUInt32LE(size, 8);
+      dd.writeUInt32LE(size, 12);
+      yield dd;
+
+      const cdh = Buffer.alloc(46);
+      cdh.writeUInt32LE(0x02014b50, 0);
+      cdh.writeUInt16LE(20, 4);
+      cdh.writeUInt16LE(20, 6);
+      cdh.writeUInt16LE(0x0808, 8);
+      cdh.writeUInt16LE(time, 12);
+      cdh.writeUInt16LE(date, 14);
+      cdh.writeUInt32LE(crc, 16);
+      cdh.writeUInt32LE(size, 20);
+      cdh.writeUInt32LE(size, 24);
+      cdh.writeUInt16LE(nameBuf.length, 28);
+      cdh.writeUInt32LE(offset, 42);
+      central.push(cdh, nameBuf);
+
+      offset += lfh.length + nameBuf.length + size + dd.length;
+      if (offset > ZIP32_MAX) throw new Error('the archive is too large');
+      count++;
+    }
+    const centralBuf = Buffer.concat(central);
+    const eocd = Buffer.alloc(22);
+    eocd.writeUInt32LE(0x06054b50, 0);
+    eocd.writeUInt16LE(count, 8);
+    eocd.writeUInt16LE(count, 10);
+    eocd.writeUInt32LE(centralBuf.length, 12);
+    eocd.writeUInt32LE(offset, 16);
+    yield centralBuf; yield eocd;
+  }
+  const it = parts();
+  return new ReadableStream({
+    async pull(controller) {
+      try {
+        const { value, done } = await it.next();
+        if (done) controller.close(); else controller.enqueue(new Uint8Array(value.buffer, value.byteOffset, value.byteLength));
+      } catch (err) { controller.error(err); }
+    },
+    async cancel() { await it.return?.(undefined); },
+  });
 }

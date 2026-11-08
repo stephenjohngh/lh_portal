@@ -22,6 +22,7 @@
 import { json }             from '@sveltejs/kit';
 import { requireAuth } from '#lib/server/requireAuth.js';
 import { storageProvider }  from '#lib/server/storage/index.js';
+import { readStoredFile } from '#lib/server/storage/fileBytes.js';
 import { createClient }     from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$app/env/public';
 import * as env from '$app/env/private';
@@ -90,6 +91,9 @@ function componentRef(ins) {
 let _db = null;
 const db = () => (_db ??= createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY ?? ''));
 
+/** The largest photo put into a report; a photo is a few MB at most. */
+const MAX_PHOTO_BYTES = 20 * 1024 * 1024;
+
 // -- Image fetch ----------------------------------------------------------------
 // Only our own proxy URL (/api/media/file/{fileId}), read straight from the
 // storage provider — and only after the SAME check the proxy makes: a portal
@@ -109,7 +113,8 @@ async function fetchImageBuffer(url, viewer) {
   try {
     const refs = await findFileReferences(db(), proxyMatch[1]);
     if (!canViewFile(refs, viewer)) { logger('⚠️ Photo not viewable by this caller:', proxyMatch[1]); return null; }
-    const { data } = await storageProvider.getFileStream(proxyMatch[1]);
+    // A photo over the limit prints as unavailable rather than being read whole.
+    const { data } = await readStoredFile(storageProvider, proxyMatch[1], MAX_PHOTO_BYTES);
     return data;
   } catch (/** @type {any} */ err) {
     logger('❌ Image fetch error:', err.message, url); return null;

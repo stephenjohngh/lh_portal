@@ -96,6 +96,12 @@
  *
  * @property {(fileId: string) => Promise<{ body: ReadableStream, size: number|null, mimeType: string }>} [openFileStream]
  *   Open a file to pass on a little at a time.
+ *
+ * @property {(fileId: string, name: string, folderId: string) => Promise<UploadResult & { size: number, sha256: string|null }>} [copyFile]
+ *   OPTIONAL (Drive only). Copy a file inside the storage, no bytes through the server.
+ * @property {(fileId: string) => Promise<{ size: number, sha256: string|null }>} [fileChecksum]
+ *   OPTIONAL (Drive only). Size and SHA-256 as the storage records them; sha256 null
+ *   where it keeps none. See fileBytes.js, which falls back to reading in ranges.
  */
 
 // This file contains type definitions only — no runtime exports.

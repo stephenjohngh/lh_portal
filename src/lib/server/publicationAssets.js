@@ -26,6 +26,7 @@
 import { storageProvider, ownerOf } from './storage/index.js';
 import { isStorageId }          from './storage/storageRef.js';
 import { friendlyStorageError } from './storage/storageErrors.js';
+import { hashStoredFile, copyStoredFile } from './storage/fileBytes.js';
 
 /**
  * Bounds. A pack's shelf is normally a handful of files, but publishing must
@@ -45,11 +46,12 @@ export async function sha256Hex(buffer) {
 }
 
 /**
- * Read each file once: checksum it, and optionally pin a copy.
+ * Checksum each file, and optionally pin a copy.
  *
- * One pass on purpose. Checksumming and pinning both need the whole file, and
- * doing them separately would double the bytes pulled through the function for
- * no benefit.
+ * ⭐ No file is read whole (2026-11-08): reading a large file whole could stop
+ * Northflank. The checksum is the storage's own record where it keeps one, else the
+ * file is read in ranges; the pin is a copy made by the storage itself (Drive).
+ * MAX_TOTAL_BYTES still bounds what one publish works through.
  *
  * Never throws for one bad file — a publication with a known gap, shown to the
  * author, beats a publish that will not go out. Failures come back as
@@ -77,9 +79,9 @@ export async function prepareAssets(files = [], { pin = false } = {}) {
     const id = String(file?.providerFileId ?? '');
     if (!isStorageId(id, file?.provider)) { out[id] = { ...empty }; continue; }
 
-    let data;
+    let hashed;
     try {
-      ({ data } = await ownerOf(file?.provider).getFileStream(id));
+      hashed = await hashStoredFile(ownerOf(file?.provider), id);
     } catch (err) {
       console.error('[PublicationAssets] read failed for', id, '—',
         friendlyStorageError(err));
@@ -87,21 +89,21 @@ export async function prepareAssets(files = [], { pin = false } = {}) {
       continue;
     }
 
-    if (data.length > budget) { out[id] = { ...empty }; continue; }
-    budget -= data.length;
+    if (hashed.size > budget) { out[id] = { ...empty }; continue; }
+    budget -= hashed.size;
 
-    const checksum = await sha256Hex(data);
+    const checksum = hashed.sha256;
     let pinnedFileId = null;
 
     if (pin) {
       try {
         pinFolder ??= await storageProvider.ensurePath(PIN_PATH);
-        const uploaded = await storageProvider.uploadFile(
-          data,
-          `${id}-${checksum.slice(0, 12)}-${file.filename ?? 'file'}`,
-          file.mimeType || 'application/octet-stream',
-          pinFolder);
-        pinnedFileId = uploaded?.fileId ?? null;
+        const copied = await copyStoredFile(ownerOf(file?.provider), storageProvider, id, {
+          name: `${id}-${checksum.slice(0, 12)}-${file.filename ?? 'file'}`,
+          mimeType: file.mimeType || 'application/octet-stream',
+          folderId: pinFolder,
+        });
+        pinnedFileId = copied?.fileId ?? null;
       } catch (err) {
         // An unpinned file still serves — from the original, which is exactly
         // the drift risk pinning exists to remove. So it is recorded as a gap
@@ -180,9 +182,9 @@ export async function verifyManifest(manifest) {
     try {
       // `provider` is on manifests written since it was recorded; the verify
       // route fills it from the document's row for older ones.
-      const { data } = await ownerOf(entry.provider).getFileStream(id);
+      const { sha256 } = await hashStoredFile(ownerOf(entry.provider), id);
       checked++;
-      if (await sha256Hex(data) !== entry.checksum) changed.push(entry);
+      if (sha256 !== entry.checksum) changed.push(entry);
     } catch {
       missing.push(entry);
     }

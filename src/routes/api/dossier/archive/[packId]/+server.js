@@ -85,7 +85,7 @@ export async function GET({ params, request }) {
     }
   }
 
-  const result = await buildPackArchive({
+  const result = buildPackArchive({
     content: {
       pack: { title: pack.title, description: pack.description },
       docs: docs ?? [], datasets: datasets ?? [], records: records ?? [],
@@ -105,12 +105,10 @@ export async function GET({ params, request }) {
     notice: await serverWording('dossierConfidentialityNotice'),
   });
 
-  if (!result.ok) return json({ error: result.message }, { status: 413 });
-
-  return new Response(result.zip, {
+  // Streamed: each file passes through a piece at a time (packArchiveBuilder.js).
+  return new Response(result.stream, {
     headers: {
       'Content-Type':   'application/zip',
-      'Content-Length': String(result.zip.length),
       'Content-Disposition':
         `attachment; filename="${result.filename.replace(/[^\x20-\x7e]/g, '_')}"; `
         + `filename*=UTF-8''${encodeURIComponent(result.filename)}`,

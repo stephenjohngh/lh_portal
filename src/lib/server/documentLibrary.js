@@ -10,6 +10,7 @@ import { createClient }              from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$app/env/public';
 import * as env from '$app/env/private';
 import { storageProvider, ownerOf } from './storage/index.js';
+import { copyStoredFile }             from './storage/fileBytes.js';
 import { sanitizeIlikeTerm }          from '#lib/utils/pgFilter.js';
 import { docTypeFromMime, isUnclassifiedDocType } from '#lib/utils/documentUtils.js';
 import { getLogger }                  from '#lib/utils/logger.js';
@@ -184,7 +185,11 @@ export async function recordStoredFile(result, { filename, mimeType, size, check
  * Thread producer ingest: a maintenance certificate / inspection report already
  * in the library is copied into a gt_document-owned entry, so the register holds
  * its own immutable copy (survives the producer deleting theirs). The checksum is
- * recomputed on the copy by uploadDocument and will match the source.
+ * the copy's own and will match the source.
+ *
+ * ⭐ No bytes pass through this server where the storage can copy the file itself
+ * (Drive, 2026-11-08): reading a large file whole could stop Northflank. The copy
+ * goes in the folder its folder_path names, as an upload would.
  *
  * @param {string} sourceId  document_library row to copy
  * @param {Object} meta       overrides for the new row (entity_type, entity_id, display_name, …)
@@ -193,8 +198,7 @@ export async function recordStoredFile(result, { filename, mimeType, size, check
  */
 export async function copyDocument(sourceId, meta = {}, userId) {
   const src = await getDocument(sourceId);
-  const { data: buffer } = await providerFor(src).getFileStream(src.provider_file_id);
-  return uploadDocument(buffer, src.filename, src.mime_type, {
+  const rowMeta = {
     display_name:     src.display_name,
     doc_type:         src.doc_type,
     document_date:    src.document_date,
@@ -202,7 +206,11 @@ export async function copyDocument(sourceId, meta = {}, userId) {
     reference_number: src.reference_number,
     issuer:           src.issuer,
     ...meta,
-  }, userId);
+  };
+  const folderId = await uploadFolderFor(rowMeta.folder_path);
+  const copy = await copyStoredFile(providerFor(src), storageProvider, src.provider_file_id,
+    { name: src.filename, mimeType: src.mime_type, folderId });
+  return recordStoredFile(copy, { filename: src.filename, mimeType: src.mime_type, size: copy.size, checksum: copy.sha256 }, rowMeta, userId);
 }
 
 /**

@@ -18,6 +18,10 @@ const h = vi.hoisted(() => ({
   getFileStream: vi.fn(),
   uploadFile:    vi.fn(),
   ensurePath:    vi.fn(() => Promise.resolve('pin-folder')),
+  // Drive's own copy and checksum, offered only when a test switches them on.
+  drive:         false,
+  copyFile:      vi.fn(() => Promise.resolve({ fileId: 'copied-1', size: 5, sha256: 'ABC123' })),
+  fileChecksum:  vi.fn(() => Promise.resolve({ size: 5, sha256: 'ABC123' })),
   // A second provider, holding files written before a storage switch.
   sbStream:      vi.fn(() => Promise.resolve({ data: Buffer.from('sb bytes') })),
 }));
@@ -28,6 +32,8 @@ vi.mock('./storage/index.js', () => {
     getFileStream: h.getFileStream,
     uploadFile:    h.uploadFile,
     ensurePath:    h.ensurePath,
+    get copyFile()     { return h.drive ? h.copyFile : undefined; },
+    get fileChecksum() { return h.drive ? h.fileChecksum : undefined; },
   };
   return {
     storageProvider: configured,
@@ -52,6 +58,7 @@ const file = (id, name = 'Notice.pdf') => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  h.drive = false;
   h.ensurePath.mockResolvedValue('pin-folder');
   h.getFileStream.mockResolvedValue({ data: Buffer.from('bytes') });
   h.uploadFile.mockResolvedValue({ fileId: 'pinned-1' });
@@ -63,11 +70,14 @@ describe('prepareAssets — checksums', () => {
     expect(assets['drive-1'].checksum).toBe(await sha256Hex(Buffer.from('bytes')));
   });
 
-  it('reads each file ONCE, even when pinning', async () => {
-    // Checksumming and pinning both need the whole file. Doing them separately
-    // would double the bytes pulled through a serverless function for nothing.
-    await prepareAssets([file('drive-1')], { pin: true });
-    expect(h.getFileStream).toHaveBeenCalledTimes(1);
+  it('reads no bytes at all where the storage checksums and copies a file itself', async () => {
+    // 2026-11-08: reading a large file whole could stop Northflank.
+    h.drive = true;
+    const assets = await prepareAssets([file('drive-1')], { pin: true });
+    expect(h.getFileStream).not.toHaveBeenCalled();
+    expect(h.uploadFile).not.toHaveBeenCalled();
+    expect(h.copyFile).toHaveBeenCalledWith('drive-1', expect.stringContaining('drive-1-abc123'), 'pin-folder');
+    expect(assets['drive-1']).toEqual({ checksum: 'abc123', pinned_file_id: 'copied-1', pinned_provider: 'google_drive' });
   });
 
   it('records a null checksum for a file it cannot read, and carries on', async () => {

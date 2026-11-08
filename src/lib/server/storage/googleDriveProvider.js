@@ -664,6 +664,35 @@ export const googleDriveProvider = {
     return { body: driveFileInRanges(fileId, size), size, mimeType };
   },
 
+  /**
+   * Copy a file within Drive: no bytes pass through this server, so a large file
+   * costs no memory (2026-11-08). Private like any upload. Returns the stored form
+   * plus Drive's own size and SHA-256 (null for a file Drive does not hash).
+   * @param {string} fileId @param {string} name @param {string} folderId
+   */
+  async copyFile(fileId, name, folderId) {
+    const drive = getDrive();
+    await assertInsideRoot(drive, fileId, 'Read');
+    const res = await drive.files.copy({
+      fileId, supportsAllDrives: true,
+      requestBody: { name, parents: [folderId] },
+      fields: 'id, size, sha256Checksum',
+    });
+    return { ...storedFile(res.data.id, folderId), size: Number(res.data.size) || 0, sha256: res.data.sha256Checksum ?? null };
+  },
+
+  /**
+   * A file's size and SHA-256 as Drive records them, without reading it. sha256 is
+   * null where Drive keeps none (a Google Docs file); the caller then reads it.
+   * @param {string} fileId
+   */
+  async fileChecksum(fileId) {
+    const drive = getDrive();
+    await assertInsideRoot(drive, fileId, 'Read');
+    const res = await drive.files.get({ fileId, supportsAllDrives: true, fields: 'size, sha256Checksum' });
+    return { size: Number(res.data.size) || 0, sha256: res.data.sha256Checksum ?? null };
+  },
+
   async getFileStream(fileId) {
     const drive = getDrive();
     await assertInsideRoot(drive, fileId, 'Read');

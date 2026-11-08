@@ -14,6 +14,7 @@ import { isStorageId }          from '#lib/server/storage/storageRef.js';
 import { getDocumentByFileId }  from '#lib/server/documentLibrary.js';
 import { canAccessDocument, bearerToken } from '#lib/server/documentAccess.js';
 import { friendlyStorageError } from '#lib/server/storage/storageErrors.js';
+import { readStoredFile, FileTooLarge } from '#lib/server/storage/fileBytes.js';
 import { requireAuth }          from '#lib/server/requireAuth.js';
 import { readSheetPreview, MAX_SHEET_BYTES } from '#lib/server/sheetReader.js';
 
@@ -42,17 +43,18 @@ export async function GET({ params, request, url }) {
     return json({ error: 'Invalid file ID' }, { status: 400 });
   }
 
+  // Read only up to the preview's limit: a large file is refused before it is read,
+  // never held whole (it could stop Northflank, 2026-11-07).
   let data;
   try {
-    ({ data } = await ownerOf(provider).getFileStream(fileId));
+    ({ data } = await readStoredFile(ownerOf(provider), fileId, MAX_SHEET_BYTES));
   } catch (err) {
+    if (err instanceof FileTooLarge) {
+      return json({ error: 'This spreadsheet is too large to preview.' }, { status: 413 });
+    }
     console.error('[SheetPreview] fetch failed for', fileId, '—',
       friendlyStorageError(err), err?.code ?? '');
     return json({ error: 'File not found or inaccessible' }, { status: 404 });
-  }
-
-  if (data.length > MAX_SHEET_BYTES) {
-    return json({ error: 'This spreadsheet is too large to preview.' }, { status: 413 });
   }
 
   try {

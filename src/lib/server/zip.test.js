@@ -1,7 +1,7 @@
 // src/lib/server/zip.test.js
 import { describe, it, expect } from 'vitest';
 import { Buffer } from 'node:buffer';
-import { crc32, buildZip } from './zip.js';
+import { crc32, buildZip, zipStream } from './zip.js';
 
 // Walk STORE-method local file headers (no data descriptors) back into entries.
 function parseLocalEntries(buf) {
@@ -62,5 +62,40 @@ describe('buildZip', () => {
     expect(zip.length).toBe(22);                           // EOCD only
     expect(zip.readUInt32LE(0)).toBe(0x06054b50);
     expect(zip.readUInt16LE(10)).toBe(0);
+  });
+});
+
+describe('zipStream', () => {
+  async function collect(stream) {
+    const parts = [];
+    for await (const p of stream) parts.push(Buffer.from(p));
+    return Buffer.concat(parts);
+  }
+  async function* pieces(...bufs) { for (const b of bufs) yield b; }
+
+  it('makes an archive any unzip tool reads, from pieces and whole buffers', async () => {
+    const JSZip = (await import('jszip')).default;
+    const big = Buffer.alloc(300_000, 7);
+    async function* entries() {
+      yield { name: 'files/big.bin', data: pieces(big.subarray(0, 100_000), big.subarray(100_000)) };
+      yield { name: 'Ünïcode.txt', data: Buffer.from('hello') };
+      yield { name: 'manifest.json', data: Buffer.from('{}') };
+    }
+    const zip = await JSZip.loadAsync(await collect(zipStream(entries())));
+    expect(Object.keys(zip.files)).toEqual(['files/big.bin', 'Ünïcode.txt', 'manifest.json']);
+    expect(Buffer.from(await zip.file('files/big.bin').async('uint8array')).equals(big)).toBe(true);
+    expect(await zip.file('Ünïcode.txt').async('string')).toBe('hello');
+  });
+
+  it('carries the CRC of the whole file across pieces', async () => {
+    const out = await collect(zipStream(pieces({ name: 'a', data: pieces(Buffer.from('hel'), Buffer.from('lo')) })));
+    const dd = out.indexOf(Buffer.from([0x50, 0x4b, 0x07, 0x08]));
+    expect(out.readUInt32LE(dd + 4)).toBe(crc32(Buffer.from('hello')));
+    expect(out.readUInt32LE(dd + 8)).toBe(5);
+  });
+
+  it('breaks the download when a file fails part way, rather than ending short', async () => {
+    async function* failing() { yield Buffer.from('part'); throw new Error('lost the connection'); }
+    await expect(collect(zipStream(pieces({ name: 'a', data: failing() })))).rejects.toThrow('lost the connection');
   });
 });
