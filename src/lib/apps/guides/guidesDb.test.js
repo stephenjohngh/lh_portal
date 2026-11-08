@@ -53,6 +53,17 @@ const asUser = (/** @type {string} */ who) => [
   `set local role authenticated;`,
 ].join('\n');
 
+// Since migration 272 a guide's FIRST publication is its workflow's Publish move, and
+// guide_publish() refuses it; "Publish changes" on a published guide is still a plain call.
+// This publishes the first time as the app does: the move where the guide is in its
+// workflow (it joins on insert once the workflow is set up), else the plain call.
+const firstPublish = (/** @type {string} */ id) => `
+    if exists (select 1 from workflow_items where subject_id = '${id}') then
+      perform workflow_move((select id from workflow_items where subject_id = '${id}'), 'published', null);
+    else
+      perform guide_publish('${id}');
+    end if;`;
+
 /** @type {Array<[string, string, string|null]>} */
 const AS_ADMIN = [
   ['an admin makes a guide with two steps and a link', `
@@ -66,19 +77,20 @@ const AS_ADMIN = [
     insert into guide_links (guide_id) values ('00000000-0000-4000-8000-0000000000a1');`, 'guide_links_has_target'],
   ['a guide with no steps cannot be published', `
     insert into guides (id, title) values ('00000000-0000-4000-8000-0000000000a2', 'DBT empty');
-    perform guide_publish('00000000-0000-4000-8000-0000000000a2');`, 'at least one step'],
+    ${firstPublish('00000000-0000-4000-8000-0000000000a2')}`, 'at least one step'],
   ['a stop step must say who to call', `
     insert into guides (id, title) values ('00000000-0000-4000-8000-0000000000a3', 'DBT stop');
     insert into guide_steps (guide_id, position, kind, title) values ('00000000-0000-4000-8000-0000000000a3', 1, 'stop', 'Stop');
-    perform guide_publish('00000000-0000-4000-8000-0000000000a3');`, 'must say who to call'],
+    ${firstPublish('00000000-0000-4000-8000-0000000000a3')}`, 'must say who to call'],
   ['a step may have four photos, not five', `
     insert into guides (id, title) values ('00000000-0000-4000-8000-0000000000a4', 'DBT photos');
     insert into guide_steps (id, guide_id, position, title) values ('00000000-0000-4000-8000-0000000000b4', '00000000-0000-4000-8000-0000000000a4', 1, 'Step');
     insert into media_attachments (entity_type, entity_id, storage_url, filename, mime_type)
       select 'guide_step', '00000000-0000-4000-8000-0000000000b4', 'u' || g, 'p' || g || '.jpg', 'image/jpeg' from generate_series(1, 5) g;
-    perform guide_publish('00000000-0000-4000-8000-0000000000a4');`, 'at most four photos'],
+    ${firstPublish('00000000-0000-4000-8000-0000000000a4')}`, 'at most four photos'],
   ['publishing freezes version 1 with its steps', `
-    if guide_publish('00000000-0000-4000-8000-0000000000a1') <> 1 then raise exception 'not version 1'; end if;
+    ${firstPublish('00000000-0000-4000-8000-0000000000a1')}
+    if (select version from guides where id = '00000000-0000-4000-8000-0000000000a1') <> 1 then raise exception 'not version 1'; end if;
     if (select jsonb_array_length(snapshot -> 'steps') from guide_versions where guide_id = '00000000-0000-4000-8000-0000000000a1' and version = 1) <> 2
       then raise exception 'snapshot has not two steps'; end if;
     if (select status from guides where id = '00000000-0000-4000-8000-0000000000a1') <> 'published' then raise exception 'not published'; end if;`, null],
@@ -138,7 +150,7 @@ const AS_ADMIN = [
   ['a staff-only guide is made for the contractor test', `
     insert into guides (id, title, staff_only) values ('00000000-0000-4000-8000-0000000000a5', 'DBT staff only', true);
     insert into guide_steps (guide_id, position, title) values ('00000000-0000-4000-8000-0000000000a5', 1, 'Step');
-    perform guide_publish('00000000-0000-4000-8000-0000000000a5');`, null],
+    ${firstPublish('00000000-0000-4000-8000-0000000000a5')}`, null],
 ];
 
 /** @type {Array<[string, string, string|null]>} */
