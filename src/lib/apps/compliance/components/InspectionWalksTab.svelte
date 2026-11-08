@@ -49,6 +49,7 @@
   import Icon                from '#lib/components/icons/Icon.svelte';
   import Button              from '#lib/components/common/Button.svelte';
   import InspectionsReport       from './InspectionsReport.svelte';
+  import SurveyTemplateModal     from './SurveyTemplateModal.svelte';
   import InspectionDetailModal   from './InspectionDetailModal.svelte';
   import ConditionChecklistChips from '#lib/apps/building_assets/components/ConditionChecklistChips.svelte';
   import PhotoLightbox           from '#lib/components/common/PhotoLightbox.svelte';
@@ -80,6 +81,7 @@
   let dueUnavailable = [];
   let inspections = {};      // { [sessionId]: flattened inspection[] }
   let showReport  = false;
+  let showTemplate = false;   // Survey template (admin)
   let loading     = true;
   let loadingId   = null;
   let error       = null;
@@ -383,6 +385,11 @@
         on:click={() => showReport = true}>
         Report
       </Button>
+      <ProtectedButton requireAdmin={true} variant="secondary" size="small" icon="download"
+        title="A spreadsheet for an outside surveyor to fill in"
+        on:click={() => showTemplate = true}>
+        Survey template
+      </ProtectedButton>
     </div>
   </div>
 
@@ -664,6 +671,10 @@
     inspectionsCache={inspections}
     on:close={() => showReport = false}
   />
+{/if}
+
+{#if showTemplate}
+  <SurveyTemplateModal obligations={definitionsInOrder} on:close={() => showTemplate = false} />
 {/if}
 
 <style>

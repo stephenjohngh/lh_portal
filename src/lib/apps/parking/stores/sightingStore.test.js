@@ -52,7 +52,7 @@ describe('sightingStore — recording', () => {
     expect(sighting.id).toBe(row.id);
     expect(kind2).toBe('audit');
     expect(audit).toMatchObject({ targetType: 'parking_sighting', targetId: row.id });
-    expect(JSON.stringify(audit)).not.toMatch(/XCVB|675|gate/i);   // nothing personal
+    expect(JSON.stringify({ ...audit, targetId: undefined })).not.toMatch(/XCVB|675|gate/i);   // nothing personal (the id is random, so it is left out)
     expect(h.calls).toEqual([]);                                     // nothing sent directly
   });
 

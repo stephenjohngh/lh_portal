@@ -19,12 +19,15 @@ import {
 
 export const TEMPLATE_VERSION = 'survey-template/1';
 
+/** The Result words a sheet uses, in the order they are offered. */
+export const RESULT_WORDS = ['OK', 'Problem', 'Failed', 'No access'];
+
 const resultWord = (r) => (r === 'no_access' ? 'No access' : statusLabel(r));
 const passWord   = (p) => (p === true ? 'Pass' : p === false ? 'Fail' : '');
 const seenBy     = (s) => s?.inspector_name ?? s?.inspector?.full_name ?? '';
 
 /** Excel allows 31 characters, and not these. @param {string} name @param {Set<string>} taken */
-function sheetName(name, taken) {
+export function sheetName(name, taken) {
   const base = String(name).replace(/[\\/?*[\]:]/g, ' ').slice(0, 28).trim() || 'Results';
   let out = base;
   for (let n = 2; taken.has(out); n++) out = `${base} ${n}`;
@@ -146,7 +149,7 @@ export function resultsSheetModel(payloads, { typeOf = () => null, defsOf = () =
 export async function buildResultsWorkbook(model) {
   const ExcelJS = (await import('exceljs')).default;
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'LH Portal';
+  wb.creator = 'Portal';
   const NAVY = 'FF1E293B';
   const head = (row) => row.eachCell((c) => {
     c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
