@@ -306,7 +306,8 @@ export function checkSurvey(read, ctx) {
   if (older) warnings.push(`${older} result${older === 1 ? ' is' : 's are'} older than the status already held, so ${older === 1 ? 'it does' : 'they do'} not change it.`);
   if (emptyChecks) warnings.push(`${emptyChecks} check${emptyChecks === 1 ? ' was' : 's were'} left empty. They read as not recorded, never as a pass.`);
   if (missingReadings) warnings.push(`${missingReadings} reading${missingReadings === 1 ? ' was' : 's were'} not given.`);
-  if (rows.some((r) => !r.time_recorded)) warnings.push(`${rows.filter((r) => !r.time_recorded).length} rows have no time. They are stored with their date only.`);
+  const untimed = rows.filter((r) => !r.time_recorded).length;
+  if (untimed) warnings.push(`${untimed} row${untimed === 1 ? ' has' : 's have'} no time. ${untimed === 1 ? 'It is' : 'They are'} stored with the date only.`);
 
   const dates = rows.map((r) => r.date).sort();
   return {

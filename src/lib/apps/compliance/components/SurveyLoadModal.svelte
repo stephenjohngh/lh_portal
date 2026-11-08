@@ -81,6 +81,8 @@
 
   $: s = checked?.summary;
   $: changes = Object.entries(s?.statusChanges ?? {});
+  // The preview's figure: a status that stays the same but gains a date is not a change.
+  $: changedCount = changes.reduce((n, [, k]) => n + Number(k), 0);
   $: canLoad = checked && !checked.refusals.length && checked.rows.length && report && !working && !done;
 </script>
 
@@ -89,7 +91,7 @@
     {#if done}
       <p class="text-green-300">
         Loaded {done.rows} result{done.rows === 1 ? '' : 's'} from {details.firm}{details.reference ? ` (${details.reference})` : ''}.
-        {done.status_changes} component status{done.status_changes === 1 ? '' : 'es'} changed.
+        {changedCount} component status{changedCount === 1 ? '' : 'es'} changed.
         The survey shows in the list below as one session per survey day, and the report is attached to it.
       </p>
       <div class="flex justify-end"><Button variant="primary" on:click={() => dispatch('close')}>Close</Button></div>
@@ -143,7 +145,7 @@
             <p class="font-semibold text-red-300">This file cannot be loaded. Correct it and check it again:</p>
             <ul class="mt-1 list-disc pl-5 text-red-200 max-h-60 overflow-y-auto">
               {#each checked.refusals as r}
-                <li>{#if r.sheet}{r.sheet} row {r.row}: {/if}{r.text}</li>
+                <li>{r.sheet ? `${r.sheet} row ${r.row}: ` : ''}{r.text}</li>
               {/each}
             </ul>
           </div>
