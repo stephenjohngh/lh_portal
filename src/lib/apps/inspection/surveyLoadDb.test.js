@@ -2,7 +2,7 @@
 //
 // ⛔ Runs only when asked, only against DEV, and ALWAYS rolls back:
 //     npm run test:db
-// With LH_DB_TEST_MIGRATION=supabase/migrations/287_inspection_surveys.sql it applies
+// With LH_DB_TEST_MIGRATION=supabase/migrations/28N_….sql it applies
 // that migration first, inside the same transaction.
 //
 // What it proves: only an administrator can load; the evidence must be attached
@@ -55,7 +55,13 @@ const SID  = `'bbbbbbbb-0000-4000-8000-000000000001'::uuid`;
 const SID2 = `'bbbbbbbb-0000-4000-8000-000000000002'::uuid`;
 const DOC  = (/** @type {number} */ n) => `'cccccccc-0000-4000-8000-00000000000${n}'::uuid`;
 const OB   = `(select id from statutory_obligations order by created_at limit 1)`;
-const DOOR = (/** @type {number} */ n) => `(select id from components where type_code = 'door_apartment_door' order by id offset ${n} limit 1)`;
+// Components with no results except this test's own (any type: survey_load does not
+// check scope). A survey left on dev, such as the Spartafire load, must not decide
+// where an undo puts a status back.
+const DOOR = (/** @type {number} */ n) => `(select c.id from components c
+  where not exists (select 1 from component_inspections ci join walk_sessions ws on ws.id = ci.walk_session_id
+                     where ci.component_id = c.id and ws.survey_id is distinct from ${SID})
+  order by c.id offset ${n} limit 1)`;
 
 const survey = (/** @type {string} */ id, /** @type {string} */ sha, /** @type {number} */ d1, /** @type {number} */ d2) =>
   `jsonb_build_object('id', ${id}, 'definition_id', ${OB}, 'firm', 'DBT Firm', 'reference', 'DBT-1',
@@ -94,7 +100,8 @@ const AS_ADMIN = [
   ['a load makes one closed session per day, each row with its own time', `
     perform survey_load(${survey(SID, 'dbt-sha-1', 1, 2)}, ${ROWS});
     ${must(`(select count(*) from walk_sessions where survey_id = ${SID} and status = 'closed' and session_type = 'survey') = 2`, 'not two sessions')}
-    ${must(`(select closed_at from walk_sessions where survey_id = ${SID} order by started_at limit 1) = '2026-10-04T11:00:00Z'`, 'day closed at the wrong time')}
+    ${must(`(select started_at from walk_sessions where survey_id = ${SID} order by started_at limit 1) = '2026-10-04T09:15:00Z'`, 'day started at the wrong time')}
+    ${must(`(select closed_at from walk_sessions where survey_id = ${SID} order by started_at limit 1) = '2026-10-04T10:00:00Z'`, 'day closed at the wrong time (288: an untimed row at midday must not stretch it)')}
     ${must(`(select count(*) from component_inspections ci join walk_sessions ws on ws.id = ci.walk_session_id where ws.survey_id = ${SID}) = 4`, 'not four results')}
     ${must(`exists (select 1 from component_inspections where component_id = ${DOOR(0)} and inspected_at = '2026-10-04T09:15:00Z' and seen_by = 'A Surveyor' and source_ref = 'Sheet 12')`, 'row lost its time or source')}
     ${must(`exists (select 1 from component_inspections where component_id = ${DOOR(1)} and not time_recorded)`, 'no-time flag lost')}
