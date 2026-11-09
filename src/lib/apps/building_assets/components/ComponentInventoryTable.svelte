@@ -24,6 +24,8 @@
   import { statusBadgeCls, statusDotCls } from '#lib/utils/resultConstants.js';
   import { fmtDate } from '#lib/utils/dates.js';
   import { permissions } from '#lib/stores/permissions.js';
+  import { sortComponentList, SORT_KEYS } from '../utils/componentListSort.js';
+  import { getJSON, setJSON } from '#lib/utils/prefs.js';
 
   export let components     = [];
   export let componentAttrs = {};   // { [componentId]: component_attributes[] }
@@ -109,30 +111,20 @@
   const statusCls = statusBadgeCls;
   const statusDot = statusDotCls;
 
-  // -- Sort: floor → system (presentation_order) → inspection_sort_order (nulls last) → asset_id
-  $: sortedComponents = [...components].sort((a, b) => {
-    const flA = floors.find(f => f.id === a.floor_id);
-    const flB = floors.find(f => f.id === b.floor_id);
-    const loA = flA?.level_order ?? 9999;
-    const loB = flB?.level_order ?? 9999;
-    if (loA !== loB) return loA - loB;
-
-    const tA  = types.find(t => t.code === a.type_code);
-    const tB  = types.find(t => t.code === b.type_code);
-    const sA  = systems.find(s => s.id === tA?.building_system_id);
-    const sB  = systems.find(s => s.id === tB?.building_system_id);
-    const spA = sA?.presentation_order ?? 9999;
-    const spB = sB?.presentation_order ?? 9999;
-    if (spA !== spB) return spA - spB;
-
-    const iA = a.inspection_sort_order ?? null;
-    const iB = b.inspection_sort_order ?? null;
-    if (iA !== null && iB !== null) return iA - iB;
-    if (iA !== null) return -1;
-    if (iB !== null) return 1;
-
-    return (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined, { numeric: true });
-  });
+  // -- Sort (user, 2026-11-09): by walk order (the default), by Ref or by Label. Clicking
+  // a heading sorts by it; clicking it again reverses. Remembered in this browser.
+  // The orders are utils/componentListSort.js.
+  const saved = getJSON('components.sort', null);
+  let sortKey = SORT_KEYS.includes(saved?.key) ? saved.key : 'walk';
+  let sortDir = saved?.dir === 'desc' ? 'desc' : 'asc';
+  /** @param {string} key */
+  function sortBy(key) {
+    if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    else { sortKey = key; sortDir = 'asc'; }
+    setJSON('components.sort', { key: sortKey, dir: sortDir });
+  }
+  const arrow = (key, k, d) => (k === key ? (d === 'asc' ? ' ▲' : ' ▼') : '');
+  $: sortedComponents = sortComponentList(components, { key: sortKey, dir: sortDir }, { floors, types, systems });
 
   // -- Summary data --------------------------------------------------
   $: summaryRows = (() => {
@@ -193,14 +185,14 @@
         <thead>
           <tr class="border-b border-slate-700 text-left sticky top-0 bg-slate-800">
             <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-7"></th>
-            <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-20">Ref</th>
-            <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-36">Label</th>
+            <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-20" aria-sort={sortKey === 'ref' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}><Button variant="plain" on:click={() => sortBy('ref')} title="Sort by reference: floor, type, asset id" className="uppercase tracking-wide font-semibold hover:text-white {sortKey === 'ref' ? 'text-white' : ''}">Ref{arrow('ref', sortKey, sortDir)}</Button></th>
+            <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-36" aria-sort={sortKey === 'label' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}><Button variant="plain" on:click={() => sortBy('label')} title="Sort by label (numbers in order; no label last)" className="uppercase tracking-wide font-semibold hover:text-white {sortKey === 'label' ? 'text-white' : ''}">Label{arrow('label', sortKey, sortDir)}</Button></th>
             <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-28">Type</th>
             {#if showSpaces}
               <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-24">Space(s)</th>
             {/if}
             <!-- TEMP: inspection sort order column — remove this <th> when done -->
-            <th class="px-2 py-1.5 text-slate-500 font-semibold uppercase tracking-wide w-12" title="inspection_sort_order">Ord</th>
+            <th class="px-2 py-1.5 text-slate-500 font-semibold uppercase tracking-wide w-12" aria-sort={sortKey === 'walk' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}><Button variant="plain" on:click={() => sortBy('walk')} title="Sort by walk order: floor, system, walk order (the usual order)" className="uppercase tracking-wide font-semibold hover:text-white {sortKey === 'walk' ? 'text-white' : ''}">Ord{arrow('walk', sortKey, sortDir)}</Button></th>
             <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-20">Status</th>
             <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-[260px]">Attributes</th>
             {#if showLinked}
