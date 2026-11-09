@@ -366,20 +366,23 @@
             </div>
           {:else}
             <!-- On a phone: two columns of icon and name, no description, so every app
-                 is within a thumb's reach (2026-11-09). From md up, the cards as before. -->
-            <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
+                 is within a thumb's reach. From md up: compact cards, icon beside the name,
+                 the description in two lines, up to five across (2026-11-09; 18 apps). -->
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
               {#each displayedApps.filter(a => a.id !== 'home') as app}
-                <Button variant="plain" on:click={() => activeApp = app.id} aria-label={`Open ${app.name}`} className="bg-slate-800 hover:bg-slate-700 px-3 py-3 md:p-6 rounded-xl transition-all hover:scale-105 border border-slate-700 hover:border-purple-500">
+                <Button variant="plain" on:click={() => activeApp = app.id} aria-label={`Open ${app.name}`} className="bg-slate-800 hover:bg-slate-700 px-3 py-3 md:p-4 rounded-xl transition-all hover:scale-[1.03] border border-slate-700 hover:border-purple-500">
                   <span class="md:hidden flex items-center gap-2 text-left">
                     <span class="shrink-0"><Icon name={app.icon} size={6} className="text-purple-400" /></span>
                     <span class="text-sm font-semibold leading-tight">{app.name}</span>
                   </span>
-                  <span class="hidden md:block">
-                    <Icon name={app.icon} size={12} className="text-purple-400 mb-4" />
-                    <h3 class="text-xl font-semibold">{app.name}</h3>
-                    <p class="text-gray-400 mt-2 text-sm">
-                      {app.description || 'Click to open'}
-                    </p>
+                  <span class="hidden md:flex items-start gap-3 text-left">
+                    <span class="shrink-0 mt-0.5"><Icon name={app.icon} size={8} className="text-purple-400" /></span>
+                    <span class="min-w-0">
+                      <h3 class="text-base font-semibold leading-tight">{app.name}</h3>
+                      <p class="text-gray-400 mt-1 text-xs leading-snug line-clamp-2" title={app.description || ''}>
+                        {app.description || 'Click to open'}
+                      </p>
+                    </span>
                   </span>
 </Button>
               {/each}
