@@ -709,7 +709,8 @@
         <!-- Floor scope — presets + multi-select individual floors -->
         <div class="flex flex-col gap-1">
           <p class="text-[10px] text-slate-300 uppercase tracking-wide font-semibold">Floor</p>
-          <div class="flex items-center gap-1.5">
+          <!-- Wraps on a phone: the groups and the floor list were a little wider than the screen (2026-11-09). -->
+          <div class="flex flex-wrap items-center gap-1.5">
             <!-- Named presets -->
             <SegmentedControl size="small" label="Floor group" options={floorGroupOptions(floorGroups)}
                 value={floorPreset} on:change={(e) => { floorPreset = e.detail; filterFloorIds = new Set(); }} />

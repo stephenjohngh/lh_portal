@@ -352,7 +352,7 @@
       {@const m = $meetingsStore.current}
       <div class="rounded-xl border-2 border-amber-500/60 bg-amber-900/15 p-4 mb-6 shadow shadow-amber-500/10">
         <div class="flex items-start justify-between gap-3 flex-wrap">
-          <div class="flex-1 min-w-0">
+          <div class="flex-1 min-w-[12rem]">
             <div class="flex items-center gap-2 flex-wrap mb-1">
               <span class="text-amber-300">🟡</span>
               <span class="font-semibold text-white text-base">{m.title}</span>
@@ -373,7 +373,7 @@
             </div>
           </div>
 
-          <div class="flex flex-wrap items-center gap-1.5 shrink-0">
+          <div class="flex flex-wrap items-center gap-1.5 shrink-0 max-w-full">
             <Button
               variant="secondary"
               size="small"
@@ -434,7 +434,7 @@
           {@const canReopen = m.id === latestClosedId}
           <div class="rounded-lg border border-slate-600/60 bg-slate-700/40 p-3">
             <div class="flex items-start justify-between gap-3 flex-wrap">
-              <div class="flex-1 min-w-0">
+              <div class="flex-1 min-w-[12rem]">
                 <div class="flex items-baseline gap-2 flex-wrap">
                   <span class="font-semibold text-white">{m.title}</span>
                   <span class="text-xs text-slate-400">{fmtDate(m.meeting_date)} · {m.meeting_type}</span>
@@ -455,7 +455,7 @@
                 <SearchMatches {matches} on:open={() => viewMeeting(m)} />
               </div>
 
-              <div class="flex flex-wrap items-center gap-1.5 shrink-0">
+              <div class="flex flex-wrap items-center gap-1.5 shrink-0 max-w-full">
                 <Button
                   variant="secondary"
                   size="small"

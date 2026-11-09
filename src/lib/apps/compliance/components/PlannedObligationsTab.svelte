@@ -342,4 +342,12 @@
   .meta { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: rgb(148 163 184); margin-top: 0.3rem; }
   .freq { color: rgb(203 213 225); }
   .row-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+  /* On a phone the buttons go under the name; beside it they widened the page to
+     701 px and left the name a word a line (2026-11-09). */
+  @media (max-width: 639px) {
+    .row { flex-wrap: wrap; }
+    .row-main { min-width: 0; flex: 1 1 100%; }
+    .row-title, .meta { flex-wrap: wrap; }
+    .row-actions { width: 100%; flex-wrap: wrap; }
+  }
 </style>

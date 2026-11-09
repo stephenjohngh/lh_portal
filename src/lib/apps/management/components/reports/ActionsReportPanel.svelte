@@ -158,10 +158,12 @@
   }
 </script>
 
-<div class="flex h-full">
+<!-- On a phone the options stack above the preview, which beside them was a
+     thin strip (2026-11-09); side by side from md up. -->
+<div class="flex flex-col md:flex-row h-full">
 
   <!-- ── Filter panel ── -->
-  <aside class="w-64 shrink-0 border-r border-slate-700 bg-slate-800/60 p-5 flex flex-col gap-5 overflow-y-auto">
+  <aside class="w-full md:w-64 max-h-[30vh] md:max-h-none shrink-0 border-b md:border-b-0 md:border-r border-slate-700 bg-slate-800/60 p-5 flex flex-col gap-5 overflow-y-auto">
 
     <!-- Assignee -->
     <div>

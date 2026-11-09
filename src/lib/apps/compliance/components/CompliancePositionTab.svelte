@@ -561,7 +561,7 @@
   .degraded { font-size: 0.8rem; color: rgb(252 211 77); background: rgb(251 191 36 / 0.1);
               border-radius: 6px; padding: 0.5rem 0.7rem; line-height: 1.45; }
 
-  .bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; flex-wrap: wrap; }
   .views { display: flex; gap: 0.4rem; }
   :global(.view-btn) { font-size: 0.78rem; padding: 0.32rem 0.75rem; border-radius: 6px; cursor: pointer;
               border: 1px solid rgb(71 85 105 / 0.6); background: transparent; color: rgb(148 163 184); }
@@ -616,6 +616,14 @@
   .tr.st-excluded, .tr.st-superseded, .tr.st-retired { opacity: 0.62; }
 
   .c-name { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+  /* On a phone the table scrolls sideways inside its box rather than crushing the
+     name column to a few pixels (2026-11-09). */
+  @media (max-width: 639px) {
+    .tbl { overflow-x: auto; }
+    .tbl .th, .tbl .tr { min-width: 46rem; }
+    .tbl.hist .th, .tbl.hist .tr { min-width: 34rem; }
+    .tbl.faultlist .th, .tbl.faultlist .tr { min-width: 24rem; }
+  }
   .nm { color: rgb(226 232 240); font-weight: 500; }
   .ref { font-size: 0.7rem; color: rgb(148 163 184); font-style: italic; }
   .owner { font-size: 0.7rem; color: rgb(100 116 139); }

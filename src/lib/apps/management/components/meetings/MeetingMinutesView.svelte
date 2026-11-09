@@ -49,7 +49,7 @@
 
     <!-- ─── Heading ──────────────────────────────────────────────────── -->
     <div class="flex items-start justify-between gap-3 flex-wrap mb-5 pb-5 border-b border-slate-700">
-      <div class="flex-1 min-w-0">
+      <div class="flex-1 min-w-[12rem]">
         <p class="text-xs uppercase tracking-wide text-purple-300/70 font-semibold mb-1">
           Meeting minutes
         </p>

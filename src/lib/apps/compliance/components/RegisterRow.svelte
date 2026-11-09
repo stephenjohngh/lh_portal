@@ -406,6 +406,13 @@
   .row-title { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
   .nm { font-weight: 600; color: rgb(226 232 240); font-size: 0.88rem; }
   .row-facts { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
+  /* On a phone the cadence and status go on their own line under the name: beside
+     it they left the name and citation a word or two wide (2026-11-09). */
+  @media (max-width: 639px) {
+    .row { flex-direction: column; }
+    .row-head { flex-wrap: wrap; }
+    .row-facts { width: 100%; padding-left: 1.1rem; flex-wrap: wrap; }
+  }
 
   .badge { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.1rem 0.4rem; border-radius: 4px; white-space: nowrap; }
   .badge.statute    { background: rgb(248 113 113 / 0.18); color: rgb(252 165 165); }

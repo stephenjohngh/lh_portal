@@ -750,6 +750,10 @@
   .clear-btn       { font-size: 0.75rem; color: rgb(156 163 175); background: none; border: none; cursor: pointer; padding: 0.375rem 0; align-self: flex-end; transition: color 0.15s; }
   .clear-btn:hover { color: #fff; }
   .toolbar-summary { margin-left: auto; display: flex; align-items: center; gap: 1rem; font-size: 0.875rem; }
+  /* Wraps on a phone, where one row was 550 px wide (2026-11-09). */
+  @media (max-width: 639px) {
+    .toolbar-summary { margin-left: 0; flex-wrap: wrap; gap: 0.5rem 1rem; }
+  }
   .ts-count  { color: rgb(156 163 175); }
   .ts-open       { color: rgb(251 191 36); }
   .ts-unfinished { color: rgb(252 165 165); }

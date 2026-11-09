@@ -33,8 +33,9 @@
 </script>
 
 <div class="card">
-  <!-- User Header -->
-  <div class="flex-start gap-2 mb-3">
+  <!-- User Header. On a phone the badges go under the name, which two badges
+       squeezed to a few letters (2026-11-09); beside it from sm up. -->
+  <div class="flex-start flex-wrap sm:flex-nowrap gap-2 mb-3">
     <div class="flex-row-md flex-1 min-w-0">
       <div class="flex-shrink-0">
         <div class="avatar-md bg-purple-600">
@@ -50,7 +51,7 @@
       </div>
     </div>
 
-    <div class="flex gap-1.5 flex-wrap justify-end shrink-0">
+    <div class="flex gap-1.5 flex-wrap justify-start sm:justify-end w-full sm:w-auto shrink-0">
       {#if user.is_admin}
         <Badge color="bg-purple-600">Admin</Badge>
       {:else if user.is_read_only}

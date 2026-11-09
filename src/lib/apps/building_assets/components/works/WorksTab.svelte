@@ -365,8 +365,10 @@
 
 {#if !openSchedule}
   <!-- ── The list ────────────────────────────────────────────────────────── -->
-  <div class="flex items-start gap-3 mb-4">
-    <div class="min-w-0">
+  <!-- On a phone the buttons go under the heading, which they squeezed to a
+       word a line (2026-11-09); beside it from sm up. -->
+  <div class="flex flex-wrap sm:flex-nowrap items-start gap-3 mb-4">
+    <div class="min-w-0 w-full sm:w-auto">
       <div class="flex items-center gap-2">
         <h2 class="text-sm font-semibold text-white">Works schedules</h2>
         <span class="text-xs text-slate-500">{schedules.length}</span>
