@@ -675,6 +675,13 @@ export const googleDriveProvider = {
     return current;
   },
 
+  /** Give a file a new name, inside the portal's folder only. */
+  async renameFile(fileId, name) {
+    const drive = getDrive();
+    await assertInsideRoot(drive, fileId, 'Rename');
+    await drive.files.update({ fileId, supportsAllDrives: true, requestBody: { name }, fields: 'id' });
+  },
+
   async moveFile(fileId, newFolderId) {
     const drive = getDrive();
     await assertInsideRoot(drive, fileId, 'Move');
