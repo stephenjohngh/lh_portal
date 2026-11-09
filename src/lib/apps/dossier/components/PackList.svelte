@@ -39,8 +39,9 @@
 
 <div class="flex flex-col h-full">
 
-  <!-- Toolbar -->
-  <div class="flex items-center gap-3 px-5 py-3 border-b border-slate-700 shrink-0">
+  <!-- Toolbar. Wraps on a phone, where it ran off the right edge and hid
+       + New Pack (2026-11-09); one row from sm up, as before. -->
+  <div class="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 px-5 py-3 border-b border-slate-700 shrink-0">
     <p class="text-sm font-semibold text-white">
       {showArchived ? 'Archived' : 'Packs'}
       {#if !loading}<span class="text-slate-500 font-normal">({templates.length + dossiers.length})</span>{/if}
