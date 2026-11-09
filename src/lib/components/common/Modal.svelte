@@ -58,11 +58,19 @@
         class="relative w-full {sizeClasses[size]} bg-slate-800 rounded-xl shadow-2xl border border-slate-700 transform transition-all"
       >
         <!-- Header -->
-        {#if title || showClose}
-          <div class="flex items-center justify-between px-6 py-4 border-b border-slate-700">
-            <h2 id="modal-title" class="text-xl font-bold text-white">
-              {title}
-            </h2>
+        {#if title || showClose || $$slots.header}
+          <div class="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-700">
+            <!-- A header slot (badges and a name, say) takes the title's place. Four
+                 screens filled it while Modal had no such slot, so Svelte dropped it
+                 silently: a maintenance job's panel never showed the job's name
+                 (found 2026-11-09). -->
+            {#if $$slots.header}
+              <div id="modal-title" class="flex-1 min-w-0 text-white"><slot name="header" /></div>
+            {:else}
+              <h2 id="modal-title" class="text-xl font-bold text-white">
+                {title}
+              </h2>
+            {/if}
             {#if showClose}
               <button
                 on:click={close}
