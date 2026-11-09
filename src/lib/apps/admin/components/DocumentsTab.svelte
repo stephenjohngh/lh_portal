@@ -26,30 +26,35 @@
   import { checkSummary }    from '#lib/utils/documentCheckLabels.js';
   import { fmtTime }                 from '#lib/utils/dates.js';
   import { errMessage } from '#lib/utils/errors.js';
+  import { DOCUMENT_APPS, UNATTACHED } from '#lib/utils/documentApps.js';
 
   $: ({ docs, loading, error } = $documentsStore);
 
   // Filters
   let filterDocType  = '';
   let filterCategory = '';
+  let filterApp      = '';
   let filterSearch   = '';
+
+  const filterOpts = () => ({
+    doc_type: filterDocType  || undefined,
+    category: filterCategory || undefined,
+    app:      filterApp      || undefined,
+    search:   filterSearch   || undefined,
+  });
 
   onMount(async () => {
     await documentsStore.load();
   });
 
   async function applyFilters() {
-    await documentsStore.load({
-      doc_type: filterDocType  || undefined,
-      category: filterCategory || undefined,
-      search:   filterSearch   || undefined,
-    });
+    await documentsStore.load(filterOpts());
   }
 
   const debouncedApplyFilters = debounce(applyFilters, 250);
 
   async function clearFilters() {
-    filterDocType = ''; filterCategory = ''; filterSearch = '';
+    filterDocType = ''; filterCategory = ''; filterApp = ''; filterSearch = '';
     await documentsStore.load();
   }
 
@@ -78,11 +83,7 @@
     // e.detail is the array of newly uploaded document_library rows.
     // If no filters are active the new docs are already in the store from
     // the upload call; reload to apply any active filters and get server order.
-    documentsStore.load({
-      doc_type: filterDocType  || undefined,
-      category: filterCategory || undefined,
-      search:   filterSearch   || undefined,
-    });
+    documentsStore.load(filterOpts());
   }
 
   // ── Check files ──────────────────────────────────────────────────────────
@@ -225,7 +226,21 @@
         {/each}
       </select>
     </div>
-    {#if filterDocType || filterCategory || filterSearch}
+    <div>
+      <p class="text-xs text-slate-400 mb-1">App</p>
+      <select
+        class="bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-teal-500"
+        bind:value={filterApp}
+        on:change={applyFilters}
+      >
+        <option value="">All apps</option>
+        {#each DOCUMENT_APPS as a}
+          <option value={a.key}>{a.label}</option>
+        {/each}
+        <option value={UNATTACHED}>Not attached (added here)</option>
+      </select>
+    </div>
+    {#if filterDocType || filterCategory || filterApp || filterSearch}
       <Button variant="tertiary" size="xs" on:click={clearFilters}>Clear filters</Button>
     {/if}
   </div>

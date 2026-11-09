@@ -21,6 +21,7 @@ export async function GET({ request, url }) {
     category:     url.searchParams.get('category')     || undefined,
     folder_path:  url.searchParams.get('folder_path')  || undefined,
     search:       url.searchParams.get('search')       || undefined,
+    app:          url.searchParams.get('app')          || undefined,   // admin browse only (no entity_id)
     limit:        Number(url.searchParams.get('limit')) || undefined,
   };
 

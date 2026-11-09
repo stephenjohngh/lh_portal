@@ -5,6 +5,7 @@
 // see providerFor() below.
 // All DB index operations use the service-role Supabase client.
 
+import { entityTypesForApp, UNATTACHED } from '#lib/utils/documentApps.js';
 import { createHash }                from 'node:crypto';
 import { createClient }              from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$app/env/public';
@@ -235,6 +236,12 @@ export async function listDocuments(opts = {}) {
     .limit(opts.limit ?? 200);
 
   if (opts.entity_type) q = q.eq('entity_type', opts.entity_type);
+  if (opts.app === UNATTACHED) q = q.is('entity_type', null);
+  else if (opts.app) {
+    const types = entityTypesForApp(opts.app);
+    if (!types) return [];                       // an app with no documents of its own
+    q = q.in('entity_type', types);
+  }
   if (opts.entity_id)   q = q.eq('entity_id',   opts.entity_id);
   if (opts.doc_type)    q = q.eq('doc_type',     opts.doc_type);
   if (opts.category)    q = q.eq('category',     opts.category);

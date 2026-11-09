@@ -6,6 +6,7 @@
            folderLabel, sortDocsByFolder } from '#lib/utils/documentUtils.js';
   import { fmtDate } from '#lib/utils/dates.js';
   import { checkProblems } from '#lib/utils/documentCheckLabels.js';
+  import { documentAppLabel } from '#lib/utils/documentApps.js';
 
   /** @type {Object[]} document_library rows */
   export let docs       = [];
@@ -52,6 +53,7 @@
         <tr class="border-b border-slate-700 text-xs text-slate-400 uppercase tracking-wide">
           <th class="pb-2 pr-4 font-medium">Name</th>
           {#if extended}
+            <th class="pb-2 pr-4 font-medium">App</th>
             <th class="pb-2 pr-4 font-medium">Folder</th>
           {/if}
           <th class="pb-2 pr-4 font-medium">Type</th>
@@ -96,6 +98,7 @@
             </td>
 
             {#if extended}
+              <td class="py-2 pr-4 text-slate-400 whitespace-nowrap">{documentAppLabel(doc.entity_type)}</td>
               <!-- Folder — the full hierarchy, not just the leaf -->
               <td class="py-2 pr-4 text-slate-400 max-w-xs">
                 <span class="block truncate" title={folderLabel(doc.folder_path)}
