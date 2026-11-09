@@ -80,6 +80,19 @@
     showConditionAttrs      = false;
   }
 
+  // The X and Y boxes follow a move made on the schematic (a drag or an
+  // arrow-key nudge, 2026-11-09) unless the person has typed in them. They
+  // used to keep the position the component had when it was selected, so a
+  // later Save put the marker back where it had been.
+  let shownX = component.x_position;
+  let shownY = component.y_position;
+  $: followPosition(component.id, component.x_position, component.y_position);
+  function followPosition(id, x, y) {
+    if (id !== loadedId) { shownX = x; shownY = y; return; }
+    if (x !== shownX) { if (Number(xPosition) === shownX) xPosition = x ?? 0.5; shownX = x; }
+    if (y !== shownY) { if (Number(yPosition) === shownY) yPosition = y ?? 0.5; shownY = y; }
+  }
+
   // -- Derived ----------------------------------------------------------
   $: selectedType   = types.find(t => t.id === selectedTypeId) ?? null;
   // Only the checks that apply to this component (migration 286).
@@ -163,8 +176,8 @@
         asset_id:             assetId.trim()  || null,
         status,
         notes:                notes.trim()    || null,
-        x_position:             planId ? (Math.round((parseFloat(xPosition) || 0.5) * 1000) / 1000) : component.x_position,
-        y_position:             planId ? (Math.round((parseFloat(yPosition) || 0.5) * 1000) / 1000) : component.y_position,
+        x_position:             planId ? (Math.round((parseFloat(xPosition) || 0.5) * 10000) / 10000) : component.x_position,
+        y_position:             planId ? (Math.round((parseFloat(yPosition) || 0.5) * 10000) / 10000) : component.y_position,
         inspection_sort_order:  (() => { const v = parseInt(inspectionSortOrder); return isNaN(v) ? null : v; })(),
       };
       await buildingAssetsStore.updateComponent(component.id, fields);
