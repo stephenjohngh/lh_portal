@@ -201,7 +201,9 @@
             {#if showInspectionNotes}
               <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-[200px]">Insp. Notes</th>
             {/if}
-            <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-16"></th>
+            <!-- Wide enough for Inspect + Delete (73 px) and the cell padding: at w-16 a
+                 squeezed table (Notes on, a narrower window) cut Delete off (2026-11-09). -->
+            <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-[92px]"></th>
           </tr>
         </thead>
         <tbody>
