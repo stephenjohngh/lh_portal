@@ -36,6 +36,7 @@
   export let editingVertices      = null;   // the live corners while editing (after a drag), else null
   export let readOnly             = false;  // hide mutating actions (View mode)
   export let allowShapeEdit       = true;   // false when there's no plan canvas (e.g. Spaces tab)
+  export let copied               = false;  // this space is the one copied for pasting (⧉ Copy)
 
   const dispatch = createEventDispatcher();
 
@@ -610,6 +611,10 @@
 
     {:else}
       <Button variant="danger" size="xs" on:click={handleDelete}>Delete</Button>
+      {#if allowShapeEdit}
+        <Button variant="tertiary" size="xs" title="Copy this space, then paste copies of it (Ctrl+C, Ctrl+V)"
+          testid="space-copy" on:click={() => dispatch('copy')}>{copied ? '⧉ Copied' : '⧉ Copy'}</Button>
+      {/if}
       <Button variant="secondary" size="small" disabled={saving} on:click={() => { dispatch('close'); }}>Cancel</Button>
       <Button variant="primary" size="small" disabled={!dirty || saving || !editName.trim()} on:click={handleSave}>{saving ? 'Saving…' : 'Save'}</Button>
     {/if}

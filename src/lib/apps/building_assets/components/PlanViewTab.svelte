@@ -18,6 +18,7 @@
   import { createComponentDragController }  from './plan/componentDragController.js';
   import { createAnnotationDragController } from './plan/annotationDragController.js';
   import { createSpaceEditController }      from './plan/spaceEditController.js';
+  import { pastePolygon, buildPasteRow }     from '../utils/spacePaste.js';
   import PlanToolbar         from './plan/PlanToolbar.svelte';
   import PlanCanvas          from './plan/PlanCanvas.svelte';
   import PlanModeHints       from './plan/PlanModeHints.svelte';
@@ -429,10 +430,66 @@
         assigned_id: drawingAssignedId,
       });
       cancelSpaceDrawing();
-      drawingMode = 'off';
+      // Stay in ⬡ Spaces (2026-11-09): spaces come in runs — a row of bays —
+      // and dropping back to View after each one meant choosing Spaces again.
       if (newSpace) { selectedSpace = newSpace; sidebarMode = 'space-detail'; }
     } catch (/** @type {any} */ err) { errorMsg = err.message; }
     finally       { saving = false; }
+  }
+
+  // -- Copy and paste a space (⬡ Spaces, 2026-11-09) ------------------
+  // Copy takes the selected space; each Paste adds a copy beside the last one
+  // pasted (or beside the original), with the next free ID — see
+  // utils/spacePaste.js for what is copied and what is not. The copy stays
+  // copied when the floor or schematic changes, so a space can be pasted onto
+  // another schematic, where it lands in the same place if that is free.
+  let copiedSpace = null;   // a snapshot of the copied row
+  let pasteFrom   = null;   // { schematicId, polygon } of the last copy pasted
+  let pasting     = false;
+
+  function copySelectedSpace() {
+    if (!selectedSpace) return;
+    copiedSpace = { ...(spaces.find(s => s.id === selectedSpace.id) ?? selectedSpace) };
+    pasteFrom   = null;
+  }
+
+  async function pasteSpace() {
+    if (!copiedSpace || !selectedPlanId || pasting || readOnly) return;
+    const src     = copiedSpace;
+    const planId  = selectedPlanId;
+    const floorId = selectedFloorId || null;
+    const kind    = src.kind === 'slot' ? 'slot' : 'space';
+    const base    = (pasteFrom && pasteFrom.schematicId === planId) ? pasteFrom.polygon : src.polygon;
+    const polygon = pastePolygon(base, planSpaces);
+    const takenIds = new Set(spaces
+      .filter(s => (s.floor_id || null) === floorId && (s.kind === 'slot' ? 'slot' : 'space') === kind && s.assigned_id)
+      .map(s => s.assigned_id));
+    pasting = true; errorMsg = '';
+    try {
+      if ($drawingVertices.length > 0) cancelSpaceDrawing();
+      spaceCtrl.resetVertexState();
+      const created = await buildingAssetsStore.createSpace(
+        buildPasteRow(src, { schematicId: planId, floorId, polygon, takenIds }));
+      if (created) {
+        pasteFrom = { schematicId: planId, polygon: created.polygon };
+        selectedSpace = created; selectedComponent = null; sidebarMode = 'space-detail';
+      }
+    } catch (/** @type {any} */ err) { errorMsg = err.message; }
+    finally { pasting = false; }
+  }
+
+  // Ctrl+C / Ctrl+V (⌘ on a Mac) in ⬡ Spaces — never while typing in a box,
+  // and Ctrl+C never while text is selected (that copies the text).
+  function onSpaceKeydown(e) {
+    if (drawingMode !== 'space' || readOnly || !(e.ctrlKey || e.metaKey) || e.altKey) return;
+    const t = /** @type {HTMLElement} */ (e.target);
+    if (t && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))) return;
+    const key = e.key.toLowerCase();
+    if (key === 'c' && selectedSpace && sidebarMode === 'space-detail' && !window.getSelection()?.toString()) {
+      e.preventDefault(); copySelectedSpace();
+    } else if (key === 'v' && copiedSpace) {
+      e.preventDefault(); pasteSpace();
+    }
   }
 
   // -- Scale calibration ---------------------------------------------
@@ -553,6 +610,7 @@
 <svelte:window
   on:mousemove={e => { dragCtrl.onMousemove(e); annCtrl.onMousemove(e); spaceCtrl.onMousemove(e); }}
   on:mouseup={async () => { await dragCtrl.onMouseup(); await annCtrl.onMouseup(); await spaceCtrl.onMouseup(); }}
+  on:keydown={onSpaceKeydown}
 />
 
 <div class="flex flex-col gap-3">
@@ -579,6 +637,18 @@
     {scalePoint2}
     bind:spaceShape
   />
+
+  <!-- -- Copied space: paste it (⬡ Spaces) ---------------------------- -->
+  {#if drawingMode === 'space' && copiedSpace && !readOnly}
+    <div class="px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20
+                text-xs text-purple-300/80 flex flex-wrap items-center gap-2" data-testid="space-paste-bar">
+      <span>⧉ Copied: <strong class="text-purple-200">{copiedSpace.label || copiedSpace.name || 'space'}</strong>.
+        Each paste puts a copy beside the last one{copiedSpace.assigned_id ? ', with the next free ID' : ''}; drag it to move it.</span>
+      <Button variant="secondary" size="xs" disabled={pasting || !selectedPlanId} on:click={pasteSpace}
+        title="Ctrl+V">{pasting ? 'Pasting…' : 'Paste a copy'}</Button>
+      <Button variant="tertiary" size="xs" on:click={() => { copiedSpace = null; pasteFrom = null; }}>Clear</Button>
+    </div>
+  {/if}
 
   <!-- -- Error bar --------------------------------------------------- -->
   {#if errorMsg}
@@ -723,6 +793,8 @@
           on:saved={({ detail }) => { selectedSpace = detail.space; }}
           on:close={() => { selectedSpace = null; sidebarMode = 'none'; resetSelection(); }}
           on:deleted={() => { resetSelection(); }}
+          on:copy={copySelectedSpace}
+          copied={!!copiedSpace && copiedSpace.id === selectedSpace?.id}
           on:editshape={spaceCtrl.onEditShape}
           on:doneeditshape={spaceCtrl.onDoneEditShape}
           on:setvertex={({ detail }) => spaceCtrl.setVertex(detail.index, detail.x, detail.y)}
