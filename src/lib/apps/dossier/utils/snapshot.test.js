@@ -202,6 +202,16 @@ describe('buildManifest', () => {
     expect(JSON.stringify(snap)).not.toContain('Unrelated');
   });
 
+  it('records every file the snapshot carries, so every pinned copy is named by the manifest', () => {
+    // Publishing pins a copy of each snapshot file, but only the manifest names
+    // copies, and deleting a publication removes only what it names. Before
+    // 2026-11-03 the snapshot carried the whole shelf, so unused files were
+    // copied and never named: 30 were found left behind in Drive (2026-11-09).
+    const snap = snapshot();
+    const manifest = buildManifest(snap);
+    expect(manifest.files.map(f => f.document_id).sort()).toEqual(snap.files.map(f => f.id).sort());
+  });
+
   it('refuses an id it has never heard of', () => {
     const manifest = buildManifest(snapshot());
     expect(!!manifestEntry(manifest, 'not-a-file')).toBe(false);
