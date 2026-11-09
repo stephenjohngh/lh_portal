@@ -717,7 +717,7 @@
       // publication is a frozen one. Measured now, at publication — a checksum
       // taken later is a baseline for a file that may already have changed, and
       // a pin taken later is not the thing that was sent.
-      const assets = await prepareAssets(snapshot.files, { pin: mode === 'snapshot' });
+      const assets = await prepareAssets(snapshot.files, { pin: mode === 'snapshot', packId: pack.id });
 
       const result = await dossierStore.createPublication({
         pack, snapshot, mode, title, recipientLabel, passphrase, showContents,

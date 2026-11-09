@@ -221,17 +221,17 @@ export function buildManifest(snapshot, assets = {}, options = {}) {
  * author, beats one that will not go out.
  *
  * @param {object[]} files - the snapshot's file entries
- * @param {{ pin?: boolean }} [opts]
+ * @param {{ pin?: boolean, packId?: string|null }} [opts]  the pack names the Drive folder the copies go in
  * @returns {Promise<Record<string, { checksum: string|null, pinned_file_id: string|null }>>}
  */
-export async function prepareAssets(files = [], { pin = false } = {}) {
+export async function prepareAssets(files = [], { pin = false, packId = null } = {}) {
   const usable = files.filter(f => f.provider_file_id);
   if (!usable.length) return {};
 
   try {
     const { postJson } = await import('#lib/utils/request.js');
     const body = await postJson('/api/dossier/publish-assets', {
-      pin,
+      pin, packId,
       files: usable.map(f => ({
         providerFileId: f.provider_file_id,
         filename: f.display_name || f.filename || 'file',

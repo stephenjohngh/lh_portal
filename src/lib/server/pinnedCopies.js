@@ -17,6 +17,7 @@
 
 import { ownerOf } from './storage/index.js';
 import { isStorageId } from './storage/storageRef.js';
+import { folderKey } from './storage/folderNames.js';
 
 /**
  * @param {object} manifest   the publication's manifest
@@ -28,16 +29,47 @@ export async function removePinnedCopies(manifest, deps = {}) {
   const pins = (manifest?.files ?? []).filter(f => f?.pinned_file_id);
   let removed = 0;
   const failed = [];
+  /** @type {Map<string, any>} folder id → its provider */
+  const folders = new Map();
   for (const f of pins) {
     const id = String(f.pinned_file_id);
     const provider = f.pinned_provider ?? null;
     try {
       if (!isStorageId(id, provider)) throw new Error('Not a well-formed storage id.');
-      await resolve(provider).deleteFile(id);
+      const store = resolve(provider);
+      // Asked before the delete: afterwards the file is gone and cannot say.
+      const parent = await store.parentFolderOf?.(id).catch(() => null);
+      await store.deleteFile(id);
       removed += 1;
+      if (parent) folders.set(parent, store);
     } catch (/** @type {any} */ err) {
       failed.push({ id, error: String(err?.message ?? err) });
     }
   }
+  for (const [folderId, store] of folders) await tidyPinFolders(store, folderId);
   return { removed, failed };
 }
+
+/**
+ * Bin the publish's folder once it is empty, then the pack's folder above it
+ * once that is empty too (pinFolderPath in publicationAssets.js). Only folders
+ * of those two shapes — a dated publish folder, a `<title> (1a2b3c4d)` pack
+ * folder — so `_published` itself, which held every copy before 2026-11-09, is
+ * never touched. Best effort: an untidy folder is not a failed delete.
+ * @param {any} store
+ * @param {string} folderId
+ */
+async function tidyPinFolders(store, folderId) {
+  if (!store.trashFolderIfEmpty || !store.getFileMetadata) return;
+  try {
+    const publish = await store.getFileMetadata(folderId);
+    if (!PUBLISH_FOLDER.test(publish?.name ?? '')) return;
+    const packId = await store.parentFolderOf?.(folderId).catch(() => null);
+    if (!(await store.trashFolderIfEmpty(folderId)) || !packId) return;
+    const pack = await store.getFileMetadata(packId);
+    if (folderKey(pack?.name)) await store.trashFolderIfEmpty(packId);
+  } catch { /* left for Compare with Drive to show */ }
+}
+
+/** A publish folder's name: `2026-11-09 14.32`. */
+const PUBLISH_FOLDER = /^\d{4}-\d{2}-\d{2} \d{2}\.\d{2}$/;

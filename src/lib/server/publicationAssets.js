@@ -27,6 +27,8 @@ import { storageProvider, ownerOf } from './storage/index.js';
 import { isStorageId }          from './storage/storageRef.js';
 import { friendlyStorageError } from './storage/storageErrors.js';
 import { hashStoredFile, copyStoredFile } from './storage/fileBytes.js';
+import { entityFolderPath } from '#lib/utils/documentUtils.js';
+import { calendarDate, fmtTime } from '#lib/utils/dates.js';
 
 /**
  * Bounds. A pack's shelf is normally a handful of files, but publishing must
@@ -39,6 +41,26 @@ export const MAX_TOTAL_BYTES = 120 * 1024 * 1024;
 
 /** Where pinned copies live. Kept out of the shelf so nothing lists them. */
 export const PIN_PATH = ['Dossier Packs', '_published'];
+
+/**
+ * The folder one publish's copies go in (2026-11-09):
+ * `Dossier Packs/_published/<Pack title> (1a2b3c4d)/2026-11-09 14.32/`, so a
+ * person can see in Drive what belongs to which pack and when it was sent, and
+ * remove a pack's copies by removing one folder. The publication still names
+ * each copy by its Drive id, so nothing reads this path back. A pack renamed
+ * later keeps its folder: it is found by the short id and renamed.
+ * Before 2026-11-09 every copy went straight into `_published`, named
+ * `<original id>-<checksum>-<file name>`; those stay where they are.
+ * @param {{ id?: string, title?: string }|null|undefined} pack
+ * @param {Date} [at]
+ * @returns {string[]}
+ */
+export function pinFolderPath(pack, at = new Date()) {
+  if (!pack?.id) return PIN_PATH;
+  const packFolder = entityFolderPath('', pack.title ?? '', pack.id).replace(/^\//, '');
+  const when = `${calendarDate(at.toISOString())} ${fmtTime(at.toISOString()).replace(':', '.')}`;
+  return [...PIN_PATH, packFolder, when];
+}
 
 export async function sha256Hex(buffer) {
   const digest = await globalThis.crypto.subtle.digest('SHA-256', buffer);
@@ -60,14 +82,14 @@ export async function sha256Hex(buffer) {
  * @param {{ providerFileId: string, provider?: string|null, filename?: string, mimeType?: string }[]} files
  *   `provider` is the one recorded for the ORIGINAL; the caller looks it up
  *   from the document's row.
- * @param {{ pin?: boolean }} [opts]
+ * @param {{ pin?: boolean, pack?: { id: string, title?: string }|null }} [opts]
  * @returns {Promise<Record<string, { checksum: string|null, pinned_file_id: string|null,
  *                                     pinned_provider: string|null }>>}
  *          keyed by providerFileId. A pinned copy is written to the provider
  *          configured NOW, and `pinned_provider` records which — so it can be
  *          read and deleted from there after any later switch.
  */
-export async function prepareAssets(files = [], { pin = false } = {}) {
+export async function prepareAssets(files = [], { pin = false, pack = null } = {}) {
   /** @type {Record<string, { checksum: string|null, pinned_file_id: string|null }>} */
   const out = {};
   const empty = { checksum: null, pinned_file_id: null, pinned_provider: null };
@@ -97,9 +119,9 @@ export async function prepareAssets(files = [], { pin = false } = {}) {
 
     if (pin) {
       try {
-        pinFolder ??= await storageProvider.ensurePath(PIN_PATH);
+        pinFolder ??= await storageProvider.ensurePath(pinFolderPath(pack));
         const copied = await copyStoredFile(ownerOf(file?.provider), storageProvider, id, {
-          name: `${id}-${checksum.slice(0, 12)}-${file.filename ?? 'file'}`,
+          name: file.filename || 'file',
           mimeType: file.mimeType || 'application/octet-stream',
           folderId: pinFolder,
         });

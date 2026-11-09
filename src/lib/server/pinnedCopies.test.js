@@ -43,4 +43,32 @@ describe('removePinnedCopies', () => {
     expect(out.removed).toBe(1);
     expect(out.failed.map(f => f.id)).toEqual(['a', 'b']);
   });
+
+  it('bins the emptied publish folder and pack folder, never _published', async () => {
+    const names = { pub: '2026-11-09 14.32', pack: 'Flat 4 (1a2b3c4d)', root: '_published' };
+    const parent = { pin: 'pub', pub: 'pack', pack: 'root', old: 'root' };
+    const drive = {
+      deleteFile: vi.fn(async () => {}),
+      parentFolderOf: vi.fn(async (id) => parent[id]),
+      getFileMetadata: vi.fn(async (id) => ({ name: names[id] })),
+      trashFolderIfEmpty: vi.fn(async () => true),
+    };
+    await removePinnedCopies({ files: [{ pinned_file_id: 'pin' }] }, { ownerOf: () => drive });
+    expect(drive.trashFolderIfEmpty.mock.calls.map(c => c[0])).toEqual(['pub', 'pack']);
+
+    drive.trashFolderIfEmpty.mockClear();
+    await removePinnedCopies({ files: [{ pinned_file_id: 'old' }] }, { ownerOf: () => drive });
+    expect(drive.trashFolderIfEmpty).not.toHaveBeenCalled();     // a copy from before, straight in _published
+  });
+
+  it('a folder that cannot be tidied does not fail the delete', async () => {
+    const drive = {
+      deleteFile: vi.fn(async () => {}),
+      parentFolderOf: vi.fn(async () => 'pub'),
+      getFileMetadata: vi.fn(async () => { throw new Error('Drive said no'); }),
+      trashFolderIfEmpty: vi.fn(),
+    };
+    const out = await removePinnedCopies({ files: [{ pinned_file_id: 'pin' }] }, { ownerOf: () => drive });
+    expect(out).toEqual({ removed: 1, failed: [] });
+  });
 });

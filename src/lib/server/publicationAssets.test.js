@@ -49,7 +49,7 @@ vi.mock('./storage/storageErrors.js', () => ({
 }));
 
 const {
-  prepareAssets, verifyManifest, describeVerification, sha256Hex, MAX_FILES, withProviders,
+  prepareAssets, verifyManifest, describeVerification, sha256Hex, MAX_FILES, withProviders, pinFolderPath,
 } = await import('./publicationAssets.js');
 
 const file = (id, name = 'Notice.pdf') => ({
@@ -76,7 +76,7 @@ describe('prepareAssets — checksums', () => {
     const assets = await prepareAssets([file('drive-1')], { pin: true });
     expect(h.getFileStream).not.toHaveBeenCalled();
     expect(h.uploadFile).not.toHaveBeenCalled();
-    expect(h.copyFile).toHaveBeenCalledWith('drive-1', expect.stringContaining('drive-1-abc123'), 'pin-folder');
+    expect(h.copyFile).toHaveBeenCalledWith('drive-1', 'Notice.pdf', 'pin-folder');
     expect(assets['drive-1']).toEqual({ checksum: 'abc123', pinned_file_id: 'copied-1', pinned_provider: 'google_drive' });
   });
 
@@ -133,6 +133,22 @@ describe('prepareAssets — pinning', () => {
     await prepareAssets([file('drive-1')], { pin: true });
     expect(h.ensurePath).toHaveBeenCalledWith(['Dossier Packs', '_published']);
     expect(h.uploadFile.mock.calls[0][3]).toBe('pin-folder');
+  });
+
+  it('pins into a folder per pack and per publish, under the file’s own name', async () => {
+    // Readable in Drive, and one folder to remove for a pack (2026-11-09).
+    await prepareAssets([file('drive-1', 'Notice.pdf')], { pin: true, pack: { id: '1a2b3c4d-0000-0000', title: 'Flat 4/5 dispute' } });
+    const path = h.ensurePath.mock.calls[0][0];
+    expect(path.slice(0, 3)).toEqual(['Dossier Packs', '_published', 'Flat 4 5 dispute (1a2b3c4d)']);
+    expect(path[3]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}\.\d{2}$/);
+    expect(h.uploadFile.mock.calls[0][1]).toBe('Notice.pdf');
+  });
+
+  it('names the publish folder by London date and time', () => {
+    // 23:30 UTC on 9 July is 00:30 on 10 July in London (summer time).
+    expect(pinFolderPath({ id: 'abcdef12-x', title: 'P' }, new Date('2026-07-09T23:30:00Z')))
+      .toEqual(['Dossier Packs', '_published', 'P (abcdef12)', '2026-07-10 00.30']);
+    expect(pinFolderPath(null)).toEqual(['Dossier Packs', '_published']);
   });
 
   it('resolves the pin folder once for the whole batch', async () => {

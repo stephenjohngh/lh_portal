@@ -22,6 +22,8 @@
 // one not in the library: left unread, shown in the review as a gap.
 
 import { json }           from '@sveltejs/kit';
+import { createClient }   from '@supabase/supabase-js';
+import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$app/env/public';
 import { requireAuth }    from '#lib/server/requireAuth.js';
 import { prepareAssets, MAX_FILES } from '#lib/server/publicationAssets.js';
 import { getDocumentByFileId } from '#lib/server/documentLibrary.js';
@@ -55,6 +57,20 @@ export async function POST({ request }) {
     }));
   } catch { return json({ error: 'Could not look the files up' }, { status: 500 }); }
 
-  const assets = await prepareAssets(known, { pin: body?.pin === true });
+  // The pack names the folder the copies go in (pinFolderPath). It is read with
+  // the caller's own token, so RLS decides: a pack they cannot read is refused
+  // rather than having a folder made in its name.
+  let pack = null;
+  if (body?.pin === true && body?.packId) {
+    const { data, error } = await createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${bearerToken(request)}` } },
+      auth: { persistSession: false },
+    }).from('dossier_packs').select('id, title').eq('id', String(body.packId)).maybeSingle();
+    if (error) return json({ error: 'Could not read the pack' }, { status: 500 });
+    if (!data) return json({ error: 'Not permitted' }, { status: 403 });
+    pack = data;
+  }
+
+  const assets = await prepareAssets(known, { pin: body?.pin === true, pack });
   return json({ assets });
 }
