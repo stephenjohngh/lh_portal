@@ -57,11 +57,16 @@ walk: 'M13 4a1 1 0 1 0 2 0 1 1 0 0 0-2 0m-2 3l-3 9 3-2 1 4h2l-1-5 2-2 1 3h2l-2-5
   // to centre them vertically in the taller canvas.
   $: isNative30 = name === 'lhlogo';
   $: path = icons[name] || icons.grid;
-  $: sizeClass = `w-${size} h-${size}`;
+  // The size is set directly, in Tailwind units (1 = 0.25rem). It used to be a class
+  // built at run time (`w-${size}`), which Tailwind cannot see, so a size nobody had
+  // written as a class elsewhere had no CSS and the icon collapsed to nothing — the
+  // Dossier pack card's book icon (size 18) never showed (2026-11-09).
+  $: sizeStyle = `width: calc(${Number(size) || 6} * 0.25rem); height: calc(${Number(size) || 6} * 0.25rem);`;
 </script>
 
 <svg
-  class={`${sizeClass} ${className}`}
+  class={className}
+  style={sizeStyle}
   fill="none"
   stroke="currentColor"
   viewBox="0 0 24 30"

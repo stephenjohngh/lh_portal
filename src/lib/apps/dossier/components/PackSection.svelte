@@ -208,15 +208,17 @@
         {@const pack = row.pack}
         <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
         <div
-          class="group flex items-start gap-3 p-4 rounded-lg border border-slate-700
+          class="group flex flex-wrap sm:flex-nowrap items-start gap-3 p-4 rounded-lg border border-slate-700
                  bg-slate-800/50 hover:bg-slate-800 hover:border-slate-600
                  cursor-pointer transition-colors"
           style="margin-left: {row.depth * 16}px"
           data-testid="pack-row"
           on:click={() => dispatch('open', pack)}
         >
-          <div class="text-slate-500 mt-0.5 shrink-0"><Icon name="book" size={18} /></div>
+          <div class="text-slate-500 mt-0.5 shrink-0"><Icon name="book" size={5} /></div>
 
+          <!-- On a phone the buttons go to their own row below, or they squeeze the name
+               to nothing (2026-11-09). From sm up the row is as it always was. -->
           <div class="flex-1 min-w-0">
             <p class="text-sm font-semibold text-white truncate">{pack.title}
               {#if pack.is_template}<span class="ml-2 rounded bg-purple-900/50 border border-purple-700/60 px-1.5 py-0.5 text-[10px] font-normal text-purple-200 align-middle">Template</span>{/if}
@@ -229,7 +231,7 @@
             </p>
           </div>
 
-          <div class="flex flex-wrap items-center justify-end gap-1 shrink-0">
+          <div class="flex flex-wrap items-center justify-start sm:justify-end gap-1 w-full sm:w-auto shrink-0">
             {#if pack.is_template}
               <ProtectedButton action="modify" variant="primary" size="small"
                       title="Start a new dossier from this template"

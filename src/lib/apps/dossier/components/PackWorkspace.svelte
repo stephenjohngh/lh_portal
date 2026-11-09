@@ -859,13 +859,15 @@
 
 <div class="flex flex-col h-full">
 
-  <!-- Workspace header -->
-  <div class="flex items-center gap-3 px-4 py-2 border-b border-slate-700 shrink-0">
+  <!-- Workspace header. On a phone the buttons squeezed the pack's name to one
+       letter, so below sm it wraps and the name takes its own line under the
+       buttons (2026-11-09); from sm up it is one row as before. -->
+  <div class="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1 px-4 py-2 border-b border-slate-700 shrink-0">
     <Button variant="secondary" size="small" className="shrink-0"
             on:click={() => dispatch('back')}>
       ← Packs
     </Button>
-    <p class="text-sm font-semibold text-white truncate" title={pack.title}>{pack.title}</p>
+    <p class="text-sm font-semibold text-white truncate order-last w-full sm:order-none sm:w-auto" title={pack.title}>{pack.title}</p>
     {#if pack.status === 'archived'}
       <span class="text-xs px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">Archived</span>
     {/if}
