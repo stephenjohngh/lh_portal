@@ -49,8 +49,8 @@
     {#each drawn as bay (bay.space_id)}
       {@const c = centroid(bay.space.polygon)}
       <span
-        class="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none text-[10px] font-bold
-               text-white px-0.5 rounded bg-black/40"
+        class="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none text-[12px] sm:text-[20px] leading-none font-bold
+               text-white px-0.5 sm:px-1 sm:py-0.5 rounded bg-black/40"
         style="left:{c.x * 100}%; top:{c.y * 100}%"
       >{bay.number ?? '?'}</span>
     {/each}
