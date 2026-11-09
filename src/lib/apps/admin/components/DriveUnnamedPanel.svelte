@@ -8,7 +8,6 @@
      proxy serves only files a record names, and these by definition have none.
      Google lets in only someone signed in to the account that holds the folder. -->
 <script>
-  import Button from '#lib/components/common/Button.svelte';
   import ErrorDisplay from '#lib/components/common/ErrorDisplay.svelte';
   import { getJson } from '#lib/utils/request.js';
   import { formatFileSize } from '#lib/utils/documentUtils.js';
@@ -17,10 +16,12 @@
 
   /** @type {any} */
   let result = null;
-  let running = false;
+  /** True while a comparison is running; bound by the screen that holds the button. */
+  export let running = false;
   let error = '';
 
-  async function compare() {
+  /** Called by the Compare with Drive button, which sits with Check files on the screen. */
+  export async function compare() {
     running = true; error = '';
     try { result = await getJson('/api/documents/drive-unnamed', 'Drive could not be compared.'); }
     catch (/** @type {any} */ err) { error = errMessage(err); }
@@ -31,20 +32,7 @@
   const driveFolder = (/** @type {string} */ id) => `https://drive.google.com/drive/folders/${encodeURIComponent(id)}`;
 </script>
 
-<section class="space-y-3 border border-slate-700 rounded-lg p-4" data-testid="drive-unnamed">
-  <div class="flex flex-wrap items-center gap-3">
-    <h3 class="text-sm font-semibold text-slate-200">Files in Drive that nothing names</h3>
-    <Button variant="secondary" size="small" disabled={running} on:click={compare}>
-      {running ? 'Comparing with Drive…' : result ? 'Compare again' : 'Compare with Drive'}
-    </Button>
-  </div>
-  <p class="text-xs text-slate-400">
-    Lists every file in the portal's Drive folder that no document, photo, maintenance record or
-    published pack names, and every folder with no file in it. These are what is left behind when
-    something is deleted. Nothing is changed. A file uploaded in the last minute or so may show here
-    until its record is written.
-  </p>
-
+<section class="space-y-3" data-testid="drive-unnamed">
   <ErrorDisplay message={error} onDismiss={() => (error = '')} />
 
   {#if result}

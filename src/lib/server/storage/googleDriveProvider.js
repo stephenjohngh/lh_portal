@@ -675,6 +675,13 @@ export const googleDriveProvider = {
     return current;
   },
 
+  /** Move a file to the Drive bin (kept 30 days), inside the portal's folder only. */
+  async trashFile(fileId) {
+    const drive = getDrive();
+    await assertInsideRoot(drive, fileId, 'Delete');
+    await drive.files.update({ fileId, supportsAllDrives: true, requestBody: { trashed: true }, fields: 'id' });
+  },
+
   /** Give a file a new name, inside the portal's folder only. */
   async renameFile(fileId, name) {
     const drive = getDrive();

@@ -31,6 +31,10 @@
 
   $: ({ docs, loading, error } = $documentsStore);
 
+  /** @type {any} */
+  let drivePanel;
+  let comparing = false;
+
   // Filters
   let filterDocType  = '';
   let filterCategory = '';
@@ -169,7 +173,8 @@
       ⚠ This lists <strong>records</strong>, not the files themselves: nothing ties a record to its
       file in Google Drive, or to the thing it was attached to, so a record can outlive either.
       <strong>Check files</strong> asks, for each document shown, whether both still exist, and
-      changes nothing. It cannot find the opposite case — a file in Drive with no record here.
+      changes nothing. <strong>Compare with Drive</strong> finds the opposite case — a file in Drive
+      that no record names.
     </p>
     <p>
       It exists as a demo and admin cleanup view. Everyday document handling happens in each entity's
@@ -250,27 +255,42 @@
   <ErrorDisplay message={error} onDismiss={() => documentsStore.clearError()} />
   <ErrorDisplay message={checkError} onDismiss={() => (checkError = '')} />
 
-  <!-- Check files -->
-  {#if !loading && docs.length}
-    <div class="flex flex-wrap items-center gap-3 text-sm" data-testid="check-bar">
-      <Button variant="secondary" size="medium" disabled={checking} on:click={runCheck}>{checking ? `Checking ${docs.length}…` : `Check files (${docs.length} shown)`}</Button>
-      {#if summary.checked}
+  <!-- Checking the library against Google Drive: both questions, side by side -->
+  <div class="border border-slate-700 rounded-lg p-4 space-y-3" data-testid="check-bar">
+    <div class="grid gap-4 md:grid-cols-2">
+      <div class="space-y-1.5">
+        <Button variant="secondary" size="small" disabled={checking || loading || !docs.length} on:click={runCheck}>{checking ? `Checking ${docs.length}…` : `Check files (${docs.length} shown)`}</Button>
+        <p class="text-xs text-slate-400">
+          Does each document listed below still have its <strong>file</strong> in Drive, and is the
+          <strong>record</strong> it was attached to still there? Finds records whose file has gone.
+        </p>
+      </div>
+      <div class="space-y-1.5">
+        <Button variant="secondary" size="small" disabled={comparing} on:click={() => drivePanel?.compare()}>{comparing ? 'Comparing with Drive…' : 'Compare with Drive'}</Button>
+        <p class="text-xs text-slate-400">
+          Is every <strong>file</strong> in the portal's Drive folder still named by a record? Finds
+          files left behind when something was deleted, and empty folders.
+        </p>
+      </div>
+    </div>
+    <p class="text-xs text-slate-500">Neither changes anything. A file uploaded in the last minute or so may show until its record is written.</p>
+
+    {#if summary.checked}
+      <div class="flex flex-wrap items-center gap-3 text-sm">
         <span class="text-slate-300" data-testid="check-summary">
           Checked {summary.checked}{checkedAt ? ` at ${fmtTime(checkedAt)}` : ''}:
-          <span class="text-green-400">{summary.fine} fine</span>{#if summary.withProblems}
-            · <span class="text-red-300">{summary.withProblems} with a problem</span>{/if}{#if summary.notChecked}
-            · <span class="text-slate-400">{summary.notChecked} shown since, not checked</span>{/if}
+          <span class="text-green-400">{summary.fine} fine</span>{#if summary.withProblems}{' · '}<span class="text-red-300">{summary.withProblems} with a problem</span>{/if}{#if summary.notChecked}{' · '}<span class="text-slate-400">{summary.notChecked} shown since, not checked</span>{/if}
         </span>
         {#each summary.byLabel as p}
           <span class="text-xs px-1.5 py-0.5 rounded border {p.tone === 'red'
             ? 'bg-red-900/30 border-red-800 text-red-300'
             : 'bg-amber-900/30 border-amber-800 text-amber-300'}">{p.count} × {p.label}</span>
         {/each}
-      {/if}
-    </div>
-  {/if}
+      </div>
+    {/if}
 
-  <DriveUnnamedPanel />
+    <DriveUnnamedPanel bind:this={drivePanel} bind:running={comparing} />
+  </div>
 
   <!-- Document list -->
   {#if loading}
