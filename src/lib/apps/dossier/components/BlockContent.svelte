@@ -145,6 +145,12 @@
   :global(.dossier-prose-editing) { min-height: 60vh; }
 
   :global(.dossier-prose p) { margin: 0 0 0.75rem 0; }
+  /* A long unbroken run (a file path in `code`, a file_name_with_underscores) must
+     wrap rather than widen the page: on a phone it pushed the published pack past
+     the screen, so dragging sideways showed an empty strip (2026-11-09). Text
+     blocks only: a code block keeps its lines and scrolls (pre is white-space: pre,
+     which this does not touch), and a table scrolls rather than crushing its columns. */
+  :global(.dossier-prose :is(p, li, h1, h2, h3, h4, blockquote, dt, dd)) { overflow-wrap: anywhere; }
   /* A deliberate blank line must survive into read mode and onto paper.
      While editing, ProseMirror puts a trailing <br> inside an empty paragraph,
      so it occupies a line; generateHTML emits a bare <p></p>, which has no
