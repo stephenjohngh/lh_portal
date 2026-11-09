@@ -150,8 +150,10 @@ export function createComponentActions(update) {
   // Lightweight position-only update — skips full updateComponent overhead.
   async function moveComponent(id, planId, x, y) {
     const userId = requireUserId();
-    const rx = Math.round(x * 1000) / 1000;
-    const ry = Math.round(y * 1000) / 1000;
+    // To 1/10,000 of the drawing (2026-11-09): an arrow-key nudge is one screen
+    // pixel, which on a canvas over 1,000 px wide rounded away at 1/1,000.
+    const rx = Math.round(x * 10000) / 10000;
+    const ry = Math.round(y * 10000) / 10000;
     await api.update('components', id, {
       schematic_id:    planId,
       x_position: rx,

@@ -14,7 +14,8 @@
 // one (12 → 13, B07 → B08); a label or name that WAS the ID follows it. An ID
 // with no number is left blank on the copy, to be typed.
 
-const round3 = v => Math.round(v * 1000) / 1000;
+// To 1/10,000 of the drawing: an arrow-key nudge is one screen pixel (2026-11-09).
+const round4 = v => Math.round(v * 10000) / 10000;
 
 /** @param {{x:number,y:number}[]} polygon */
 export function polygonBounds(polygon = []) {
@@ -22,7 +23,7 @@ export function polygonBounds(polygon = []) {
   return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
 }
 
-const shift = (polygon, dx, dy) => polygon.map(p => ({ x: round3(p.x + dx), y: round3(p.y + dy) }));
+const shift = (polygon, dx, dy) => polygon.map(p => ({ x: round4(p.x + dx), y: round4(p.y + dy) }));
 const fits = polygon => { const b = polygonBounds(polygon); return b.minX >= 0 && b.minY >= 0 && b.maxX <= 1 && b.maxY <= 1; };
 
 /**
@@ -50,9 +51,9 @@ export function besidePolygon(polygon) {
  * @param {{polygon:any}[]} targetSpaces
  */
 export function pastePolygon(base, targetSpaces = []) {
-  const sig = p => JSON.stringify(p.map(v => ({ x: round3(v.x), y: round3(v.y) })));
+  const sig = p => JSON.stringify(p.map(v => ({ x: round4(v.x), y: round4(v.y) })));
   const taken = new Set(targetSpaces.map(s => sig(s.polygon || [])));
-  let poly = base.map(v => ({ x: round3(v.x), y: round3(v.y) }));
+  let poly = base.map(v => ({ x: round4(v.x), y: round4(v.y) }));
   for (let i = 0; i < 50 && taken.has(sig(poly)); i++) {
     const next = besidePolygon(poly);
     if (sig(next) === sig(poly)) break;

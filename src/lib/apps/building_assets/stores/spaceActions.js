@@ -14,8 +14,9 @@ const logger = getLogger('BuildingAssets');
 
 const AUDIT_OPTS = { appId: 'building_assets', eventCategory: 'building_assets' };
 
-const round3 = v => Math.round(v * 1000) / 1000;
-const roundPoly = polygon => polygon.map(v => ({ x: round3(v.x), y: round3(v.y) }));
+// To 1/10,000 of the drawing: an arrow-key nudge is one screen pixel (2026-11-09).
+const round4 = v => Math.round(v * 10000) / 10000;
+const roundPoly = polygon => polygon.map(v => ({ x: round4(v.x), y: round4(v.y) }));
 const normaliseColour = c => c === 'none' ? 'none' : (c?.replace('#', '') || '3c9683');
 
 // Factory — call once at store creation time.

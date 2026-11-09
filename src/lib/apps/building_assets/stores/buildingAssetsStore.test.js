@@ -137,12 +137,12 @@ describe('updateComponent / moveComponent / deleteComponent', () => {
     expect(get(store).components.find(c => c.id === 'c1').label).toBe('new');
   });
 
-  it('moveComponent rounds coordinates to 3dp and updates state', async () => {
+  it('moveComponent rounds coordinates to 4dp (one screen pixel survives) and updates state', async () => {
     await loadComps([{ id: 'c1' }]);
     await store.moveComponent('c1', 'p9', 0.123456, 0.654321);
     const arg = h.api.update.mock.calls.find(c => c[0] === 'components')[2];
-    expect(arg).toMatchObject({ schematic_id: 'p9', x_position: 0.123, y_position: 0.654 });
-    expect(get(store).components[0].x_position).toBe(0.123);
+    expect(arg).toMatchObject({ schematic_id: 'p9', x_position: 0.1235, y_position: 0.6543 });
+    expect(get(store).components[0].x_position).toBe(0.1235);
   });
 
   it('deleteComponent removes it from state and audits with beforeData', async () => {
@@ -231,7 +231,7 @@ describe('spaceActions', () => {
     expect(arg.colour).toBe('3c9683');                       // hash stripped
     expect(arg.label).toBe('  Indented\nRoom');              // label preserves whitespace/newlines
     expect(arg.name).toBe('IndentedRoom');                   // name derived from label (alphanumeric only)
-    expect(arg.polygon).toEqual([{ x: 0.111, y: 1 }, { x: 0.5, y: 0.5 }]);
+    expect(arg.polygon).toEqual([{ x: 0.1111, y: 1 }, { x: 0.5, y: 0.5 }]);
     expect(get(store).spaces).toContainEqual(space);
   });
 
@@ -240,13 +240,13 @@ describe('spaceActions', () => {
     h.api.createMany.mockClear();
     const made = await store.createSpaces(['1', '2', '3'].map(n => ({
       schematic_id: 'p1', floor_id: 'L', kind: 'slot', type: 'Car', assigned_id: n, label: n,
-      colour: '#22c55e', polygon: [{ x: 0.1234, y: 0.2 }],
+      colour: '#22c55e', polygon: [{ x: 0.12346, y: 0.2 }],
     })));
     const calls = h.api.createMany.mock.calls.filter(c => c[0] === 'spaces');
     expect(calls).toHaveLength(1);
     expect(calls[0][1]).toHaveLength(3);
     expect(calls[0][1][0]).toMatchObject({ kind: 'slot', type: 'Car', assigned_id: '1', colour: '22c55e',
-      polygon: [{ x: 0.123, y: 0.2 }], created_by: 'u1', updated_by: 'u1' });
+      polygon: [{ x: 0.1235, y: 0.2 }], created_by: 'u1', updated_by: 'u1' });
     for (const s of made) expect(get(store).spaces).toContainEqual(s);
   });
 

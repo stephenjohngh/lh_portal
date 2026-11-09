@@ -19,6 +19,8 @@
   import { createAnnotationDragController } from './plan/annotationDragController.js';
   import { createSpaceEditController }      from './plan/spaceEditController.js';
   import { pastePolygon, buildPasteRow }     from '../utils/spacePaste.js';
+  import { arrowDelta, nudgePoint, nudgePolygon, keyBelongsToFocus } from './plan/nudge.js';
+  import { onDestroy } from 'svelte';
   import PlanToolbar         from './plan/PlanToolbar.svelte';
   import PlanCanvas          from './plan/PlanCanvas.svelte';
   import PlanModeHints       from './plan/PlanModeHints.svelte';
@@ -149,14 +151,19 @@
   // Capture ep once to guard against Svelte reading the store twice in a cycle.
   $: displaySpaces = (() => {
     const ep = $editingPolygon;
-    if (!ep) return planSpaces;
-    return planSpaces.map(s => s.id === ep.spaceId ? { ...s, polygon: ep.vertices } : s);
+    const nd = nudge?.kind === 'space' ? nudge : null;
+    if (!ep && !nd) return planSpaces;
+    return planSpaces.map(s =>
+      ep && s.id === ep.spaceId ? { ...s, polygon: ep.vertices }
+      : nd && s.id === nd.id    ? { ...s, polygon: nd.polygon }
+      : s);
   })();
 
   // Apply annotation drag-position overrides reactively.
   $: planAnnotations = selectedPlanId
     ? annotations.filter(a => a.schematic_id === selectedPlanId).map(a => {
-        const ov = $annotationDragPos[a.id];
+        const ov = $annotationDragPos[a.id]
+          ?? (nudge?.kind === 'annotation' && nudge.id === a.id ? nudge.pos : null);
         return ov ? { ...a, x_position: ov.x, y_position: ov.y } : a;
       })
     : [];
@@ -176,7 +183,8 @@
   // Apply component drag-position overrides reactively.
   // Also attach _haloColour (6-char hex | null) for highlight rendering.
   $: positionedComponents = visibleComponents.map(c => {
-    const ov   = $dragPos[c.id];
+    const ov   = $dragPos[c.id]
+      ?? (nudge?.kind === 'component' && nudge.id === c.id ? nudge.pos : null);
     const base = ov ? { ...c, x_position: ov.x, y_position: ov.y } : c;
     const halo = resolveComponentHalo(base, types, attrDefs, componentAttrs);
     return halo ? { ...base, _haloColour: halo } : base;
@@ -478,9 +486,105 @@
     finally { pasting = false; }
   }
 
+  // -- Arrow keys nudge the selected item (2026-11-09) ----------------
+  // In ⬡ Spaces the selected space, in ✏ Edit the selected marker, in 🏷
+  // Annotate the selected note: one screen pixel per press, ten with Shift
+  // (plan/nudge.js). The item moves on screen at once and is saved once, half a
+  // second after the last press, so holding a key is not a save per step.
+  // Changing mode, selection or schematic saves what is pending first.
+  const NUDGE_SAVE_MS = 500;
+  /** @type {null | { kind:'space'|'component'|'annotation', id:string, polygon?:any[], pos?:{x:number,y:number}, planId:string }} */
+  let nudge = null;
+  let nudgeTimer = null;
+
+  function nudgeTarget() {
+    if (readOnly || !selectedPlanId) return null;
+    if (drawingMode === 'space' && sidebarMode === 'space-detail' && selectedSpace
+        && !$vertexEditingActive && $drawingVertices.length === 0) {
+      return { kind: 'space', id: selectedSpace.id };
+    }
+    if (drawingMode === 'component' && sidebarMode === 'detail' && selectedComponent
+        && selectedComponent.schematic_id === selectedPlanId) {
+      return { kind: 'component', id: selectedComponent.id };
+    }
+    if (drawingMode === 'annotation' && selectedAnnotation) {
+      return { kind: 'annotation', id: selectedAnnotation.id };
+    }
+    return null;
+  }
+
+  function nudgeBy(delta) {
+    const t = nudgeTarget();
+    if (!t) return false;
+    if (nudge && (nudge.kind !== t.kind || nudge.id !== t.id)) saveNudge();
+    const same = nudge && nudge.kind === t.kind && nudge.id === t.id;
+    if (t.kind === 'space') {
+      const base = same ? nudge.polygon : (displaySpaces.find(s => s.id === t.id)?.polygon ?? null);
+      if (!base?.length) return false;
+      nudge = { ...t, planId: selectedPlanId, polygon: nudgePolygon(base, delta) };
+    } else if (t.kind === 'component') {
+      const c = same ? null : components.find(x => x.id === t.id);
+      const base = same ? nudge.pos : (c ? { x: c.x_position, y: c.y_position } : null);
+      if (base?.x == null) return false;
+      nudge = { ...t, planId: selectedPlanId, pos: nudgePoint(base, delta) };
+    } else {
+      const a = same ? null : annotations.find(x => x.id === t.id);
+      const base = same ? nudge.pos : (a ? { x: a.x_position, y: a.y_position } : null);
+      if (base?.x == null) return false;
+      nudge = { ...t, planId: selectedPlanId, pos: nudgePoint(base, delta) };
+    }
+    clearTimeout(nudgeTimer);
+    nudgeTimer = setTimeout(saveNudge, NUDGE_SAVE_MS);
+    return true;
+  }
+
+  let nudgeSaving = null;   // the nudge being written, so it is never written twice
+  async function saveNudge() {
+    clearTimeout(nudgeTimer);
+    nudgeTimer = null;
+    const n = nudge;
+    if (!n || n === nudgeSaving) return;
+    nudgeSaving = n;
+    try {
+      if (n.kind === 'space') {
+        await buildingAssetsStore.updateSpacePolygon(n.id, n.polygon);
+        const fresh = $buildingAssetsStore.spaces.find(s => s.id === n.id);
+        if (fresh && selectedSpace?.id === n.id) selectedSpace = fresh;
+      } else if (n.kind === 'component') {
+        await buildingAssetsStore.moveComponent(n.id, n.planId, n.pos.x, n.pos.y);
+        const fresh = $buildingAssetsStore.components.find(c => c.id === n.id);
+        if (fresh && selectedComponent?.id === n.id) selectedComponent = fresh;
+      } else {
+        await buildingAssetsStore.moveAnnotation(n.id, n.pos.x, n.pos.y);
+        const fresh = $buildingAssetsStore.annotations.find(a => a.id === n.id);
+        if (fresh && selectedAnnotation?.id === n.id) selectedAnnotation = fresh;
+      }
+    } catch (/** @type {any} */ err) { errorMsg = `The move was not saved: ${err.message}`; }
+    finally { nudgeSaving = null; if (nudge === n) nudge = null; }
+  }
+
+  // A pending nudge is saved before anything that changes what is selected.
+  // Everything nudgeTarget reads is named here, so a change of any of it
+  // re-runs the check.
+  $: nudgeStillSelected(nudge, selectedPlanId, drawingMode, sidebarMode,
+       selectedSpace, selectedComponent, selectedAnnotation, $vertexEditingActive);
+  function nudgeStillSelected(n) {
+    if (!n || n === nudgeSaving) return;
+    const t = nudgeTarget();
+    if (n.planId !== selectedPlanId || !t || t.kind !== n.kind || t.id !== n.id) saveNudge();
+  }
+  onDestroy(() => { if (nudge) saveNudge(); });
+
   // Ctrl+C / Ctrl+V (⌘ on a Mac) in ⬡ Spaces — never while typing in a box,
-  // and Ctrl+C never while text is selected (that copies the text).
+  // and Ctrl+C never while text is selected (that copies the text). Arrow keys
+  // nudge the selected item in any edit mode.
   function onSpaceKeydown(e) {
+    if (e.key.startsWith('Arrow') && !e.ctrlKey && !e.metaKey && !e.altKey && !keyBelongsToFocus(e.target)) {
+      const rect = canvasEl?.getBoundingClientRect();
+      const delta = rect ? arrowDelta(e.key, e.shiftKey, rect) : null;
+      if (delta && nudgeBy(delta)) e.preventDefault();
+      return;
+    }
     if (drawingMode !== 'space' || readOnly || !(e.ctrlKey || e.metaKey) || e.altKey) return;
     const t = /** @type {HTMLElement} */ (e.target);
     if (t && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))) return;
