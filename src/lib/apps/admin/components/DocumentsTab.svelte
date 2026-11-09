@@ -27,6 +27,7 @@
   import { fmtTime }                 from '#lib/utils/dates.js';
   import { errMessage } from '#lib/utils/errors.js';
   import { DOCUMENT_APPS, UNATTACHED } from '#lib/utils/documentApps.js';
+  import DriveUnnamedPanel from './DriveUnnamedPanel.svelte';
 
   $: ({ docs, loading, error } = $documentsStore);
 
@@ -268,6 +269,8 @@
       {/if}
     </div>
   {/if}
+
+  <DriveUnnamedPanel />
 
   <!-- Document list -->
   {#if loading}

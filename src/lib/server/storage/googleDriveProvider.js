@@ -522,6 +522,53 @@ export const googleDriveProvider = {
     return (res.data.files ?? []).map(mapFile);
   },
 
+  /**
+   * Everything under the portal's own Drive folder, folders included, each
+   * with its path (Admin → Documents → Files nothing names, 2026-11-09).
+   * Read a level at a time, many folders to a query, so a tree of a few
+   * hundred folders is a handful of requests. Binned files are not listed.
+   * @param {{ maxItems?: number }} [opts]
+   * @returns {Promise<{ items: Array<{ fileId: string, name: string, path: string, parentId: string,
+   *   isFolder: boolean, size: number, mimeType: string, modifiedAt: string|null }>, truncated: boolean }>}
+   */
+  async listTree({ maxItems = 20000 } = {}) {
+    if (!_rootFolderId) throw new Error('GOOGLE_DRIVE_ROOT_FOLDER_ID is not set, so there is no portal folder to list.');
+    const drive = getDrive();
+    /** @type {any[]} */
+    const items = [];
+    /** @type {Map<string, string>} folder id → its path */
+    let level = new Map([[_rootFolderId, '']]);
+    let truncated = false;
+    while (level.size && !truncated) {
+      /** @type {Map<string, string>} */
+      const next = new Map();
+      const ids = [...level.keys()];
+      for (let i = 0; i < ids.length && !truncated; i += 30) {
+        const part = ids.slice(i, i + 30);
+        const q = `(${part.map((id) => `'${id}' in parents`).join(' or ')}) and trashed = false`;
+        let pageToken;
+        do {
+          const res = await drive.files.list({
+            supportsAllDrives: true, includeItemsFromAllDrives: true, q, pageSize: 1000, pageToken,
+            fields: 'nextPageToken, files(id,name,mimeType,size,modifiedTime,parents)',
+          });
+          for (const f of res.data.files ?? []) {
+            const parentId = (f.parents ?? []).find((p) => level.has(p)) ?? '';
+            const path = level.get(parentId) ? `${level.get(parentId)}/${f.name}` : f.name;
+            const isFolder = f.mimeType === 'application/vnd.google-apps.folder';
+            items.push({ fileId: f.id, name: f.name, path, parentId, isFolder,
+              size: parseInt(f.size ?? '0', 10) || 0, mimeType: f.mimeType, modifiedAt: f.modifiedTime ?? null });
+            if (isFolder) next.set(f.id, path);
+            if (items.length >= maxItems) { truncated = true; break; }
+          }
+          pageToken = truncated ? undefined : res.data.nextPageToken;
+        } while (pageToken);
+      }
+      level = next;
+    }
+    return { items, truncated };
+  },
+
   async createFolder(name, parentId) {
     const drive = getDrive();
     const res   = await drive.files.create({
