@@ -117,7 +117,10 @@
 </div>
 
 <style>
-  /* Narrower than this and a title is one word per line, so it scrolls. */
+  /* Narrower than this and a title is one word per line, so it scrolls — inside
+     this box. Without the box's overflow it widened the whole page on a phone
+     (2026-11-09). */
+  .planner-month { overflow-x: auto; }
   .planner-month table {
     min-width: 40rem;
   }
@@ -126,6 +129,7 @@
      piece of work. Enough that a month prints legibly rather than as a dark
      rectangle. */
   @media print {
+    .planner-month { overflow: visible; }
     .planner-month table { min-width: 0; }
     .planner-month :global(th),
     .planner-month :global(td) {

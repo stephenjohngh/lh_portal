@@ -162,9 +162,11 @@
           {#if rows.length === 0}
             <p class="text-sm text-slate-500 italic py-4">{s.cases.length ? 'No cases match.' : 'No cases yet.'}</p>
           {:else}
-            <table class="w-full text-sm" data-testid="case-list">
+            <!-- On a phone: no Opened column, and at least 30rem wide so it scrolls sideways
+                 rather than putting the title a word to a line (2026-11-09). -->
+            <table class="w-full min-w-[30rem] text-sm" data-testid="case-list">
               <thead><tr class="border-b border-slate-700 text-left text-xs text-slate-400">
-                <th class="py-2 pr-3 font-medium">Opened</th><th class="py-2 pr-3 font-medium">Reference</th>
+                <th class="py-2 pr-3 font-medium hidden sm:table-cell">Opened</th><th class="py-2 pr-3 font-medium">Reference</th>
                 <th class="py-2 pr-3 font-medium">Title</th><th class="py-2 pr-3 font-medium">Step</th>
                 <th class="py-2 pr-3 font-medium">With</th><th class="py-2 font-medium">Due</th></tr></thead>
               <tbody>
@@ -172,8 +174,8 @@
                   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
                   <tr class="border-b border-slate-800 cursor-pointer hover:bg-slate-800/60 {c.id === selectedId ? 'bg-slate-800' : ''}"
                     on:click={() => (selectedId = c.id)}>
-                    <td class="py-2 pr-3 text-xs text-slate-400 whitespace-nowrap">{fmtDateTime(c.created_at)}</td>
-                    <td class="py-2 pr-3 font-mono text-slate-200">{c.reference}</td>
+                    <td class="py-2 pr-3 text-xs text-slate-400 whitespace-nowrap hidden sm:table-cell">{fmtDateTime(c.created_at)}</td>
+                    <td class="py-2 pr-3 font-mono text-slate-200 whitespace-nowrap">{c.reference}</td>
                     <td class="py-2 pr-3 text-slate-200">{c.title}</td>
                     <td class="py-2 pr-3 text-xs text-slate-300">{stepOf(c.id)?.name ?? '—'}</td>
                     <td class="py-2 pr-3 text-xs text-slate-300" data-testid="case-list-with">{isFinished(stepOf(c.id)?.kind ?? '') ? '' : (itemFor(c.id)?.assigned_to ? $shortNames[itemFor(c.id)?.assigned_to] || 'A user no longer listed' : '')}</td>

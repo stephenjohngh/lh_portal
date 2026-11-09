@@ -52,7 +52,8 @@
   {:else}
 
     <!-- Header bar -->
-    <div class="flex items-center gap-2 px-4 py-3 border-b border-slate-700
+    <!-- Wraps on a phone, where Delete ran off the edge (2026-11-09). -->
+    <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 px-4 py-3 border-b border-slate-700
                 bg-slate-800/30 shrink-0">
       <Button variant="ghost" size="small"
               on:click={() => dispatch('back')}>← Back</Button>

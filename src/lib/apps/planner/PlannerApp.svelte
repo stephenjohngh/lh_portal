@@ -526,7 +526,9 @@
 
     <div class="flex-1 min-w-[1rem]"></div>
 
-    <div class="flex items-center gap-2 shrink-0">
+    <!-- Wraps on a phone, where one row ran off the screen and hid + New event
+         (2026-11-09); from sm up it stays one row. -->
+    <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink sm:shrink-0">
       <!-- The portal's own filter control, moved to common/ for this — the
            Components tab has had it for a year and it behaves the way people
            here already expect a filter to behave.

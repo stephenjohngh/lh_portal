@@ -45,8 +45,8 @@
   }
 </script>
 
-<aside class="w-[17rem] shrink-0 border-r border-slate-700 bg-slate-800/40
-              flex flex-col h-full overflow-y-auto">
+<aside class="w-full md:w-[17rem] shrink-0 border-b md:border-b-0 md:border-r border-slate-700 bg-slate-800/40
+              flex flex-col max-h-[40vh] md:max-h-none md:h-full overflow-y-auto">
 
   <!-- All Notes -->
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->

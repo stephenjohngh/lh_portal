@@ -58,9 +58,9 @@
   {/if}
 
   <!-- Toolbar -->
-  <div class="flex items-center gap-2 px-4 py-3 border-b border-slate-700 bg-slate-800/30">
+  <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 px-4 py-3 border-b border-slate-700 bg-slate-800/30">
     <!-- Search -->
-    <div class="relative flex-1">
+    <div class="relative flex-1 min-w-[12rem]">
       <Icon name="search" size={4}
             className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
       <input

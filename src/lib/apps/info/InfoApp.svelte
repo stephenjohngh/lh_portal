@@ -314,7 +314,9 @@
     </div>
 
   {:else}
-    <div class="flex flex-1 min-h-0">
+    <!-- On a phone the sections stack above the notes (side by side the notes were
+         squeezed to a word a line, 2026-11-09); side by side from md up. -->
+    <div class="flex flex-col md:flex-row flex-1 min-h-0">
 
       <!-- Sidebar -->
       <SectionSidebar
