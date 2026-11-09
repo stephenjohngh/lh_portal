@@ -63,6 +63,8 @@ export async function removePreset(id) {
 // attribute filters and the attribute/condition/space columns, so a preset
 // with any of those showed as ACTIVE while none of them was applied.
 
+import { SORT_KEYS } from './utils/componentListSort.js';
+
 const asArray = (list, single) => (Array.isArray(list) ? list : single ? [single] : []);
 
 /**
@@ -102,6 +104,9 @@ export function presetToState(preset) {
       showConditions:      c.showConditions ?? true,
       showSpaces:          c.showSpaces ?? false,
       view:                c.view ?? 'list',
+      // The table's sort (2026-11-09). Saved before it was → walk order, ascending.
+      sortKey:             SORT_KEYS.includes(c.sortKey) ? c.sortKey : 'walk',
+      sortDir:             c.sortDir === 'desc' ? 'desc' : 'asc',
     },
     // Saved before the report was tracked → the report's defaults.
     report: {

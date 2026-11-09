@@ -104,3 +104,24 @@ describe('configMatches — is this preset what the tab shows?', () => {
     expect(configMatches(SHAPES['today’s shape'], null)).toBe(false);
   });
 });
+
+describe('the table sort in a preset (2026-11-09)', () => {
+  it('a preset saved before the sort existed applies walk order, ascending', () => {
+    for (const shape of Object.values(SHAPES)) {
+      expect(presetToState(shape).columns).toMatchObject({ sortKey: 'walk', sortDir: 'asc' });
+    }
+  });
+  it('a saved sort is applied, and nonsense falls back to walk order', () => {
+    expect(presetToState({ columns: { sortKey: 'label', sortDir: 'desc' } }).columns).toMatchObject({ sortKey: 'label', sortDir: 'desc' });
+    expect(presetToState({ columns: { sortKey: 'colour', sortDir: 'sideways' } }).columns).toMatchObject({ sortKey: 'walk', sortDir: 'asc' });
+  });
+  it('a preset is not shown as active while the table is sorted differently', () => {
+    const preset = { columns: { sortKey: 'ref', sortDir: 'asc' } };
+    const now = applied(preset);
+    expect(configMatches(preset, now)).toBe(true);
+    expect(configMatches(preset, { ...now, columns: { ...now.columns, sortDir: 'desc' } })).toBe(false);
+    // A preset with no sort means walk order: it matches a walk-ordered table, not a ref-ordered one.
+    expect(configMatches({ columns: {} }, { ...now, columns: { ...now.columns, sortKey: 'walk' } })).toBe(true);
+    expect(configMatches({ columns: {} }, now)).toBe(false);
+  });
+});

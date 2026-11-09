@@ -156,7 +156,7 @@
       fixedAttrFilters,
       conditionAttrFilters,
     },
-    columns: { showNotes, showLinked, showInspectionNotes, showAttributes, showConditions, showSpaces, view },
+    columns: { showNotes, showLinked, showInspectionNotes, showAttributes, showConditions, showSpaces, view, sortKey, sortDir },
     report: {
       includePlan,
       includeList,
@@ -190,6 +190,8 @@
     showConditions           = c.showConditions;
     showSpaces               = c.showSpaces;
     view                     = c.view;
+    sortKey                  = c.sortKey;
+    sortDir                  = c.sortDir;
     includePlan              = r.includePlan;
     includeList              = r.includeList;
     includeFloorSummary      = r.includeFloorSummary;
@@ -234,6 +236,8 @@
   let showConditions      = true;      // condition sub-row (Word) / one col per condition (CSV)
   let showSpaces          = false;     // Space(s) column (display + CSV/XLSX) — reverse membership
   let view                = 'list';   // 'list' | 'summary' — owned here so presets can restore it
+  let sortKey             = 'walk';   // the table's sort — owned here so presets can restore it
+  let sortDir             = 'asc';
 
   // Reverse component→space membership, computed once building-wide (per-plan AR)
   // and only when the column is enabled. Feeds the table + CSV/XLSX matrix.
@@ -684,6 +688,8 @@
       {showSpaces}
       {spacesByComponent}
       bind:view
+      bind:sortKey
+      bind:sortDir
       title="Components"
       {readOnly}
       on:selectcomponent={e => { editingComponent = e.detail.component; errorMsg = ''; }}

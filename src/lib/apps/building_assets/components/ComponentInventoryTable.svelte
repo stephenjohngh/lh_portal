@@ -24,8 +24,7 @@
   import { statusBadgeCls, statusDotCls } from '#lib/utils/resultConstants.js';
   import { fmtDate } from '#lib/utils/dates.js';
   import { permissions } from '#lib/stores/permissions.js';
-  import { sortComponentList, SORT_KEYS } from '../utils/componentListSort.js';
-  import { getJSON, setJSON } from '#lib/utils/prefs.js';
+  import { sortComponentList } from '../utils/componentListSort.js';
 
   export let components     = [];
   export let componentAttrs = {};   // { [componentId]: component_attributes[] }
@@ -112,16 +111,14 @@
   const statusDot = statusDotCls;
 
   // -- Sort (user, 2026-11-09): by walk order (the default), by Ref or by Label. Clicking
-  // a heading sorts by it; clicking it again reverses. Remembered in this browser.
-  // The orders are utils/componentListSort.js.
-  const saved = getJSON('components.sort', null);
-  let sortKey = SORT_KEYS.includes(saved?.key) ? saved.key : 'walk';
-  let sortDir = saved?.dir === 'desc' ? 'desc' : 'asc';
+  // a heading sorts by it; clicking it again reverses. Lifted to the parent (bind:) so
+  // a preset can save and restore it, like `view`. The orders are utils/componentListSort.js.
+  export let sortKey = 'walk';     // 'walk' | 'ref' | 'label'
+  export let sortDir = 'asc';      // 'asc' | 'desc'
   /** @param {string} key */
   function sortBy(key) {
     if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
     else { sortKey = key; sortDir = 'asc'; }
-    setJSON('components.sort', { key: sortKey, dir: sortDir });
   }
   const arrow = (key, k, d) => (k === key ? (d === 'asc' ? ' ▲' : ' ▼') : '');
   $: sortedComponents = sortComponentList(components, { key: sortKey, dir: sortDir }, { floors, types, systems });
