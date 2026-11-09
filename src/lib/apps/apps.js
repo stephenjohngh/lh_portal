@@ -30,7 +30,7 @@ export const AVAILABLE_APPS = [
     icon: 'users',
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Manage users and app permissions'
+    description: 'Users, permissions and portal settings'
   },
   {
     id: 'management',
@@ -38,7 +38,7 @@ export const AVAILABLE_APPS = [
     icon: 'clipboard',
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Track and manage building issues'
+    description: 'Building issues, actions and meetings'
   },
   {
     id: 'managementmobile',
@@ -47,7 +47,7 @@ export const AVAILABLE_APPS = [
     mobile: true,
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Mobile-friendly read-only issues and activity viewer'
+    description: 'Issues and meetings on a phone, read only'
   },
   {
     id: 'building_assets',
@@ -55,7 +55,7 @@ export const AVAILABLE_APPS = [
     icon: 'lhlogo',
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Building asset management - type hierarchy, components, floor schematics and reports'
+    description: 'Components, schematics, spaces and works'
   },
 
   {
@@ -65,7 +65,7 @@ export const AVAILABLE_APPS = [
     mobile: true,
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Mobile-first inspection walk — record results, photos and notes per component'
+    description: 'Inspection walks on a phone'
   },
 
   {
@@ -75,7 +75,7 @@ export const AVAILABLE_APPS = [
     mobile: true,
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Mobile-first read-only floor schematic viewer'
+    description: 'Floor schematics on a phone'
   },
 
   {
@@ -84,7 +84,7 @@ export const AVAILABLE_APPS = [
     icon: 'calendar',
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Schedule and record maintenance jobs; track overdue and upcoming tasks'
+    description: 'Maintenance jobs, schedule and expenditure'
   },
 
   {
@@ -93,7 +93,7 @@ export const AVAILABLE_APPS = [
     icon: 'book',
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Building information — notes & documents; publish any to /info/<slug>'
+    description: 'Building notes and documents'
   },
 
   {
@@ -102,7 +102,7 @@ export const AVAILABLE_APPS = [
     icon: 'shield',
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Mandatory Occurrence Reporting — BSA 2022 s.87 compliance'
+    description: 'Mandatory occurrence reports - BSA s.87'
   },
 
   {
@@ -111,7 +111,7 @@ export const AVAILABLE_APPS = [
     icon: 'newspaper',
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'BSA 2022 s.88 controlled document register — the building information CDE (ISO 19650)'
+    description: 'Building information register - BSA s.88'
   },
 
   {
@@ -120,7 +120,7 @@ export const AVAILABLE_APPS = [
     icon: 'book',
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Author briefing packs for people outside the portal'
+    description: 'Briefing packs for people outside the portal'
   },
 
   {
@@ -129,7 +129,7 @@ export const AVAILABLE_APPS = [
     icon: 'calendar',
     alwaysVisible: false,
     requiresPermission: true,
-    description: "The building's recurring year — what is outstanding, and what is coming up"
+    description: 'What is overdue, to arrange and coming up'
   },
 
   {
@@ -142,7 +142,7 @@ export const AVAILABLE_APPS = [
     icon: 'shield',
     alwaysVisible: false,
     requiresPermission: true,
-    description: "This building's compliance obligations, what is planned against them, and the evidence"
+    description: 'Obligations, planned checks and evidence'
   },
 
   {
@@ -151,7 +151,7 @@ export const AVAILABLE_APPS = [
     icon: 'comment',
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Building-safety complaints (BSA s.93) — receive, investigate, respond'
+    description: 'Building-safety complaints - BSA s.93'
   },
 
   {
@@ -163,7 +163,7 @@ export const AVAILABLE_APPS = [
     icon: 'clipboard',
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Building processes set up by an administrator — open a case, move it through its steps'
+    description: 'Processes set up by an administrator'
   },  {
     // Migration 268: step-by-step how-to guides for a new caretaker or cleaner, shown
     // inside inspection walks too. Reading needs NO grant (any signed-in user reads a
@@ -173,7 +173,7 @@ export const AVAILABLE_APPS = [
     icon: 'book',
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Step-by-step how-to guides — bins, bulbs, the alarm panel and more'
+    description: 'Step-by-step how-to guides'
   },
 
 
@@ -187,7 +187,7 @@ export const AVAILABLE_APPS = [
     icon: 'map',
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'The car park bays: sizes, where they are, and whether each can be allocated'
+    description: 'Car park bays, licences and road permits'
   },
 
   {
@@ -196,7 +196,7 @@ export const AVAILABLE_APPS = [
     icon: 'settings',
     alwaysVisible: true,
     requiresPermission: false,
-    description: 'Update your account settings'
+    description: 'Your account settings'
   }
 ];
 
