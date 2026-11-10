@@ -19,6 +19,7 @@ import { extractLinks } from './docLinks.js';
 import { coerceRecordFields } from './datasetTemplates.js';
 import { desiredFolderPath } from './fileSync.js';
 import { pageBlocksJson } from './planBlocks.js';
+import { planItemHash, pageContentHash } from './packUpdate.js';
 import {
   planProblems, allFolderPaths, allPagePaths, pathKey, findFile, findPage, splitPath,
   uploadsNeeded,
@@ -48,7 +49,10 @@ export async function buildPackFromPlan(plan, opts, deps) {
   const missingUploads = uploadsNeeded(plan).filter(n => !uploads.has(n.toLowerCase()));
   if (missingUploads.length) throw new Error(`These files have not been supplied: ${missingUploads.join(', ')}.`);
 
-  const pack = await deps.createPack({ title: plan.title, description: plan.description ?? null, folder_id: folderId }, userId);
+  const pack = await deps.createPack({
+    title: plan.title, description: plan.description ?? null, folder_id: folderId,
+    source_kind: plan.source?.kind ?? null, source_id: plan.source?.id ?? null,
+  }, userId);
   /** @type {{ ref?: string, name: string, reason: string }[]} */
   const skipped = [];
 
@@ -167,6 +171,32 @@ export async function buildPackFromPlan(plan, opts, deps) {
       ...link, pack_id: pack.id, from_doc_id: doc.id, created_by: userId,
     })));
     if (linkRows.length) await deps.createMany('dossier_links', linkRows).catch(() => {});
+
+    // A pack made from a source remembers what each keyed item became, so it can
+    // be updated later (packUpdate.js). Part of the build: without it a later
+    // update would add everything again.
+    if (plan.source) {
+      const item = (key, kind, id, item) => ({
+        pack_id: pack.id, source_key: key, target_kind: kind, target_id: id,
+        source_hash: planItemHash(kind, item), written_hash: null, created_by: userId,
+      });
+      const items = [];
+      for (const d of docRows) {
+        const p = findPage(plan, pageEntries.find(e => pages.get(pathKey(e.path))?.id === d.id)?.path ?? []);
+        if (p?.key) items.push({ ...item(p.key, 'page', d.id, p), written_hash: pageContentHash(d.blocks) });
+      }
+      for (const t of plan.tables) if (t.key) items.push(item(t.key, 'table', tables.get(t.title.trim().toLowerCase()).id, t));
+      let r = 0;
+      for (const t of plan.tables) for (const row of t.rows) {
+        const rec = recordRows[r++];
+        if (row.key) items.push(item(row.key, 'record', rec.id, row));
+      }
+      for (const f of plan.files) {
+        const doc = f.key ? fileDocs.get(f.ref.toLowerCase()) : null;
+        if (doc) items.push(item(f.key, 'file', doc.id, f));
+      }
+      if (items.length) await deps.createMany('dossier_source_items', items);
+    }
 
     return {
       pack,

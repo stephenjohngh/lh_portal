@@ -45,11 +45,17 @@ function activityLine(a) {
 }
 
 /**
- * @param {{ issue: Record<string, any>, documents?: Record<string, any>[] }} input
+ * @param {{ issue: Record<string, any>, documents?: Record<string, any>[], meetings?: Record<string, any>[] }} input
  *   issue.activities / issue.actions are the arrays Management already holds on the issue.
  *   documents are the issue's document_library rows (entity_type 'issue').
+ *   meetings are the meetings the issue was raised or discussed at (id, title, meeting_date).
+ *
+ * Every page, table, row and file carries a `key` naming what it was made from
+ * ('activity:<id>', 'chronology:action:<id>', 'document:<id>', 'summary'…). The
+ * pack remembers them, which is what lets it be UPDATED from the issue later
+ * (Dossier's "Update from issue") without losing what was written in it.
  */
-export function issueToPlan({ issue, documents = [] }) {
+export function issueToPlan({ issue, documents = [], meetings = [] }) {
   const number = issue.issue_number != null ? `Issue ${issue.issue_number}` : 'Issue';
   const title = `${number} — ${issue.name ?? 'Untitled'}`.slice(0, 120);
   const who = (row) => row?.created_by_profile?.full_name ?? '';
@@ -57,6 +63,7 @@ export function issueToPlan({ issue, documents = [] }) {
   const plan = {
     version: 1, title,
     description: `Built from Management ${number}. Everything on the issue is here, internal notes included — check each page before you publish anything.`,
+    source: { kind: 'management_issue', id: issue.id, label: number },
     folders: [['Issue documents']],
     files: [], pages: [], tables: [],
   };
@@ -67,6 +74,7 @@ export function issueToPlan({ issue, documents = [] }) {
     const ref = `doc-${d.id}`;
     fileRef.set(d.id, ref);
     plan.files.push({
+      key: `document:${d.id}`,
       name: d.display_name || d.filename || 'File', ref, folder: ['Issue documents'],
       description: d.description ?? null, source: { kind: 'library', documentId: d.id },
     });
@@ -108,7 +116,7 @@ export function issueToPlan({ issue, documents = [] }) {
       const doc = documents.find(d => d.id === f.doc_id);
       blocks.push(isImage(doc) ? { type: 'image', file: docRef, width: 'large' } : { type: 'attachment', file: docRef });
     }
-    plan.pages.push({ path, blocks });
+    plan.pages.push({ key: `activity:${a.id}`, path, blocks });
   });
 
   // ── Actions ────────────────────────────────────────────────────────────────
@@ -116,19 +124,21 @@ export function issueToPlan({ issue, documents = [] }) {
     `| ${esc(a.action_text)} | ${esc(a.name_text ?? '')} | ${a.date_deadline ? fmtDate(a.date_deadline) : ''} | ${esc(getActionStatusLabel(a.status))} |`);
 
   // ── Tables ─────────────────────────────────────────────────────────────────
-  const chronology = { template: 'chronology', title: 'Chronology', rows: [] };
-  const correspondence = { template: 'correspondence', title: 'Correspondence', rows: [] };
-  const documentIndex = { template: 'document_index', title: 'Document index', rows: [] };
+  const chronology = { key: 'table:chronology', template: 'chronology', title: 'Chronology', rows: [] };
+  const correspondence = { key: 'table:correspondence', template: 'correspondence', title: 'Correspondence', rows: [] };
+  const documentIndex = { key: 'table:document_index', template: 'document_index', title: 'Document index', rows: [] };
 
   activityPages.forEach(({ activity: a, path }) => {
     const label = TYPE_LABEL(a.activity_type);
     const f = a.fields ?? {};
     chronology.rows.push({
+      key: `chronology:activity:${a.id}`,
       fields: { date: activityDate(a), event: clip(`${label}: ${activityLine(a)}`, 200), significance: '' },
       page: path,
     });
     if (a.activity_type === ACTIVITY_TYPE.EMAIL || a.activity_type === ACTIVITY_TYPE.LETTER) {
       correspondence.rows.push({
+        key: `correspondence:activity:${a.id}`,
         fields: {
           date: activityDate(a), from: f.from ?? '', to: f.to ?? '',
           subject: f.subject || f.reference || f.summary || '', body: stripHtml(a.body),
@@ -138,14 +148,19 @@ export function issueToPlan({ issue, documents = [] }) {
       });
     }
   });
+  // An action's STATUS is on the Actions page only, never in a row: a table row
+  // has no versions, so a row that changes as the action moves on could not be
+  // put back (an update refreshes the Actions page, which keeps its History).
   for (const a of actions) {
     chronology.rows.push({
-      fields: { date: a.date_deadline ?? day(a.created_at), event: clip(`Action (${getActionStatusLabel(a.status)}): ${a.action_text}`, 200), significance: a.name_text ? `Owner: ${a.name_text}` : '' },
+      key: `chronology:action:${a.id}`,
+      fields: { date: a.date_deadline ?? day(a.created_at), event: clip(`Action${a.date_deadline ? ' due' : ''}: ${a.action_text}`, 200), significance: a.name_text ? `Owner: ${a.name_text}` : '' },
     });
   }
   chronology.rows.sort((x, y) => String(x.fields.date).localeCompare(String(y.fields.date)));
   for (const d of documents) {
     documentIndex.rows.push({
+      key: `index:document:${d.id}`,
       fields: { name: d.display_name || d.filename || 'File', date: d.document_date ?? day(d.created_at), author: who(d), notes: d.description ?? '' },
       file: fileRef.get(d.id),
     });
@@ -164,6 +179,7 @@ export function issueToPlan({ issue, documents = [] }) {
     `| Activity entries | ${activities.length} |`,
     `| Actions | ${actions.length} |`,
     `| Documents | ${documents.length} |`,
+    `| Meetings | ${meetingsFor(issue, meetings, activities, actions).length} |`,
   ].join('\n');
   const summaryBlocks = [
     { type: 'callout', variant: 'warning', markdown: 'This pack was made from a Management issue and includes **everything** on it, internal notes included. Read every page before you publish.' },
@@ -177,19 +193,57 @@ export function issueToPlan({ issue, documents = [] }) {
   if (correspondence.rows.length) summaryBlocks.push({ type: 'embedTable', title: 'Correspondence' });
   if (documentIndex.rows.length) summaryBlocks.push({ type: 'embedTable', title: 'Document index' });
 
-  plan.pages.unshift({ path: ['Summary'], blocks: summaryBlocks });
+  plan.pages.unshift({ key: 'summary', path: ['Summary'], blocks: summaryBlocks });
 
   const activityIntro = activities.length
     ? [{ type: 'text', markdown: `${activities.length} entr${activities.length === 1 ? 'y' : 'ies'}, oldest first. Each has its own page below.` }]
     : [{ type: 'text', markdown: 'There are no activity entries on this issue.' }];
-  plan.pages.splice(1, 0, { path: ['Activity'], blocks: activityIntro });
+  plan.pages.splice(1, 0, { key: 'activity', path: ['Activity'], blocks: activityIntro });
 
   plan.pages.push({
+    key: 'actions',
     path: ['Actions'],
     blocks: actionLines.length
       ? [{ type: 'text', markdown: `| Action | Owner | Deadline | Status |\n|---|---|---|---|\n${actionLines.join('\n')}` }]
       : [{ type: 'text', markdown: 'There are no actions on this issue.' }],
   });
 
+  plan.pages.push({ key: 'meetings', path: ['Meetings'], blocks: meetingBlocks(issue, meetings, activities, actions) });
+
   return plan;
+}
+
+// ── Meetings ─────────────────────────────────────────────────────────────────
+// The meetings the issue was raised at or discussed at, oldest first, each with
+// what was recorded for THIS issue there: the same grouping as Management's
+// minutes (meetingMinutes.js) — activities tagged to the meeting, and actions
+// tagged to it or made from an activity that was.
+
+/** The issue's meetings, oldest first. A meeting nothing names is left out. */
+function meetingsFor(issue, meetings, activities, actions) {
+  const ids = new Set([issue.meeting_id, ...activities.map(a => a.meeting_id), ...actions.map(a => a.meeting_id)].filter(Boolean));
+  return meetings.filter(m => ids.has(m.id))
+    .sort((a, b) => String(a.meeting_date ?? '').localeCompare(String(b.meeting_date ?? '')));
+}
+
+function meetingBlocks(issue, meetings, activities, actions) {
+  const list = meetingsFor(issue, meetings, activities, actions);
+  if (!list.length) return [{ type: 'text', markdown: 'This issue has not been raised or discussed at a meeting.' }];
+
+  const blocks = [{ type: 'text', markdown: `Discussed at ${list.length} meeting${list.length === 1 ? '' : 's'}, oldest first.` }];
+  for (const m of list) {
+    blocks.push({ type: 'heading', level: 3, text: `${m.meeting_date ? fmtDate(m.meeting_date) : 'Undated'} — ${m.title ?? 'Meeting'}` });
+    const tagged = activities.filter(a => a.meeting_id === m.id);
+    const taggedIds = new Set(tagged.map(a => a.id));
+    const acts = actions.filter(a => a.meeting_id === m.id || (a.source_activity_id && taggedIds.has(a.source_activity_id)));
+    const lines = [];
+    if (issue.meeting_id === m.id) lines.push('- **Raised at this meeting**');
+    for (const a of tagged) lines.push(`- **${TYPE_LABEL(a.activity_type)}:** ${clip(activityLine(a), 300).replace(/\n+/g, ' ')}`);
+    for (const a of acts) {
+      lines.push(`- **Action:** ${clip(String(a.action_text ?? ''), 300).replace(/\n+/g, ' ')}`
+        + `${a.name_text ? ` (${a.name_text})` : ''}${a.date_deadline ? `, due ${fmtDate(a.date_deadline)}` : ''}`);
+    }
+    blocks.push({ type: 'text', markdown: lines.length ? lines.join('\n') : 'Nothing was recorded for this issue at the meeting.' });
+  }
+  return blocks;
 }

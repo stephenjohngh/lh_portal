@@ -16,6 +16,7 @@ import { logAudit }     from '#lib/utils/auditLogger.js';
 import { getLogger }    from '#lib/utils/logger.js';
 import { listDocuments, deleteDocumentsFor, uploadDocument } from '#lib/utils/documentApi.js';
 import { buildPackFromPlan } from '../utils/packBuild.js';
+import { applyPlanUpdate } from '../utils/packUpdate.js';
 import { uniqueSlug }   from '../utils/slug.js';
 import { nextOrderIndex } from '../utils/docTree.js';
 import { extractLinks, diffLinks, linkSignature, groupBacklinks } from '../utils/docLinks.js';
@@ -214,6 +215,9 @@ function createDossierStore() {
       is_template: data.is_template === true,
       template_id: data.template_id ?? null,
       folder_id:   data.folder_id ?? null,
+      // Where it was made from (a Management issue), so it can be updated from
+      // it later. Set here only; the database refuses a change (migration 291).
+      ...(data.source_kind ? { source_kind: data.source_kind, source_id: data.source_id } : {}),
       created_by:  userId,
       ...touch(userId),
     }, true);
@@ -484,6 +488,48 @@ function createDossierStore() {
     logAudit('create', 'dossier_pack', result.pack.id, result.pack.title, {
       appId: 'dossier', eventCategory: 'dossier', severity: 'info',
       afterData: { built_from_plan: true, ...result.counts, files_skipped: result.skipped.length },
+    });
+    return result;
+  }
+
+  // ── Updating a pack from where it was made ───────────────────────────────
+  // See utils/packUpdate.js. Adds what is new, refreshes overview pages nobody
+  // edited, replaces only the pages the person chose — each saved to its
+  // History first — and never deletes anything.
+
+  /** What the pack remembers copying from its source. */
+  async function loadSourceItems(packId) {
+    return api.getAll('dossier_source_items', { filters: { pack_id: packId }, orderBy: 'source_key', tiebreak: false });
+  }
+
+  /**
+   * @param {any} pack
+   * @param {any} plan     a fresh plan from the source
+   * @param {any} report   planUpdate(plan, …) as shown to the person
+   * @param {Set<string>} choose  keys of the offered pages to replace
+   * @param {{ items: any[], htmlToNodes: Function, label: string }} opts
+   */
+  async function updatePackFromSource(pack, plan, report, choose, opts, userId) {
+    const { postJson } = await import('#lib/utils/request.js');
+    const s = getState();
+    const result = await applyPlanUpdate({
+      pack, plan, report, choose, userId, label: opts.label, htmlToNodes: opts.htmlToNodes,
+      existing: { items: opts.items, docs: s.docs, datasets: s.datasets, records: s.records, files: s.files, folders: s.folders },
+    }, {
+      createMany: (table, rows) => api.createMany(table, rows, false),
+      saveItems: async (rows) => {
+        const fresh = rows.filter(r => !r.id);
+        if (fresh.length) await api.createMany('dossier_source_items', fresh, false);
+        for (const { id, ...rest } of rows.filter(r => r.id)) await api.update('dossier_source_items', id, rest, false);
+      },
+      saveDocBlocks: (id, blocks, summary) => saveDocBlocks(id, blocks, userId, { summary, force: true }),
+      importDocuments: (packId, items) => postJson('/api/dossier/import-documents', { targetPackId: packId, items }),
+      stamp: touch,
+    });
+    await Promise.all([loadDocs(pack.id), loadDatasets(pack.id), loadPackFiles(pack.id)]);
+    logAudit('update', 'dossier_pack', pack.id, pack.title, {
+      appId: 'dossier', eventCategory: 'dossier', severity: 'info',
+      afterData: { updated_from_source: opts.label, ...result.counts, files_skipped: result.skipped.length },
     });
     return result;
   }
@@ -1292,7 +1338,7 @@ function createDossierStore() {
   return {
     subscribe,
     loadPacks, loadPackFolders, createPackFolder, renamePackFolder, movePackFolder, deletePackFolder, movePack, createPack, updatePack, setArchived, deletePack,
-    readPackContents, duplicatePack, createPackFromPlan,
+    readPackContents, duplicatePack, createPackFromPlan, loadSourceItems, updatePackFromSource,
     loadDatasets, createDataset, deleteDataset,
     createRecord, createRecords, updateRecord, deleteRecord,
     loadDocs, closePack, loadPackFiles, templateUsers, createFolder, renameFolder, moveFolder, deleteFolder, placeFile,

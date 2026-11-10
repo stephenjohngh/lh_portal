@@ -1738,6 +1738,8 @@ export type Database = {
           is_template: boolean
           template_id: string | null
           folder_id: string | null
+          source_kind: string | null
+          source_id: string | null
         }
         Insert: {
           id?: string
@@ -1753,6 +1755,8 @@ export type Database = {
           is_template?: boolean
           template_id?: string | null
           folder_id?: string | null
+          source_kind?: string | null
+          source_id?: string | null
         }
         Update: {
           id?: string
@@ -1768,6 +1772,8 @@ export type Database = {
           is_template?: boolean
           template_id?: string | null
           folder_id?: string | null
+          source_kind?: string | null
+          source_id?: string | null
         }
         Relationships: [
             {
@@ -1796,6 +1802,60 @@ export type Database = {
               columns: ["folder_id"]
               isOneToOne: false
               referencedRelation: "dossier_pack_folders"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      dossier_source_items: {
+        Row: {
+          id: string
+          pack_id: string
+          source_key: string
+          target_kind: string
+          target_id: string
+          source_hash: string | null
+          written_hash: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          pack_id: string
+          source_key: string
+          target_kind: string
+          target_id: string
+          source_hash?: string | null
+          written_hash?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          pack_id?: string
+          source_key?: string
+          target_kind?: string
+          target_id?: string
+          source_hash?: string | null
+          written_hash?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+            {
+              foreignKeyName: "dossier_source_items_pack_id_fkey"
+              columns: ["pack_id"]
+              isOneToOne: false
+              referencedRelation: "dossier_packs"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "dossier_source_items_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
               referencedColumns: ["id"]
             }
           ]

@@ -32,6 +32,7 @@
   import DatasetTable        from './DatasetTable.svelte';
   import TablePickerModal    from './TablePickerModal.svelte';
   import EmailPasteModal     from './EmailPasteModal.svelte';
+  import SourceUpdateModal   from './SourceUpdateModal.svelte';
   import {
     DATASET_TEMPLATES, TEMPLATE_KEYS, describeRecord,
   } from '../utils/datasetTemplates.js';
@@ -309,6 +310,9 @@
   // the page opened automatically on load leaves a phone on the list.
   /** @type {'list'|'content'} */
   let phoneView = 'list';
+
+  /** "Update from issue" (SourceUpdateModal), for a pack made from an issue. */
+  let showSourceUpdate = false;
   $: if (!selectedId && !selectedDatasetId) phoneView = 'list';
 
   /**
@@ -913,6 +917,15 @@
           {liveLinks} live link{liveLinks === 1 ? '' : 's'}
         </span>
       {/if}
+      {#if pack.source_kind === 'management_issue'}
+        <!-- A pack made from a Management issue can take in what is new on it
+             (SourceUpdateModal). Packs made before 2026-11-10 have no source. -->
+        <Button variant="secondary" size="small" className="shrink-0" testid="source-update-open"
+                title="Bring what is new on the Management issue into this pack — nothing here is deleted"
+                on:click={async () => { await editorRef?.flushNow(); showSourceUpdate = true; }}>
+          Update from issue
+        </Button>
+      {/if}
       <!-- "Download", NOT "Archive": this app already uses that word for
            archiving a pack, so a button called Archive in the header reads as
            the soft-delete rather than as a zip you keep. -->
@@ -1237,6 +1250,13 @@
     </div>
   </div>
 </div>
+
+<SourceUpdateModal
+  {pack}
+  show={showSourceUpdate}
+  on:updated={() => { if (selectedId) editorRef?.reloadFromDoc(); }}
+  on:close={() => showSourceUpdate = false}
+/>
 
 <DocFormModal
   bind:this={docModalRef}

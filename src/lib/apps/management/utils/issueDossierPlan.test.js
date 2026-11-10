@@ -63,6 +63,41 @@ describe('issueToPlan', () => {
     expect([...dates].sort()).toEqual(dates);
   });
 
+  it('keys every page, table, row and file, and names its source', () => {
+    expect(plan.source).toEqual({ kind: 'management_issue', id: 'i1', label: 'Issue 49' });
+    for (const p of plan.pages) expect(p.key).toBeTruthy();
+    for (const f of plan.files) expect(f.key).toMatch(/^document:/);
+    for (const t of plan.tables) { expect(t.key).toBeTruthy(); for (const r of t.rows) expect(r.key).toBeTruthy(); }
+  });
+
+  it('keeps an action’s status off the chronology (it changes; a row has no History)', () => {
+    const row = plan.tables[0].rows.find(r => r.key === 'chronology:action:x1');
+    expect(row.fields.event).toBe('Action due: Call surveyor | urgent');
+    expect(JSON.stringify(plan.tables)).not.toMatch(/Open/);
+  });
+
+  it('lists the meetings the issue came up at, with what was recorded there', () => {
+    const withMeetings = issueToPlan({
+      issue: {
+        ...issue, meeting_id: 'm1',
+        activities: issue.activities.map(a => a.id === 'a1' ? { ...a, activity_type: 'decision', meeting_id: 'm2', fields: { summary: 'Get a surveyor' } } : a),
+        actions: issue.actions.map(a => ({ ...a, source_activity_id: 'a1' })),
+      },
+      documents,
+      meetings: [{ id: 'm2', title: 'July progress', meeting_date: '2026-07-01' }, { id: 'm1', title: 'June progress', meeting_date: '2026-06-01' }, { id: 'm9', title: 'Unrelated', meeting_date: '2026-06-15' }],
+    });
+    const page = withMeetings.pages.find(p => p.key === 'meetings');
+    const text = JSON.stringify(page.blocks);
+    expect(page.blocks[0].markdown).toBe('Discussed at 2 meetings, oldest first.');
+    expect(text.indexOf('June progress')).toBeLessThan(text.indexOf('July progress'));
+    expect(text).not.toContain('Unrelated');
+    expect(text).toContain('Raised at this meeting');
+    expect(text).toContain('**Decision:** Get a surveyor');
+    expect(text).toContain('**Action:** Call surveyor');
+    const none = issueToPlan({ issue, documents }).pages.find(p => p.key === 'meetings');
+    expect(none.blocks[0].markdown).toMatch(/has not been raised or discussed/);
+  });
+
   it('copes with an issue that has nothing on it', () => {
     const empty = issueToPlan({ issue: { id: 'e', issue_number: 1, name: 'Empty', activities: [], actions: [] }, documents: [] });
     expect(planProblems(empty)).toEqual([]);
@@ -78,7 +113,7 @@ describe('issueToPlan', () => {
       importDocuments: async () => lib, stamp: () => ({}), mint: () => `m${++n}`,
     });
     expect(r.skipped).toEqual([]);
-    expect(r.counts.pages).toBe(7);
+    expect(r.counts.pages).toBe(8);          // Summary, Activity + 4, Actions, Meetings
     const summary = calls.dossier_docs[0].blocks.content.map(c => c.type);
     expect(summary).toContain('callout');
     expect(summary.filter(t => t === 'embedDataset')).toHaveLength(3);

@@ -29,6 +29,12 @@
 //
 // `file` in a block or row is a file's `ref` (its alias, or its name).
 //
+// Optional, for a pack that can be UPDATED from where it came from (2026-11-10):
+//   source: { kind: 'management_issue', id, label? }      on the plan
+//   key:    'activity:<id>' …                             on a page, file, table or row
+// The pack remembers each key against the page, file, table or row it became
+// (dossier_source_items). packUpdate.js uses them to add what is new.
+//
 // Publishing and templates are deliberately NOT part of a plan: a plan only
 // builds a private working pack, and what is published is the author's decision.
 
@@ -44,7 +50,10 @@ export const HEADING_LEVELS = [1, 2, 3];
 export const MAX_PLAN_PAGES = 300;
 export const MAX_PLAN_FILES = 200;
 
-export const BLOCK_TYPES = ['heading', 'text', 'html', 'image', 'attachment', 'callout', 'toggle', 'embedPage', 'embedTable'];
+/** What a pack can be made from and later updated from (dossier_packs.source_kind). */
+export const SOURCE_KINDS = ['management_issue'];
+
+export const BLOCK_TYPES =['heading', 'text', 'html', 'image', 'attachment', 'callout', 'toggle', 'embedPage', 'embedTable'];
 
 /** A new, empty plan. */
 export function emptyPlan(title = 'Untitled pack') {
@@ -165,6 +174,23 @@ export function planProblems(plan) {
       if (row.file && !findFile(plan, row.file)) problems.push(`Table "${t.title}" row ${i + 1} names the file "${row.file}", which is not in the pack.`);
       if (row.page && !pages.some(p => pathKey(p.path) === pathKey(row.page))) problems.push(`Table "${t.title}" row ${i + 1} names the page "${row.page}", which is not in the pack.`);
     }
+  }
+
+  // Keys (what a page, table, row or file was made from) must be unique across
+  // the whole plan: the pack remembers each one against what it became.
+  const keys = new Set();
+  const items = [...plan.pages, ...(plan.files ?? []), ...(plan.tables ?? []),
+    ...(plan.tables ?? []).flatMap(t => t.rows ?? [])];
+  for (const item of items) {
+    if (item?.key == null) continue;
+    const k = String(item.key);
+    if (!k.trim() || k.length > 200) problems.push(`A key must be 1–200 characters ("${k.slice(0, 40)}").`);
+    else if (keys.has(k)) problems.push(`The key "${k}" is used twice.`);
+    keys.add(k);
+  }
+  if (plan.source != null) {
+    if (!SOURCE_KINDS.includes(plan.source.kind)) problems.push(`A pack cannot be made from "${plan.source.kind}".`);
+    if (!plan.source.id) problems.push('The plan says what it was made from but not which one.');
   }
 
   for (const page of plan.pages) {

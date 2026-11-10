@@ -91,5 +91,11 @@ export async function planFromIssue(issueId) {
       created_by_profile:profiles!created_by(full_name)
     )`);
   const documents = await listDocuments({ entity_type: 'issue', entity_id: issueId });
-  return issueToPlan({ issue, documents });
+  const meetingIds = [...new Set([issue.meeting_id,
+    ...(issue.activities ?? []).map(a => a.meeting_id),
+    ...(issue.actions ?? []).map(a => a.meeting_id)].filter(Boolean))];
+  const meetings = meetingIds.length
+    ? await api.getAllIn('meetings', 'id', meetingIds, { select: 'id, title, meeting_date' })
+    : [];
+  return issueToPlan({ issue, documents, meetings });
 }
