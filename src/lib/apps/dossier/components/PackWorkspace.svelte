@@ -148,6 +148,7 @@
         const doc = await dossierStore.createDoc(
           { packId: pack.id, parentId: parent?.id ?? null, title }, userId, current);
         selectedId = doc.id;
+        phoneView = 'content';
         if (parent) collapsed = { ...collapsed, [parent.id]: false };
       }
       showDocModal = false;
@@ -243,6 +244,7 @@
     await editorRef?.flushNow();
     selectedDatasetId = id;
     selectedId = null;          // a table and a page cannot both be open
+    phoneView = 'content';
   }
 
   // ── Row references ────────────────────────────────────────────────────────
@@ -295,7 +297,19 @@
   function selectPage(id) {
     selectedDatasetId = null;
     selectedId = id;
+    phoneView = 'content';
   }
+
+  // ── Phone layout (2026-11-10) ─────────────────────────────────────────────
+  // Below md the sidebar and the page do not fit side by side (a 288px
+  // sidebar left a phone's page about 87px), so a phone shows ONE of them, as
+  // a mail app does: the list, or the page or table opened from it, with
+  // ← Pages to go back. From md up both show, as before. Only a person's own
+  // choice (a page, a table, a search hit, a new page) switches to the page;
+  // the page opened automatically on load leaves a phone on the list.
+  /** @type {'list'|'content'} */
+  let phoneView = 'list';
+  $: if (!selectedId && !selectedDatasetId) phoneView = 'list';
 
   /**
    * Preview keeps its own place per page, the way the editor does.
@@ -956,7 +970,7 @@
     <!-- The column scrolls as a whole and is the ONLY scroll area in it: nested
          scrollers gave two or three scrollbars side by side, and left the page
          tree squeezed to a few rows when Tables/Files/Published links were open. -->
-    <div class="w-72 shrink-0 border-r border-slate-700 flex flex-col min-h-0 overflow-y-auto" data-testid="pack-sidebar">
+    <div class="{phoneView === 'content' ? 'hidden' : 'flex'} md:flex w-full md:w-72 shrink-0 md:border-r border-slate-700 flex-col min-h-0 overflow-y-auto" data-testid="pack-sidebar">
       <div class="flex items-center gap-2 px-3 py-2 border-b border-slate-700/50 shrink-0">
         <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide flex-1">Pages</p>
         {#if canEdit}
@@ -1116,7 +1130,12 @@
          refuses to shrink below its content, so without it a long page grows
          this pane past the viewport instead of letting the editor's own scroll
          area take over — which scrolls the toolbar off screen with it. -->
-    <div class="flex-1 min-w-0 min-h-0 flex flex-col">
+    <div class="{phoneView === 'list' ? 'hidden' : 'flex'} md:flex flex-1 min-w-0 min-h-0 flex-col" data-testid="pack-content">
+      <!-- Phone only: back to the list (see phoneView). -->
+      <div class="md:hidden flex items-center px-3 py-1.5 border-b border-slate-700/50 shrink-0">
+        <Button variant="secondary" size="small" testid="pack-phone-back"
+                on:click={() => phoneView = 'list'}>← Pages</Button>
+      </div>
       {#if selectedDataset}
         <DatasetTable
           dataset={selectedDataset}
@@ -1140,8 +1159,8 @@
         <!-- One row, not three. Title, address, backlinks and actions all live
              here: five stacked bars above the editor left very little room to
              actually write. -->
-        <div class="flex items-center gap-3 px-6 py-2 border-b border-slate-700/50 shrink-0">
-          <h2 class="text-sm font-semibold text-white truncate shrink min-w-0">
+        <div class="flex flex-wrap md:flex-nowrap items-center gap-x-3 gap-y-1 px-3 md:px-6 py-2 border-b border-slate-700/50 shrink-0">
+          <h2 class="text-sm font-semibold text-white truncate shrink min-w-0 w-full md:w-auto">
             {selectedDoc.title}
           </h2>
           <span class="text-xs text-slate-600 font-mono truncate hidden md:inline shrink-0"

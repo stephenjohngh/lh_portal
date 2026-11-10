@@ -505,8 +505,9 @@
 
 <div class="flex flex-col h-full min-h-0">
 
-  <!-- Toolbar + save state -->
-  <div class="flex items-center gap-1 px-4 py-1.5 border-b border-slate-700/50 shrink-0">
+  <!-- Toolbar + save state. Wraps on a phone, where one row ran past the
+       edge and the buttons beyond it could not be reached (2026-11-10). -->
+  <div class="flex flex-wrap md:flex-nowrap items-center gap-1 px-2 md:px-4 py-1.5 border-b border-slate-700/50 shrink-0">
     {#if editable}
       {#each ACTIONS as a}
         <button
