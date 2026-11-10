@@ -1,5 +1,6 @@
 <!-- src/lib/apps/management/components/ActionsSection.svelte -->
 <script>
+  import { shortLabel } from '#lib/utils/personLabels.js';
   import { createEventDispatcher, onMount } from 'svelte';
   import { issuesStore } from '../stores/issuesStore';
   import { profilesStore } from '#lib/stores/profiles.js';
@@ -206,9 +207,9 @@
 
                 </div>
                 <div class="text-xs text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
-                  <span>Added: {fmtDateTime(action.created_at, action.created_by_profile?.full_name)}</span>
+                  <span>Added: {fmtDateTime(action.created_at, shortLabel(action.created_by_profile))}</span>
                   {#if wasModified(action.created_at, action.updated_at)}
-                    <span>• Modified: {fmtDateTime(action.updated_at, action.updated_by_profile?.full_name)}</span>
+                    <span>• Modified: {fmtDateTime(action.updated_at, shortLabel(action.updated_by_profile))}</span>
                   {/if}
                   {#if action.meeting_id}
                     <MeetingBadge

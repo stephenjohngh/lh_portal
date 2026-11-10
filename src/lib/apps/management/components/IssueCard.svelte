@@ -2,6 +2,7 @@
 <!-- REFACTORED: Uses new CSS utility classes + ActivityLogSection (formerly CommentsSection) -->
 <script>
   import { createEventDispatcher, tick } from 'svelte';
+  import { shortLabel } from '#lib/utils/personLabels.js';
   import ActivityLogSection from './ActivityLogSection.svelte';
   import ActionsSection from './ActionsSection.svelte';
   import MeetingBadge from './meetings/MeetingBadge.svelte';
@@ -172,10 +173,10 @@
         {/if}
 
         <div class="flex-row-lg mt-1 text-muted-sm flex-wrap">
-          <span>Created: {fmtDate(issue.created_at, issue.created_by_profile?.full_name)}</span>
+          <span>Created: {fmtDate(issue.created_at, shortLabel(issue.created_by_profile))}</span>
           {#if issue.updated_at && issue.updated_at !== issue.created_at}
             <span>•</span>
-            <span>Modified: {fmtDate(issue.updated_at, issue.updated_by_profile?.full_name)}</span>
+            <span>Modified: {fmtDate(issue.updated_at, shortLabel(issue.updated_by_profile))}</span>
           {/if}
           {#if issue.meeting_id}
             <MeetingBadge meetingId={issue.meeting_id} rowId={issue.id} rowTable="issues" on:click={(e) => dispatch('meetingFilter', e.detail)} />

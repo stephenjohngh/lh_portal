@@ -149,7 +149,7 @@
                             <p class="text-slate-200 text-sm whitespace-pre-wrap">{c.body}</p>
                           {/if}
                           <p class="text-xs text-slate-500 mt-0.5">
-                            {fmtDateTime(c.created_at, c.created_by_profile?.full_name)}
+                            {fmtDateTime(c.created_at, shortLabel(c.created_by_profile))}
                             {#if c.historic}
                               · <span class="text-amber-400">historic</span>
                             {/if}
@@ -178,7 +178,7 @@
                             <p class="text-slate-200 text-sm whitespace-pre-wrap">{d.body}</p>
                           {/if}
                           <p class="text-xs text-slate-500 mt-0.5">
-                            {fmtDateTime(d.created_at, d.created_by_profile?.full_name)}
+                            {fmtDateTime(d.created_at, shortLabel(d.created_by_profile))}
                             {#if d.historic}
                               · <span class="text-amber-400">historic</span>
                             {/if}
@@ -207,7 +207,7 @@
                             <p class="text-slate-200 text-sm whitespace-pre-wrap">{n.body}</p>
                           {/if}
                           <p class="text-xs text-slate-500 mt-0.5">
-                            {fmtDateTime(n.created_at, n.created_by_profile?.full_name)}
+                            {fmtDateTime(n.created_at, shortLabel(n.created_by_profile))}
                             {#if n.historic}
                               · <span class="text-amber-400">historic</span>
                             {/if}
@@ -239,7 +239,7 @@
                           {/if}
                           {#if fieldSummary}<p class="text-xs text-cyan-300/70 mt-0.5">{fieldSummary}</p>{/if}
                           <p class="text-xs text-slate-500 mt-0.5">
-                            {fmtDateTime(e.created_at, e.created_by_profile?.full_name)}
+                            {fmtDateTime(e.created_at, shortLabel(e.created_by_profile))}
                             {#if e.historic}
                               · <span class="text-amber-400">historic</span>
                             {/if}
@@ -271,7 +271,7 @@
                           {/if}
                           {#if fieldSummary}<p class="text-xs text-slate-400/70 mt-0.5">{fieldSummary}</p>{/if}
                           <p class="text-xs text-slate-500 mt-0.5">
-                            {fmtDateTime(l.created_at, l.created_by_profile?.full_name)}
+                            {fmtDateTime(l.created_at, shortLabel(l.created_by_profile))}
                             {#if l.historic}
                               · <span class="text-amber-400">historic</span>
                             {/if}
@@ -300,7 +300,7 @@
                             <p class="text-slate-200 text-sm whitespace-pre-wrap">{d.body || fieldSummary}</p>
                           {/if}
                           <p class="text-xs text-slate-500 mt-0.5">
-                            {fmtDateTime(d.created_at, d.created_by_profile?.full_name)}
+                            {fmtDateTime(d.created_at, shortLabel(d.created_by_profile))}
                             {#if d.historic}
                               · <span class="text-amber-400">historic</span>
                             {/if}
@@ -331,7 +331,7 @@
                             <p class="text-slate-200 text-sm whitespace-pre-wrap">{o.body}</p>
                           {/if}
                           <p class="text-xs text-slate-500 mt-0.5">
-                            {fmtDateTime(o.created_at, o.created_by_profile?.full_name)}
+                            {fmtDateTime(o.created_at, shortLabel(o.created_by_profile))}
                             {#if o.historic}
                               · <span class="text-amber-400">historic</span>
                             {/if}
@@ -366,7 +366,7 @@
                               <span>📅 due {fmtDate(a.date_deadline)}</span>
                             {/if}
                             <span class="text-slate-600">
-                              added {fmtDateTime(a.created_at, a.created_by_profile?.full_name)}
+                              added {fmtDateTime(a.created_at, shortLabel(a.created_by_profile))}
                             </span>
                           </div>
                         </div>

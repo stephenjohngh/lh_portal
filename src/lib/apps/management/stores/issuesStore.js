@@ -57,19 +57,19 @@ function createIssuesStore() {
             *,
             issue_number,
             meeting_id,
-            created_by_profile:profiles!created_by(full_name),
-            updated_by_profile:profiles!updated_by(full_name),
+            created_by_profile:profiles!created_by(full_name, short_name),
+            updated_by_profile:profiles!updated_by(full_name, short_name),
             activities (
               id, body, activity_type, fields, sequence, historic, meeting_id, created_at, updated_at,
-              created_by_profile:profiles!created_by(full_name),
-              updated_by_profile:profiles!updated_by(full_name)
+              created_by_profile:profiles!created_by(full_name, short_name),
+              updated_by_profile:profiles!updated_by(full_name, short_name)
             ),
             actions (
               id, action_text, name_text,
               date_deadline, status, source_activity_id, meeting_id,
               created_at, updated_at,
-              created_by_profile:profiles!created_by(full_name),
-              updated_by_profile:profiles!updated_by(full_name)
+              created_by_profile:profiles!created_by(full_name, short_name),
+              updated_by_profile:profiles!updated_by(full_name, short_name)
             )
           `,
           orderBy: 'priority',

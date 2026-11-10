@@ -1,5 +1,6 @@
 <!-- src/lib/apps/management/components/reports/ReportIssueCard.svelte -->
 <script>
+  import { shortLabel } from '#lib/utils/personLabels.js';
   import Button from '#lib/components/common/Button.svelte';
   import { sanitizeHtml } from '#lib/utils/sanitizeHtml.js';
   import { getPriorityLabel, getActionStatusLabel, ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG } from '#lib/utils/constants.js';
@@ -124,7 +125,7 @@
               {/if}
               <p class="text-xs text-gray-400 mt-1">
                 {fmtDate(activity.created_at)}
-                {#if activity.created_by_profile?.full_name} · {activity.created_by_profile.full_name}{/if}
+                {#if shortLabel(activity.created_by_profile)} · {shortLabel(activity.created_by_profile)}{/if}
                 {#if wasModified(activity.created_at, activity.updated_at)} · Modified: {fmtDate(activity.updated_at)}{/if}
               </p>
             </div>
@@ -151,7 +152,7 @@
               {/if}
               <p class="text-xs text-gray-500 mt-1">
                 {fmtDate(activity.created_at)}
-                {#if activity.created_by_profile?.full_name} · {activity.created_by_profile.full_name}{/if}
+                {#if shortLabel(activity.created_by_profile)} · {shortLabel(activity.created_by_profile)}{/if}
                 {#if wasModified(activity.created_at, activity.updated_at)} · Modified: {fmtDate(activity.updated_at)}{/if}
               </p>
             </div>

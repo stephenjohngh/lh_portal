@@ -105,7 +105,7 @@
                 <span class="act-icon">{cfg(d).icon}</span>
                 <div class="act-body">
                   <p class="act-text">{actLine(d)}</p>
-                  <p class="act-date">{fmtDateTime(d.created_at, d.created_by_profile?.full_name)}</p>
+                  <p class="act-date">{fmtDateTime(d.created_at, shortLabel(d.created_by_profile))}</p>
                 </div>
                 <span class="act-chevron">›</span>
               </div>
@@ -139,7 +139,7 @@
                 <span class="act-icon">{cfg(a).icon}</span>
                 <div class="act-body">
                   <p class="act-text">{actLine(a)}</p>
-                  <p class="act-date">{cfg(a).label} · {fmtDateTime(a.created_at, a.created_by_profile?.full_name)}</p>
+                  <p class="act-date">{cfg(a).label} · {fmtDateTime(a.created_at, shortLabel(a.created_by_profile))}</p>
                 </div>
                 <span class="act-chevron">›</span>
               </div>

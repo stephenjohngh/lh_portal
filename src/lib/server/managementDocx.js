@@ -29,6 +29,7 @@ import { fmtShortDate, fmtDateLong, fmtGenerated, isOverdue, wasModified } from 
 import { getPriorityLabel, getActionStatusLabel, ACTION_STATUS, ACTIVITY_TYPE_CONFIG } from '#lib/utils/constants.js';
 import { buildFieldSummary } from '#lib/apps/management/components/reports/reportUtils.js';
 import { buildMeetingMinutes } from '#lib/apps/management/utils/meetingMinutes.js';
+import { shortLabel } from '#lib/utils/personLabels.js';
 
 export const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
@@ -226,9 +227,9 @@ function issueBlock(issue, sortOrder, summaryOnly) {
     out.push(text(issue.description, { size: 22 }, { spacing: { before: 120, after: 120 } }));
   }
 
-  let dateInfo = `Created ${fmtShortDate(issue.created_at)} by ${issue.created_by_profile?.full_name || 'Unknown'}`;
+  let dateInfo = `Created ${fmtShortDate(issue.created_at)} by ${shortLabel(issue.created_by_profile) || 'Unknown'}`;
   if (wasModified(issue.created_at, issue.updated_at)) {
-    dateInfo += `  ·  Modified ${fmtShortDate(issue.updated_at)} by ${issue.updated_by_profile?.full_name || 'Unknown'}`;
+    dateInfo += `  ·  Modified ${fmtShortDate(issue.updated_at)} by ${shortLabel(issue.updated_by_profile) || 'Unknown'}`;
   }
   const outstanding = issue.outstandingActions ?? [];
   if (outstanding.length) dateInfo += `  ·  ${plural(outstanding.length, 'outstanding action')}`;
@@ -259,7 +260,7 @@ function issueBlock(issue, sortOrder, summaryOnly) {
         }
       }
       let meta = fmtShortDate(item.created_at);
-      if (item.created_by_profile?.full_name) meta += `  ·  ${item.created_by_profile.full_name}`;
+      if (shortLabel(item.created_by_profile)) meta += `  ·  ${shortLabel(item.created_by_profile)}`;
       if (wasModified(item.created_at, item.updated_at)) meta += `  ·  Modified ${fmtShortDate(item.updated_at)}`;
       out.push(text(meta, { size: 18, color: '999999', italics: true }, { spacing: { after: 120 }, indent: { left: 360 } }));
     }
@@ -278,9 +279,9 @@ function issueBlock(issue, sortOrder, summaryOnly) {
       if (details.length) {
         out.push(text(details.join('  ·  '), { size: 20, color: '666666' }, { spacing: { after: 40 }, indent: { left: 360 } }));
       }
-      let added = `Added ${fmtShortDate(action.created_at)} by ${action.created_by_profile?.full_name || 'Unknown'}`;
+      let added = `Added ${fmtShortDate(action.created_at)} by ${shortLabel(action.created_by_profile) || 'Unknown'}`;
       if (wasModified(action.created_at, action.updated_at)) {
-        added += `  ·  Modified ${fmtShortDate(action.updated_at)} by ${action.updated_by_profile?.full_name || 'Unknown'}`;
+        added += `  ·  Modified ${fmtShortDate(action.updated_at)} by ${shortLabel(action.updated_by_profile) || 'Unknown'}`;
       }
       out.push(text(added, { size: 18, color: '999999', italics: true }, { spacing: { after: 120 }, indent: { left: 360 } }));
     }

@@ -2,6 +2,7 @@
   // src/lib/apps/managementmobile/components/IssueDetailScreen.svelte
   // Full issue detail: metadata, activity log, actions list.
   // Tap an activity row to open the ActivitySheet bottom sheet.
+  import { shortLabel } from '#lib/utils/personLabels.js';
 
   import { createEventDispatcher } from 'svelte';
   import { ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPE, getPriorityLabel, getActionStatusLabel } from '#lib/utils/constants.js';
@@ -145,7 +146,7 @@
               {#if activity.historic}
                 <span class="act-historic-tag">Historic</span>
               {/if}
-              <span class="act-date">{fmtDateTime(activity.created_at, activity.created_by_profile?.full_name)}</span>
+              <span class="act-date">{fmtDateTime(activity.created_at, shortLabel(activity.created_by_profile))}</span>
             </div>
             {#if activity.fields?.summary || activity.fields?.notes}
               <p class="act-preview act-summary">{activity.fields.summary || activity.fields.notes}</p>

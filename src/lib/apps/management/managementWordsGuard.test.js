@@ -29,4 +29,27 @@ describe('Management prints stored values as their words', () => {
     }
     expect(bad).toEqual([]);
   });
+
+  // Who added or changed something is shown by SHORT NAME (initials), the full
+  // name only where none is set (user, 2026-11-10) — on screen, on the phone and
+  // in the Word reports. shortLabel (#lib/utils/personLabels.js) does both.
+  // ⚠ public.js is left out: it builds a Dossier pack, which goes outside and
+  // keeps full names.
+  it('names who added or changed a thing by short name', () => {
+    const scanned = [...files('src/lib/apps/management'), ...files('src/lib/apps/managementmobile'), 'src/lib/server/managementDocx.js']
+      .filter(p => !/[\\/]management[\\/]public\.js$/.test(p) && !/issueDossierPlan\.js$/.test(p));
+    const bad = scanned.filter(p => /_by_profile\??\.full_name/.test(readFileSync(p, 'utf8')));
+    expect(bad).toEqual([]);
+    // ⛔ A file that calls shortLabel without importing it compiles, passes
+    // `npm run check`, and blanks the whole app with a 500 at run time
+    // (IssueCard, 2026-11-10).
+    const unimported = scanned.filter((p) => {
+      const s = readFileSync(p, 'utf8');
+      return /shortLabel\(/.test(s) && !/import\s*\{[^}]*\bshortLabel\b[^}]*\}\s*from/.test(s);
+    });
+    expect(unimported).toEqual([]);
+    // The query must bring the short name, or every line falls back to the full name.
+    const store = readFileSync('src/lib/apps/management/stores/issuesStore.js', 'utf8');
+    expect(store).not.toMatch(/profiles!(created|updated)_by\(full_name\)/);
+  });
 });

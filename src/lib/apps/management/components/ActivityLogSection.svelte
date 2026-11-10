@@ -11,6 +11,7 @@
   This file owns all suggestion-panel state and cross-cutting modals.
 -->
 <script>
+  import { shortLabel } from '#lib/utils/personLabels.js';
   import ToggleChip from '#lib/components/common/ToggleChip.svelte';
   import { portalSettings } from '#lib/stores/portalSettings.js';
   import { fileViewUrl } from '#lib/utils/driveUtils.js';
@@ -751,10 +752,10 @@
       {/if}
 
       <div class="flex items-center gap-2 mt-4 pt-3 border-t border-slate-700 text-xs text-gray-500 flex-wrap">
-        <span>Added: {fmtDateTime(viewingItem.created_at, viewingItem.created_by_profile?.full_name)}</span>
+        <span>Added: {fmtDateTime(viewingItem.created_at, shortLabel(viewingItem.created_by_profile))}</span>
         {#if wasModified(viewingItem.created_at, viewingItem.updated_at)}
           <span>•</span>
-          <span>Modified: {fmtDateTime(viewingItem.updated_at, viewingItem.updated_by_profile?.full_name)}</span>
+          <span>Modified: {fmtDateTime(viewingItem.updated_at, shortLabel(viewingItem.updated_by_profile))}</span>
         {/if}
         {#if viewingItem.historic}
           <span>•</span>

@@ -18,6 +18,7 @@
   Left-border colour by activity_type — see ACTIVITY_TYPE_CONFIG.
 -->
 <script>
+  import { shortLabel } from '#lib/utils/personLabels.js';
   import { fileViewUrl } from '#lib/utils/driveUtils.js';
   import { createEventDispatcher } from 'svelte';
   import { sanitizeHtml }         from '#lib/utils/sanitizeHtml.js';
@@ -206,10 +207,10 @@
 
     <!-- Metadata line -->
     <div class="flex items-center gap-2 mt-1 text-xs text-gray-500 flex-wrap">
-      <span>Added: {fmtDateTime(activity.created_at, activity.created_by_profile?.full_name)}</span>
+      <span>Added: {fmtDateTime(activity.created_at, shortLabel(activity.created_by_profile))}</span>
       {#if wasModified(activity.created_at, activity.updated_at)}
         <span>•</span>
-        <span>Modified: {fmtDateTime(activity.updated_at, activity.updated_by_profile?.full_name)}</span>
+        <span>Modified: {fmtDateTime(activity.updated_at, shortLabel(activity.updated_by_profile))}</span>
       {/if}
       {#if activity.historic}
         <span>•</span>
