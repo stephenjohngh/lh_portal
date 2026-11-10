@@ -12,6 +12,16 @@ const h = vi.hoisted(() => ({
   docs: /** @type {Record<string, any>} */ ({}),
   readable: new Set(),
   prepareAssets: vi.fn(async (files) => ({ files })),
+  pack: /** @type {any} */ (null),
+}));
+
+vi.mock('$app/env/public', async () => (await import('#lib/testing/envMock.test-helper.js')).envModule('public', { PUBLIC_SUPABASE_URL: 'http://x', PUBLIC_SUPABASE_ANON_KEY: 'k' }));
+// The pack is read with the caller's own token (RLS decides), for the folder
+// the pinned copies go in (2026-11-09).
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: () => ({
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: h.pack, error: null }) }) }) }),
+  }),
 }));
 
 vi.mock('#lib/server/requireAuth.js', () => ({
@@ -57,5 +67,17 @@ describe('POST /api/dossier/publish-assets', () => {
   it('leaves a file not in the library unread, as before', async () => {
     await call([{ providerFileId: 'nope' }]);
     expect(h.prepareAssets.mock.calls[0][0][0].providerFileId).toBe('');
+  });
+
+  it('pins into the pack’s folder only when the caller can read the pack', async () => {
+    const pin = (packId) => POST(/** @type {any} */ ({
+      request: new Request('http://x', { method: 'POST', body: JSON.stringify({ files: [{ providerFileId: 'f1' }], pin: true, packId }) }),
+    }));
+    h.pack = null;
+    expect((await pin('p1')).status).toBe(403);
+    expect(h.prepareAssets).not.toHaveBeenCalled();
+    h.pack = { id: 'p1', title: 'My pack' };
+    await pin('p1');
+    expect(h.prepareAssets.mock.calls[0][1]).toEqual({ pin: true, pack: { id: 'p1', title: 'My pack' } });
   });
 });
