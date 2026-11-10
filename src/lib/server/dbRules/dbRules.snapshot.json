@@ -563,6 +563,12 @@
             "unlock_failed",
             "unlock_ok"
         ],
+        "dossier_source_items.target_kind": [
+            "file",
+            "page",
+            "record",
+            "table"
+        ],
         "parking_agreements.vat_treatment": [
             "exempt",
             "not_charged",

@@ -33,6 +33,9 @@ import { allPagePaths, pathKey, pathLabel, findFile, splitPath } from './packPla
 
 const IMPORT_BATCH = 10;
 
+/** What a remembered item became (dossier_source_items.target_kind, migration 291). */
+export const TARGET_KINDS = ['page', 'record', 'table', 'file'];
+
 // ── Fingerprints ─────────────────────────────────────────────────────────────
 
 /** JSON with object keys sorted, so the same data always gives the same text. */

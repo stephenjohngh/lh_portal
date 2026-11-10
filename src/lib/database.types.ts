@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/ops/supabase_lhportal_schema48.csv
+// Source: docs/ops/supabase_lhportal_schema49.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -1806,60 +1806,6 @@ export type Database = {
             }
           ]
       }
-      dossier_source_items: {
-        Row: {
-          id: string
-          pack_id: string
-          source_key: string
-          target_kind: string
-          target_id: string
-          source_hash: string | null
-          written_hash: string | null
-          created_by: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          pack_id: string
-          source_key: string
-          target_kind: string
-          target_id: string
-          source_hash?: string | null
-          written_hash?: string | null
-          created_by?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          pack_id?: string
-          source_key?: string
-          target_kind?: string
-          target_id?: string
-          source_hash?: string | null
-          written_hash?: string | null
-          created_by?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-            {
-              foreignKeyName: "dossier_source_items_pack_id_fkey"
-              columns: ["pack_id"]
-              isOneToOne: false
-              referencedRelation: "dossier_packs"
-              referencedColumns: ["id"]
-            },
-            {
-              foreignKeyName: "dossier_source_items_created_by_fkey"
-              columns: ["created_by"]
-              isOneToOne: false
-              referencedRelation: "profiles"
-              referencedColumns: ["id"]
-            }
-          ]
-      }
       dossier_publication_events: {
         Row: {
           id: string
@@ -2061,6 +2007,60 @@ export type Database = {
             {
               foreignKeyName: "dossier_records_updated_by_fkey"
               columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      dossier_source_items: {
+        Row: {
+          id: string
+          pack_id: string
+          source_key: string
+          target_kind: string
+          target_id: string
+          source_hash: string | null
+          written_hash: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          pack_id: string
+          source_key: string
+          target_kind: string
+          target_id: string
+          source_hash?: string | null
+          written_hash?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          pack_id?: string
+          source_key?: string
+          target_kind?: string
+          target_id?: string
+          source_hash?: string | null
+          written_hash?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+            {
+              foreignKeyName: "dossier_source_items_pack_id_fkey"
+              columns: ["pack_id"]
+              isOneToOne: false
+              referencedRelation: "dossier_packs"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "dossier_source_items_created_by_fkey"
+              columns: ["created_by"]
               isOneToOne: false
               referencedRelation: "profiles"
               referencedColumns: ["id"]
