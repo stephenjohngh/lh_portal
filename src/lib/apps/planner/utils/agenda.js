@@ -248,3 +248,46 @@ export function archivedSeries(events = []) {
 export function staleStart(event, today) {
   return !!today && !!event?.start_date && event.start_date < today;
 }
+
+/**
+ * The agenda by CATEGORY, as a choice beside the usual by-status agenda
+ * (user, 2026-11-11). Categories come in the building's own order (Planner →
+ * Categories, ↑ ↓), each holding its outstanding items most urgent first —
+ * overdue, needs arranging, coming up, planned — and by date within that.
+ * An item whose category is unknown or unset goes in a last section. Done
+ * items are not spread through the categories: they stay one list, newest
+ * first, as on the by-status agenda.
+ *
+ * @param {object[]} occurrences
+ * @param {string} today
+ * @param {object[]} categories  planner_categories rows
+ * @returns {{ sections: { slug: string|null, name: string, items: { occurrence: object, bucket: string }[] }[], done: object[] }}
+ */
+export function agendaByCategory(occurrences = [], today, categories = []) {
+  const rank = Object.fromEntries(BUCKETS.map((b, i) => [b.key, i]));
+  const order = [...categories]
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || String(a.name).localeCompare(String(b.name)));
+  const known = new Set(order.map(c => c.slug));
+
+  const done = [];
+  /** @type {Map<string|null, { occurrence: object, bucket: string }[]>} */
+  const by = new Map();
+  for (const occurrence of occurrences) {
+    const bucket = bucketOf(occurrence, today);
+    if (bucket === 'done') { done.push(occurrence); continue; }
+    const slug = known.has(occurrence.series?.category) ? occurrence.series.category : null;
+    if (!by.has(slug)) by.set(slug, []);
+    by.get(slug).push({ occurrence, bucket });
+  }
+
+  const sortItems = (items) => items.sort((x, y) =>
+    rank[x.bucket] - rank[y.bucket] || x.occurrence.date.localeCompare(y.occurrence.date));
+
+  const sections = order
+    .filter(c => by.has(c.slug))
+    .map(c => ({ slug: c.slug, name: c.name, items: sortItems(by.get(c.slug)) }));
+  if (by.has(null)) sections.push({ slug: null, name: 'No category', items: sortItems(by.get(null)) });
+
+  done.sort((a, b) => b.date.localeCompare(a.date));
+  return { sections, done };
+}

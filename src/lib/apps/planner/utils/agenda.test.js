@@ -310,3 +310,34 @@ describe('staleStart', () => {
     expect(staleStart({ start_date: '2026-01-01' }, '')).toBe(false);
   });
 });
+
+import { agendaByCategory } from './agenda.js';
+
+describe('agendaByCategory', () => {
+  const cats = [
+    { slug: 'meeting', name: 'Meeting', position: 2 },
+    { slug: 'compliance', name: 'Compliance', position: 1 },
+  ];
+  const occ = (id, date, category, status = 'due') => ({
+    event_id: id, scheduled_for: date, date, status, series: { category, lead_days: 30 },
+  });
+  const today = '2026-11-11';
+
+  it('lists categories in the building’s order, most urgent first within each', () => {
+    const { sections, done } = agendaByCategory([
+      occ('m-planned', '2027-06-01', 'meeting'),
+      occ('c-soon', '2026-11-20', 'compliance'),
+      occ('c-late', '2026-10-01', 'compliance'),
+      occ('lost', '2026-11-12', 'gone-slug'),
+      occ('m-done', '2026-11-01', 'meeting', 'done'),
+    ], today, cats);
+    expect(sections.map(s => s.name)).toEqual(['Compliance', 'Meeting', 'No category']);
+    expect(sections[0].items.map(i => [i.occurrence.event_id, i.bucket]))
+      .toEqual([['c-late', 'overdue'], ['c-soon', 'due_soon']]);
+    expect(done.map(d => d.event_id)).toEqual(['m-done']);   // done is one list, not per category
+  });
+
+  it('leaves out a category with nothing outstanding', () => {
+    expect(agendaByCategory([], today, cats).sections).toEqual([]);
+  });
+});

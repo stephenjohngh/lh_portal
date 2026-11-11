@@ -13,7 +13,7 @@ import { logAudit } from '#lib/utils/auditLogger.js';
 import { getLogger } from '#lib/utils/logger.js';
 import { completionPatch, STATUS } from '../utils/agenda.js';
 import { linkedOccurrences } from '../utils/linked.js';
-import { uniqueSlug } from '../utils/categories.js';
+import { uniqueSlug, moveCategory as moveCategoryPlan } from '../utils/categories.js';
 import { listScheduledWork, createJobFromPlanner, listCertificateExpiries } from '#lib/apps/maintenance/public.js';
 import { listMeetings, listOpenActionDeadlines } from '#lib/apps/management/public.js';
 import { listReviewsDue, listRiskReviewsDue, listCompetenceExpiries } from '#lib/apps/golden_thread/public.js';
@@ -339,6 +339,27 @@ function createPlannerStore() {
     return row;
   }
 
+  /**
+   * Move a category up or down the building's order (the order categories are
+   * offered in, and the order of the agenda's "By category" view). Saves only
+   * the rows whose position changes; the list is re-read from what was saved.
+   */
+  async function moveCategory(id, dir, userId) {
+    const changes = moveCategoryPlan(getState().categories, id, dir);
+    if (!changes.length) return;
+    const saved = [];
+    for (const { id: cid, position } of changes) {
+      saved.push(await api.update('planner_categories', cid, { position, ...touch(userId) }, true));
+    }
+    const byId = new Map(saved.map(r => [r.id, r]));
+    update(s => ({ ...s, categories: s.categories.map(c => byId.get(c.id) ?? c) }));
+    const moved = getState().categories.find(c => c.id === id);
+    logAudit('update', 'planner_category', id, moved?.name ?? id, {
+      appId: 'planner', eventCategory: 'planner', severity: 'info',
+      afterData: { moved: dir < 0 ? 'up' : 'down' },
+    });
+  }
+
   /** Rename or recolour. Never the slug — see createCategory. */
   async function updateCategory(id, { name, colour, archived, hands_to_maintenance }, userId) {
     const fields = {};
@@ -451,7 +472,7 @@ function createPlannerStore() {
     createEvent, updateEvent, archiveEvent, deleteEvent,
     promoteToMaintenance,
     setDayMark, clearDayMark,
-    createCategory, updateCategory, deleteCategory,
+    createCategory, updateCategory, deleteCategory, moveCategory,
     recordOccurrence, moveOccurrence,
     clearError,
     /** For tests and for callers that need a snapshot without subscribing. */

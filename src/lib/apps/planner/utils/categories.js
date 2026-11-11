@@ -210,3 +210,29 @@ export function withNonWorkingDays(marks = [], nonWorking = []) {
     .map(d => ({ date: d.day, label: d.name, colour: null, source: 'non_working' }));
   return [...(marks ?? []), ...added];
 }
+
+/**
+ * Move a category one place up (-1) or down (+1) in the building's order.
+ * Returns the `{ id, position }` changes to save — every category renumbered
+ * 1…n in the new order (archived ones after, keeping theirs relative), but only
+ * the rows whose number changes. Empty when it cannot move (already first/last).
+ *
+ * @param {object[]} categories
+ * @param {string} id
+ * @param {-1|1} dir
+ * @returns {{ id: string, position: number }[]}
+ */
+export function moveCategory(categories = [], id, dir) {
+  const live = pickable(categories);
+  const from = live.findIndex(c => c.id === id);
+  const to = from + dir;
+  if (from < 0 || to < 0 || to >= live.length) return [];
+  const next = [...live];
+  [next[from], next[to]] = [next[to], next[from]];
+  const archived = [...categories].filter(c => c.archived)
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  return [...next, ...archived]
+    .map((c, i) => ({ id: c.id, position: i + 1, was: c.position }))
+    .filter(c => c.position !== c.was)
+    .map(({ id, position }) => ({ id, position }));
+}

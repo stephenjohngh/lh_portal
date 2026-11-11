@@ -13,7 +13,8 @@
   import { permissions } from '#lib/stores/permissions.js';
   import { plannerStore } from './stores/plannerStore.js';
   import { profiles, profilesStore } from '#lib/stores/profiles.js';
-  import { buildOccurrences, agenda, describeAgenda, archivedSeries, BUCKETS, STATUS } from './utils/agenda.js';
+  import { buildOccurrences, agenda, agendaByCategory, describeAgenda, archivedSeries, BUCKETS, STATUS } from './utils/agenda.js';
+  import { getPref, setPref } from '#lib/utils/prefs.js';
   import { addDaysISO, daysBetween, isRecurring } from './utils/recurrence.js';
   import { pickable, swatch, marksByDate, withNonWorkingDays } from './utils/categories.js';
   import { SOURCES, visibleSources } from './utils/linked.js';
@@ -196,6 +197,13 @@
     }
   }
   let showDone = false;
+  // The agenda by status (overdue first) or by category in the building's
+  // order (user, 2026-11-11). Remembered on this browser.
+  /** @type {'status'|'category'} */
+  let agendaGroup = getPref('planner.agendaGroup') === 'category' ? 'category' : 'status';
+  $: setPref('planner.agendaGroup', agendaGroup);
+  const BUCKET_LABEL = Object.fromEntries(BUCKETS.map(b => [b.key, b.label]));
+  const BUCKET_TONE = { overdue: 'text-red-400', arranging: 'text-orange-300', due_soon: 'text-amber-400', planned: 'text-slate-500' };
 
   // ── Which view ────────────────────────────────────────────────────────────
   // The agenda answers "what should I be doing"; the year answers "what does
@@ -257,6 +265,7 @@
     .sort((a, b) => a.date.localeCompare(b.date));
 
   $: groups = agenda(occurrences, now);
+  $: byCategory = agendaByCategory(occurrences, now, state.categories);
   // While the other apps' items are still being read, the counts are only the
   // planner's own: say so rather than reading as the whole picture (and never
   // as "Nothing outstanding" before the faults and deadlines have arrived).
@@ -409,6 +418,11 @@
   async function updateCategory(e) {
     const { id, ...fields } = e.detail;
     try { await plannerStore.updateCategory(id, fields, $auth.user.id); }
+    catch (err) { categoryError = errMessage(err); }
+  }
+
+  async function moveCategory(e) {
+    try { await plannerStore.moveCategory(e.detail.id, e.detail.dir, $auth.user.id); }
     catch (err) { categoryError = errMessage(err); }
   }
 
@@ -756,6 +770,57 @@
 
   {:else}
     <div class="space-y-5">
+      <SegmentedControl size="xs" label="Group the agenda" bind:value={agendaGroup}
+                        options={[{ value: 'status', label: 'By status' }, { value: 'category', label: 'By category' }]} />
+
+      {#if agendaGroup === 'category'}
+        {#each byCategory.sections as section (section.slug ?? '—')}
+          {@const sw = swatch(state.categories.find(c => c.slug === section.slug)?.colour)}
+          <div>
+            <div class="flex items-center gap-2 mb-2">
+              <span class="w-2.5 h-2.5 rounded-full {sw.dot}"></span>
+              <h3 class="text-xs uppercase tracking-wide font-semibold text-slate-300">{section.name}</h3>
+              <span class="text-xs text-slate-600">{section.items.length}</span>
+            </div>
+            <div class="space-y-1.5">
+              {#each section.items as { occurrence, bucket } (occurrence.event_id + occurrence.scheduled_for)}
+                <div class="flex items-start gap-2">
+                  <span class="w-24 shrink-0 pt-1 text-[10px] uppercase tracking-wide {BUCKET_TONE[bucket] ?? 'text-slate-500'}">{BUCKET_LABEL[bucket]}</span>
+                  <div class="flex-1 min-w-0">
+                    <OccurrenceRow
+                      {occurrence}
+                      {canEdit}
+                      categories={state.categories}
+                      owners={$profiles.list}
+                      showLateness={bucket === 'overdue' && daysBetween(occurrence.date, now) > 0}
+                      daysLate={daysBetween(occurrence.date, now)}
+                      on:toggle={toggleDone}
+                      on:open={(e) => openDetails(e.detail)}
+                      on:edit={(e) => editOccurrence(e.detail)}
+                    />
+                  </div>
+                </div>
+              {/each}
+            </div>
+          </div>
+        {:else}
+          <p class="text-xs text-slate-500">Nothing outstanding.</p>
+        {/each}
+        {#if showDone && byCategory.done.length}
+          <div>
+            <div class="flex items-center gap-2 mb-2">
+              <h3 class="text-xs uppercase tracking-wide font-semibold text-slate-500">Done</h3>
+              <span class="text-xs text-slate-600">{byCategory.done.length}</span>
+            </div>
+            <div class="space-y-1.5">
+              {#each byCategory.done as occurrence (occurrence.event_id + occurrence.scheduled_for)}
+                <OccurrenceRow {occurrence} {canEdit} categories={state.categories} owners={$profiles.list}
+                  on:toggle={toggleDone} on:open={(e) => openDetails(e.detail)} on:edit={(e) => editOccurrence(e.detail)} />
+              {/each}
+            </div>
+          </div>
+        {/if}
+      {:else}
       {#each BUCKETS as bucket}
         {@const items = groups[bucket.key]}
         {#if bucket.key !== 'done' || showDone}
@@ -790,6 +855,7 @@
           {/if}
         {/if}
       {/each}
+      {/if}
 
       <Button variant="tertiary" size="xs" on:click={() => showDone = !showDone}>{showDone ? 'Hide' : 'Show'} what is done ({groups.done.length})</Button>
     </div>
@@ -827,6 +893,7 @@
   on:create={createCategory}
   on:update={updateCategory}
   on:delete={deleteCategory}
+  on:move={moveCategory}
   on:close={() => { categoriesOpen = false; categoryError = ''; }}
 />
 

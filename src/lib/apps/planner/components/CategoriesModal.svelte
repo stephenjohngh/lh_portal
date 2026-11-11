@@ -78,8 +78,19 @@
   {/if}
 
   <div class="space-y-1.5">
-    {#each ordered as category (category.id)}
+    {#if canEdit}
+      <p class="text-[11px] text-slate-500 mb-1">↑ ↓ set the order categories are listed in, here and in the agenda's <em>By category</em> view.</p>
+    {/if}
+    {#each ordered as category, i (category.id)}
       <div class="flex items-center gap-3 p-2 rounded border border-slate-700 bg-slate-800/40">
+        {#if canEdit}
+          <span class="flex items-center gap-0.5 shrink-0">
+            <Button variant="tertiary" size="xs" ariaLabel="Move {category.name} up" title="Move up"
+                    disabled={i === 0} on:click={() => dispatch('move', { id: category.id, dir: -1 })}>↑</Button>
+            <Button variant="tertiary" size="xs" ariaLabel="Move {category.name} down" title="Move down"
+                    disabled={i === ordered.length - 1} on:click={() => dispatch('move', { id: category.id, dir: 1 })}>↓</Button>
+          </span>
+        {/if}
         <span class="w-2.5 h-2.5 rounded-full shrink-0 {swatch(category.colour).dot}"></span>
 
         {#if editingId === category.id}

@@ -221,3 +221,23 @@ describe('withNonWorkingDays', () => {
     expect(withNonWorkingDays(undefined, undefined)).toEqual([]);
   });
 });
+
+import { moveCategory } from './categories.js';
+
+describe('moveCategory', () => {
+  const cats = [
+    { id: 'a', name: 'A', position: 1 }, { id: 'b', name: 'B', position: 2 },
+    { id: 'c', name: 'C', position: 3 }, { id: 'x', name: 'X', position: 4, archived: true },
+  ];
+  it('swaps with its neighbour and saves only what changes', () => {
+    expect(moveCategory(cats, 'c', -1)).toEqual([{ id: 'c', position: 2 }, { id: 'b', position: 3 }]);
+  });
+  it('does nothing at either end, and archived ones are not in the order', () => {
+    expect(moveCategory(cats, 'a', -1)).toEqual([]);
+    expect(moveCategory(cats, 'c', 1)).toEqual([]);
+  });
+  it('renumbers from 1 when positions had gaps', () => {
+    const gappy = [{ id: 'a', name: 'A', position: 5 }, { id: 'b', name: 'B', position: 9 }];
+    expect(moveCategory(gappy, 'b', -1)).toEqual([{ id: 'b', position: 1 }, { id: 'a', position: 2 }]);
+  });
+});
