@@ -21,6 +21,12 @@
   import { copyTitle }    from './utils/packCopy.js';
   import { hasAppAccess } from '#lib/utils/appAccess.js';
   import { createPackFromPlan } from './public.js';
+  import { takeAppParams } from '#lib/utils/appLink.js';
+  import { getPref, setPref } from '#lib/utils/prefs.js';
+
+  // The pack last open on this browser, reopened when Dossier is (user,
+  // 2026-11-11). Per browser, like every other remembered place here.
+  const LS_OPEN_PACK = 'dossier.openPack';
 
   /** A caught value is `unknown`; narrow it without asserting a type. */
 
@@ -108,6 +114,12 @@
       await permissions.init($auth.user.id, 'dossier');
       try {
         await Promise.all([dossierStore.loadPacks(), dossierStore.loadPackFolders()]);
+        // Asked for by another app (Management's issue → its pack), else the
+        // one last open. A pack that is gone, archived or not readable opens
+        // the list as usual.
+        const wanted = takeAppParams('dossier')?.pack || getPref(LS_OPEN_PACK) || '';
+        const found = wanted && $dossierStore.packs.find(p => p.id === wanted && p.status !== 'archived');
+        if (found) await handleOpen(found);
       } catch (err) {
         appError = errMessage(err);
       }
@@ -123,12 +135,12 @@
     loadIssueChoices();
   }
 
-  /** The issues a dossier can start from — only for someone who may read Management. */
+  /** The CURRENT issues a dossier can start from (not parked or completed) — only for someone who may read Management. */
   async function loadIssueChoices() {
     if (!hasAppAccess($permissions, 'management')) { issueChoices = []; return; }
     try {
       const { listIssuesForPicker } = await import('../management/public.js');
-      issueChoices = await listIssuesForPicker();
+      issueChoices = (await listIssuesForPicker()).filter(i => i.status === 'current');
     } catch (err) {
       issueChoices = [];   // the option is simply not offered; the rest of the form still works
     }
@@ -283,6 +295,7 @@
     appError = '';                   // a message about the list is not about this pack
     const packId = pack.id;          // capture before the await
     openPackId = packId;
+    setPref(LS_OPEN_PACK, packId);
     try {
       await dossierStore.loadDocs(packId);
     } catch (err) {
@@ -293,6 +306,7 @@
   function backToPacks() {
     appError = '';
     openPackId = null;
+    setPref(LS_OPEN_PACK, '');
     dossierStore.closePack();
   }
 </script>

@@ -72,7 +72,8 @@ describe('issueToPlan', () => {
 
   it('keeps an action’s status off the chronology (it changes; a row has no History)', () => {
     const row = plan.tables[0].rows.find(r => r.key === 'chronology:action:x1');
-    expect(row.fields.event).toBe('Action due: Call surveyor | urgent');
+    expect(row.fields.event).toBe('Action due: Call surveyor | urgent (Sam)');
+    expect(row.page).toEqual(['Actions']);   // an action has no page of its own
     expect(JSON.stringify(plan.tables)).not.toMatch(/Open/);
   });
 

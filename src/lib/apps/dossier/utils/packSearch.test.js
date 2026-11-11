@@ -128,7 +128,7 @@ describe('searchPack', () => {
     const twice = {
       datasets: [{ id: 's1', key: 'chronology', title: 'C' }],
       records: [{ id: 'r1', dataset_id: 's1',
-        fields: { event: 'notice served', significance: 'the notice matters' } }],
+        fields: { event: 'notice served' } }],
     };
     expect(searchPack(twice, 'notice')).toHaveLength(1);
   });

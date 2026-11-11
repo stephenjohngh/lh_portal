@@ -4,7 +4,8 @@
   import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
   import { onMount } from 'svelte';
   import { auth } from '#lib/stores/auth.js';
-  import { beforeNavigate, goto } from '$app/navigation';
+  import { beforeNavigate, goto, replaceState } from '$app/navigation';
+  import { appRequest, openApp, requestFromSearch } from '#lib/utils/appLink.js';
   import { supabase } from '#lib/supabaseClient.js';
   import { isAdmin as checkIsAdmin } from '#lib/utils/auth.js';
   import { getLogger } from '#lib/utils/logger.js';
@@ -92,6 +93,19 @@
 
   let activeApp = 'home';
   let menuOpen = false;
+
+  // Another app asking to open an app at a record (#lib/utils/appLink.js), or
+  // an address `/?app=…&…` opened in a new tab. A subscription, not a `$:`:
+  // a reactive statement reading activeApp would force the app back every time
+  // the person moved on before the target had read its request.
+  onMount(() => {
+    const fromUrl = requestFromSearch(window.location.search);
+    if (fromUrl) {
+      openApp(fromUrl.app, fromUrl.params);
+      replaceState('/', {});          // a reload should not jump again
+    }
+    return appRequest.subscribe((req) => { if (req?.app) activeApp = req.app; });
+  });
   let userApps = [];
   let isAdmin = false;
   let loading = true;

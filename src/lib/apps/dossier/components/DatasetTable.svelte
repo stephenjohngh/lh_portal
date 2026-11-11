@@ -10,6 +10,7 @@
   import Button        from '#lib/components/common/Button.svelte';
   import ErrorDisplay  from '#lib/components/common/ErrorDisplay.svelte';
   import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
+  import { getPref, setPref } from '#lib/utils/prefs.js';
   import {
     templateFor, sortRecords, emptyRecordFields, isBlankRecord,
     columnFields, rowFields,
@@ -53,7 +54,20 @@
   $: beneath  = rowFields(dataset?.key);
   /** Columns + Detail + the delete button, for a full-width row underneath. */
   $: spanAll  = columns.length + 2;
-  $: ordered  = sortRecords(dataset?.key, records);
+  // Newest first or oldest first, per table, remembered on this browser. Only
+  // the editor follows it; the published reader keeps oldest first.
+  let descending = false;
+  let sortReadFor = null;
+  $: if (dataset?.id && dataset.id !== sortReadFor) {
+    sortReadFor = dataset.id;
+    descending = getPref(`dossier.tableSortDesc.${dataset.id}`) === '1';
+  }
+  function toggleSort() {
+    descending = !descending;
+    setPref(`dossier.tableSortDesc.${dataset.id}`, descending ? '1' : '0');
+  }
+  $: sortKey  = template?.sort ?? null;
+  $: ordered  = sortRecords(dataset?.key, records, { descending });
   // Resolved once per render rather than per cell — and {@const} is not allowed
   // inside a <td>, only as the immediate child of a block.
   $: linkTargets = new Map(records.map(r => [r.id, linkTargetOf(r, docs, files)]));
@@ -304,11 +318,18 @@
           {#each columns as field}
             <th class="text-xs font-semibold text-slate-400 uppercase tracking-wide
                        py-2 pr-3 pl-2 align-bottom whitespace-nowrap bg-slate-800/60"
-                style={field.width ? `width:${field.width}` : ''}>{field.label}</th>
+                style={field.width ? `width:${field.width}` : ''}>
+              {#if field.key === sortKey}
+                <Button variant="plain" testid="sort-toggle"
+                        title={descending ? 'Newest first — show oldest first' : 'Oldest first — show newest first'}
+                        on:click={toggleSort}
+                        className="uppercase tracking-wide text-slate-300 hover:text-white">{field.label} {descending ? '▼' : '▲'}</Button>
+              {:else}{field.label}{/if}
+            </th>
           {/each}
           <th class="text-xs font-semibold text-slate-400 uppercase tracking-wide
-                     py-2 pr-3 align-bottom w-32 bg-slate-800/60">Detail</th>
-          <th class="w-8 bg-slate-800/60"></th>
+                     py-2 pr-3 align-bottom w-56 bg-slate-800/60">Detail</th>
+          <th class="w-10 bg-slate-800/60"></th>
         </tr>
       </thead>
 
@@ -381,7 +402,7 @@
                            {linkTargets.get(record.id).missing
                              ? 'text-amber-400' : 'text-slate-300 hover:text-white'}">{linkTargets.get(record.id).label}</Button>
                   {#if canEdit}
-                    <Button variant="danger" size="xs" title="Remove this link" on:click={() => dispatch('clearLink', record)}>×</Button>
+                    <Button variant="tertiary" size="xs" title="Remove this link (the page or file is kept)" on:click={() => dispatch('clearLink', record)}>Unlink</Button>
                   {/if}
                 </span>
               {:else if canEdit}
@@ -393,7 +414,7 @@
             </td>
             <td class="py-1">
               {#if canEdit}
-                <Button variant="danger" size="xs" title="Delete this entry" ariaLabel="Delete this entry" on:click={() => dispatch('deleteRecord', record)}>×</Button>
+                <Button variant="danger" size="xs" title="Delete this entry" ariaLabel="Delete this entry" on:click={() => dispatch('deleteRecord', record)}>🗑</Button>
               {/if}
             </td>
           </tr>

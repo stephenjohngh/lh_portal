@@ -32,7 +32,7 @@ PAGE Summary
 EMBED PAGE Background/Timeline summary
 EMBED TABLE "Chronology"
 TABLE chronology "Chronology"
-ROW date=2026-06-03 event="Leak found" significance="Start" FILE report PAGE Background
+ROW date=2026-06-03 event="Leak found" FILE report PAGE Background
 `;
 
 describe('tokenise', () => {

@@ -10,10 +10,13 @@
   import Button from '#lib/components/common/Button.svelte';
   import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
+  import { openApp, appHref } from '#lib/utils/appLink.js';
   import { fmtDate, isOverdue } from '#lib/utils/dates.js';
   import { ISSUE_STATUS, ACTION_STATUS, ACTIVITY_TYPE, getPriorityLabel } from '#lib/utils/constants.js';
 
   export let issue;
+  /** Dossier packs made from this issue, `{ id, title }` — a link each, after the name. */
+  export let packs = [];
   export let showActivity = false;
   export let showActions = false;
 
@@ -154,6 +157,18 @@
             {/if}
             {issue.name}
           </h3>
+          <!-- Labelled "Dossier", not with the pack's title: that title starts
+               with the issue's own name, so it said it twice. -->
+          {#each packs as pk, i (pk.id)}
+            <span class="inline-flex items-center gap-1 text-xs">
+              <Button variant="tertiary" size="xs" testid="issue-pack-link"
+                      title="Open the Dossier pack “{pk.title}” — Management keeps your place"
+                      on:click={() => openApp('dossier', { pack: pk.id })}>📁 Dossier{packs.length > 1 ? ` ${i + 1}` : ''}</Button>
+              <a href={appHref('dossier', { pack: pk.id })} target="_blank" rel="noopener"
+                 class="text-slate-400 hover:text-white px-1"
+                 title="Open the pack “{pk.title}” in a new tab">↗</a>
+            </span>
+          {/each}
           <span class="badge {getPriorityLabel(issue.priority).color}">
             {getPriorityLabel(issue.priority).label}
           </span>

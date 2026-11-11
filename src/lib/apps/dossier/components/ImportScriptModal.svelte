@@ -33,7 +33,7 @@ TEXT "Water came through **the bedroom ceiling** on 3 June."
 IMAGE "leak.jpg" MEDIUM
 CALLOUT warning "Not for publication."
 TABLE chronology "Chronology"
-ROW date=2026-06-03 event="Leak reported" significance="Start of the claim"
+ROW date=2026-06-03 event="Leak reported"
 PAGE Summary
 EMBED TABLE "Chronology"
 `;

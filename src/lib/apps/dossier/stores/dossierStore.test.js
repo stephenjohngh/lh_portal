@@ -601,7 +601,7 @@ describe('datasets', () => {
 
     const row = h.api.create.mock.calls.at(-1)[1];
     expect(row.fields).toEqual({
-      date: '2026-02-14', event: 'Contract signed', significance: '',
+      date: '2026-02-14', event: 'Contract signed',
     });
     expect(row.fields).not.toHaveProperty('rogue');
   });

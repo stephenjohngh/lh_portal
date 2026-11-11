@@ -10,6 +10,7 @@ import { dossierStore } from './stores/dossierStore.js';
 import { makeHtmlToNodes } from './utils/planBlocks.js';
 import { emptyPlan, planProblems, describePlan } from './utils/packPlan.js';
 import { currentUserId } from '#lib/utils/currentUser.js';
+import { api } from '#lib/utils/api.js';
 
 export { emptyPlan as newPackPlan, planProblems, describePlan };
 
@@ -25,4 +26,20 @@ export async function createPackFromPlan(plan, options = {}) {
   const userId = await currentUserId();
   if (!userId) throw new Error('You must be signed in to make a pack.');
   return dossierStore.createPackFromPlan(plan, { ...options, htmlToNodes: makeHtmlToNodes() }, userId);
+}
+
+/**
+ * The packs made from Management issues that this person can open, for a link
+ * beside each issue: `{ id, title, source_id }`, newest first. RLS decides what
+ * is returned (a dossier is its creator's, or an admin's); archived packs are
+ * left out. READ-only.
+ */
+export async function listPacksFromIssues() {
+  const rows = await api.get('dossier_packs', {
+    select: 'id, title, source_id, status, created_at',
+    filters: { source_kind: 'management_issue' },
+    orderBy: 'created_at', ascending: false,
+  });
+  return (rows ?? []).filter(p => p.status !== 'archived')
+    .map(({ id, title, source_id }) => ({ id, title, source_id }));
 }

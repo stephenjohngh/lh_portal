@@ -83,6 +83,34 @@
     dossierStore.loadPackFiles(pack.id);
     dossierStore.loadDatasets(pack.id);
   }
+  // ── The place last open in this pack (user, 2026-11-11) ──────────────────
+  // `page:<id>` or `table:<id>`, per pack, on this browser. Restored once the
+  // pack's pages / tables have arrived; until then nothing is saved, so the
+  // empty selection while loading cannot overwrite it. A choice the person
+  // makes first wins.
+  const placeKey = (id) => `dossier.place.${id}`;
+  let restoreFor = null;
+  let want = '';
+  $: if (pack?.id && pack.id !== restoreFor) {
+    restoreFor = pack.id;
+    want = getPref(placeKey(pack.id)) ?? '';
+  }
+  $: if (want.startsWith('page:') && $dossierStore.activePackId === pack.id && !$dossierStore.loadingDocs) {
+    const id = want.slice(5);
+    want = '';
+    if (docs.some(d => d.id === id)) { selectedId = id; phoneView = 'content'; }
+  }
+  $: if (want.startsWith('table:') && ($dossierStore.datasetsReadFor === pack.id || $dossierStore.datasetsReadFailed)) {
+    const id = want.slice(6);
+    want = '';
+    if (!selectedId && !selectedDatasetId && $dossierStore.datasets.some(d => d.id === id)) {
+      selectedDatasetId = id; phoneView = 'content';
+    }
+  }
+  $: if (!want && pack?.id && (selectedId || selectedDatasetId)) {
+    setPref(placeKey(pack.id), selectedId ? `page:${selectedId}` : `table:${selectedDatasetId}`);
+  }
+
   $: tree        = buildTree(docs);
   $: selectedDoc = docs.find(d => d.id === selectedId) ?? null;
   // A template is changed by an administrator only; everyone with the grant may read it.

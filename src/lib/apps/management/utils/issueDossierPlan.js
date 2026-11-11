@@ -133,7 +133,7 @@ export function issueToPlan({ issue, documents = [], meetings = [] }) {
     const f = a.fields ?? {};
     chronology.rows.push({
       key: `chronology:activity:${a.id}`,
-      fields: { date: activityDate(a), event: clip(`${label}: ${activityLine(a)}`, 200), significance: '' },
+      fields: { date: activityDate(a), event: clip(`${label}: ${activityLine(a)}`, 200) },
       page: path,
     });
     if (a.activity_type === ACTIVITY_TYPE.EMAIL || a.activity_type === ACTIVITY_TYPE.LETTER) {
@@ -154,7 +154,9 @@ export function issueToPlan({ issue, documents = [], meetings = [] }) {
   for (const a of actions) {
     chronology.rows.push({
       key: `chronology:action:${a.id}`,
-      fields: { date: a.date_deadline ?? day(a.created_at), event: clip(`Action${a.date_deadline ? ' due' : ''}: ${a.action_text}`, 200), significance: a.name_text ? `Owner: ${a.name_text}` : '' },
+      fields: { date: a.date_deadline ?? day(a.created_at), event: clip(`Action${a.date_deadline ? ' due' : ''}: ${a.action_text}${a.name_text ? ` (${a.name_text})` : ''}`, 200) },
+      // Actions have no page each; the row points at the Actions page.
+      page: ['Actions'],
     });
   }
   chronology.rows.sort((x, y) => String(x.fields.date).localeCompare(String(y.fields.date)));

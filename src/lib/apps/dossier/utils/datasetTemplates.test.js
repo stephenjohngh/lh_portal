@@ -28,7 +28,7 @@ describe('templates', () => {
 
   it('gives chronology the columns spec 2 §7 asked for', () => {
     expect(fieldsFor('chronology').map(f => f.key))
-      .toEqual(['date', 'event', 'significance']);
+      .toEqual(['date', 'event']);
   });
 });
 
@@ -70,13 +70,13 @@ describe('coerceRecordFields', () => {
     const out = coerceRecordFields('chronology', {
       date: '2026-02-14', event: 'Contract signed', rogue: 'should go',
     });
-    expect(Object.keys(out)).toEqual(['date', 'event', 'significance']);
+    expect(Object.keys(out)).toEqual(['date', 'event']);
     expect(out).not.toHaveProperty('rogue');
   });
 
   it('fills missing columns with empty strings rather than undefined', () => {
     expect(coerceRecordFields('chronology', { event: 'x' }))
-      .toEqual({ date: '', event: 'x', significance: '' });
+      .toEqual({ date: '', event: 'x' });
   });
 
   it('yields an empty object for an unknown template', () => {
@@ -85,7 +85,7 @@ describe('coerceRecordFields', () => {
 
   it('emptyRecordFields gives a blank row of the right shape', () => {
     expect(emptyRecordFields('chronology'))
-      .toEqual({ date: '', event: '', significance: '' });
+      .toEqual({ date: '', event: '' });
   });
 });
 
@@ -134,7 +134,7 @@ describe('describeRecord', () => {
     // In a dense table the real risk is deleting the wrong row; a confirmation
     // that just says "this entry" does not guard against that.
     expect(describeRecord('chronology', {
-      date: '2024-09-12', event: 'Section 20 notice served', significance: 'x',
+      date: '2024-09-12', event: 'Section 20 notice served',
     })).toBe('2024-09-12 — Section 20 notice served');
   });
 
@@ -179,7 +179,7 @@ describe('correspondence — subject/summary and the message', () => {
   it('leaves the other templates entirely as columns', () => {
     expect(rowFields('chronology')).toEqual([]);
     expect(rowFields('document_index')).toEqual([]);
-    expect(columnFields('chronology')).toHaveLength(3);
+    expect(columnFields('chronology')).toHaveLength(2);
   });
 });
 
@@ -209,5 +209,15 @@ describe('migrateRecordFields', () => {
   it('survives a coerce, which is where the value would otherwise be lost', () => {
     expect(coerceRecordFields('correspondence', { summary: 'the message' }))
       .toMatchObject({ body: 'the message' });
+  });
+});
+
+describe('sortRecords — newest first (the editor’s Date heading)', () => {
+  const r = (id, date, position) => ({ id, position, fields: { date, event: id } });
+  const rows = [r('a', '2024-01-01', 0), r('none', '', 1), r('c', '2024-03-01', 2), r('b', '2024-02-01', 3)];
+
+  it('reverses the dates and still sinks undated rows', () => {
+    expect(sortRecords('chronology', rows, { descending: true }).map(x => x.id)).toEqual(['c', 'b', 'a', 'none']);
+    expect(sortRecords('chronology', rows).map(x => x.id)).toEqual(['a', 'b', 'c', 'none']);
   });
 });

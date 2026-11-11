@@ -24,7 +24,7 @@
 //   TOGGLE "Detail" <<<  …  >>>  CLOSED
 //   EMBED PAGE Background/Timeline FULL  full | summary | link_card
 //   TABLE chronology "Chronology"        chronology | correspondence | document_index
-//   ROW date=2026-06-03 event="Leak found" significance="…" FILE report PAGE Background
+//   ROW date=2026-06-03 event="Leak found" FILE report PAGE Background
 //   EMBED TABLE "Chronology"
 //
 // Anything a line names that is not defined (an image, an attachment, a row's

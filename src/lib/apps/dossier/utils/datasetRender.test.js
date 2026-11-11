@@ -30,7 +30,7 @@ describe('renderDatasetTableHtml', () => {
   it('shows a dash for an empty cell rather than nothing', () => {
     // A blank cell reads as an oversight; a dash reads as deliberate.
     const html = renderDatasetTableHtml(chronology, [
-      rec('r1', { date: '2024-01-01', event: 'x', significance: '' }),
+      rec('r1', { date: '2024-01-01', event: '' }),
     ]);
     expect(html).toContain('—');
   });

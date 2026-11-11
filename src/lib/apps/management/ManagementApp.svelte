@@ -23,6 +23,26 @@
   import ErrorDisplay       from '#lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner     from '#lib/components/common/LoadingSpinner.svelte';
   import { ISSUE_STATUS, STATUS_FILTERS } from '#lib/utils/constants.js';
+  import { hasAppAccess }   from '#lib/utils/appAccess.js';
+
+  // ── Dossier packs made from issues (user, 2026-11-11) ────────────────────
+  // Shown after the issue's name, to jump to. Read through Dossier's public.js,
+  // only for someone who may use Dossier; RLS returns only packs they can open.
+  // A failed read shows no links rather than stopping Management.
+  /** @type {Record<string, { id: string, title: string }[]>} */
+  let packsByIssue = {};
+  async function loadIssuePacks() {
+    if (!hasAppAccess($permissions, 'dossier')) { packsByIssue = {}; return; }
+    try {
+      const { listPacksFromIssues } = await import('../dossier/public.js');
+      const map = {};
+      for (const p of await listPacksFromIssues()) (map[p.source_id] ??= []).push(p);
+      packsByIssue = map;
+    } catch (/** @type {any} */ err) {
+      logger('Could not read the Dossier packs made from issues:', err);
+      packsByIssue = {};
+    }
+  }
 
   const logger = getLogger('ManagementApp');
 
@@ -143,6 +163,7 @@
 
     if ($auth.user) {
       await permissions.init($auth.user.id, 'management');
+      loadIssuePacks();        // not awaited: the issues do not wait for the links
     }
     await issuesStore.fetchIssues();
 
@@ -463,6 +484,7 @@
           <div id="issue-{issue.id}">
           <IssueCard
             {issue}
+            packs={packsByIssue[issue.id] ?? []}
             showActivity={expandedSections[issue.id]?.activities || false}
             showActions={expandedSections[issue.id]?.actions   || false}
             on:toggleActivity={() => toggleSection(issue.id, 'activities')}

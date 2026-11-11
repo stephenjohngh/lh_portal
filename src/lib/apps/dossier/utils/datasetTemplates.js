@@ -39,11 +39,10 @@ export const DATASET_TEMPLATES = {
     blurb: 'What happened and when. The spine of most briefings.',
     fields: /** @type {FieldDef[]} */ ([
       { key: 'date',  label: 'Date',  type: 'date', width: '9rem', readWidth: '6.5rem' },
+      // "Why it matters" (significance) was removed 2026-11-11 at the user's
+      // direction. A value already held stays in the row's jsonb until the row
+      // is next edited; it is no longer shown or published.
       { key: 'event', label: 'Event', type: 'text', placeholder: 'What happened' },
-      {
-        key: 'significance', label: 'Why it matters', type: 'longtext',
-        placeholder: 'Optional — why this entry is in the chronology',
-      },
     ]),
     /** Chronology sorts by date. That is what a chronology is (merge doc D2). */
     sort: 'date',
@@ -210,8 +209,15 @@ export function emptyRecordFields(key) {
  * through building a chronology should not have their unfinished rows jump to
  * the top. `position` breaks ties, so same-day entries keep the order the
  * author put them in.
+ *
+ * `descending` puts the newest first (the editor's Date heading toggles it);
+ * undated entries still sink to the bottom either way.
+ *
+ * @param {string} key
+ * @param {object[]} [records]
+ * @param {{ descending?: boolean }} [opts]
  */
-export function sortRecords(key, records = []) {
+export function sortRecords(key, records = [], { descending = false } = {}) {
   const template = templateFor(key);
   const sortKey = template?.sort ?? null;
 
@@ -221,7 +227,7 @@ export function sortRecords(key, records = []) {
       const bv = b?.fields?.[sortKey] ?? '';
       if (av && !bv) return -1;
       if (!av && bv) return 1;
-      if (av !== bv) return av < bv ? -1 : 1;   // ISO dates sort lexically
+      if (av !== bv) return (av < bv ? -1 : 1) * (descending ? -1 : 1);   // ISO dates sort lexically
     }
     return (a?.position ?? 0) - (b?.position ?? 0);
   });
