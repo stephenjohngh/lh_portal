@@ -32,8 +32,12 @@
   </Button>
 
   {#if open}
+    <!-- The gap below the button is PADDING on this outer box, never a margin:
+         the menu closes on mouseleave, and a margin is outside the wrapper, so
+         crossing it closed the menu whenever the pointer landed in it. -->
+    <div class="absolute left-0 top-full pt-1 z-50" data-testid="menu-panel">
     <div
-      class="absolute left-0 top-full mt-1 z-50 min-w-[10rem] rounded-lg shadow-xl flex flex-col py-1 text-xs
+      class="min-w-[10rem] rounded-lg shadow-xl flex flex-col py-1 text-xs
              {admin ? 'admin-only-solid' : 'bg-slate-800 border border-slate-600'}"
     >
       {#each items as it (it.key)}
@@ -48,6 +52,7 @@
           {it.label}
         </button>
       {/each}
+    </div>
     </div>
   {/if}
 </div>
