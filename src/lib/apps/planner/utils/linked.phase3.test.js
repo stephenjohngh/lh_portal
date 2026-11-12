@@ -46,6 +46,16 @@ describe('open faults with no works schedule issued', () => {
     expect(item.series.title).toBe('Fault: EL-12');
   });
 
+  // "Fault: 256 · 04" named nothing a person could find (2026-11-12).
+  it('say which component: its type, label, reference and floor', () => {
+    const item = fromUnaddressedFault({
+      id: 'c1', status: 'problem', label: '56', ref: '6/A/04',
+      typeName: 'Apartment Door', floorName: 'Sixth Floor', lastResult: 'no_access',
+    }, TODAY);
+    expect(item.series.title).toBe('Fault: Apartment Door 56 (6/A/04)');
+    expect(item.note).toMatch(/^Sixth Floor · Problem — no access at the last check/);
+  });
+
   // The label is the honesty: only works schedules are looked at.
   it('say no works schedule is issued, never that nothing is being done', () => {
     const item = fromUnaddressedFault({ id: 'c1', status: 'problem', label: 'EL-12' }, TODAY);

@@ -314,6 +314,25 @@ export function fromWorksDue(row) {
 }
 
 /**
+ * Which component a fault is, in words a person can find it by (user,
+ * 2026-11-12: "Fault: 256 · 04" named nothing): its type, its label, and its
+ * reference — e.g. "Fault: Apartment Door 56 (6/A/04)".
+ * @param {any} row
+ */
+export function faultTitle(row) {
+  const name = [row?.typeName, row?.label].filter(Boolean).join(' ') || row?.name || 'component';
+  return `Fault: ${name}${row?.ref ? ` (${row.ref})` : ''}`;
+}
+
+/** Where it is and why it is listed. @param {any} row */
+export function faultDetail(row) {
+  const state = row?.status === 'failed' ? 'Failed'
+    : row?.lastResult === 'no_access' ? 'Problem — no access at the last check'
+    : 'Problem';
+  return [row?.floorName, `${state} — no works schedule issued, no live case`].filter(Boolean).join(' · ');
+}
+
+/**
  * An open fault that no issued works schedule covers.
  *
  * ⚠ A fault has no due date. It is dated TODAY and put in Needs arranging,
@@ -327,9 +346,9 @@ export function fromWorksDue(row) {
 export function fromUnaddressedFault(row, today) {
   return linkedOccurrence('fault', {
     id: row?.id,
-    title: `Fault: ${row?.label ?? 'component'}`,
+    title: faultTitle(row),
     date: today,
-    detail: `${row?.status === 'failed' ? 'Failed' : 'Problem'} — no works schedule issued, no live case`,
+    detail: faultDetail(row),
     needsArranging: true,
   });
 }

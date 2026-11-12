@@ -38,6 +38,7 @@ import { correctiveSummary, faultLabel, FAULT_STATUSES } from './utils/correctiv
 import { listDeadlines } from '#lib/workflow/workflowApi.js';
 import { COMPLIANCE_ACTION_WORKFLOW_KEY } from './utils/complianceActionWorkflow.js';
 import { today as todayISO } from '#lib/utils/dates.js';
+import { buildComponentRef } from '#lib/utils/componentRef.js';
 
 /**
  * Every planned obligation, as rows.
@@ -196,17 +197,34 @@ export async function listComplianceReviewDates(to) {
  * the wording is "no works schedule issued", never "nothing is being done".
  * Without the Cases grant no case is read, so the fault stays listed.
  *
- * @returns {Promise<Array<{ id: string, status: string, label: string }>>}
+ * @returns {Promise<Array<{ id: string, status: string, label: string|null, name: string, ref: string,
+ *   typeName: string|null, floorName: string|null, lastResult: string|null }>>}
  */
 export async function listUnaddressedFaults() {
   const components = await listComponentsByStatus(FAULT_STATUSES);
-  const [worksItems, cases] = await Promise.all([
+  // Floors and types are shared reference data, read to say WHICH component it
+  // is: "256 · 04" alone named nothing a person could find (user, 2026-11-12).
+  const [worksItems, cases, floors, types] = await Promise.all([
     listWorksLinesFor((components ?? []).map((c) => c.id)),
     listOpenCaseLinks(),
+    api.getAll('floors', { select: 'id, name, short_name' }),
+    api.getAll('component_types', { select: 'id, code, name, initial' }),
   ]);
+  const byId = new Map((components ?? []).map((c) => [c.id, c]));
   return correctiveSummary({ components, worksItems, cases }).rows
     .filter((r) => r.schedules.length === 0 && r.cases.length === 0)
-    .map((r) => ({ id: r.id, status: r.status, label: faultLabel(r) }));
+    .map((r) => {
+      const c = byId.get(r.id) ?? r;
+      return {
+        // `label` is the component's own (the asset id is in `ref` already);
+        // `name` is the older "label · asset" wording, kept for any other reader.
+        id: r.id, status: r.status, label: c.label || null, name: faultLabel(r),
+        ref: buildComponentRef(c, floors ?? [], types ?? []),
+        typeName: (types ?? []).find((t) => t.code === c.type_code)?.name ?? null,
+        floorName: (floors ?? []).find((f) => f.id === c.floor_id)?.name ?? null,
+        lastResult: c.last_result ?? null,
+      };
+    });
 }
 
 /**
