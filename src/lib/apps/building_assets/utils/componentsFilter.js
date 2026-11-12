@@ -4,6 +4,7 @@
 // can be unit-tested without rendering. No store/DOM — all inputs passed in.
 import { matchesAllAttrFilters } from './attrFilters.js';
 import { matchesSearch } from '#lib/utils/textSearch.js';
+import { buildComponentRef } from '#lib/utils/componentRef.js';
 
 /**
  * Apply the Components-tab filters to the full component list.
@@ -15,7 +16,7 @@ import { matchesSearch } from '#lib/utils/textSearch.js';
  *     filterSystemIds:Set, filterTypeCodes:Set, filterStatuses:Set,
  *     searchQuery:string, fixedAttrFilters:Array, conditionAttrFilters:Array,
  *     spaceFilterIds:Set|null }   // null/absent = space filter inactive
- * @param {object} ctx  { types, attrDefs, componentAttrs, inspections,
+ * @param {object} ctx  { types, attrDefs, componentAttrs, inspections, floors?,
  *     componentSpaceIds?:Map<string,Set<string>> }
  * @returns {Array} filtered components
  */
@@ -25,7 +26,7 @@ export function filterComponents(components, criteria, ctx) {
     filterSystemIds, filterTypeCodes, filterStatuses, searchQuery = '',
     fixedAttrFilters = [], conditionAttrFilters = [], spaceFilterIds = null,
   } = criteria;
-  const { types, attrDefs, componentAttrs, inspections, componentSpaceIds } = ctx;
+  const { types, attrDefs, componentAttrs, inspections, componentSpaceIds, floors } = ctx;
 
   let list = components;
 
@@ -63,9 +64,15 @@ export function filterComponents(components, criteria, ctx) {
   // Status (stored values are lowercase; default 'ok')
   if (filterStatuses.size > 0) list = list.filter(c => filterStatuses.has((c.status || 'ok').toLowerCase()));
 
-  // Search (asset_id, label, linked_component_ref)
+  // Search — asset id, label, the component's own reference ("1/D/04", which
+  // the box offers as an example and could not find until 2026-11-12), its
+  // type's name, and a stored linked ref.
   if (searchQuery.trim()) {
-    list = list.filter(c => matchesSearch([c.asset_id, c.label, c.linked_component_ref], searchQuery));
+    const fl = floors ?? [];
+    list = list.filter(c => matchesSearch([
+      c.asset_id, c.label, buildComponentRef(c, fl, types ?? []),
+      (types ?? []).find(t => t.code === c.type_code)?.name, c.linked_component_ref,
+    ], searchQuery));
   }
 
   // Attribute filters — fixed (componentAttrs) + condition (inspections).

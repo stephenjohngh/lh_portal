@@ -228,6 +228,15 @@
   let saving                = false;
   let errorMsg              = '';
   let editingComponent      = null;
+
+  /** A component to open on arrival, from a link in another app (BuildingAssetsApp). */
+  export let openComponentId = null;
+  let openedFromLink = false;
+  $: if (!openedFromLink && openComponentId && components?.length) {
+    openedFromLink = true;
+    const wanted = components.find(c => c.id === openComponentId);
+    if (wanted) editingComponent = wanted;
+  }
   let inspectingComponent   = null;
   let showNotes           = true;
   let showLinked          = true;
@@ -441,7 +450,7 @@
       filterSystemIds, filterTypeCodes, filterStatuses, searchQuery,
       fixedAttrFilters, conditionAttrFilters, spaceFilterIds: targetSpaceIds,
     },
-    { types, attrDefs, componentAttrs, inspections, componentSpaceIds },
+    { types, attrDefs, componentAttrs, inspections, componentSpaceIds, floors },
   );
 
   // -- Active filter label (for table title) -------------------------

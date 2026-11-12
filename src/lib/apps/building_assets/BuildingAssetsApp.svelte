@@ -6,6 +6,7 @@
   import AppGate from '#lib/components/common/AppGate.svelte';
   import TabBar from '#lib/components/common/TabBar.svelte';
   import { buildingAssetsStore } from './stores/buildingAssetsStore.js';
+  import { takeAppParams } from '#lib/utils/appLink.js';
 
   import TypeBrowser      from './components/TypeBrowser.svelte';
   import ComponentsTab    from './components/ComponentsTab.svelte';
@@ -14,6 +15,11 @@
   import WorksTab       from './components/works/WorksTab.svelte';
 
   let activeTab   = 'components';
+  // Opened AT a component from another app (the Planner's open faults,
+  // 2026-11-12, through #lib/utils/appLink.js): the Components tab opens its
+  // record. An id it cannot find is ignored and the app opens as usual.
+  const asked = takeAppParams('building_assets');
+  const openComponentId = asked?.component ?? null;
 
   $: store      = $buildingAssetsStore;
   $: systems    = store.systems;
@@ -80,7 +86,7 @@
   {#if activeTab === 'types'}
     <TypeBrowser {systems} {types} {attrDefs} {attrOptions} />
   {:else if activeTab === 'components'}
-    <ComponentsTab />
+    <ComponentsTab {openComponentId} />
   {:else if activeTab === 'plans'}
     <PlanViewTab />
   {:else if activeTab === 'spaces'}

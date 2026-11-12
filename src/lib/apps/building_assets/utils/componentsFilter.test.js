@@ -71,6 +71,15 @@ describe('filterComponents', () => {
     expect(ids(filterComponents(comps, emptyCriteria({ searchQuery: 'x9' }), ctx))).toEqual(['c2']);     // linked ref
   });
 
+  // The box says "Ref, label…" and "1/D/04" found nothing (2026-11-12).
+  it('search finds the component’s own reference, and its type’s name', () => {
+    const t = types.map(x => ({ ...x, initial: x.code === 'door' ? 'D' : 'L' }));
+    const c = { ...ctx, types: t, floors };
+    expect(ids(filterComponents(comps, emptyCriteria({ searchQuery: 'X/D/D2' }), c))).toEqual(['c3']);
+    expect(ids(filterComponents(comps, emptyCriteria({ searchQuery: '1/l/l1' }), c))).toEqual(['c2']);
+    expect(ids(filterComponents(comps, emptyCriteria({ searchQuery: 'lamp' }), c))).toEqual(['c2']);
+  });
+
   it('combines filters with AND semantics', () => {
     const out = filterComponents(comps, emptyCriteria({
       filterSystemIds: new Set(['fire']),     // c1, c3

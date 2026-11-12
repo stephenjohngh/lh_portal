@@ -12,6 +12,8 @@
   import { STATUS } from '../utils/agenda.js';
   import { categoryOf } from '../utils/categories.js';
   import { describeRule, isRecurring } from '../utils/recurrence.js';
+  import { openApp, appHref } from '#lib/utils/appLink.js';
+  import { recordLinkFor } from '../utils/recordLinks.js';
 
   export let show = false;
   /** The occurrence being read, or null. */
@@ -25,6 +27,9 @@
   $: series    = occurrence?.series ?? null;
   $: category  = categoryOf(series?.category, categories);
   $: linked    = !!occurrence?.linked;
+  // Where the full record is, for the items that have a page of their own
+  // (user, 2026-11-12: an open fault → its component in Building Assets).
+  $: recordLink = recordLinkFor(occurrence);
   $: owner     = owners.find((p) => p.id === series?.owner_id)?.full_name ?? null;
   $: recurring = isRecurring(series?.recurrence);
   $: state =
@@ -69,6 +74,13 @@
       {#if linked}
         <div><dt class="text-xs text-slate-500">Kept in</dt>
           <dd class="text-slate-200">{occurrence.ownerApp} — it is completed there, not here.</dd></div>
+        {#if recordLink}
+          <div class="flex flex-wrap items-center gap-2" data-testid="record-link">
+            <Button variant="secondary" size="small" on:click={() => openApp(recordLink.app, recordLink.params)}>{recordLink.label}</Button>
+            <a href={appHref(recordLink.app, recordLink.params)} target="_blank" rel="noopener"
+               class="text-xs text-purple-300 hover:underline">or in a new tab ↗</a>
+          </div>
+        {/if}
       {:else}
         <div>
           <dt class="text-xs text-slate-500">Repeats</dt>
