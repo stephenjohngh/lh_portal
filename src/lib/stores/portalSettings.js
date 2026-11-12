@@ -11,6 +11,8 @@
 //                               null = no row saved yet → show all
 //     order:   string[] | null — app_order: display order for home grid + nav
 //                               null = no row saved yet → use AVAILABLE_APPS order
+//     headings: object[]      — app_headings: headings over the home page's app
+//                               cards ([{ id, title, before }], appHeadings.js)
 //     dueWindows: object      — due_soon_days: the "due soon" windows an admin
 //                               changed from the shipped default ({} = none)
 //     windows:    object      — every window in force (defaults + those changes)
@@ -46,6 +48,7 @@ import {
   DOCUMENT_CATEGORIES_KEY, setDocumentCategories, cleanDocumentCategories, validateDocumentCategories,
 } from '#lib/utils/documentCategories.js';
 import { AI_ENABLED_KEY, aiEnabledFrom } from '#lib/utils/aiSwitch.js';
+import { APP_HEADINGS_KEY, cleanHeadings } from '#lib/utils/appHeadings.js';
 
 const logger     = getLogger('portalSettings');
 const TOPBAR_KEY = 'topbar_apps';
@@ -57,6 +60,7 @@ const DUE_KEY    = 'due_soon_days';
  *   loaded: boolean,
  *   ids: string[] | null,
  *   order: string[] | null,
+ *   headings: import('#lib/utils/appHeadings.js').AppHeading[],
  *   dueWindows: Record<string, number>,
  *   windows: Record<string, number>,
  *   building: { id: string, name: string, short_name: string, address: string|null } | null,
@@ -72,7 +76,7 @@ const DUE_KEY    = 'due_soon_days';
 
 function createPortalSettingsStore() {
   const { subscribe, set, update } = writable(/** @type {PortalSettingsState} */ ({
-    loaded: false, ids: null, order: null, dueWindows: {}, windows: activeDueWindows(),
+    loaded: false, ids: null, order: null, headings: [], dueWindows: {}, windows: activeDueWindows(),
     building: null, organisation: {}, policies: {}, policiesInForce: activePolicies(),
     wording: {}, wordingInForce: activeWording(),
     documentCategories: { labels: {}, added: [], retired: [] },
@@ -89,7 +93,7 @@ function createPortalSettingsStore() {
         supabase
           .from('portal_settings')
           .select('key, value')
-          .in('key', [TOPBAR_KEY, ORDER_KEY, DUE_KEY, ORGANISATION_KEY, POLICIES_KEY,
+          .in('key', [TOPBAR_KEY, ORDER_KEY, APP_HEADINGS_KEY, DUE_KEY, ORGANISATION_KEY, POLICIES_KEY,
                      WORDING_KEY, DOCUMENT_CATEGORIES_KEY, AI_ENABLED_KEY]),
         supabase
           .from('facilities')
@@ -109,7 +113,8 @@ function createPortalSettingsStore() {
       const wording = setWording(rows.find(r => r.key === WORDING_KEY)?.value ?? null);
       const documentCategories = setDocumentCategories(rows.find(r => r.key === DOCUMENT_CATEGORIES_KEY)?.value ?? null);
 
-      set({ loaded: true, ids, order, dueWindows, windows: activeDueWindows(),
+      const headings = cleanHeadings(rows.find(r => r.key === APP_HEADINGS_KEY)?.value);
+      set({ loaded: true, ids, order, headings, dueWindows, windows: activeDueWindows(),
             building: facility.data ?? null, organisation,
             policies, policiesInForce: activePolicies(),
             wording, wordingInForce: activeWording(), documentCategories,
@@ -147,8 +152,9 @@ function createPortalSettingsStore() {
   /**
    * Persist a new app display order and update the store immediately.
    * @param {string[]} appIds  — all app IDs in the desired display order
+   * @param {unknown} [headings] — the headings over the home page's cards; left as they are when not given
    */
-  async function saveOrder(appIds) {
+  async function saveOrder(appIds, headings) {
     const userId = await currentUserId();
 
     const { error } = await supabase
@@ -159,8 +165,16 @@ function createPortalSettingsStore() {
       );
 
     if (error) throw new Error(error.message);
-
     update(s => ({ ...s, order: appIds }));
+
+    if (headings !== undefined) {
+      const clean = cleanHeadings(headings);
+      const { error: hErr } = await supabase
+        .from('portal_settings')
+        .upsert({ key: APP_HEADINGS_KEY, value: clean, updated_by: userId }, { onConflict: 'key' });
+      if (hErr) throw new Error(hErr.message);
+      update(s => ({ ...s, headings: clean }));
+    }
     logger('✅ Saved app order:', appIds);
   }
 

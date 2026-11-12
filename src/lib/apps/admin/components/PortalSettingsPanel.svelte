@@ -12,6 +12,7 @@
   import { getJson }        from '#lib/utils/request.js';
   import { fmtDate }        from '#lib/utils/dates.js';
   import { errMessage }     from '#lib/utils/errors.js';
+  import { layoutRows, fromRows, HEADING_MAX } from '#lib/utils/appHeadings.js';
   import Checkbox     from '#lib/components/common/Checkbox.svelte';
   import Button       from '#lib/components/common/Button.svelte';
   import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
@@ -33,45 +34,85 @@
   const ALL_APPS = AVAILABLE_APPS;
 
   // ── App order section ────────────────────────────────────────────────
-  // orderedApps is a working copy of AVAILABLE_APPS in admin-configured order.
+  // orderRows is a working copy of AVAILABLE_APPS in admin-configured order, with the headings.
   // Initialised once from the store; up/down arrows mutate it; Save persists it.
   const ORDER_KEY = 'app_order';
 
-  let orderedApps   = null;   // null = still loading
+  // The working list holds the apps AND the headings over the home page's cards
+  // (appHeadings.js), so a heading moves with the arrows like an app does.
+  /** @type {import('#lib/utils/appHeadings.js').LayoutRow[] | null} */
+  let orderRows     = null;   // null = still loading
   let orderSaving   = false;
   let orderSaved    = false;
   let orderError    = '';
+  let orderNote     = '';
+  let headingSeq    = 0;
+
+  function changed() { orderSaved = false; orderNote = ''; orderError = ''; }
 
   function moveUp(i) {
-    if (i === 0 || !orderedApps) return;
-    const arr = [...orderedApps];
+    if (i === 0 || !orderRows) return;
+    const arr = [...orderRows];
     [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
-    orderedApps = arr;
-    orderSaved = false;
+    orderRows = arr;
+    changed();
   }
 
   function moveDown(i) {
-    if (!orderedApps || i === orderedApps.length - 1) return;
-    const arr = [...orderedApps];
+    if (!orderRows || i === orderRows.length - 1) return;
+    const arr = [...orderRows];
     [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
-    orderedApps = arr;
-    orderSaved = false;
+    orderRows = arr;
+    changed();
+  }
+
+  function addHeading() {
+    if (!orderRows) return;
+    headingSeq += 1;
+    orderRows = [{ kind: 'heading', id: `h${Date.now().toString(36)}${headingSeq}`, title: '' }, ...orderRows];
+    changed();
+  }
+
+  function removeHeading(i) {
+    if (!orderRows) return;
+    orderRows = orderRows.filter((_, j) => j !== i);
+    changed();
+  }
+
+  function renameHeading(i, title) {
+    if (!orderRows) return;
+    orderRows = orderRows.map((r, j) => (j === i && r.kind === 'heading' ? { ...r, title } : r));
+    changed();
+  }
+
+  function resetOrder() {
+    if (!orderRows) return;
+    // Default app order; the headings stay above the same apps.
+    orderRows = layoutRows(ALL_APPS, fromRows(orderRows).headings);
+    changed();
   }
 
   async function handleSaveOrder() {
-    if (!orderedApps) return;
+    if (!orderRows) return;
+    if (orderRows.some(r => r.kind === 'heading' && !String(r.title ?? '').trim())) {
+      orderError = 'Give every heading a name, or remove it.';
+      return;
+    }
     orderSaving = true;
     orderError  = '';
     orderSaved  = false;
+    orderNote   = '';
     try {
-      const ids = orderedApps.map(a => a.id);
-      await portalSettings.saveOrder(ids);
+      const { order: ids, headings, dropped } = fromRows(orderRows);
+      await portalSettings.saveOrder(ids, headings);
+      orderRows = layoutRows(ids.map(id => ALL_APPS.find(a => a.id === id)).filter(Boolean), headings);
       orderSaved = true;
+      if (dropped) orderNote = `${dropped} heading${dropped === 1 ? '' : 's'} with no app under ${dropped === 1 ? 'it was' : 'them were'} left out.`;
       logAudit('update', 'portal_setting', ORDER_KEY, 'App display order', {
         appId:         'admin',
         eventCategory: 'system',
         severity:      'info',
-        afterData:     { order: ids }
+        afterData:     { order: ids, headings: headings.map(h => ({ title: h.title, before: h.before })) }
       });
     } catch (/** @type {any} */ err) {
       orderError = err.message;
@@ -181,7 +222,7 @@
   // Initialise working copies from store whenever it transitions to loaded
   let prevLoaded = false;
   $: {
-    const { loaded, ids, order } = $portalSettings;
+    const { loaded, ids, order, headings } = $portalSettings;
     if (loaded && !prevLoaded) {
       prevLoaded = true;
       // null ids means "no config saved yet" → default = all apps selected
@@ -194,9 +235,9 @@
           .map(id => ALL_APPS.find(a => a.id === id))
           .filter(Boolean);
         const unseen = ALL_APPS.filter(a => !order.includes(a.id));
-        orderedApps = [...sorted, ...unseen];
+        orderRows = layoutRows([...sorted, ...unseen], headings ?? []);
       } else {
-        orderedApps = [...ALL_APPS];
+        orderRows = layoutRows([...ALL_APPS], headings ?? []);
       }
     }
   }
@@ -306,51 +347,76 @@
       <h3 class="text-base font-semibold text-slate-100">App display order</h3>
       <p class="text-sm text-slate-400 mt-1">
         Set the order in which apps appear on the home page grid and in the navigation bar.
+        Add headings to group the apps on the home page: each heading starts a new line,
+        with the apps below it in this list until the next heading. A person sees a heading
+        only if they can open at least one app under it. Headings are not shown in the top bar.
         Use the arrows to reorder, then save.
       </p>
     </div>
 
-    {#if orderedApps === null}
+    {#if orderRows === null}
       <p class="text-sm text-slate-500 italic animate-pulse">Loading…</p>
 
     {:else}
+      <div class="mb-3">
+        <Button variant="secondary" size="small" on:click={addHeading} testid="add-heading">+ Add a heading</Button>
+      </div>
       <div class="space-y-1.5 mb-6">
-        {#each orderedApps as app, i}
-          <div class="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-slate-700/40 border border-slate-700/60">
-            <!-- Up / Down arrows -->
-            <div class="flex flex-col gap-0.5 shrink-0">
-              <Button variant="tertiary" size="xs" disabled={i === 0} ariaLabel="Move {app.name} up" on:click={() => moveUp(i)}>▲</Button>
-              <Button variant="tertiary" size="xs" disabled={i === orderedApps.length - 1} ariaLabel="Move {app.name} down" on:click={() => moveDown(i)}>▼</Button>
+        {#each orderRows as row, i (row.kind === 'heading' ? row.id : row.app.id)}
+          {#if row.kind === 'heading'}
+            <div class="flex items-center gap-3 px-4 py-2 rounded-lg bg-purple-900/40 border border-purple-700/60" data-testid="heading-row">
+              <div class="flex flex-col gap-0.5 shrink-0">
+                <Button variant="tertiary" size="xs" disabled={i === 0} ariaLabel="Move heading {row.title} up" on:click={() => moveUp(i)}>▲</Button>
+                <Button variant="tertiary" size="xs" disabled={i === orderRows.length - 1} ariaLabel="Move heading {row.title} down" on:click={() => moveDown(i)}>▼</Button>
+              </div>
+              <span class="text-xs text-purple-300 shrink-0">Heading</span>
+              <input
+                class="flex-1 min-w-0 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm font-semibold text-slate-100"
+                aria-label="Heading name"
+                maxlength={HEADING_MAX}
+                placeholder="e.g. Building apps"
+                value={row.title}
+                on:input={(e) => renameHeading(i, e.currentTarget.value)} />
+              <Button variant="danger" size="xs" ariaLabel="Remove heading {row.title}" on:click={() => removeHeading(i)}>Remove</Button>
             </div>
+          {:else}
+            {@const app = row.app}
+            <div class="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-slate-700/40 border border-slate-700/60 sm:ml-6">
+              <!-- Up / Down arrows -->
+              <div class="flex flex-col gap-0.5 shrink-0">
+                <Button variant="tertiary" size="xs" disabled={i === 0} ariaLabel="Move {app.name} up" on:click={() => moveUp(i)}>▲</Button>
+                <Button variant="tertiary" size="xs" disabled={i === orderRows.length - 1} ariaLabel="Move {app.name} down" on:click={() => moveDown(i)}>▼</Button>
+              </div>
 
-            <!-- Position number -->
-            <span class="text-xs text-slate-600 w-4 text-right shrink-0 tabular-nums">{i + 1}</span>
-
-            <!-- Icon + name -->
-            <Icon name={app.icon} size={4} className="text-purple-400 shrink-0" />
-            <p class="text-sm font-medium text-slate-200 flex-1 min-w-0 truncate">
-              {app.name}
-              {#if app.alwaysVisible}
-                <span class="ml-1.5 text-xs text-slate-500 font-normal">always visible</span>
-              {/if}
-            </p>
-          </div>
+              <!-- Icon + name -->
+              <Icon name={app.icon} size={4} className="text-purple-400 shrink-0" />
+              <p class="text-sm font-medium text-slate-200 flex-1 min-w-0 truncate">
+                {app.name}
+                {#if app.alwaysVisible}
+                  <span class="ml-1.5 text-xs text-slate-500 font-normal">always visible</span>
+                {/if}
+              </p>
+            </div>
+          {/if}
         {/each}
       </div>
 
       <!-- Save row -->
       <div class="flex items-center justify-between gap-4 flex-wrap pt-4 border-t border-slate-700">
         <p class="text-sm text-slate-400">
-          Drag not yet available — use arrows to reorder.
+          Use the arrows to move an app or a heading.
         </p>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 flex-wrap">
           {#if orderSaved}
             <p class="text-sm text-green-400">✓ Saved — order updated</p>
+          {/if}
+          {#if orderNote}
+            <p class="text-sm text-amber-300">{orderNote}</p>
           {/if}
           {#if orderError}
             <p class="text-sm text-red-400">⚠ {orderError}</p>
           {/if}
-          <Button variant="secondary" on:click={() => { orderedApps = [...ALL_APPS]; orderSaved = false; }}
+          <Button variant="secondary" on:click={resetOrder}
             disabled={orderSaving}>Reset to default</Button>
           <Button variant="primary" on:click={handleSaveOrder} disabled={orderSaving}>
             {orderSaving ? 'Saving…' : 'Save order'}
@@ -369,7 +435,7 @@
         <li>Changes apply immediately to all users without a page refresh.</li>
         <li>Each user only sees apps they have permission for — top-bar and order settings apply within that set.</li>
         <li>Apps not shown in the top bar remain fully accessible from the <strong class="text-slate-300">Home</strong> page.</li>
-        <li>App display order affects both the home page grid and the navigation bar.</li>
+        <li>App display order affects both the home page grid and the navigation bar; headings show on the home page only.</li>
       </ul>
     </div>
   </div>

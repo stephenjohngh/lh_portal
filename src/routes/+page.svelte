@@ -48,6 +48,7 @@
   import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
   import Icon from '#lib/components/icons/Icon.svelte';
   import { LOGO as lhLogo, LOGO_ALT } from '#lib/branding.js';
+  import { groupApps } from '#lib/utils/appHeadings.js';
 
   const logger = getLogger('MainApp');
 
@@ -148,6 +149,15 @@
     }
     return sorted;
   })();
+
+  // The home page's cards, under the headings an admin set (appHeadings.js).
+  // Within a group the order above holds, so on a phone the phone apps still
+  // come first within their group.
+  $: homeGroups = groupApps(
+    displayedApps.filter(a => a.id !== 'home'),
+    $portalSettings.order,
+    $portalSettings.headings,
+  );
 
   // Subset of displayedApps shown in the top bar, controlled by portal_settings
   $: topbarApps = (() => {
@@ -382,8 +392,17 @@
             <!-- On a phone: two columns of icon and name, no description, so every app
                  is within a thumb's reach. From md up: compact cards, icon beside the name,
                  the description in two lines, up to five across (2026-11-09; 18 apps). -->
+            <!-- Headings an admin set (Admin → Apps display settings) start a new line;
+                 a heading with none of this person's apps under it is not shown. -->
+            {#each homeGroups as group, gi (group.id ?? '_top')}
+            {#if group.title}
+              <h2 class="text-sm md:text-base font-semibold text-slate-300 uppercase tracking-wide mb-2 md:mb-3 {gi > 0 ? 'mt-6 md:mt-8' : ''}"
+                  data-testid="home-heading">{group.title}</h2>
+            {:else if gi > 0}
+              <div class="mt-3 md:mt-4"></div>
+            {/if}
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
-              {#each displayedApps.filter(a => a.id !== 'home') as app}
+              {#each group.apps as app (app.id)}
                 <Button variant="plain" on:click={() => activeApp = app.id} aria-label={`Open ${app.name}`} className="bg-slate-800 hover:bg-slate-700 px-3 py-3 md:p-4 rounded-xl transition-all hover:scale-[1.03] border border-slate-700 hover:border-purple-500">
                   <span class="md:hidden flex items-center gap-2 text-left">
                     <span class="shrink-0"><Icon name={app.icon} size={6} className="text-purple-400" /></span>
@@ -401,6 +420,7 @@
 </Button>
               {/each}
             </div>
+            {/each}
           {/if}
         </div>
       {:else}

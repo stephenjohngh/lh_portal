@@ -33,7 +33,7 @@ export const SECTION_GROUPS = [
     { id: 'types', icon: '🗂', label: 'Component types', adminOnly: true },
   ] },
   { key: 'settings', label: 'Portal settings', sections: [
-    { id: 'apps', icon: '🧩', label: 'Apps in the top bar', adminOnly: true },
+    { id: 'apps', icon: '🧩', label: 'Apps display settings', adminOnly: true },
     { id: 'ai',   icon: '🤖', label: 'AI assistant',        adminOnly: true },
     { id: 'limits', icon: '📏', label: 'Limits and timing', adminOnly: true, leaves: [
       { id: 'due-windows',      label: 'Due windows' },

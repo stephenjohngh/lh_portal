@@ -81,6 +81,25 @@ describe('save / saveOrder', () => {
     expect(get(portalSettings).order).toEqual(['admin', 'issues']);
   });
 
+  it('saves the headings beside the order when given, and reads them back', async () => {
+    h.setResult({ error: null });
+    await portalSettings.saveOrder(['issues', 'mor'], [{ id: 'h1', title: ' BSA ', before: 'mor' }]);
+    const calls = h.supabase.from.mock.results.map(r => r.value.upsert.mock.calls[0]?.[0]).filter(Boolean);
+    expect(calls).toContainEqual(expect.objectContaining({ key: 'app_headings', value: [{ id: 'h1', title: 'BSA', before: 'mor' }] }));
+    expect(get(portalSettings).headings).toEqual([{ id: 'h1', title: 'BSA', before: 'mor' }]);
+
+    h.setResult({ data: [{ key: 'app_headings', value: [{ id: 'h2', title: 'Building apps', before: 'issues' }] }], error: null });
+    await portalSettings.load();
+    expect(get(portalSettings).headings).toEqual([{ id: 'h2', title: 'Building apps', before: 'issues' }]);
+  });
+
+  it('leaves the headings alone when only the order is saved', async () => {
+    h.setResult({ error: null });
+    await portalSettings.saveOrder(['issues']);
+    const keys = h.supabase.from.mock.results.map(r => r.value.upsert.mock.calls[0]?.[0]?.key).filter(Boolean);
+    expect(keys).toEqual(['app_order']);
+  });
+
   it('throws on an upsert error', async () => {
     h.setResult({ error: { message: 'denied' } });
     await expect(portalSettings.save(['x'])).rejects.toThrow('denied');
