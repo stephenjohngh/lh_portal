@@ -10,7 +10,8 @@
   import Button from '#lib/components/common/Button.svelte';
   import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog from '#lib/components/common/ConfirmDialog.svelte';
-  import { openApp, appHref } from '#lib/utils/appLink.js';
+  import { openApp } from '#lib/utils/appLink.js';
+  import AppTabLink from '#lib/components/common/AppTabLink.svelte';
   import { fmtDate, isOverdue } from '#lib/utils/dates.js';
   import { ISSUE_STATUS, ACTION_STATUS, ACTIVITY_TYPE, getPriorityLabel } from '#lib/utils/constants.js';
 
@@ -164,9 +165,9 @@
               <Button variant="tertiary" size="xs" testid="issue-pack-link"
                       title="Open the Dossier pack “{pk.title}” — Management keeps your place"
                       on:click={() => openApp('dossier', { pack: pk.id })}>📁 Dossier{packs.length > 1 ? ` ${i + 1}` : ''}</Button>
-              <a href={appHref('dossier', { pack: pk.id })} target="_blank" rel="noopener"
-                 class="text-slate-400 hover:text-white px-1"
-                 title="Open the pack “{pk.title}” in a new tab">↗</a>
+              <AppTabLink app="dossier" params={{ pack: pk.id }}
+                          class="text-slate-400 hover:text-white px-1"
+                          title="Open the pack “{pk.title}” in Dossier’s own tab (reused if open)">↗</AppTabLink>
             </span>
           {/each}
           <span class="badge {getPriorityLabel(issue.priority).color}">

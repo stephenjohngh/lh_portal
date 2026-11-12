@@ -5,7 +5,7 @@
   import { onMount } from 'svelte';
   import { auth } from '#lib/stores/auth.js';
   import { beforeNavigate, goto, replaceState } from '$app/navigation';
-  import { appRequest, openApp, requestFromSearch } from '#lib/utils/appLink.js';
+  import { appRequest, openApp, requestFromSearch, listenForAppRequests } from '#lib/utils/appLink.js';
   import { supabase } from '#lib/supabaseClient.js';
   import { isAdmin as checkIsAdmin } from '#lib/utils/auth.js';
   import { getLogger } from '#lib/utils/logger.js';
@@ -105,8 +105,20 @@
       openApp(fromUrl.app, fromUrl.params);
       replaceState('/', {});          // a reload should not jump again
     }
-    return appRequest.subscribe((req) => { if (req?.app) activeApp = req.app; });
+    // A request for the app ALREADY showing reopens it (appOpenCount), so it
+    // reads the new request on opening like any other — the one rule every app
+    // already follows (takeAppParams), with nothing new for an app to learn.
+    const stop = appRequest.subscribe((req) => {
+      if (!req?.app) return;
+      if (req.app === activeApp) appOpenCount += 1;
+      activeApp = req.app;
+    });
+    // Another tab of ours asking this one to open a record (openAppInTab):
+    // this tab is an app's own tab, already loaded, so it is quick.
+    const stopListening = listenForAppRequests((app, params) => openApp(app, params));
+    return () => { stop(); stopListening(); };
   });
+  let appOpenCount = 0;
   let userApps = [];
   let isAdmin = false;
   let loading = true;
@@ -425,7 +437,9 @@
         </div>
       {:else}
         {#if appComponents[activeApp]}
-          <svelte:component this={appComponents[activeApp]} on:navigate={e => activeApp = e.detail} />
+          {#key appOpenCount}
+            <svelte:component this={appComponents[activeApp]} on:navigate={e => activeApp = e.detail} />
+          {/key}
         {:else if appLoadFailed[activeApp]}
           <div class="bg-slate-800 rounded-xl p-8 border border-slate-700">
             <h2 class="text-3xl font-bold mb-4">

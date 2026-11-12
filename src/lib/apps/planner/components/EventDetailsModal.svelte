@@ -12,7 +12,8 @@
   import { STATUS } from '../utils/agenda.js';
   import { categoryOf } from '../utils/categories.js';
   import { describeRule, isRecurring } from '../utils/recurrence.js';
-  import { openApp, appHref } from '#lib/utils/appLink.js';
+  import { openApp } from '#lib/utils/appLink.js';
+  import AppTabLink from '#lib/components/common/AppTabLink.svelte';
   import { recordLinkFor } from '../utils/recordLinks.js';
 
   export let show = false;
@@ -77,8 +78,8 @@
         {#if recordLink}
           <div class="flex flex-wrap items-center gap-2" data-testid="record-link">
             <Button variant="secondary" size="small" on:click={() => openApp(recordLink.app, recordLink.params)}>{recordLink.label}</Button>
-            <a href={appHref(recordLink.app, recordLink.params)} target="_blank" rel="noopener"
-               class="text-xs text-purple-300 hover:underline">or in a new tab ↗</a>
+            <AppTabLink app={recordLink.app} params={recordLink.params}
+                        title="Opens in the app's own tab, reusing it if it is open">or in its own tab ↗</AppTabLink>
           </div>
         {/if}
       {:else}
