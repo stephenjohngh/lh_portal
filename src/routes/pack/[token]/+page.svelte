@@ -112,9 +112,36 @@
    */
   let pendingReveal = null;
 
+  // ── Back after a link ─────────────────────────────────────────────────────
+  // Following a link on a page remembers where it came from, and a
+  // "← Back to …" button returns there (user, 2026-11-12) rather than the
+  // reader hunting for it in the contents. It is the browser's own Back, so
+  // the address and the button agree; choosing a page from the contents
+  // starts afresh.
+  /** @type {Array<string|null>} the pages links were followed from, newest last */
+  let linkBack = [];
+  let followingLink = false;
+
+  function followLink(id) {
+    linkBack = [...linkBack.slice(-19), selectedId];
+    followingLink = true;
+    openDoc(id);
+  }
+
+  function goBack() {
+    if (typeof history !== 'undefined' && history.length > 1) history.back();
+  }
+
+  $: backTitle = linkBack.length
+    ? (docs.find(d => d.id === linkBack[linkBack.length - 1])?.title ?? 'Contents')
+    : '';
+
   function applyHash() {
     const id = docIdFromHash(
       typeof location === 'undefined' ? '' : location.hash, docs);
+    if (followingLink) followingLink = false;
+    else if (linkBack.length && linkBack[linkBack.length - 1] === id) linkBack = linkBack.slice(0, -1);
+    else linkBack = [];
     // A fragment naming a page that is not in this pack (a stale link, or one
     // for a different pack) opens the pack rather than an error.
     selectedId = id;
@@ -424,6 +451,12 @@
 
       <!-- Content -->
       <main class="flex-1 min-w-0">
+        {#if backTitle}
+          <div class="mb-3 print:hidden">
+            <Button variant="plain" testid="link-back" on:click={goBack}
+                    className="text-sm text-purple-400 hover:underline text-left">← Back to {backTitle}</Button>
+          </div>
+        {/if}
         {#if selectedDoc}
           <!-- No page heading here. The contents list on the left highlights
                the open page, so a title above the content repeated it — and an
@@ -436,7 +469,7 @@
             mode="read"
             {docs} {files} {datasets} {records}
             assetBase={data.assetBase}
-            on:openDoc={(e) => openDoc(e.detail)}
+            on:openDoc={(e) => followLink(e.detail)}
           />
         {:else}
           <!-- The front page: what this is, and what is in it. -->
@@ -449,7 +482,7 @@
           <ul class="space-y-1 mb-8">
             {#each navDocs as node (node.id)}
               <li style="padding-left: {node.depth * 0.75}rem">
-                <Button variant="plain" on:click={() => openDoc(node.id)} className="text-sm text-purple-400 hover:underline text-left">{node.title}</Button>
+                <Button variant="plain" on:click={() => followLink(node.id)} className="text-sm text-purple-400 hover:underline text-left">{node.title}</Button>
               </li>
             {/each}
           </ul>

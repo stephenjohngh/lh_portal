@@ -50,6 +50,19 @@ export function escapeHtml(value) {
 }
 
 /**
+ * The words a row's page link shows. A page made from a Management issue is
+ * titled "07. 2026-11-03 Comment — what it said", and the row's Event already
+ * says what it said, so the link shows only "07. 2026-11-03 Comment" (user,
+ * 2026-11-12). Any other title is shown as it is. The full title stays on hover.
+ * @param {string} title
+ */
+export function shortLinkLabel(title) {
+  const t = String(title ?? '');
+  const m = /^(\d+\.\s\d{4}-\d{2}-\d{2}\s[^—]+?)\s—\s/.exec(t);
+  return m ? m[1] : t;
+}
+
+/**
  * What a row's reference points at, as a link.
  *
  * Rows can carry `doc_id` (a page in the same pack) or `document_id` (a file on
@@ -76,7 +89,7 @@ function renderRecordLink(record, links) {
       // title=, because the cell truncates: the full name has to stay
       // reachable without giving the column the width to show it.
       return `<a class="dossier-record-link" href="#" data-doc-id="${escapeHtml(doc.id)}"`
-        + ` title="${escapeHtml(title)}">${escapeHtml(title)}</a>`;
+        + ` title="${escapeHtml(title)}">${escapeHtml(shortLinkLabel(title))}</a>`;
     }
   }
 
@@ -148,7 +161,7 @@ export function renderDatasetTableHtml(dataset, records = [], opts = {}) {
     .join('')
     // Bounded on purpose. Left to size itself, a long filename took as much
     // width as it wanted and the column it took it from was the prose one.
-    + (showLinks ? '<th style="width:10rem">Detail</th>' : '');
+    + (showLinks ? '<th style="width:8rem">Detail</th>' : '');
 
   const columnCount = fields.length + (showLinks ? 1 : 0);
 

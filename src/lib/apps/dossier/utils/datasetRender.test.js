@@ -260,3 +260,16 @@ describe('previewOf / needsFolding', () => {
     expect(needsFolding(null)).toBe(false);
   });
 });
+
+describe('shortLinkLabel', () => {
+  it('shows only number, date and type for a page made from an issue', async () => {
+    const { shortLinkLabel } = await import('./datasetRender.js');
+    expect(shortLinkLabel('07. 2026-11-03 Comment — the roof leaks again')).toBe('07. 2026-11-03 Comment');
+    expect(shortLinkLabel('12. 2026-10-01 Email — Re: quote — revised')).toBe('12. 2026-10-01 Email');
+  });
+  it('leaves any other title as it is', async () => {
+    const { shortLinkLabel } = await import('./datasetRender.js');
+    expect(shortLinkLabel('Summary — overview')).toBe('Summary — overview');
+    expect(shortLinkLabel('07. 2026-11-03 Comment')).toBe('07. 2026-11-03 Comment');
+  });
+});

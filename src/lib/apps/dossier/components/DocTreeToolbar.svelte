@@ -25,6 +25,8 @@
   <span class="w-px h-4 bg-slate-700 mx-1"></span>
   <Button variant="tertiary" size="xs" title="New child page" ariaLabel="New child page" disabled={off} on:click={() => dispatch('newChild', doc)}>+</Button>
   <Button variant="tertiary" size="xs" title="Rename page" ariaLabel="Rename page" disabled={off} on:click={() => dispatch('rename', doc)}>✎</Button>
+  <span class="w-px h-4 bg-slate-700 mx-1"></span>
+  <Button variant="tertiary" size="xs" title="Make or refresh a Contents page listing every page" ariaLabel="Contents page" testid="contents-page" on:click={() => dispatch('contents')}>☰ Contents</Button>
   {#if isAdmin}
     <Button admin size="xs" title="Delete page" ariaLabel="Delete page" disabled={off} on:click={() => dispatch('delete', doc)}>×</Button>
   {/if}

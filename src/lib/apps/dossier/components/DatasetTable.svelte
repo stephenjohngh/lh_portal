@@ -16,6 +16,7 @@
     columnFields, rowFields,
   } from '../utils/datasetTemplates.js';
   import { unindexedFiles, describeShelfAddition } from '../utils/documentIndex.js';
+  import { shortLinkLabel } from '../utils/datasetRender.js';
 
   export let dataset;
   export let records = [];
@@ -81,7 +82,7 @@
   function linkTargetOf(record, docList, fileList) {
     if (record.doc_id) {
       const doc = docList.find(d => d.id === record.doc_id);
-      return { kind: 'doc', label: doc?.title ?? 'a deleted page', missing: !doc };
+      return { kind: 'doc', label: doc ? shortLinkLabel(doc.title) : 'a deleted page', full: doc?.title ?? '', missing: !doc };
     }
     if (record.document_id) {
       const file = fileList.find(f => f.id === record.document_id);
@@ -398,7 +399,7 @@
                   </span>
                   <Button variant="plain" title={linkTargets.get(record.id).missing
                       ? 'What this pointed at is gone'
-                      : `Go to ${linkTargets.get(record.id).label}`} on:click={() => dispatch('openTarget', record)} className="truncate underline underline-offset-2
+                      : `Go to ${linkTargets.get(record.id).full || linkTargets.get(record.id).label}`} on:click={() => dispatch('openTarget', record)} className="truncate underline underline-offset-2
                            {linkTargets.get(record.id).missing
                              ? 'text-amber-400' : 'text-slate-300 hover:text-white'}">{linkTargets.get(record.id).label}</Button>
                   {#if canEdit}

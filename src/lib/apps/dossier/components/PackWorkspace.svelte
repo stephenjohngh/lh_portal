@@ -16,8 +16,9 @@
 
   import { dossierStore } from '../stores/dossierStore.js';
   import {
-    buildTree, descendantIds, planReorder, planIndent, planOutdent,
+    buildTree, descendantIds, planReorder, planIndent, planOutdent, planMove,
   } from '../utils/docTree.js';
+  import { CONTENTS_TITLE, contentsBlocks, findContentsPage } from '../utils/contentsPage.js';
   import DocTree      from './DocTree.svelte';
   import DocTreeToolbar from './DocTreeToolbar.svelte';
   import PackSearch   from './PackSearch.svelte';
@@ -312,7 +313,7 @@
   /** Follow a row's reference — to the page, or by opening the file. */
   function openRecordTarget(record) {
     if (record.doc_id && docs.some(d => d.id === record.doc_id)) {
-      selectPage(record.doc_id);
+      followPageLink(record.doc_id);
       return;
     }
     if (record.document_id) {
@@ -328,6 +329,43 @@
     selectedId = id;
     phoneView = 'content';
   }
+
+  // ── Back after a link (user, 2026-11-12) ─────────────────────────────────
+  // Following a link on a page or in a table row remembers where it came
+  // from, and "← Back to …" returns there instead of the author hunting for it
+  // in the page list. Choosing from the page list starts afresh.
+  /** @type {Array<{ kind: 'doc'|'table', id: string }>} */
+  let linkBack = [];
+
+  function rememberHere() {
+    const here = selectedId ? { kind: /** @type {'doc'} */ ('doc'), id: selectedId }
+      : selectedDatasetId ? { kind: /** @type {'table'} */ ('table'), id: selectedDatasetId } : null;
+    if (here) linkBack = [...linkBack.slice(-19), here];
+  }
+
+  function followPageLink(id) {
+    if (id === selectedId) return;
+    rememberHere();
+    selectPage(id);
+  }
+
+  async function goBack() {
+    const last = linkBack[linkBack.length - 1];
+    linkBack = linkBack.slice(0, -1);
+    if (!last) return;
+    await editorRef?.flushNow();
+    if (last.kind === 'doc' && docs.some(d => d.id === last.id)) selectPage(last.id);
+    else if (last.kind === 'table' && datasets.some(d => d.id === last.id)) { selectedDatasetId = last.id; selectedId = null; phoneView = 'content'; }
+    else notice = 'That page or table no longer exists.';
+  }
+
+  $: backLabel = (() => {
+    const last = linkBack[linkBack.length - 1];
+    if (!last) return '';
+    return last.kind === 'doc'
+      ? (docs.find(d => d.id === last.id)?.title ?? 'the previous page')
+      : (datasets.find(d => d.id === last.id)?.title ?? 'the previous table');
+  })();
 
   // ── Phone layout (2026-11-10) ─────────────────────────────────────────────
   // Below md the sidebar and the page do not fit side by side (a 288px
@@ -567,7 +605,7 @@
     const targetId = anchor.getAttribute('data-doc-id');
     event.preventDefault();
     if (targetId && docs.some(d => d.id === targetId)) {
-      selectedId = targetId;
+      followPageLink(targetId);
       notice = '';
     } else {
       notice = 'That page no longer exists.';
@@ -652,6 +690,45 @@
       treeError = err.message;
     } finally {
       loadingRevisions = false;
+    }
+  }
+
+  // ── Contents page ─────────────────────────────────────────────────────────
+  // An ordinary page at the top of the pack listing every page as a link
+  // (utils/contentsPage.js); it replaced the Publish dialog's generated one.
+  // Refreshing one that exists saves its old content to History first.
+  let confirmContents = false;
+  let makingContents  = false;
+
+  function requestContents() {
+    if (findContentsPage(docs)) confirmContents = true;
+    else makeContents();
+  }
+
+  async function makeContents() {
+    const userId  = $auth.user.id;
+    const current = docs;
+    makingContents = true; notice = ''; treeError = '';
+    try {
+      let page = findContentsPage(current);
+      const refreshing = !!page;
+      if (!page) {
+        page = await dossierStore.createDoc({ packId: pack.id, parentId: null, title: CONTENTS_TITLE }, userId, current);
+        const plan = planMove($dossierStore.docs, { docId: page.id, newParentId: null, newIndex: 0 });
+        if (plan.ok) await dossierStore.applyMove(plan, userId);
+      }
+      const pageId = page.id;
+      const blocks = contentsBlocks($dossierStore.docs, pageId);
+      await dossierStore.saveDocBlocks(pageId, blocks, userId,
+        refreshing ? { summary: 'Before refreshing the contents', force: true } : {});
+      selectPage(pageId);
+      if (selectedId === pageId) editorRef?.reloadFromDoc();
+      notice = refreshing ? 'Contents page refreshed — the previous version is in its History.' : 'Contents page made at the top of the pack.';
+    } catch (/** @type {any} */ err) {
+      treeError = err.message;
+    } finally {
+      makingContents = false;
+      confirmContents = false;
     }
   }
 
@@ -755,7 +832,7 @@
   }
 
   async function handlePublish(e) {
-    const { title, recipientLabel, mode, expiryDays, passphrase, showContents } = e.detail;
+    const { title, recipientLabel, mode, expiryDays, passphrase } = e.detail;
     const snapshot = reviewedSnapshot;     // exactly what was on screen
     if (!snapshot) { publishRef?.fail('Nothing was reviewed. Please try again.'); return; }
     try {
@@ -766,7 +843,7 @@
       const assets = await prepareAssets(snapshot.files, { pin: mode === 'snapshot', packId: pack.id });
 
       const result = await dossierStore.createPublication({
-        pack, snapshot, mode, title, recipientLabel, passphrase, showContents,
+        pack, snapshot, mode, title, recipientLabel, passphrase,
         expiresAt: expiryFromDays(expiryDays), checksums: assets,
       }, $auth.user.id);
       publishRef?.done(result);
@@ -894,6 +971,7 @@
     try {
       await dossierStore.deleteDoc(id, title, subtree);
       if (id === selectedId || subtree.includes(selectedId)) selectedId = null;
+      notice = '';
       pendingDelete = null;
     } catch (/** @type {any} */ err) {
       treeError = err.message;
@@ -1035,6 +1113,7 @@
           on:newChild={(e) => openNewDoc(e.detail)}
           on:rename={(e)   => openRename(e.detail)}
           on:delete={(e)   => requestDelete(e.detail)}
+          on:contents={requestContents}
         />
       {/if}
 
@@ -1050,7 +1129,7 @@
             nodes={tree}
             {selectedId}
             bind:collapsed
-            on:select={(e)   => { selectPage(e.detail.id); notice = ''; }}
+            on:select={(e)   => { linkBack = []; selectPage(e.detail.id); notice = ''; }}
           />
         {/if}
       </div>
@@ -1073,7 +1152,7 @@
         {#if tablesOpen && datasets.length}
           <div class="pb-1">
             {#each datasets as dataset (dataset.id)}
-              <Button variant="plain" on:click={() => openDataset(dataset)} className="flex items-center gap-2 w-full px-3 py-1 text-left text-sm
+              <Button variant="plain" on:click={() => { linkBack = []; openDataset(dataset); }} className="flex items-center gap-2 w-full px-3 py-1 text-left text-sm
                        hover:bg-slate-700/50 transition-colors
                        {selectedDatasetId === dataset.id ? 'bg-slate-700 text-white' : 'text-slate-300'}">
 <span class="text-slate-600 text-xs shrink-0">▦</span>
@@ -1172,6 +1251,11 @@
          this pane past the viewport instead of letting the editor's own scroll
          area take over — which scrolls the toolbar off screen with it. -->
     <div class="{phoneView === 'list' ? 'hidden' : 'flex'} md:flex flex-1 min-w-0 min-h-0 flex-col" data-testid="pack-content">
+      {#if backLabel}
+        <div class="flex items-center px-3 md:px-6 py-1 border-b border-slate-700/50 shrink-0">
+          <Button variant="tertiary" size="xs" testid="link-back" on:click={goBack}>← Back to {backLabel}</Button>
+        </div>
+      {/if}
       <!-- Phone only: back to the list (see phoneView). -->
       <div class="md:hidden flex items-center px-3 py-1.5 border-b border-slate-700/50 shrink-0">
         <Button variant="secondary" size="small" testid="pack-phone-back"
@@ -1213,7 +1297,7 @@
             <span class="hidden lg:flex items-center gap-1.5 text-xs min-w-0 shrink">
               <span class="text-slate-600 shrink-0">↩</span>
               {#each backlinks.slice(0, 3) as link (link.doc_id)}
-                <Button variant="tertiary" size="xs" title="Referenced from {link.title} — go there" on:click={() => { selectedId = link.doc_id; notice = ''; }}>{link.title}</Button>
+                <Button variant="tertiary" size="xs" title="Referenced from {link.title} — go there" on:click={() => { followPageLink(link.doc_id); notice = ''; }}>{link.title}</Button>
               {/each}
               {#if backlinks.length > 3}
                 <span class="text-slate-600 shrink-0"
@@ -1251,7 +1335,7 @@
                 <div class="max-w-4xl mx-auto px-5 py-6">
                   <BlockContent blocks={selectedDoc.blocks} mode="read" {docs} {files}
                                 {datasets} {records}
-                                on:openDoc={(e) => selectPage(e.detail)}
+                                on:openDoc={(e) => followPageLink(e.detail)}
                        on:sheetRows={handleSheetRows} />
                 </div>
               </div>
@@ -1262,7 +1346,7 @@
                        on:pickAsset={() => showAssetPicker = true}
                        on:pickEmbed={() => openPicker('embed')}
                        on:pickTable={() => showTablePicker = true}
-                       on:openDoc={(e) => selectPage(e.detail)}
+                       on:openDoc={(e) => followPageLink(e.detail)}
                        on:sheetRows={handleSheetRows}
                        {datasets} {records} {docs} />
             {/if}
@@ -1293,6 +1377,16 @@
   parent={newDocParent}
   on:save={handleDocSave}
   on:close={() => showDocModal = false}
+/>
+
+<ConfirmDialog
+  show={confirmContents}
+  processing={makingContents}
+  title="Refresh the Contents page?"
+  message="The Contents page will be rebuilt from the pages as they are now. Anything you changed on it by hand is replaced; the current version is kept in its History, so you can put it back."
+  confirmText="Refresh"
+  on:confirm={makeContents}
+  on:cancel={() => confirmContents = false}
 />
 
 <ConfirmDialog

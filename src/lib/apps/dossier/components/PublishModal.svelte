@@ -33,8 +33,6 @@
   let mode       = 'snapshot';
   let expiryDays = 30;
   let passphrase = '';
-  /** Off by default — most packs open on a page the author wrote. */
-  let showContents = false;
   let publishing = false;
   let error      = '';
 
@@ -50,7 +48,6 @@
 
   function reset() {
     title = ''; recipient = ''; mode = 'snapshot'; expiryDays = 30; passphrase = '';
-    showContents = false;
     publishing = false; error = ''; issued = null; copied = false;
   }
 
@@ -62,7 +59,6 @@
       title: title.trim(), recipientLabel: recipient.trim(), mode,
       expiryDays: expiryDays === '' ? null : Number(expiryDays),
       passphrase: passphrase.trim(),
-      showContents,
     });
   }
 
@@ -221,22 +217,16 @@
             ]} />
           </div>
 
-          <label class="flex items-start gap-2 cursor-pointer">
-            <input type="checkbox" bind:checked={showContents}
-                   class="mt-0.5 accent-purple-500" />
-            <span class="text-xs text-slate-400">
-              Start with a contents page
-              <span class="block text-slate-500">
-                A generated page listing what is in the pack. Off by default —
-                if your first page already introduces it, this is a second
-                overview the recipient has to look past.
-              </span>
-            </span>
-          </label>
+          <!-- A contents page is now an ordinary page made in the editor
+               (☰ Contents on the page toolbar), not a tick here. -->
 
+          <!-- Plain text, and told it is a NEW password: as a password box the
+               browser filled in the person's own saved portal password, which
+               read as a passphrase set by default (2026-11-12). It starts empty. -->
           <FormInput
             label="Passphrase (optional)"
-            type="password"
+            type="text"
+            autocomplete="new-password"
             bind:value={passphrase}
             placeholder="Leave blank for link-only access"
           />
