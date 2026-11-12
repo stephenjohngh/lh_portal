@@ -570,3 +570,10 @@ npx tailwindcss -i src/app.css -o dist/app.css --watch --watch-stats
 }
 .admin-only:focus { outline: none; box-shadow: 0 0 0 1px rgb(245 158 11); }
 .admin-only-label { color: rgb(252 211 77 / 0.8); }  /* amber-300 */
+
+/* A quiet scrollbar for side panels (2026-11-12): Chrome's default is wide and
+   bright beside a dark panel, where Firefox's overlay bar is barely seen. */
+.thin-scroll, .thin-scroll * {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(71 85 105) transparent;   /* slate-600 on the panel */
+}

@@ -814,7 +814,14 @@
     </div>
 
     <!-- Sidebar column -->
-    <div class="w-80 shrink-0 max-h-[80vh] overflow-y-auto">
+    <!-- ONE scroll area (user, 2026-11-12: two scrollbars, one inside the other,
+         very plain in Chrome). The column stays in view beside the schematic as
+         the page scrolls (sticky, clear of the top bar), is never taller than the
+         window, and makes the panel in it fit: a panel with its own scrolling
+         body (component, space, filters) scrolls there and the column never
+         does; a short panel that still runs over scrolls the column. -->
+    <div class="side-slot thin-scroll w-80 shrink-0 self-start sticky top-16 flex flex-col
+                max-h-[calc(100vh-5rem)] min-h-0 overflow-y-auto">
 
       {#if sidebarMode === 'form'}
         <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
@@ -991,3 +998,9 @@
   on:confirm={performClearScale}
   on:cancel={() => confirmClearScale = false}
 />
+
+<style>
+  /* The panel in the side column fits the column (see the column's comment):
+     a panel whose body scrolls then scrolls there, not in the column too. */
+  .side-slot > :global(*) { min-height: 0; max-height: 100%; flex-shrink: 1; }
+</style>

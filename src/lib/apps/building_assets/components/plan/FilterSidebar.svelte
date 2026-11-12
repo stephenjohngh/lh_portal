@@ -137,7 +137,7 @@
   }
 </script>
 
-<div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+<div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden flex flex-col">
 
   <!-- Header -->
   <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700">
@@ -148,7 +148,7 @@
     >{allTypesVisible ? 'Clear all' : 'Set all'}</Button>
   </div>
 
-  <div class="p-3 flex flex-col gap-4 max-h-[75vh] overflow-y-auto">
+  <div class="p-3 flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto">
 
     <!-- -- Search --------------------------------------------------- -->
     <div class="relative">
