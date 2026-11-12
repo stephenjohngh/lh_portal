@@ -166,7 +166,7 @@ describe('agenda', () => {
 
   it('survives an empty planner', () => {
     const groups = agenda([], TODAY);
-    expect(groups).toEqual({ overdue: [], arranging: [], due_soon: [], planned: [], done: [] });
+    expect(groups).toEqual({ overdue: [], arranging: [], due_soon: [], planned: [], done: [], later: 0 });
   });
 });
 
@@ -339,5 +339,39 @@ describe('agendaByCategory', () => {
 
   it('leaves out a category with nothing outstanding', () => {
     expect(agendaByCategory([], today, cats).sections).toEqual([]);
+  });
+});
+
+// Recurring items filled Planned for years ahead (user, 2026-11-12): the agenda
+// lists PLANNED items only as far as the admin's window, and counts the rest.
+describe('how far ahead the agenda lists planned items', () => {
+  const T = '2026-11-12';
+  const occ = (date, extra = {}) => ({ event_id: date, scheduled_for: date, date, status: 'due', series: { lead_days: 3 }, ...extra });
+  const items = [occ('2026-11-13'), occ('2026-11-20'), occ('2026-11-26'), occ('2027-03-01'), occ('2026-11-01')];
+
+  it('keeps planned items within the window and counts the rest', () => {
+    const g = agenda(items, T, 14);
+    expect(g.planned.map(o => o.date)).toEqual(['2026-11-20', '2026-11-26']);
+    expect(g.later).toBe(1);
+    expect(g.overdue).toHaveLength(1);
+    expect(g.due_soon).toHaveLength(1);
+  });
+
+  it('never hides anything overdue, needing arranging or coming up', () => {
+    const far = occ('2027-06-01', { series: { lead_days: 400 }, needsArranging: true });
+    const g = agenda([far], T, 14);
+    expect(g.arranging).toHaveLength(1);
+    expect(g.later).toBe(0);
+  });
+
+  it('with no window, lists everything as before', () => {
+    expect(agenda(items, T).later).toBe(0);
+    expect(agenda(items, T).planned).toHaveLength(3);
+  });
+
+  it('the by-category agenda cuts at the same place', () => {
+    const c = agendaByCategory(items, T, [], 14);
+    expect(c.later).toBe(1);
+    expect(c.sections.flatMap(s => s.items).filter(i => i.bucket === 'planned')).toHaveLength(2);
   });
 });

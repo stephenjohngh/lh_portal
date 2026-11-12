@@ -76,6 +76,10 @@ const WINDOWS = {
     days: 14, app: 'Planner', label: 'An in-house inspection walk',
     where: 'Appears as coming up this many days before it is due.',
   },
+  plannerAgendaAhead: {
+    days: 14, app: 'Planner', label: 'How far ahead the Agenda lists planned items',
+    where: 'The Agenda’s Planned list stops this many days ahead; Year and Month show everything.',
+  },
   plannerDefaultNotice: {
     days: 30, app: 'Planner', label: 'A Planner event with no notice of its own',
     where: 'Used when an event does not set its own notice period.',

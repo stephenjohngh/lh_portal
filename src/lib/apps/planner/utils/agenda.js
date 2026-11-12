@@ -147,17 +147,34 @@ export function bucketOf(occurrence, today) {
  * longest is the thing to do. Everything else is soonest-first, and Done is
  * newest-first because it is a record, not a queue.
  */
-export function agenda(occurrences = [], today) {
+export function agenda(occurrences = [], today, plannedDays = null) {
   const groups = { overdue: [], arranging: [], due_soon: [], planned: [], done: [] };
+  let later = 0;
 
   // Sorted here rather than relied upon. buildOccurrences already returns date
   // order, but a display function that silently depends on its caller having
   // sorted is a trap for the next caller.
   const ordered = [...occurrences].sort((a, b) => a.date.localeCompare(b.date));
-  for (const item of ordered) groups[bucketOf(item, today)].push(item);
+  for (const item of ordered) {
+    const bucket = bucketOf(item, today);
+    if (bucket === 'planned' && beyondHorizon(item, today, plannedDays)) { later++; continue; }
+    groups[bucket].push(item);
+  }
 
   groups.done.reverse();
-  return groups;
+  return Object.assign(groups, { later });
+}
+
+/**
+ * Is a merely PLANNED item further ahead than the agenda shows? (user,
+ * 2026-11-12: recurring items filled Planned for years ahead). How far the
+ * agenda looks is the admin's window `plannerAgendaAhead`; the Year and Month
+ * views still show everything. Only Planned is cut: nothing overdue, needing
+ * arranging or coming up is ever hidden by it.
+ * @param {{ date: string }} item @param {string} today @param {number|null} days
+ */
+export function beyondHorizon(item, today, days) {
+  return days != null && daysBetween(today, item.date) > days;
 }
 
 /**
@@ -261,20 +278,23 @@ export function staleStart(event, today) {
  * @param {object[]} occurrences
  * @param {string} today
  * @param {object[]} categories  planner_categories rows
- * @returns {{ sections: { slug: string|null, name: string, items: { occurrence: object, bucket: string }[] }[], done: object[] }}
+ * @param {number|null} [plannedDays]  how far ahead Planned items are shown (beyondHorizon)
+ * @returns {{ sections: { slug: string|null, name: string, items: { occurrence: object, bucket: string }[] }[], done: object[], later: number }}
  */
-export function agendaByCategory(occurrences = [], today, categories = []) {
+export function agendaByCategory(occurrences = [], today, categories = [], plannedDays = null) {
   const rank = Object.fromEntries(BUCKETS.map((b, i) => [b.key, i]));
   const order = [...categories]
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || String(a.name).localeCompare(String(b.name)));
   const known = new Set(order.map(c => c.slug));
 
   const done = [];
+  let later = 0;
   /** @type {Map<string|null, { occurrence: object, bucket: string }[]>} */
   const by = new Map();
   for (const occurrence of occurrences) {
     const bucket = bucketOf(occurrence, today);
     if (bucket === 'done') { done.push(occurrence); continue; }
+    if (bucket === 'planned' && beyondHorizon(occurrence, today, plannedDays)) { later++; continue; }
     const slug = known.has(occurrence.series?.category) ? occurrence.series.category : null;
     if (!by.has(slug)) by.set(slug, []);
     by.get(slug).push({ occurrence, bucket });
@@ -289,5 +309,5 @@ export function agendaByCategory(occurrences = [], today, categories = []) {
   if (by.has(null)) sections.push({ slug: null, name: 'No category', items: sortItems(by.get(null)) });
 
   done.sort((a, b) => b.date.localeCompare(a.date));
-  return { sections, done };
+  return { sections, done, later };
 }

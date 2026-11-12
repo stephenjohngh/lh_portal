@@ -46,7 +46,7 @@ describe('the shipped defaults', () => {
       maintenanceJob: 30, certificateExpiry: 60, documentExpiry: 30,
       plannedObligation: 14, exclusionReview: 30, displayItemReview: 30,
       dossierLinkExpiry: 14, plannerArranging: 60, plannerWalk: 14,
-      plannerDefaultNotice: 30, plannerCompetenceExpiry: 60,
+      plannerAgendaAhead: 14, plannerDefaultNotice: 30, plannerCompetenceExpiry: 60,
       plannerBsrDeadline: 10, capitalRenewal: 365,
       workflowStep: 2,   // migration 248: a workflow step's deadline
     });

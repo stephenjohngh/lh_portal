@@ -18,7 +18,8 @@
   import { addDaysISO, daysBetween, isRecurring } from './utils/recurrence.js';
   import { pickable, swatch, marksByDate, withNonWorkingDays } from './utils/categories.js';
   import { SOURCES, visibleSources } from './utils/linked.js';
-  import { today, fmtDateLong } from '#lib/utils/dates.js';
+  import { today, fmtDateLong, fmtDate } from '#lib/utils/dates.js';
+  import { dueSoonDays } from '#lib/utils/dueWindows.js';
 
   import ProtectedButton from '#lib/components/common/ProtectedButton.svelte';
   import LoadingSpinner from '#lib/components/common/LoadingSpinner.svelte';
@@ -264,8 +265,12 @@
     .filter(o => categoryFilter.size === 0 || categoryFilter.has(o.series?.category))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  $: groups = agenda(occurrences, now);
-  $: byCategory = agendaByCategory(occurrences, now, state.categories);
+  // How far ahead the Agenda lists PLANNED items — an admin's due window
+  // (Admin → Limits and timing → Due windows), read where it is used.
+  $: aheadDays = dueSoonDays('plannerAgendaAhead');
+  $: groups = agenda(occurrences, now, aheadDays);
+  $: byCategory = agendaByCategory(occurrences, now, state.categories, aheadDays);
+  $: laterCount = agendaGroup === 'category' ? byCategory.later : groups.later;
   // While the other apps' items are still being read, the counts are only the
   // planner's own: say so rather than reading as the whole picture (and never
   // as "Nothing outstanding" before the faults and deadlines have arrived).
@@ -855,6 +860,13 @@
           {/if}
         {/if}
       {/each}
+      {/if}
+
+      {#if laterCount}
+        <p class="text-xs text-slate-500" data-testid="agenda-later">
+          Planned items are listed for the next {aheadDays} days.
+          {laterCount} more {laterCount === 1 ? 'falls' : 'fall'} after {fmtDate(addDaysISO(now, aheadDays))} — see Year or Month.
+        </p>
       {/if}
 
       <Button variant="tertiary" size="xs" on:click={() => showDone = !showDone}>{showDone ? 'Hide' : 'Show'} what is done ({groups.done.length})</Button>
