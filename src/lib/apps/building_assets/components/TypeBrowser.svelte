@@ -2,6 +2,7 @@
 <!-- Read-only browser: System → Type → Attribute Definitions + Options -->
 <script>
   import Button from '#lib/components/common/Button.svelte';
+  import { describeCondition } from '../utils/checkApplies.js';
   export let systems  = [];
   export let types    = [];
   export let attrDefs = {};    // { typeId: type_attributes[] }
@@ -15,6 +16,12 @@
     : [];
 
   $: typeDefs = selectedType ? (attrDefs[selectedType.id] ?? []) : [];
+  // Fixed attributes first, then the condition attributes (the checks asked on
+  // each inspection), each under its own heading.
+  $: defGroups = [
+    { key: 'fixed', title: 'Fixed attributes', note: 'recorded once for each component', defs: typeDefs.filter(d => !d.checkable) },
+    { key: 'condition', title: 'Condition attributes', note: 'checked on each inspection', defs: typeDefs.filter(d => d.checkable) },
+  ].filter(g => g.defs.length > 0);
 
   function colourStyle(hex) {
     return `background-color: #${hex}`;
@@ -104,8 +111,13 @@
     {:else if typeDefs.length === 0}
       <p class="text-slate-600 text-sm italic">No attribute definitions for this type</p>
     {:else}
+      {#each defGroups as group (group.key)}
+      <div class="mb-5">
+      <h3 class="text-sm font-semibold text-slate-200 border-b border-slate-600 pb-1 mb-3" data-testid="attr-group-{group.key}">
+        {group.title} <span class="text-xs font-normal text-slate-400">— {group.note} ({group.defs.length})</span>
+      </h3>
       <div class="flex flex-col gap-3">
-        {#each typeDefs as def}
+        {#each group.defs as def}
           {@const opts = attrOptions[def.id] ?? []}
           <div class="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
             <div class="flex items-center gap-2 mb-2">
@@ -120,6 +132,10 @@
                 <span class="text-xs text-red-400">required</span>
               {/if}
             </div>
+
+            {#if def.checkable && describeCondition(def)}
+              <p class="text-xs text-amber-300 mb-2" data-testid="attr-condition">↳ {describeCondition(def)}</p>
+            {/if}
 
             {#if opts.length > 0}
               <div class="flex flex-wrap gap-1.5">
@@ -146,6 +162,8 @@
           </div>
         {/each}
       </div>
+      </div>
+      {/each}
     {/if}
   </div>
 </div>

@@ -79,7 +79,7 @@ export function buildBayPlanDocument(body) {
 
   const { stacked, landscape, sized } = planLayout(drawn);
   const contentW = landscape ? CONTENT_W_L : CONTENT_W;
-  const title = `Car park — who has each bay`;
+  const title = `Car Park Bay Allocation`;
 
   const legendLine = new Paragraph({
     alignment: AlignmentType.CENTER,
