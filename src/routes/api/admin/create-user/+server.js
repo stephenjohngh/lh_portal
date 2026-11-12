@@ -36,9 +36,9 @@ export async function POST({ request }) {
     }
 
     // Match the reset-password floor (A2).
-    if (password.length < 6) {
+    if (password.length < 8) {
       logger('❌ Password too short');
-      return json({ error: 'Password must be at least 6 characters' }, { status: 400 });
+      return json({ error: 'Password must be at least 8 characters' }, { status: 400 });
     }
 
     // Create new user

@@ -26,8 +26,8 @@
       return false;
     }
 
-    if (password.length < 6) {
-      passwordError = 'Password must be at least 6 characters';
+    if (password.length < 8) {
+      passwordError = 'Password must be at least 8 characters';
       return false;
     }
 
@@ -100,7 +100,7 @@
       label="New Password"
       type="password"
       bind:value={password}
-      placeholder="Minimum 6 characters"
+      placeholder="Minimum 8 characters"
       required={true}
       error={passwordError}
       on:input={() => passwordError = ''}

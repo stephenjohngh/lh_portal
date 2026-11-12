@@ -32,10 +32,10 @@ export async function POST({ request }) {
       );
     }
 
-    if (new_password.length < 6) {
+    if (new_password.length < 8) {
       logger('❌ Password too short');
       return json(
-        { error: 'Password must be at least 6 characters' },
+        { error: 'Password must be at least 8 characters' },
         { status: 400 }
       );
     }

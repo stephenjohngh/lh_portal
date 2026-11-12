@@ -40,34 +40,34 @@ beforeEach(() => {
 describe('POST /api/admin/reset-password', () => {
   it('returns the requireAdmin error and never resets when not an admin', async () => {
     h.setAuth({ user: null, isAdmin: false, error: { status: 403 } });
-    const res = await POST({ request: req({ user_id: 'u2', new_password: 'secret1' }) });
+    const res = await POST({ request: req({ user_id: 'u2', new_password: 'secret12' }) });
     expect(res.status).toBe(403);
     expect(h.admin.auth.admin.updateUserById).not.toHaveBeenCalled();
   });
 
   it('400s when user_id or new_password is missing', async () => {
     expect((await POST({ request: req({ user_id: 'u2' }) })).status).toBe(400);
-    expect((await POST({ request: req({ new_password: 'secret1' }) })).status).toBe(400);
+    expect((await POST({ request: req({ new_password: 'secret12' }) })).status).toBe(400);
   });
 
-  it('400s when the password is shorter than 6 characters', async () => {
+  it('400s when the password is shorter than 8 characters', async () => {
     const res = await POST({ request: req({ user_id: 'u2', new_password: 'abc' }) });
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/at least 6/i);
+    expect(res.body.error).toMatch(/at least 8/i);
     expect(h.admin.auth.admin.updateUserById).not.toHaveBeenCalled();
   });
 
   it('404s when the target profile does not exist', async () => {
     h.setProfile(null);
-    const res = await POST({ request: req({ user_id: 'ghost', new_password: 'secret1' }) });
+    const res = await POST({ request: req({ user_id: 'ghost', new_password: 'secret12' }) });
     expect(res.status).toBe(404);
     expect(h.admin.auth.admin.updateUserById).not.toHaveBeenCalled();
   });
 
   it('resets the password and returns success for a valid target', async () => {
-    const res = await POST({ request: req({ user_id: 'u2', new_password: 'secret1' }) });
+    const res = await POST({ request: req({ user_id: 'u2', new_password: 'secret12' }) });
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(h.admin.auth.admin.updateUserById).toHaveBeenCalledWith('u2', { password: 'secret1' });
+    expect(h.admin.auth.admin.updateUserById).toHaveBeenCalledWith('u2', { password: 'secret12' });
   });
 });
