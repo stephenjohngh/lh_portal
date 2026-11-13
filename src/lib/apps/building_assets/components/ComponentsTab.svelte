@@ -25,6 +25,7 @@
   import ComponentForm           from './ComponentForm.svelte';
   import ComponentDetailPanel    from './ComponentDetailPanel.svelte';
   import ComponentDetailView     from './ComponentDetailView.svelte';
+  import ComponentLocation       from './ComponentLocation.svelte';
   import InspectionPanel         from './InspectionPanel.svelte';
   import AttrFilterStrip         from './AttrFilterStrip.svelte';
   import ReportActionButtons     from './ReportActionButtons.svelte';
@@ -631,7 +632,11 @@
   </div>
 
 {:else if editingComponent}
-  <div class="max-w-2xl">
+  <!-- The details, and beside them where the component is (2026-11-13; the
+       same drawing as Inspection's "show on floor plan"). Side by side on a
+       wide screen, the location below on a narrow one. -->
+  <div class="flex flex-col xl:flex-row gap-4 items-start">
+  <div class="w-full max-w-2xl shrink-0">
     {#if readOnly}
       <ComponentDetailView
         component={editingComponent}
@@ -652,6 +657,14 @@
         on:deleted={() => editingComponent = null}
       />
     {/if}
+  </div>
+  <div class="w-full xl:flex-1 min-w-0 xl:sticky xl:top-16">
+    <div class="bg-slate-800 rounded-xl border border-slate-700 p-4" data-testid="component-location">
+      <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Location</p>
+      <ComponentLocation component={editingComponent} {plans}
+        typeName={types.find(t => t.code === editingComponent.type_code)?.name ?? ''} />
+    </div>
+  </div>
   </div>
 
 {:else if showForm}
